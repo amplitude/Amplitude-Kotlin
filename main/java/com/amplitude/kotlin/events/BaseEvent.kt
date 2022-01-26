@@ -1,7 +1,7 @@
 package com.amplitude.kotlin.events
 
 import org.json.JSONObject
-import java.util.UUID
+import java.util.*
 
 open class BaseEvent {
     open lateinit var eventType: String
@@ -37,4 +37,5 @@ open class BaseEvent {
     var insertId = UUID.randomUUID().toString()
     lateinit var groups:JSONObject
     lateinit var groupProperties: JSONObject
+    lateinit var extra: Map<String, Any>
 }
