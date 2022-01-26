@@ -25,7 +25,7 @@ jobs:
           project: ${{ secrets.JIRA_PROJECT }}
           issuetype: Task
           summary: |
-            [SDK - Java] ${{ github.event.issue.title }}
+            [SDK - Kotlin] ${{ github.event.issue.title }}
           description: |
             ${{ github.event.issue.html_url }}
           fields: '{
