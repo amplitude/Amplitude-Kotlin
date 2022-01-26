@@ -27,7 +27,7 @@ interface Plugin {
 }
 
 interface EventPlugin : Plugin {
-    fun logEvent(payload: BaseEvent): BaseEvent? {
+    fun track(payload: BaseEvent): BaseEvent? {
         return payload
     }
 
@@ -39,7 +39,7 @@ interface EventPlugin : Plugin {
         return payload
     }
 
-    fun logRevenue(payload: RevenueEvent): RevenueEvent? {
+    fun revenue(payload: RevenueEvent): RevenueEvent? {
         return payload
     }
 
@@ -83,10 +83,10 @@ abstract class DestinationPlugin: EventPlugin {
                     groupIdentify(it)
                 }
                 is RevenueEvent -> {
-                    logRevenue(it)
+                    revenue(it)
                 }
                 else -> {
-                    logEvent(it)
+                    track(it)
                 }
             }
         }

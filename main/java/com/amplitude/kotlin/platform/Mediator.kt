@@ -33,10 +33,10 @@ internal class Mediator(private val plugins: MutableList<Plugin>) {
                                 result = plugin.groupIdentify(result as GroupIdentifyEvent)
                             }
                             is RevenueEvent -> {
-                                result = plugin.logRevenue(result as RevenueEvent)
+                                result = plugin.revenue(result as RevenueEvent)
                             }
                             is BaseEvent -> {
-                                result = plugin.logEvent(result as BaseEvent)
+                                result = plugin.track(result as BaseEvent)
                             }
                         }
                     }
