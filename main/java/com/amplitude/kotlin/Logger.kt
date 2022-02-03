@@ -11,13 +11,13 @@ interface Logger {
 
     var logMode:Logger.LogMode
 
-    fun debug(tag: String, message: String)
+    fun debug(message: String)
 
-    fun error(tag: String, message: String)
+    fun error(message: String)
 
-    fun info(tag: String, message: String)
+    fun info(message: String)
 
-    fun warn(tag: String, message: String)
+    fun warn(message: String)
 }
 
 interface LoggerProvider {

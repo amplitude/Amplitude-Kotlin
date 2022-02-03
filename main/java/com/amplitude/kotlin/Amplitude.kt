@@ -10,7 +10,7 @@ import com.amplitude.kotlin.platform.plugins.ContextPlugin
 import kotlinx.coroutines.*
 import java.util.concurrent.Executors
 
-class Amplitude internal constructor(
+open class Amplitude internal constructor(
     val configuration: Configuration,
     val store: State,
     val amplitudeScope: CoroutineScope = CoroutineScope(SupervisorJob()),
@@ -31,7 +31,9 @@ class Amplitude internal constructor(
         build()
     }
 
-
+    /**
+     * Public Constructor
+     */
     constructor(configuration: Configuration) : this(configuration, State())
 
     internal fun build() {
@@ -43,6 +45,7 @@ class Amplitude internal constructor(
         }
     }
 
+    @Deprecated("Please use 'track' instead.", ReplaceWith("track"))
     fun logEvent(event: BaseEvent) {
         track(event)
     }
@@ -63,6 +66,11 @@ class Amplitude internal constructor(
 
     }
 
+    fun setGroup(groupType: String, groupName: Array<String>) {
+
+    }
+
+    @Deprecated("Please use 'revenue' instead.", ReplaceWith("revenue"))
     fun logRevenue(revenue: Revenue) {
         revenue(revenue)
     }

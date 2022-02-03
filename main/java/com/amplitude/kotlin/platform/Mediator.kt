@@ -21,7 +21,11 @@ internal class Mediator(private val plugins: MutableList<Plugin>) {
             if (result != null) {
                 when (plugin) {
                     is DestinationPlugin -> {
-                        plugin.process(result)
+                        try {
+                            plugin.process(result)
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
                     }
                     is EventPlugin -> {
                         result = plugin.execute(result as BaseEvent)
