@@ -1,6 +1,6 @@
-package com.amplitude.kotlin
+package com.amplitude
 
-import com.amplitude.kotlin.events.BaseEvent
+import com.amplitude.events.BaseEvent
 
 data class Configuration(
     val apiKey: String,

@@ -1,15 +1,14 @@
-package com.amplitude.kotlin.platform.plugins
+package com.amplitude.platform.plugins
 
-import com.amplitude.kotlin.Amplitude
-import com.amplitude.kotlin.Constants
-import com.amplitude.kotlin.events.BaseEvent
-import com.amplitude.kotlin.platform.Plugin
+import com.amplitude.Constants
+import com.amplitude.events.BaseEvent
+import com.amplitude.platform.Plugin
 
 class ContextPlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Before
-    override lateinit var amplitude: Amplitude
+    override lateinit var amplitude: com.amplitude.Amplitude
 
-    override fun setup(amplitude: Amplitude) {
+    override fun setup(amplitude: com.amplitude.Amplitude) {
         super.setup(amplitude)
     }
 

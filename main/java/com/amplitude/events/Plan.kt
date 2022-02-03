@@ -1,4 +1,4 @@
-package com.amplitude.kotlin.events
+package com.amplitude.events
 
 open class Plan(
     var branch: String?,

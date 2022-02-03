@@ -1,9 +1,9 @@
-package com.amplitude.kotlin.platform
+package com.amplitude.platform
 
-import com.amplitude.kotlin.events.BaseEvent
-import com.amplitude.kotlin.events.GroupIdentifyEvent
-import com.amplitude.kotlin.events.IdentifyEvent
-import com.amplitude.kotlin.events.RevenueEvent
+import com.amplitude.events.BaseEvent
+import com.amplitude.events.GroupIdentifyEvent
+import com.amplitude.events.IdentifyEvent
+import com.amplitude.events.RevenueEvent
 
 internal class Mediator(private val plugins: MutableList<Plugin>) {
     fun add(plugin: Plugin) = synchronized(plugins) {

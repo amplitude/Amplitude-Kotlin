@@ -1,18 +1,18 @@
-package com.amplitude.kotlin
+package com.amplitude
 
-import com.amplitude.kotlin.events.BaseEvent
-import com.amplitude.kotlin.events.Identify
-import com.amplitude.kotlin.events.Revenue
-import com.amplitude.kotlin.platform.Plugin
-import com.amplitude.kotlin.platform.Timeline
-import com.amplitude.kotlin.platform.plugins.AmplitudeDestination
-import com.amplitude.kotlin.platform.plugins.ContextPlugin
+import com.amplitude.events.BaseEvent
+import com.amplitude.events.Identify
+import com.amplitude.events.Revenue
+import com.amplitude.platform.Plugin
+import com.amplitude.platform.Timeline
+import com.amplitude.platform.plugins.AmplitudeDestination
+import com.amplitude.platform.plugins.ContextPlugin
 import kotlinx.coroutines.*
 import java.util.concurrent.Executors
 
 open class Amplitude internal constructor(
-    val configuration: Configuration,
-    val store: State,
+    val configuration: com.amplitude.Configuration,
+    val store: com.amplitude.State,
     val amplitudeScope: CoroutineScope = CoroutineScope(SupervisorJob()),
     val amplitudeDispatcher: CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher(),
     val networkIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
@@ -20,8 +20,8 @@ open class Amplitude internal constructor(
 ){
 
     internal val timeline: Timeline
-    val storage: Storage
-    val logger: Logger
+    val storage: com.amplitude.Storage
+    val logger: com.amplitude.Logger
 
     init {
         require(configuration.isValid()) { "invalid configuration" }
@@ -34,7 +34,7 @@ open class Amplitude internal constructor(
     /**
      * Public Constructor
      */
-    constructor(configuration: Configuration) : this(configuration, State())
+    constructor(configuration: com.amplitude.Configuration) : this(configuration, com.amplitude.State())
 
     internal fun build() {
         add(ContextPlugin())
@@ -50,7 +50,7 @@ open class Amplitude internal constructor(
         track(event)
     }
 
-    fun track(event: BaseEvent) {
+    fun track(event: BaseEvent, callback: ((BaseEvent) -> Unit)? = null) {
         process(event)
     }
 
@@ -85,12 +85,12 @@ open class Amplitude internal constructor(
         }
     }
 
-    fun add(plugin: Plugin) : Amplitude {
+    fun add(plugin: Plugin) : com.amplitude.Amplitude {
         this.timeline.add(plugin)
         return this
     }
 
-    fun remove(plugin: Plugin): Amplitude {
+    fun remove(plugin: Plugin): com.amplitude.Amplitude {
         this.timeline.remove(plugin)
         return this
     }

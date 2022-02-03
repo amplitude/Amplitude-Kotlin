@@ -1,4 +1,4 @@
-package com.amplitude.kotlin.events
+package com.amplitude.events
 
 import org.json.JSONObject
 

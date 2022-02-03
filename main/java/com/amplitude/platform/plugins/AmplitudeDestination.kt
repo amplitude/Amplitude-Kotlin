@@ -1,10 +1,10 @@
-package com.amplitude.kotlin.platform.plugins
+package com.amplitude.platform.plugins
 
-import com.amplitude.kotlin.events.BaseEvent
-import com.amplitude.kotlin.events.GroupIdentifyEvent
-import com.amplitude.kotlin.events.IdentifyEvent
-import com.amplitude.kotlin.events.RevenueEvent
-import com.amplitude.kotlin.platform.DestinationPlugin
+import com.amplitude.events.BaseEvent
+import com.amplitude.events.GroupIdentifyEvent
+import com.amplitude.events.IdentifyEvent
+import com.amplitude.events.RevenueEvent
+import com.amplitude.platform.DestinationPlugin
 
 class AmplitudeDestination : DestinationPlugin() {
     override fun track(payload: BaseEvent): BaseEvent? {

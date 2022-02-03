@@ -1,4 +1,4 @@
-package com.amplitude.kotlin
+package com.amplitude
 
 interface Logger {
     enum class LogMode(i: Int) {
@@ -21,5 +21,5 @@ interface Logger {
 }
 
 interface LoggerProvider {
-    fun getLogger(amplitude: Amplitude): Logger
+    fun getLogger(amplitude: com.amplitude.Amplitude): Logger
 }
