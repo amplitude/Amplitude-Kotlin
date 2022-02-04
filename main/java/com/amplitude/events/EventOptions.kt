@@ -1,6 +1,12 @@
 package com.amplitude.events
 
 open class EventOptions {
+    var userId: String? = null
+    var deviceId: String? = null
+    var timestamp: Long? = null
+    var eventId: Int? = null
+    var sessionId: Long = -1
+    var insertId: String? = null
     var locationLat: Double? = null
     var locationLng: Double? = null
     var appVersion: String? = null
@@ -25,4 +31,5 @@ open class EventOptions {
     var ip: String? = null
     var plan: Plan? = null
     var extra: Map<String, Any>? = null
+    var callback: ((BaseEvent) -> Unit)? = null
 }
