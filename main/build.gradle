@@ -1,0 +1,22 @@
+plugins {
+    id 'java-library'
+    id 'org.jetbrains.kotlin.jvm' version "1.5.31"
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+apply plugin: 'idea'
+
+test {
+    useJUnitPlatform()
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.5.31"
+    // MAIN DEPS
+    implementation 'org.json:json:20211205'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.2'
+}
