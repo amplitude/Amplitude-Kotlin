@@ -13,6 +13,7 @@ open class EventOptions {
     var versionName: String? = null
     var platform: String? = null
     var osName: String? = null
+    var osVersion: String? = null
     var deviceBrand: String? = null
     var deviceManufacturer: String? = null
     var deviceModel: String? = null
@@ -20,7 +21,7 @@ open class EventOptions {
     var country: String? = null
     var region: String? = null
     var city: String? = null
-    var dms: String? = null
+    var dma: String? = null
     var idfa: String? = null
     var idfv: String? = null
     var adid: String? = null
@@ -30,6 +31,11 @@ open class EventOptions {
     var library: String? = null
     var ip: String? = null
     var plan: Plan? = null
+    var revenue: Double? = null
+    var price: Double? = null
+    var quantity: Int? = null
+    var productId: String? = null
+    var revenueType: String? = null
     var extra: Map<String, Any>? = null
     var callback: ((BaseEvent) -> Unit)? = null
 }

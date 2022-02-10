@@ -4,8 +4,12 @@ import com.amplitude.events.BaseEvent
 
 interface Storage {
     fun write(event: BaseEvent)
+
+    fun rollover()
+
+    fun getEvents(): List<String>
 }
 
 interface StorageProvider {
-    fun getStorage(amplitude: com.amplitude.Amplitude): Storage
+    fun getStorage(amplitude: Amplitude): Storage
 }
