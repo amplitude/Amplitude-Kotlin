@@ -27,16 +27,14 @@ internal class HttpClient(
                     this.setApiKey(getApiKey())
                     this.setMinIdLength(getMindIdLength())
                     this.setBody()
-                    println(this.outputStream.toString())
                     this.outputStream?.close()
                     val responseCode: Int = connection.responseCode
-                    if (responseCode >= 300) {
+                    if (responseCode == HttpStatus.SUCCESS.code) {
                         var responseBody: String?
                         var inputStream: InputStream? = null
                         try {
                             inputStream = getInputStream(this.connection)
                             responseBody = inputStream?.bufferedReader()?.use(BufferedReader::readText)
-                            print(responseBody)
                         } catch (e: IOException) {
                             responseBody = ("Could not read response body for rejected message: "
                                     + e.toString())
@@ -99,7 +97,6 @@ abstract class Connection(
     val outputStream: OutputStream?
 ) : Closeable {
 
-
     private lateinit var apiKey: String
     private lateinit var events: String
     private var minIdLength: Int? = null
@@ -135,4 +132,13 @@ abstract class Connection(
         }
         return "{\"api_key\":\"$apiKey\",\"events\":$events,\"options\":{\"min_id_length\":$minIdLength}}"
     }
+}
+
+internal enum class HttpStatus(val code: Int) {
+    SUCCESS(200),
+    BAD_REQUEST(400),
+    TIMEOUT(408),
+    PAYLOAD_TOO_LARGE(413),
+    TOO_MANY_REQUESTS(429),
+    FAILED(500)
 }

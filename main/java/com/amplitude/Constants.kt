@@ -4,7 +4,7 @@ object Constants {
     const val SDK_LIBRARY = "amplitude-kotlin"
     const val SDK_VERSION = "0.0.1"
     const val DEFAULT_API_HOST = "https://api2.amplitude.com/2/httpapi"
-    const val EU_DEFAULT_API_HOST = ""
+    const val EU_DEFAULT_API_HOST = "https://api.eu.amplitude.com/2/httpapi"
     const val FLUSH_QUEUE_SIZE = 30
     const val FLUSH_INTERVAL_MILLIS = 30 * 1000 // 30s
     const val IDENTIFY_EVENT = "\$identify"

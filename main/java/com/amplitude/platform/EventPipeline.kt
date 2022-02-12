@@ -72,15 +72,15 @@ internal class EventPipeline(
     private fun write() = scope.launch(amplitude.storageIODispatcher) {
         for (message in writeChannel) {
             // write to storage
-            val isPoison = (message.type == WriteQueueMessageType.FLUSH)
-            if (!isPoison && message.event != null) try {
+            val triggerFlush = (message.type == WriteQueueMessageType.FLUSH)
+            if (!triggerFlush && message.event != null) try {
                 storage.write(message.event)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
 
             // if flush condition met, generate paths
-            if (eventCount.incrementAndGet() >= getFlushCount() || isPoison) {
+            if (eventCount.incrementAndGet() >= getFlushCount() || triggerFlush) {
                 eventCount.set(0)
                 uploadChannel.trySend(UPLOAD_SIG)
             } else {
