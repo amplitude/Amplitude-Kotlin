@@ -1,0 +1,5 @@
+rootProject.name = 'kotlin-sdk'
+include 'main'
+project(':main').projectDir = file('main')
+include 'samples:kotlin-jvm-app'
+project(':samples:kotlin-jvm-app').projectDir = file('samples/kotlin-jvm-app')
