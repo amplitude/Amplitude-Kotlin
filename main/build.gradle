@@ -15,7 +15,9 @@ test {
 }
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.5.31"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    implementation project(':id')
+
     // MAIN DEPS
     implementation 'org.json:json:20211205'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.2'

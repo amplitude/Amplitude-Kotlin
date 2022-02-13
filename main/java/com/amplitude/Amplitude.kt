@@ -3,10 +3,12 @@ package com.amplitude
 import com.amplitude.events.BaseEvent
 import com.amplitude.events.Identify
 import com.amplitude.events.Revenue
+import com.amplitude.platform.ObservePlugin
 import com.amplitude.platform.Plugin
 import com.amplitude.platform.Timeline
 import com.amplitude.platform.plugins.AmplitudeDestination
 import com.amplitude.platform.plugins.ContextPlugin
+import com.amplitude.utilities.AnalyticsIdentityListener
 import kotlinx.coroutines.*
 import java.util.concurrent.Executors
 
@@ -22,12 +24,15 @@ open class Amplitude internal constructor(
     internal val timeline: Timeline
     val storage: com.amplitude.Storage
     val logger: com.amplitude.Logger
+    val idContainer: IdContainer
 
     init {
         require(configuration.isValid()) { "invalid configuration" }
         timeline = Timeline().also { it.amplitude = this }
         storage = configuration.storageProvider.getStorage(this)
         logger = configuration.loggerProvider.getLogger(this)
+        idContainer = IdContainer.getInstance(configuration.apiKey, IMIdentityStorageProvider())
+        idContainer.identityStore.addIdentityListener(AnalyticsIdentityListener(store))
         build()
     }
 
@@ -59,7 +64,7 @@ open class Amplitude internal constructor(
     }
 
     fun identify(userId: String) {
-
+        this.idContainer.identityStore.editIdentity().setUserId(userId).commit()
     }
 
     fun groupIdentify(identify: Identify) {
@@ -86,12 +91,26 @@ open class Amplitude internal constructor(
     }
 
     fun add(plugin: Plugin) : com.amplitude.Amplitude {
-        this.timeline.add(plugin)
+        when (plugin) {
+            is ObservePlugin -> {
+                this.store.add(plugin)
+            }
+            else -> {
+                this.timeline.add(plugin)
+            }
+        }
         return this
     }
 
     fun remove(plugin: Plugin): com.amplitude.Amplitude {
-        this.timeline.remove(plugin)
+        when (plugin) {
+            is ObservePlugin -> {
+                this.store.remove(plugin)
+            }
+            else -> {
+                this.timeline.remove(plugin)
+            }
+        }
         return this
     }
 
