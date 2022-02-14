@@ -9,7 +9,7 @@ interface Logger {
         OFF(5)
     }
 
-    var logMode:Logger.LogMode
+    var logMode: LogMode
 
     fun debug(message: String)
 
@@ -21,5 +21,5 @@ interface Logger {
 }
 
 interface LoggerProvider {
-    fun getLogger(amplitude: com.amplitude.Amplitude): Logger
+    fun getLogger(amplitude: Amplitude): Logger
 }
