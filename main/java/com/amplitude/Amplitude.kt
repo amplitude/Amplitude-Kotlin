@@ -3,6 +3,7 @@ package com.amplitude
 import com.amplitude.events.BaseEvent
 import com.amplitude.events.Identify
 import com.amplitude.events.Revenue
+import com.amplitude.events.RevenueEvent
 import com.amplitude.platform.Plugin
 import com.amplitude.platform.Timeline
 import com.amplitude.platform.plugins.AmplitudeDestination
@@ -75,8 +76,22 @@ open class Amplitude internal constructor(
         revenue(revenue)
     }
 
+    /**
+     * Create a Revenue object to hold your revenue data and properties,
+     * and log it as a revenue event using this method.
+     */
     fun revenue(revenue: Revenue) {
+        if (!revenue.isValid()) {
+            return
+        }
+        revenue(revenue.toRevenueEvent())
+    }
 
+    /**
+     * Log a Revenue Event
+     */
+    fun revenue(event: RevenueEvent) {
+        process(event)
     }
 
     fun process(event: BaseEvent) {
