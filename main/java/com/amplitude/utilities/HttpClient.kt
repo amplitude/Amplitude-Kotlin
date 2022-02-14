@@ -29,7 +29,7 @@ internal class HttpClient(
                     this.setBody()
                     this.outputStream?.close()
                     val responseCode: Int = connection.responseCode
-                    if (responseCode == HttpStatus.SUCCESS.code) {
+                    if (responseCode > HttpStatus.SUCCESS.code) {
                         var responseBody: String?
                         var inputStream: InputStream? = null
                         try {
