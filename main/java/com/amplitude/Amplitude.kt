@@ -37,7 +37,7 @@ open class Amplitude internal constructor(
      */
     constructor(configuration: com.amplitude.Configuration) : this(configuration, com.amplitude.State())
 
-    internal fun build() {
+    open fun build() {
         add(ContextPlugin())
         add(AmplitudeDestination())
 

@@ -4,7 +4,7 @@ import com.amplitude.events.BaseEvent
 import com.amplitude.utilities.ConsoleLoggerProvider
 import com.amplitude.utilities.InMemoryStorageProvider
 
-data class Configuration(
+open class Configuration(
     val apiKey: String,
     val flushQueueSize: Int = Constants.FLUSH_QUEUE_SIZE,
     val flushIntervalMillis: Int = Constants.FLUSH_INTERVAL_MILLIS,

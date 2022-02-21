@@ -11,6 +11,7 @@ interface Plugin {
         Before,
         Enrichment,
         Destination,
+        Utility,
         Observe
     }
 

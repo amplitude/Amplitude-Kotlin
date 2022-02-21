@@ -2,9 +2,11 @@ buildscript {
     ext.kotlin_version = "1.5.10"
     repositories {
         mavenCentral()
+        google()
     }
 
     dependencies {
+        classpath 'com.android.tools.build:gradle:7.0.4'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }
@@ -17,16 +19,10 @@ allprojects{
         maven { url "https://kotlin.bintray.com/kotlinx" }
     }
 
-    apply plugin: "kotlin"
-
-    compileKotlin {
+    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
         kotlinOptions {
+            freeCompilerArgs = ['-Xjvm-default=enable']
             jvmTarget = "1.8"
-            javaParameters = true
         }
-    }
-
-    dependencies {
-        implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     }
 }

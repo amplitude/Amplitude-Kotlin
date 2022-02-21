@@ -8,6 +8,7 @@ internal class Timeline {
         Plugin.Type.Before to Mediator(mutableListOf()),
         Plugin.Type.Enrichment to Mediator(mutableListOf()),
         Plugin.Type.Destination to Mediator(mutableListOf()),
+        Plugin.Type.Utility to Mediator(mutableListOf())
     )
     lateinit var amplitude: com.amplitude.Amplitude
 
