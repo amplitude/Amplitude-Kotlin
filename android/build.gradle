@@ -40,7 +40,7 @@ android {
 }
 
 dependencies {
-    implementation project(':main')
+    implementation project(':core')
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.2'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.5.2'
 
