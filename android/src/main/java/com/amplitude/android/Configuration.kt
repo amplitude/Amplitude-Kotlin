@@ -1,17 +1,18 @@
 package com.amplitude.android
 
+import android.content.Context
 import com.amplitude.Configuration
-import com.amplitude.Constants
 import com.amplitude.LoggerProvider
 import com.amplitude.StorageProvider
 import com.amplitude.android.utilities.AndroidLoggerProvider
 import com.amplitude.android.utilities.AndroidStorageProvider
 import com.amplitude.events.BaseEvent
 
-class AndroidConfiguration(
+class Configuration(
     apiKey: String,
-    flushQueueSize: Int = Constants.FLUSH_QUEUE_SIZE,
-    flushIntervalMillis: Int = Constants.FLUSH_INTERVAL_MILLIS,
+    context: Context,
+    flushQueueSize: Int = FLUSH_QUEUE_SIZE,
+    flushIntervalMillis: Int = FLUSH_INTERVAL_MILLIS,
     optOut: Boolean = false,
     storageProvider: StorageProvider = AndroidStorageProvider(),
     loggerProvider: LoggerProvider = AndroidLoggerProvider(),
