@@ -1,19 +1,17 @@
-package com.amplitude.platform
+package com.amplitude.core.platform
 
-import com.amplitude.Constants
-import com.amplitude.events.BaseEvent
-import com.amplitude.utilities.HttpClient
+import com.amplitude.core.Amplitude
+import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.utilities.HttpClient
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
 import kotlinx.coroutines.channels.consumeEach
-import java.io.File
-import java.io.FileInputStream
 import java.lang.Exception
 import java.util.concurrent.atomic.AtomicInteger
 
 internal class EventPipeline(
-    private val amplitude: com.amplitude.Amplitude
+    private val amplitude: Amplitude
 
 ) {
 

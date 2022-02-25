@@ -1,19 +1,19 @@
-package com.amplitude
+package com.amplitude.core
 
-import com.amplitude.events.BaseEvent
-import com.amplitude.events.Identify
-import com.amplitude.events.Revenue
-import com.amplitude.events.RevenueEvent
-import com.amplitude.platform.Plugin
-import com.amplitude.platform.Timeline
-import com.amplitude.platform.plugins.AmplitudeDestination
-import com.amplitude.platform.plugins.ContextPlugin
+import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.events.Identify
+import com.amplitude.core.events.Revenue
+import com.amplitude.core.events.RevenueEvent
+import com.amplitude.core.platform.Plugin
+import com.amplitude.core.platform.Timeline
+import com.amplitude.core.platform.plugins.AmplitudeDestination
+import com.amplitude.core.platform.plugins.ContextPlugin
 import kotlinx.coroutines.*
 import java.util.concurrent.Executors
 
 open class Amplitude internal constructor(
-    val configuration: com.amplitude.Configuration,
-    val store: com.amplitude.State,
+    val configuration: Configuration,
+    val store: State,
     val amplitudeScope: CoroutineScope = CoroutineScope(SupervisorJob()),
     val amplitudeDispatcher: CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher(),
     val networkIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
@@ -21,8 +21,8 @@ open class Amplitude internal constructor(
 ){
 
     internal val timeline: Timeline
-    val storage: com.amplitude.Storage
-    val logger: com.amplitude.Logger
+    val storage: Storage
+    val logger: Logger
 
     init {
         require(configuration.isValid()) { "invalid configuration" }
@@ -35,7 +35,7 @@ open class Amplitude internal constructor(
     /**
      * Public Constructor
      */
-    constructor(configuration: com.amplitude.Configuration) : this(configuration, com.amplitude.State())
+    constructor(configuration: Configuration) : this(configuration, State())
 
     open fun build() {
         add(ContextPlugin())
@@ -100,12 +100,12 @@ open class Amplitude internal constructor(
         }
     }
 
-    fun add(plugin: Plugin) : com.amplitude.Amplitude {
+    fun add(plugin: Plugin) : Amplitude {
         this.timeline.add(plugin)
         return this
     }
 
-    fun remove(plugin: Plugin): com.amplitude.Amplitude {
+    fun remove(plugin: Plugin): Amplitude {
         this.timeline.remove(plugin)
         return this
     }

@@ -1,4 +1,4 @@
-package com.amplitude
+package com.amplitude.core
 
 interface Logger {
     enum class LogMode(i: Int) {

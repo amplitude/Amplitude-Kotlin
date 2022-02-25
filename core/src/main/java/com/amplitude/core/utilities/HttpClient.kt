@@ -1,16 +1,12 @@
-package com.amplitude.utilities
+package com.amplitude.core.utilities
 
-import com.amplitude.Configuration
-import com.amplitude.Constants
-import com.amplitude.events.BaseEvent
-import org.json.JSONArray
-import org.json.JSONObject
+import com.amplitude.core.Configuration
+import com.amplitude.core.Constants
 import java.io.*
 import java.net.HttpURLConnection
 import java.net.MalformedURLException
 import java.net.URL
 import java.nio.charset.StandardCharsets
-import javax.net.ssl.HttpsURLConnection
 
 internal class HttpClient(
     private val configuration: Configuration

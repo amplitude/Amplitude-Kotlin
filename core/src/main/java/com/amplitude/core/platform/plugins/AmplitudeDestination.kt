@@ -1,12 +1,12 @@
-package com.amplitude.platform.plugins
+package com.amplitude.core.platform.plugins
 
-import com.amplitude.Amplitude
-import com.amplitude.events.BaseEvent
-import com.amplitude.events.GroupIdentifyEvent
-import com.amplitude.events.IdentifyEvent
-import com.amplitude.events.RevenueEvent
-import com.amplitude.platform.DestinationPlugin
-import com.amplitude.platform.EventPipeline
+import com.amplitude.core.Amplitude
+import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.events.GroupIdentifyEvent
+import com.amplitude.core.events.IdentifyEvent
+import com.amplitude.core.events.RevenueEvent
+import com.amplitude.core.platform.DestinationPlugin
+import com.amplitude.core.platform.EventPipeline
 
 class AmplitudeDestination : DestinationPlugin() {
     private lateinit var pipeline: EventPipeline

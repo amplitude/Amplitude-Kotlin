@@ -1,4 +1,4 @@
-package com.amplitude
+package com.amplitude.core
 
 import org.junit.jupiter.api.Test
 

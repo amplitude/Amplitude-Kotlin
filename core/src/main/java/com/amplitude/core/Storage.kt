@@ -1,6 +1,6 @@
-package com.amplitude
+package com.amplitude.core
 
-import com.amplitude.events.BaseEvent
+import com.amplitude.core.events.BaseEvent
 
 interface Storage {
     fun write(event: BaseEvent)

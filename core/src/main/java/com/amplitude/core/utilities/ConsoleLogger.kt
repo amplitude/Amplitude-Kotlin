@@ -1,9 +1,9 @@
-package com.amplitude.utilities
+package com.amplitude.core.utilities
 
-import com.amplitude.Amplitude
-import com.amplitude.Logger
-import com.amplitude.LoggerProvider
-import com.amplitude.Logger.LogMode
+import com.amplitude.core.Amplitude
+import com.amplitude.core.Logger
+import com.amplitude.core.LoggerProvider
+import com.amplitude.core.Logger.LogMode
 
 class ConsoleLogger() : Logger {
     override var logMode: LogMode = LogMode.INFO

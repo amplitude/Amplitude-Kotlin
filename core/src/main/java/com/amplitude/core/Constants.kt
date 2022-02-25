@@ -1,4 +1,4 @@
-package com.amplitude
+package com.amplitude.core
 
 object Constants {
     const val SDK_LIBRARY = "amplitude-kotlin"

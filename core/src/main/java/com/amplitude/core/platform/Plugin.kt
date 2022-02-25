@@ -1,10 +1,10 @@
-package com.amplitude.platform
+package com.amplitude.core.platform
 
-import com.amplitude.Amplitude
-import com.amplitude.events.BaseEvent
-import com.amplitude.events.GroupIdentifyEvent
-import com.amplitude.events.IdentifyEvent
-import com.amplitude.events.RevenueEvent
+import com.amplitude.core.Amplitude
+import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.events.GroupIdentifyEvent
+import com.amplitude.core.events.IdentifyEvent
+import com.amplitude.core.events.RevenueEvent
 
 interface Plugin {
     enum class Type {
@@ -16,9 +16,9 @@ interface Plugin {
     }
 
     val type: Type
-    var amplitude: com.amplitude.Amplitude
+    var amplitude: Amplitude
 
-    fun setup(amplitude: com.amplitude.Amplitude) {
+    fun setup(amplitude: Amplitude) {
         this.amplitude = amplitude
     }
 
@@ -50,10 +50,10 @@ interface EventPlugin : Plugin {
 abstract class DestinationPlugin: EventPlugin {
     override val type: Plugin.Type = Plugin.Type.Destination
     private val timeline: Timeline = Timeline()
-    override lateinit var amplitude: com.amplitude.Amplitude
+    override lateinit var amplitude: Amplitude
     internal var enabled = true
 
-    override fun setup(amplitude: com.amplitude.Amplitude) {
+    override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
         timeline.amplitude = amplitude
     }

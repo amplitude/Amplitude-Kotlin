@@ -1,6 +1,6 @@
-package com.amplitude.events
+package com.amplitude.core.events
 
-import com.amplitude.Constants
+import com.amplitude.core.Constants
 
 class RevenueEvent : BaseEvent() {
     override var eventType = Constants.AMP_REVENUE_EVENT

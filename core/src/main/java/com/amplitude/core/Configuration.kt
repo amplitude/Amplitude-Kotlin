@@ -1,8 +1,8 @@
-package com.amplitude
+package com.amplitude.core
 
-import com.amplitude.events.BaseEvent
-import com.amplitude.utilities.ConsoleLoggerProvider
-import com.amplitude.utilities.InMemoryStorageProvider
+import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.utilities.ConsoleLoggerProvider
+import com.amplitude.core.utilities.InMemoryStorageProvider
 
 open class Configuration(
     val apiKey: String,

@@ -1,6 +1,6 @@
-import com.amplitude.Amplitude
-import com.amplitude.Configuration
-import com.amplitude.events.BaseEvent
+import com.amplitude.core.Amplitude
+import com.amplitude.core.Configuration
+import com.amplitude.core.events.BaseEvent
 import kotlinx.coroutines.runBlocking
 
 fun main() {

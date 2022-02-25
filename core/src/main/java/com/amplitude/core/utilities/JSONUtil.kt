@@ -1,7 +1,7 @@
-package com.amplitude.utilities
+package com.amplitude.core.utilities
 
-import com.amplitude.Constants
-import com.amplitude.events.BaseEvent
+import com.amplitude.core.Constants
+import com.amplitude.core.events.BaseEvent
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject

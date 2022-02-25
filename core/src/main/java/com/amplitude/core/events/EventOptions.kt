@@ -1,4 +1,4 @@
-package com.amplitude.events
+package com.amplitude.core.events
 
 open class EventOptions {
     var userId: String? = null

@@ -1,7 +1,7 @@
-package com.amplitude.platform
+package com.amplitude.core.platform
 
-import com.amplitude.Amplitude
-import com.amplitude.events.BaseEvent
+import com.amplitude.core.Amplitude
+import com.amplitude.core.events.BaseEvent
 
 internal class Timeline {
     internal val plugins: Map<Plugin.Type, Mediator> = mapOf(
@@ -10,7 +10,7 @@ internal class Timeline {
         Plugin.Type.Destination to Mediator(mutableListOf()),
         Plugin.Type.Utility to Mediator(mutableListOf())
     )
-    lateinit var amplitude: com.amplitude.Amplitude
+    lateinit var amplitude: Amplitude
 
     fun process(incomingEvent: BaseEvent): BaseEvent? {
         val beforeResult = applyPlugins(Plugin.Type.Before, incomingEvent)

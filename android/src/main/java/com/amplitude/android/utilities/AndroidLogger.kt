@@ -1,8 +1,8 @@
 package com.amplitude.android.utilities
 
-import com.amplitude.Amplitude
-import com.amplitude.Logger
-import com.amplitude.LoggerProvider
+import com.amplitude.core.Amplitude
+import com.amplitude.core.Logger
+import com.amplitude.core.LoggerProvider
 
 class AndroidLogger() : Logger {
     override var logMode: Logger.LogMode = Logger.LogMode.INFO

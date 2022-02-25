@@ -1,9 +1,9 @@
 package com.amplitude.android.utilities
 
-import com.amplitude.Amplitude
-import com.amplitude.Storage
-import com.amplitude.StorageProvider
-import com.amplitude.events.BaseEvent
+import com.amplitude.core.Amplitude
+import com.amplitude.core.Storage
+import com.amplitude.core.StorageProvider
+import com.amplitude.core.events.BaseEvent
 
 class AndroidStorage(
     val amplitude: Amplitude
