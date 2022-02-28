@@ -4,15 +4,24 @@ import com.amplitude.core.Amplitude
 import com.amplitude.core.Storage
 import com.amplitude.core.StorageProvider
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.utilities.FileStorageProvider
 
 class AndroidStorage(
     val amplitude: Amplitude
 ) : Storage {
-    override fun write(event: BaseEvent) {
+    override suspend fun writeEvent(event: BaseEvent) {
         TODO("Not yet implemented")
     }
 
-    override fun rollover() {
+    override suspend fun write(key: Storage.Constants, value: String) {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun rollover() {
+        TODO("Not yet implemented")
+    }
+
+    override fun read(key: Storage.Constants): String? {
         TODO("Not yet implemented")
     }
 

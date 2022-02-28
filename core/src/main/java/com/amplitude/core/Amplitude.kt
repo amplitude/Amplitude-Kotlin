@@ -4,10 +4,14 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.Identify
 import com.amplitude.core.events.Revenue
 import com.amplitude.core.events.RevenueEvent
+import com.amplitude.core.platform.ObservePlugin
 import com.amplitude.core.platform.Plugin
 import com.amplitude.core.platform.Timeline
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.ContextPlugin
+import com.amplitude.core.utilities.AnalyticsIdentityListener
+import com.amplitude.id.IMIdentityStorageProvider
+import com.amplitude.id.IdContainer
 import kotlinx.coroutines.*
 import java.util.concurrent.Executors
 
@@ -23,6 +27,7 @@ open class Amplitude internal constructor(
     internal val timeline: Timeline
     val storage: Storage
     val logger: Logger
+    lateinit var idContainer: IdContainer
 
     init {
         require(configuration.isValid()) { "invalid configuration" }
@@ -38,6 +43,8 @@ open class Amplitude internal constructor(
     constructor(configuration: Configuration) : this(configuration, State())
 
     open fun build() {
+        idContainer = IdContainer.getInstance(configuration.apiKey, IMIdentityStorageProvider())
+        idContainer.identityStore.addIdentityListener(AnalyticsIdentityListener(store))
         add(ContextPlugin())
         add(AmplitudeDestination())
 
@@ -60,7 +67,11 @@ open class Amplitude internal constructor(
     }
 
     fun identify(userId: String) {
+        this.idContainer.identityStore.editIdentity().setUserId(userId).commit()
+    }
 
+    fun setDeviceId(deviceId: String) {
+        this.idContainer.identityStore.editIdentity().setUserId(deviceId).commit()
     }
 
     fun groupIdentify(identify: Identify) {
@@ -101,12 +112,26 @@ open class Amplitude internal constructor(
     }
 
     fun add(plugin: Plugin) : Amplitude {
-        this.timeline.add(plugin)
+        when (plugin) {
+            is ObservePlugin -> {
+                this.store.add(plugin)
+            }
+            else -> {
+                this.timeline.add(plugin)
+            }
+        }
         return this
     }
 
     fun remove(plugin: Plugin): Amplitude {
-        this.timeline.remove(plugin)
+        when (plugin) {
+            is ObservePlugin -> {
+                this.store.remove(plugin)
+            }
+            else -> {
+                this.timeline.remove(plugin)
+            }
+        }
         return this
     }
 

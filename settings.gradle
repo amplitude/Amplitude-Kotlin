@@ -5,3 +5,5 @@ include 'samples:kotlin-jvm-app'
 project(':samples:kotlin-jvm-app').projectDir = file('samples/kotlin-jvm-app')
 include 'android'
 project(':android').projectDir = file('android')
+include 'id'
+project(':id').projectDir = file('id')
