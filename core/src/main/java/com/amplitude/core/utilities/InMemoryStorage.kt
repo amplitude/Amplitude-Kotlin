@@ -4,6 +4,7 @@ import com.amplitude.core.Amplitude
 import com.amplitude.core.Storage
 import com.amplitude.core.StorageProvider
 import com.amplitude.core.events.BaseEvent
+import java.util.concurrent.ConcurrentHashMap
 
 class InMemoryStorage(
     val amplitude: Amplitude
@@ -11,15 +12,24 @@ class InMemoryStorage(
 
     val eventsBuffer: MutableList<BaseEvent> = mutableListOf()
     val eventsListLock = Any()
+    val valuesMap = ConcurrentHashMap<String, String>()
 
-    override fun write(event: BaseEvent) {
+    override suspend fun writeEvent(event: BaseEvent) {
         synchronized(eventsListLock) {
             eventsBuffer.add(event)
         }
     }
 
-    override fun rollover() {
+    override suspend fun write(key: Storage.Constants, value: String) {
+        valuesMap.put(key.rawVal, value)
+    }
 
+    override suspend fun rollover() {
+
+    }
+
+    override fun read(key: Storage.Constants): String? {
+        return valuesMap.getOrDefault(key.rawVal, null)
     }
 
     override fun getEvents(): List<String> {

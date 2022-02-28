@@ -100,3 +100,14 @@ abstract class DestinationPlugin: EventPlugin {
     }
 }
 
+abstract class ObservePlugin: Plugin {
+    override val type: Plugin.Type = Plugin.Type.Observe
+
+    abstract fun onUserIdChanged(userId: String?)
+
+    abstract fun onDeviceIdChanged(deviceId: String?)
+
+    final override fun execute(event: BaseEvent): BaseEvent? {
+        return null
+    }
+}
