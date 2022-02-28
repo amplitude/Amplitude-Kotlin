@@ -8,7 +8,7 @@ fun main() {
     runBlocking {
         val amplitude = Amplitude(
             Configuration(
-                apiKey = "bbdf6e7b53f5d0e48b40f2eb51cd8ab4",
+                apiKey = "API-Key",
                 storageProvider = FileStorageProvider()
             )
         )

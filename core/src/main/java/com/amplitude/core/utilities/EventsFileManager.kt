@@ -25,7 +25,7 @@ class EventsFileManager(
     private val semaphore = Semaphore(1)
 
     companion object {
-        const val MAX_FILE_SIZE = 475_000 // 475KB
+        const val MAX_FILE_SIZE = 975_000 // 975KB
     }
 
     /**
