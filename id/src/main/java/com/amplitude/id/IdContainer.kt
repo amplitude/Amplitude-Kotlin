@@ -1,8 +1,8 @@
 package com.amplitude.id
 
-class IdContainer private constructor(val identityStorageProvider: IdentityStorageProvider) {
-    var identityStorage: IdentityStorage
-    var identityStore: IdentityStore
+class IdContainer private constructor(val apiKey: String, private val identityStorageProvider: IdentityStorageProvider) {
+    private val identityStorage: IdentityStorage
+    val identityStore: IdentityStore
 
     companion object {
 
@@ -13,7 +13,7 @@ class IdContainer private constructor(val identityStorageProvider: IdentityStora
         fun getInstance(apiKey: String, identityStorageProvider: IdentityStorageProvider): IdContainer {
             return synchronized(instancesLock) {
                 instances.getOrPut(apiKey) {
-                    IdContainer(identityStorageProvider)
+                    IdContainer(apiKey, identityStorageProvider)
                 }
             }
         }
@@ -21,7 +21,7 @@ class IdContainer private constructor(val identityStorageProvider: IdentityStora
 
     init {
         identityStore = IdentityStoreImpl()
-        identityStorage = identityStorageProvider.getIdentityStorage()
+        identityStorage = identityStorageProvider.getIdentityStorage(apiKey)
         identityStorage.setup(identityStore)
     }
 }
