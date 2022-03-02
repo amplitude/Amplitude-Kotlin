@@ -5,7 +5,7 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.util.*
 
-class PropertiesFile(private val directory: File, apiKey: String, prefix: String) : KVS {
+class PropertiesFile(private val directory: File, apiKey: String, prefix: String) : KeyValueStore {
     private val underlyingProperties: Properties = Properties()
     private val propertiesFileName = "$prefix-$apiKey.properties"
     private val propertiesFile = File(directory, propertiesFileName)
@@ -55,7 +55,7 @@ class PropertiesFile(private val directory: File, apiKey: String, prefix: String
 /**
  * Key-value store interface
  */
-interface KVS {
+interface KeyValueStore {
     fun getLong(key: String, defaultVal: Long): Long
     fun putLong(key: String, value: Long): Boolean
 }

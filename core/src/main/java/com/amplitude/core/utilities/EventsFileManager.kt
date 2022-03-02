@@ -1,6 +1,6 @@
 package com.amplitude.core.utilities
 
-import com.amplitude.id.utilities.KVS
+import com.amplitude.id.utilities.KeyValueStore
 import com.amplitude.id.utilities.createDirectory
 import kotlinx.coroutines.sync.Semaphore
 import java.io.File
@@ -9,7 +9,7 @@ import java.io.FileOutputStream
 class EventsFileManager(
     private val directory: File,
     private val apiKey: String,
-    private val kvs: KVS
+    private val kvs: KeyValueStore
 ) {
     init {
         createDirectory(directory)

@@ -28,7 +28,7 @@ open class Amplitude internal constructor(
     internal val timeline: Timeline
     val storage: Storage
     val logger: Logger
-    lateinit var idContainer: IdContainer
+    protected lateinit var idContainer: IdContainer
 
     init {
         require(configuration.isValid()) { "invalid configuration" }
