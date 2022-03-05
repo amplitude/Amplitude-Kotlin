@@ -1,0 +1,16 @@
+name: Test
+
+on: [pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up JDK 8
+        uses: actions/setup-java@v2
+        with:
+          java-version: '8'
+          distribution: 'zulu'
+      - uses: actions/checkout@v2
+      - name: Unit Test
+        run: ./gradlew testDebugUnitTest
