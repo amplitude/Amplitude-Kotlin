@@ -27,7 +27,7 @@ enum class IdentityUpdateType {
     Initialized, Updated
 }
 
-interface IdentityStore {
+interface IdentityManager {
 
     interface Editor {
 
@@ -46,7 +46,7 @@ interface IdentityStore {
     fun isInitialized(): Boolean
 }
 
-internal class IdentityStoreImpl: IdentityStore {
+internal class IdentityManagerImpl: IdentityManager {
 
     private val identityLock = ReentrantReadWriteLock(true)
     private var identity = Identity()
@@ -55,30 +55,30 @@ internal class IdentityStoreImpl: IdentityStore {
     private val listeners: MutableSet<IdentityListener> = mutableSetOf()
     private var initialized: Boolean = false
 
-    override fun editIdentity(): IdentityStore.Editor {
+    override fun editIdentity(): IdentityManager.Editor {
         val originalIdentity = getIdentity()
-        return object : IdentityStore.Editor {
+        return object : IdentityManager.Editor {
 
             private var userId: String? = originalIdentity.userId
             private var deviceId: String? = originalIdentity.deviceId
             private var userProperties: Map<String, Any?> = originalIdentity.userProperties
 
-            override fun setUserId(userId: String?): IdentityStore.Editor {
+            override fun setUserId(userId: String?): IdentityManager.Editor {
                 this.userId = userId
                 return this
             }
 
-            override fun setDeviceId(deviceId: String?): IdentityStore.Editor {
+            override fun setDeviceId(deviceId: String?): IdentityManager.Editor {
                 this.deviceId = deviceId
                 return this
             }
 
-            override fun setUserProperties(userProperties: Map<String, Any?>): IdentityStore.Editor {
+            override fun setUserProperties(userProperties: Map<String, Any?>): IdentityManager.Editor {
                 this.userProperties = userProperties
                 return this
             }
 
-            override fun updateUserProperties(actions: Map<String, Map<String, Any?>>): IdentityStore.Editor {
+            override fun updateUserProperties(actions: Map<String, Map<String, Any?>>): IdentityManager.Editor {
                 val actingProperties = this.userProperties.toMutableMap()
                 for (actionEntry in actions.entries) {
                     val action = actionEntry.key

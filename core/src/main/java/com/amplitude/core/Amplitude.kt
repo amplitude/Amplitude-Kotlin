@@ -12,6 +12,7 @@ import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.ContextPlugin
 import com.amplitude.core.utilities.AnalyticsIdentityListener
 import com.amplitude.id.IMIdentityStorageProvider
+import com.amplitude.id.IdConfiguration
 import com.amplitude.id.IdContainer
 import kotlinx.coroutines.*
 import java.util.concurrent.Executors
@@ -44,8 +45,8 @@ open class Amplitude internal constructor(
     constructor(configuration: Configuration) : this(configuration, State())
 
     open fun build() {
-        idContainer = IdContainer.getInstance(configuration.apiKey, IMIdentityStorageProvider())
-        idContainer.identityStore.addIdentityListener(AnalyticsIdentityListener(store))
+        idContainer = IdContainer.getInstance(IdConfiguration(instanceName = configuration.instanceName, apiKey = configuration.apiKey, identityStorageProvider = IMIdentityStorageProvider()))
+        idContainer.identityManager.addIdentityListener(AnalyticsIdentityListener(store))
         add(ContextPlugin())
         add(AmplitudeDestination())
 
@@ -68,11 +69,11 @@ open class Amplitude internal constructor(
     }
 
     fun identify(userId: String) {
-        this.idContainer.identityStore.editIdentity().setUserId(userId).commit()
+        this.idContainer.identityManager.editIdentity().setUserId(userId).commit()
     }
 
     fun setDeviceId(deviceId: String) {
-        this.idContainer.identityStore.editIdentity().setUserId(deviceId).commit()
+        this.idContainer.identityManager.editIdentity().setUserId(deviceId).commit()
     }
 
     fun groupIdentify(identify: Identify) {

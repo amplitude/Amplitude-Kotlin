@@ -4,6 +4,8 @@ import com.amplitude.core.Amplitude
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.utilities.AnalyticsIdentityListener
 import com.amplitude.id.FileIdentityStorageProvider
+import com.amplitude.id.IMIdentityStorageProvider
+import com.amplitude.id.IdConfiguration
 import com.amplitude.id.IdContainer
 
 open class Amplitude(
@@ -11,8 +13,8 @@ open class Amplitude(
 ): Amplitude(configuration) {
 
     override fun build() {
-        idContainer = IdContainer.getInstance(configuration.apiKey, FileIdentityStorageProvider())
-        idContainer.identityStore.addIdentityListener(AnalyticsIdentityListener(store))
+        idContainer = IdContainer.getInstance(IdConfiguration(instanceName = configuration.instanceName, apiKey = configuration.apiKey, identityStorageProvider = FileIdentityStorageProvider()))
+        idContainer.identityManager.addIdentityListener(AnalyticsIdentityListener(store))
         add(AmplitudeDestination())
     }
 }
