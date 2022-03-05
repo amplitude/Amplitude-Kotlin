@@ -1,13 +1,13 @@
 package com.amplitude.id
 
 class IMIdentityStorage: IdentityStorage {
-    lateinit var identityStore: IdentityStore
+    lateinit var identityStore: IdentityManager
     var userId: String? = null
     var deviceId: String? = null
 
-    override fun setup(identityStore: IdentityStore) {
-        this.identityStore = identityStore
-        identityStore.addIdentityListener(IMIdentityListener(this))
+    override fun setup(identityManager: IdentityManager) {
+        this.identityStore = identityManager
+        identityManager.addIdentityListener(IMIdentityListener(this))
         load()
     }
 
@@ -25,7 +25,7 @@ class IMIdentityStorage: IdentityStorage {
 }
 
 class IMIdentityStorageProvider: IdentityStorageProvider {
-    override fun getIdentityStorage(apiKey: String): IdentityStorage {
+    override fun getIdentityStorage(configuration: IdConfiguration): IdentityStorage {
         return IMIdentityStorage()
     }
 }

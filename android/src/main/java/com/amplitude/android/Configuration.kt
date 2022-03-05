@@ -14,6 +14,7 @@ class Configuration(
     context: Context,
     flushQueueSize: Int = FLUSH_QUEUE_SIZE,
     flushIntervalMillis: Int = FLUSH_INTERVAL_MILLIS,
+    instanceName: String = DEFAULT_INSTANCE,
     optOut: Boolean = false,
     storageProvider: StorageProvider = FileStorageProvider(),
     loggerProvider: LoggerProvider = AndroidLoggerProvider(),
@@ -22,4 +23,4 @@ class Configuration(
     useAdvertisingIdForDeviceId: Boolean = false,
     useAppSetIdForDeviceId: Boolean = false,
     enableCoppaControl: Boolean = false
-) : Configuration(apiKey, flushQueueSize, flushIntervalMillis, optOut, storageProvider, loggerProvider, minIdLength, callback)
+) : Configuration(apiKey, flushQueueSize, flushIntervalMillis, instanceName, optOut, storageProvider, loggerProvider, minIdLength, callback)

@@ -5,9 +5,9 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.util.*
 
-class PropertiesFile(private val directory: File, apiKey: String, prefix: String) : KeyValueStore {
+class PropertiesFile(private val directory: File, key: String, prefix: String) : KeyValueStore {
     private val underlyingProperties: Properties = Properties()
-    private val propertiesFileName = "$prefix-$apiKey.properties"
+    private val propertiesFileName = "$prefix-$key.properties"
     private val propertiesFile = File(directory, propertiesFileName)
 
     /**
@@ -47,6 +47,14 @@ class PropertiesFile(private val directory: File, apiKey: String, prefix: String
 
     fun remove(key: String): Boolean {
         underlyingProperties.remove(key)
+        save()
+        return true
+    }
+
+    fun remove(keys: List<String>): Boolean {
+        keys.forEach {
+            underlyingProperties.remove(it)
+        }
         save()
         return true
     }
