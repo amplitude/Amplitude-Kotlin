@@ -2,7 +2,8 @@ package com.amplitude.core.utilities
 
 import com.amplitude.id.utilities.KeyValueStore
 import com.amplitude.id.utilities.createDirectory
-import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.File
 import java.io.FileOutputStream
 
@@ -22,7 +23,7 @@ class EventsFileManager(
 
     private var curFile: File? = null
 
-    private val semaphore = Semaphore(1)
+    private val mutex = Mutex()
 
     companion object {
         const val MAX_FILE_SIZE = 975_000 // 975KB
@@ -33,7 +34,7 @@ class EventsFileManager(
      * opens a new file, if current file is full or uncreated
      * stores the event
      */
-    suspend fun storeEvent(event: String) = withLock {
+    suspend fun storeEvent(event: String) = mutex.withLock {
         var newFile = false
         var file = currentFile()
         if (!file.exists()) {
@@ -96,7 +97,7 @@ class EventsFileManager(
      * closes current file, and increase the index
      * so next write go to a new file
      */
-    suspend fun rollover() = withLock {
+    suspend fun rollover() = mutex.withLock {
         finish()
     }
 
@@ -146,11 +147,5 @@ class EventsFileManager(
                 os?.close()
             }
         })
-    }
-
-    private suspend fun withLock(block: () -> Unit) {
-        semaphore.acquire()
-        block()
-        semaphore.release()
     }
 }
