@@ -3,5 +3,7 @@ include 'core'
 project(':core').projectDir = file('core')
 include 'samples:kotlin-jvm-app'
 project(':samples:kotlin-jvm-app').projectDir = file('samples/kotlin-jvm-app')
+include 'android-shared'
+project(':android-shared').projectDir = file('android-shared')
 include 'android'
 project(':android').projectDir = file('android')
