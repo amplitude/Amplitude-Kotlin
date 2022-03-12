@@ -1,6 +1,6 @@
 package com.amplitude.id
 
-class IdentityContainer private constructor(val configuration: IdConfiguration) {
+class IdentityContainer private constructor(val configuration: IdentityConfiguration) {
     private val identityStorage: IdentityStorage
     val identityManager: IdentityManager
 
@@ -10,7 +10,7 @@ class IdentityContainer private constructor(val configuration: IdConfiguration) 
         private val instances = mutableMapOf<String, IdentityContainer>()
 
         @JvmStatic
-        fun getInstance(configuration: IdConfiguration): IdentityContainer {
+        fun getInstance(configuration: IdentityConfiguration): IdentityContainer {
             return synchronized(instancesLock) {
                 instances.getOrPut(configuration.instanceName) {
                     IdentityContainer(configuration)
@@ -20,8 +20,7 @@ class IdentityContainer private constructor(val configuration: IdConfiguration) 
     }
 
     init {
-        identityManager = IdentityManagerImpl()
         identityStorage = configuration.identityStorageProvider.getIdentityStorage(configuration)
-        identityStorage.setup(identityManager)
+        identityManager = IdentityManagerImpl(identityStorage)
     }
 }
