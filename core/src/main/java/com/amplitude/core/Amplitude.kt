@@ -11,8 +11,8 @@ import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.ContextPlugin
 import com.amplitude.core.utilities.AnalyticsIdentityListener
 import com.amplitude.id.IMIdentityStorageProvider
-import com.amplitude.id.IdConfiguration
-import com.amplitude.id.IdContainer
+import com.amplitude.id.IdentityConfiguration
+import com.amplitude.id.IdentityContainer
 import kotlinx.coroutines.*
 import java.util.concurrent.Executors
 
@@ -28,7 +28,7 @@ open class Amplitude internal constructor(
     internal val timeline: Timeline
     val storage: Storage
     val logger: Logger
-    protected lateinit var idContainer: IdContainer
+    protected lateinit var idContainer: IdentityContainer
 
     init {
         require(configuration.isValid()) { "invalid configuration" }
@@ -44,7 +44,7 @@ open class Amplitude internal constructor(
     constructor(configuration: Configuration) : this(configuration, State())
 
     open fun build() {
-        idContainer = IdContainer.getInstance(IdConfiguration(instanceName = configuration.instanceName, apiKey = configuration.apiKey, identityStorageProvider = IMIdentityStorageProvider()))
+        idContainer = IdentityContainer.getInstance(IdentityConfiguration(instanceName = configuration.instanceName, apiKey = configuration.apiKey, identityStorageProvider = IMIdentityStorageProvider()))
         idContainer.identityManager.addIdentityListener(AnalyticsIdentityListener(store))
         add(ContextPlugin())
         add(AmplitudeDestination())

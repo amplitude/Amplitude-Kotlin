@@ -4,8 +4,7 @@ import com.amplitude.id.utilities.PropertiesFile
 import com.amplitude.id.utilities.createDirectory
 import java.io.File
 
-class FileIdentityStorage(val configuration: IdConfiguration): IdentityStorage {
-    lateinit var identityStore: IdentityManager
+class FileIdentityStorage(val configuration: IdentityConfiguration) : IdentityStorage {
     private val propertiesFile: PropertiesFile
 
     companion object {
@@ -23,12 +22,6 @@ class FileIdentityStorage(val configuration: IdConfiguration): IdentityStorage {
         propertiesFile = PropertiesFile(storageDirectory, instanceName, STORAGE_PREFIX)
     }
 
-    override fun setup(identityManager: IdentityManager) {
-        this.identityStore = identityManager
-        identityManager.addIdentityListener(FileIdentityListener(this))
-        load()
-    }
-
     override fun saveUserId(userId: String?) {
         propertiesFile.putString(USER_ID_KEY, userId ?: "")
     }
@@ -37,15 +30,19 @@ class FileIdentityStorage(val configuration: IdConfiguration): IdentityStorage {
         propertiesFile.putString(DEVICE_ID_KEY, deviceId ?: "")
     }
 
-    private fun load() {
+    override fun load(): Identity {
         safetyCheck()
         val userId = propertiesFile.getString(USER_ID_KEY, null)
         val deviceId = propertiesFile.getString(DEVICE_ID_KEY, null)
-        identityStore.setIdentity(Identity(userId, deviceId), IdentityUpdateType.Initialized)
+        return Identity(userId, deviceId)
     }
 
     private fun safetyCheck() {
-        if (safeForKey(API_KEY, configuration.apiKey) && safeForKey(EXPERIMENT_API_KEY, configuration.experimentApiKey)) {
+        if (safeForKey(API_KEY, configuration.apiKey) && safeForKey(
+                EXPERIMENT_API_KEY,
+                configuration.experimentApiKey
+            )
+        ) {
             return
         }
         // api key not matching saved one, clear current value
@@ -67,23 +64,8 @@ class FileIdentityStorage(val configuration: IdConfiguration): IdentityStorage {
     }
 }
 
-class FileIdentityStorageProvider: IdentityStorageProvider {
-    override fun getIdentityStorage(configuration: IdConfiguration): IdentityStorage {
+class FileIdentityStorageProvider : IdentityStorageProvider {
+    override fun getIdentityStorage(configuration: IdentityConfiguration): IdentityStorage {
         return FileIdentityStorage(configuration)
-    }
-}
-
-class FileIdentityListener(private val identityStorage: FileIdentityStorage) : IdentityListener {
-
-    override fun onUserIdChange(userId: String?) {
-        identityStorage.saveUserId(userId)
-    }
-
-    override fun onDeviceIdChange(deviceId: String?) {
-        identityStorage.saveDeviceId(deviceId)
-    }
-
-    override fun onIdentityChanged(identity: Identity, updateType: IdentityUpdateType) {
-
     }
 }

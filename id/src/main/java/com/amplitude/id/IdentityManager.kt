@@ -46,7 +46,7 @@ interface IdentityManager {
     fun isInitialized(): Boolean
 }
 
-internal class IdentityManagerImpl: IdentityManager {
+internal class IdentityManagerImpl(val identityStorage: IdentityStorage): IdentityManager {
 
     private val identityLock = ReentrantReadWriteLock(true)
     private var identity = Identity()
@@ -54,6 +54,10 @@ internal class IdentityManagerImpl: IdentityManager {
     private val listenersLock = Any()
     private val listeners: MutableSet<IdentityListener> = mutableSetOf()
     private var initialized: Boolean = false
+
+    init {
+        setIdentity(identityStorage.load(), IdentityUpdateType.Initialized)
+    }
 
     override fun editIdentity(): IdentityManager.Editor {
         val originalIdentity = getIdentity()
@@ -119,6 +123,16 @@ internal class IdentityManagerImpl: IdentityManager {
         if (identity != originalIdentity) {
             val safeListeners = synchronized(listenersLock) {
                 listeners.toSet()
+            }
+
+            if (updateType != IdentityUpdateType.Initialized) {
+                if (identity.userId != originalIdentity.userId) {
+                    identityStorage.saveUserId(identity.userId)
+                }
+
+                if (identity.deviceId != originalIdentity.deviceId) {
+                    identityStorage.saveDeviceId(identity.deviceId)
+                }
             }
 
             for (listener in safeListeners) {

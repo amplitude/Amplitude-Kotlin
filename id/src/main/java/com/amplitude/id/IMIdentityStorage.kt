@@ -1,18 +1,12 @@
 package com.amplitude.id
 
-class IMIdentityStorage: IdentityStorage {
-    lateinit var identityStore: IdentityManager
+class IMIdentityStorage : IdentityStorage {
     var userId: String? = null
     var deviceId: String? = null
 
-    override fun setup(identityManager: IdentityManager) {
-        this.identityStore = identityManager
-        identityManager.addIdentityListener(IMIdentityListener(this))
-        load()
-    }
 
-    private fun load() {
-        identityStore.setIdentity(Identity(userId, deviceId), IdentityUpdateType.Initialized)
+    override fun load(): Identity {
+        return Identity(userId, deviceId)
     }
 
     override fun saveUserId(userId: String?) {
@@ -24,23 +18,8 @@ class IMIdentityStorage: IdentityStorage {
     }
 }
 
-class IMIdentityStorageProvider: IdentityStorageProvider {
-    override fun getIdentityStorage(configuration: IdConfiguration): IdentityStorage {
+class IMIdentityStorageProvider : IdentityStorageProvider {
+    override fun getIdentityStorage(configuration: IdentityConfiguration): IdentityStorage {
         return IMIdentityStorage()
-    }
-}
-
-class IMIdentityListener(private val identityStorage: IMIdentityStorage) : IdentityListener {
-
-    override fun onUserIdChange(userId: String?) {
-        identityStorage.saveUserId(userId)
-    }
-
-    override fun onDeviceIdChange(deviceId: String?) {
-        identityStorage.saveDeviceId(deviceId)
-    }
-
-    override fun onIdentityChanged(identity: Identity, updateType: IdentityUpdateType) {
-
     }
 }
