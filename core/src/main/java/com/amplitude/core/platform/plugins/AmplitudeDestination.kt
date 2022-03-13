@@ -50,5 +50,6 @@ class AmplitudeDestination : DestinationPlugin() {
             )
             pipeline.start()
         }
+        add(IdentityEventSender())
     }
 }
