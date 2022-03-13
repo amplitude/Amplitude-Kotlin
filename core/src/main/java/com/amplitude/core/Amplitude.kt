@@ -1,5 +1,6 @@
 package com.amplitude.core
 
+import com.amplitude.common.Logger
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.Identify
 import com.amplitude.core.events.Revenue
