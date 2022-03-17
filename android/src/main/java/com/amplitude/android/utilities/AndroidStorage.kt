@@ -25,7 +25,11 @@ class AndroidStorage(
         TODO("Not yet implemented")
     }
 
-    override fun getEvents(): List<String> {
+    override fun readEventsContent(): List<Any> {
+        TODO("Not yet implemented")
+    }
+
+    override fun getEventsString(content: Any): String {
         TODO("Not yet implemented")
     }
 }
