@@ -3,10 +3,13 @@ package com.amplitude.core.platform
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.HttpClient
-import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
 import kotlinx.coroutines.channels.consumeEach
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.lang.Exception
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -106,7 +109,6 @@ internal class EventPipeline(
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
-
                 }
                 // @TODO: handle failures and retry
             }

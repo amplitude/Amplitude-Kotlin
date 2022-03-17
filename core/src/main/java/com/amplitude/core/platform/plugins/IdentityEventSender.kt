@@ -8,25 +8,26 @@ import com.amplitude.eventbridge.EventBridge
 import com.amplitude.eventbridge.EventBridgeContainer
 import com.amplitude.eventbridge.EventChannel
 
-class IdentityEventSender: Plugin {
+internal class IdentityEventSender : Plugin {
     override val type: Plugin.Type = Plugin.Type.Before
     override lateinit var amplitude: Amplitude
-    private lateinit var eventBridge:EventBridge
+    private lateinit var eventBridge: EventBridge
 
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
-        eventBridge = EventBridgeContainer.getInstance(amplitude.configuration.instanceName).eventBridge
+        eventBridge =
+            EventBridgeContainer.getInstance(amplitude.configuration.instanceName).eventBridge
     }
 
     override fun execute(event: BaseEvent): BaseEvent? {
-        event.userProperties?. let {
-            eventBridge.sendEvent(EventChannel.IDENTITY, event.toBridgeEvent())
+        if (event.userProperties != null) {
+            eventBridge.sendEvent(EventChannel.IDENTIFY, event.toBridgeEvent())
         }
         return event
     }
 }
 
-internal fun BaseEvent.toBridgeEvent() : Event {
+internal fun BaseEvent.toBridgeEvent(): Event {
     return Event(
         this.eventType,
         this.eventProperties?.toMap(),

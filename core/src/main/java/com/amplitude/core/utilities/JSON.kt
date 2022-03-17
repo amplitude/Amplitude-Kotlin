@@ -4,7 +4,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.math.BigDecimal
 
-fun Map<*, *>?.toJSONObject(): JSONObject? {
+internal fun Map<*, *>?.toJSONObject(): JSONObject? {
     if (this == null) {
         return null
     }

@@ -4,7 +4,6 @@ class IMIdentityStorage : IdentityStorage {
     var userId: String? = null
     var deviceId: String? = null
 
-
     override fun load(): Identity {
         return Identity(userId, deviceId)
     }

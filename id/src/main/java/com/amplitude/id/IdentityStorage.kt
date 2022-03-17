@@ -2,7 +2,7 @@ package com.amplitude.id
 
 interface IdentityStorage {
 
-    fun load():Identity
+    fun load(): Identity
 
     fun saveUserId(userId: String?)
 

@@ -3,7 +3,7 @@ package com.amplitude.id.utilities
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
-import java.util.*
+import java.util.Properties
 
 class PropertiesFile(private val directory: File, key: String, prefix: String) : KeyValueStore {
     private val underlyingProperties: Properties = Properties()
@@ -16,8 +16,7 @@ class PropertiesFile(private val directory: File, key: String, prefix: String) :
     fun load() {
         if (propertiesFile.exists()) {
             underlyingProperties.load(FileInputStream(propertiesFile))
-        }
-        else {
+        } else {
             propertiesFile.parentFile.mkdirs()
             propertiesFile.createNewFile()
         }

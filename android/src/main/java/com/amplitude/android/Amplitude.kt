@@ -9,7 +9,7 @@ import com.amplitude.id.IdentityContainer
 
 open class Amplitude(
     configuration: Configuration
-): Amplitude(configuration) {
+) : Amplitude(configuration) {
 
     override fun build() {
         idContainer = IdentityContainer.getInstance(IdentityConfiguration(instanceName = configuration.instanceName, apiKey = configuration.apiKey, identityStorageProvider = FileIdentityStorageProvider()))

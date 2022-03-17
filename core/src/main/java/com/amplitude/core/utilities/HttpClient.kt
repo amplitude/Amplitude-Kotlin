@@ -2,7 +2,11 @@ package com.amplitude.core.utilities
 
 import com.amplitude.core.Configuration
 import com.amplitude.core.Constants
-import java.io.*
+import java.io.BufferedReader
+import java.io.Closeable
+import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
 import java.net.HttpURLConnection
 import java.net.MalformedURLException
 import java.net.URL
@@ -32,8 +36,10 @@ internal class HttpClient(
                             inputStream = getInputStream(this.connection)
                             responseBody = inputStream?.bufferedReader()?.use(BufferedReader::readText)
                         } catch (e: IOException) {
-                            responseBody = ("Could not read response body for rejected message: "
-                                    + e.toString())
+                            responseBody = (
+                                "Could not read response body for rejected message: " +
+                                    e.toString()
+                                )
                         } finally {
                             inputStream?.close()
                         }
@@ -76,7 +82,6 @@ internal class HttpClient(
         return configuration.minIdLength
     }
 
-
     fun getInputStream(connection: HttpURLConnection): InputStream {
         return try {
             connection.inputStream
@@ -84,7 +89,6 @@ internal class HttpClient(
             connection.errorStream
         }
     }
-
 }
 
 abstract class Connection(
