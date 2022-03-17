@@ -1,7 +1,6 @@
 package com.amplitude.id
 
 class IdentityContainer private constructor(val configuration: IdentityConfiguration) {
-    private val identityStorage: IdentityStorage
     val identityManager: IdentityManager
 
     companion object {
@@ -20,7 +19,7 @@ class IdentityContainer private constructor(val configuration: IdentityConfigura
     }
 
     init {
-        identityStorage = configuration.identityStorageProvider.getIdentityStorage(configuration)
+        val identityStorage = configuration.identityStorageProvider.getIdentityStorage(configuration)
         identityManager = IdentityManagerImpl(identityStorage)
     }
 }
