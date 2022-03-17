@@ -4,6 +4,8 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.ConsoleLoggerProvider
 import com.amplitude.core.utilities.InMemoryStorageProvider
 
+typealias EventCallBack = (BaseEvent, status: Int, message: String) -> Unit
+
 open class Configuration(
     val apiKey: String,
     val flushQueueSize: Int = FLUSH_QUEUE_SIZE,
@@ -13,12 +15,14 @@ open class Configuration(
     val storageProvider: StorageProvider = InMemoryStorageProvider(),
     val loggerProvider: LoggerProvider = ConsoleLoggerProvider(),
     val minIdLength: Int? = null,
-    val callback: ((BaseEvent) -> Unit)? = null
+    val callback: EventCallBack? = null,
+    val flushMaxRetries: Int = FLUSH_MAX_RETRIES
 ) {
 
     companion object {
         const val FLUSH_QUEUE_SIZE = 30
         const val FLUSH_INTERVAL_MILLIS = 30 * 1000 // 30s
+        const val FLUSH_MAX_RETRIES = 5
         const val DEFAULT_INSTANCE = "\$default_instance"
     }
 

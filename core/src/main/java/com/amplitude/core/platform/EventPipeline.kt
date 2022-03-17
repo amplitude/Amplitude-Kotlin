@@ -2,7 +2,10 @@ package com.amplitude.core.platform
 
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.utilities.*
+import com.amplitude.core.utilities.FileResponseHandler
 import com.amplitude.core.utilities.HttpClient
+import com.amplitude.core.utilities.ResponseHandler
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
@@ -32,6 +35,8 @@ internal class EventPipeline(
     var scheduled: Boolean
         private set
 
+    var flushSizeDivider: AtomicInteger = AtomicInteger(1)
+
     companion object {
         internal const val UPLOAD_SIG = "#!upload"
     }
@@ -47,6 +52,7 @@ internal class EventPipeline(
     }
 
     fun put(event: BaseEvent) {
+        event.attempts += 1
         writeChannel.trySend(WriteQueueMessage(WriteQueueMessageType.EVENT, event))
     }
 
@@ -93,28 +99,56 @@ internal class EventPipeline(
                 storage.rollover()
             }
 
-            val eventsData = storage.getEvents()
+            val eventsData = storage.readEventsContent()
             for (events in eventsData) {
-                if (events.isEmpty()) continue
+                val eventsString = storage.getEventsString(events)
+                if (eventsString.isEmpty()) continue
 
                 try {
                     val connection = httpClient.upload()
                     connection.outputStream?.let {
-                        connection.setEvents(events)
+                        connection.setEvents(eventsString)
                         // Upload the payloads.
                         connection.close()
                     }
+                    val responseHandler = createResponseHandler(events, eventsString)
+                    responseHandler?.handle(connection.response)
                 } catch (e: Exception) {
                     e.printStackTrace()
-
                 }
-                // @TODO: handle failures and retry
             }
         }
     }
 
+    private fun createResponseHandler(events: Any, eventsString: String): ResponseHandler? {
+        var responseHandler: ResponseHandler? = null
+        when (storage) {
+            is FileStorage -> {
+                responseHandler = FileResponseHandler(
+                    storage as FileStorage,
+                    this,
+                    amplitude.configuration,
+                    scope,
+                    amplitude.storageIODispatcher,
+                    events as String,
+                    eventsString
+                )
+            }
+            is InMemoryStorage -> {
+                responseHandler = InMemoryResponseHandler(
+                    this,
+                    amplitude.configuration,
+                    scope,
+                    amplitude.retryDispatcher,
+                    events as List<BaseEvent>
+                )
+            }
+        }
+        return responseHandler
+    }
+
     private fun getFlushCount(): Int {
-        return amplitude.configuration.flushQueueSize
+        return amplitude.configuration.flushQueueSize / flushSizeDivider.get()
     }
 
     private fun getFlushIntervalInMillis(): Long {

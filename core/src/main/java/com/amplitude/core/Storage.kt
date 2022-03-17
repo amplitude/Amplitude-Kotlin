@@ -20,7 +20,9 @@ interface Storage {
 
     fun read(key: Constants): String?
 
-    fun getEvents(): List<String>
+    fun readEventsContent(): List<Any>
+
+    fun getEventsString(content: Any) : String
 }
 
 interface StorageProvider {

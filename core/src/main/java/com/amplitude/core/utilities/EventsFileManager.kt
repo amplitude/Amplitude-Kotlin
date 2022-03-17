@@ -4,6 +4,7 @@ import com.amplitude.id.utilities.KeyValueStore
 import com.amplitude.id.utilities.createDirectory
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.json.JSONArray
 import java.io.File
 import java.io.FileOutputStream
 
@@ -101,6 +102,24 @@ class EventsFileManager(
         finish()
     }
 
+    /**
+     * Split one file to two smaller file
+     * This is used to handle payload too large error response
+     */
+    fun splitFile(filePath: String, events: JSONArray) {
+        val originalFile = File(filePath)
+        if (!originalFile.exists()) {
+            return
+        }
+        val fileName = originalFile.name
+        val firstHalfFile = File(directory, "$fileName-1.tmp")
+        val secondHalfFile = File(directory, "$fileName-2.tmp")
+        val splitStrings = events.split()
+        writeToFile(splitStrings.first, firstHalfFile)
+        writeToFile(splitStrings.second, secondHalfFile)
+        this.remove(filePath)
+    }
+
     private fun finish() {
         val file = currentFile()
         if (!file.exists()) {
@@ -133,6 +152,17 @@ class EventsFileManager(
             write(content)
             flush()
         }
+    }
+
+    private fun writeToFile(content: String, file: File) {
+        file.createNewFile()
+        val fileOS = FileOutputStream(file, true)
+        fileOS.run {
+            write(content.toByteArray())
+            flush()
+        }
+        file.renameTo(File(directory, file.nameWithoutExtension))
+        fileOS.close()
     }
 
     private fun reset() {
