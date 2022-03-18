@@ -79,7 +79,9 @@ internal class EventPipeline(
             if (!triggerFlush && message.event != null) try {
                 storage.writeEvent(message.event)
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.message?.let{
+                    amplitude.logger.error(it)
+                }
             }
 
             // if flush condition met, generate paths
