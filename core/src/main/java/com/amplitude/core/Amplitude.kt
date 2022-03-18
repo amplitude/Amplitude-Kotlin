@@ -73,7 +73,7 @@ open class Amplitude internal constructor(
     }
 
     fun setDeviceId(deviceId: String) {
-        this.idContainer.identityManager.editIdentity().setUserId(deviceId).commit()
+        this.idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
     }
 
     fun groupIdentify(identify: Identify) {
