@@ -8,6 +8,7 @@ open class Configuration(
     val apiKey: String,
     val flushQueueSize: Int = FLUSH_QUEUE_SIZE,
     val flushIntervalMillis: Int = FLUSH_INTERVAL_MILLIS,
+    val instanceName: String = DEFAULT_INSTANCE,
     val optOut: Boolean = false,
     val storageProvider: StorageProvider = InMemoryStorageProvider(),
     val loggerProvider: LoggerProvider = ConsoleLoggerProvider(),
@@ -18,6 +19,7 @@ open class Configuration(
     companion object {
         const val FLUSH_QUEUE_SIZE = 30
         const val FLUSH_INTERVAL_MILLIS = 30 * 1000 // 30s
+        const val DEFAULT_INSTANCE = "\$default_instance"
     }
 
     fun isValid(): Boolean {

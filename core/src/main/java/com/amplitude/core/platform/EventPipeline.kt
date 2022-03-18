@@ -12,7 +12,6 @@ import java.util.concurrent.atomic.AtomicInteger
 
 internal class EventPipeline(
     private val amplitude: Amplitude
-
 ) {
 
     private val writeChannel: Channel<WriteQueueMessage>
@@ -72,7 +71,7 @@ internal class EventPipeline(
             // write to storage
             val triggerFlush = (message.type == WriteQueueMessageType.FLUSH)
             if (!triggerFlush && message.event != null) try {
-                storage.write(message.event)
+                storage.writeEvent(message.event)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
