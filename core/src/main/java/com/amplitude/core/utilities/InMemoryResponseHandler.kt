@@ -48,6 +48,7 @@ internal class InMemoryResponseHandler(
     override fun handlePayloadTooLargeResponse(payloadTooLargeResponse: PayloadTooLargeResponse) {
         if (events.size == 1) {
             triggerEventsCallback(events, HttpStatus.PAYLOAD_TOO_LARGE.code, payloadTooLargeResponse.error)
+            return
         }
         eventPipeline.flushSizeDivider.incrementAndGet()
         events.forEach {

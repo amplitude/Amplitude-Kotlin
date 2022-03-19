@@ -60,6 +60,7 @@ internal class FileResponseHandler(
             scope.launch(dispatcher) {
                 storage.removeFile(eventFilePath)
             }
+            return
         }
         // split file into two
         scope.launch(dispatcher) {
