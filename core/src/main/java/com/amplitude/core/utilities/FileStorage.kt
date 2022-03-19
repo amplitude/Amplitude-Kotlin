@@ -55,7 +55,7 @@ class FileStorage(
     }
 }
 
-class FileStorageProvider: StorageProvider {
+class FileStorageProvider : StorageProvider {
     override fun getStorage(amplitude: Amplitude): Storage {
         return FileStorage(amplitude.configuration.apiKey)
     }

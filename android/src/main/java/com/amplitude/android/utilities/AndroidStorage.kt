@@ -4,7 +4,6 @@ import com.amplitude.core.Amplitude
 import com.amplitude.core.Storage
 import com.amplitude.core.StorageProvider
 import com.amplitude.core.events.BaseEvent
-import com.amplitude.core.utilities.FileStorageProvider
 
 class AndroidStorage(
     val amplitude: Amplitude
@@ -30,7 +29,7 @@ class AndroidStorage(
     }
 }
 
-class AndroidStorageProvider: StorageProvider {
+class AndroidStorageProvider : StorageProvider {
     override fun getStorage(amplitude: Amplitude): Storage {
         return AndroidStorage(amplitude)
     }

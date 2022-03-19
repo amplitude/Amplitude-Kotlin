@@ -89,9 +89,10 @@ object JSONUtil {
                 }
             } catch (e: JSONException) {
                 throw IllegalArgumentException(
-                    ("JSON parsing error. Too long (>"
-                            + Constants.MAX_STRING_LENGTH
-                            ) + " chars) or invalid JSON"
+                    (
+                        "JSON parsing error. Too long (>" +
+                            Constants.MAX_STRING_LENGTH
+                        ) + " chars) or invalid JSON"
                 )
             }
         }

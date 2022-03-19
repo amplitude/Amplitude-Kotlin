@@ -47,7 +47,7 @@ interface EventPlugin : Plugin {
     open fun flush() {}
 }
 
-abstract class DestinationPlugin: EventPlugin {
+abstract class DestinationPlugin : EventPlugin {
     override val type: Plugin.Type = Plugin.Type.Destination
     private val timeline: Timeline = Timeline()
     override lateinit var amplitude: Amplitude
@@ -100,7 +100,7 @@ abstract class DestinationPlugin: EventPlugin {
     }
 }
 
-abstract class ObservePlugin: Plugin {
+abstract class ObservePlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Observe
 
     abstract fun onUserIdChanged(userId: String?)

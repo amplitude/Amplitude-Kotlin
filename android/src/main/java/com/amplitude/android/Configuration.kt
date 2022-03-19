@@ -1,11 +1,10 @@
 package com.amplitude.android
 
 import android.content.Context
+import com.amplitude.android.utilities.AndroidLoggerProvider
 import com.amplitude.core.Configuration
 import com.amplitude.core.LoggerProvider
 import com.amplitude.core.StorageProvider
-import com.amplitude.android.utilities.AndroidLoggerProvider
-import com.amplitude.android.utilities.AndroidStorageProvider
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.FileStorageProvider
 

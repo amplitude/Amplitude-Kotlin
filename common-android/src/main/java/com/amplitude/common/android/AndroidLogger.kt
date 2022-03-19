@@ -3,15 +3,14 @@ package com.amplitude.common.android
 import android.util.Log
 import com.amplitude.common.Logger
 
-class AndroidLogger(): Logger
-{
+class AndroidLogger() : Logger {
     override var logMode: Logger.LogMode = Logger.LogMode.INFO
     private val tag = "Amplitude"
 
     override fun debug(message: String) {
-       if (logMode <= Logger.LogMode.DEBUG) {
-           Log.d(tag, message)
-       }
+        if (logMode <= Logger.LogMode.DEBUG) {
+            Log.d(tag, message)
+        }
     }
 
     override fun error(message: String) {
