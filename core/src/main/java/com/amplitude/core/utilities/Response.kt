@@ -115,7 +115,7 @@ internal class TooManyRequestsResponse(response: JSONObject) : Response {
 
     fun isEventExceedDailyQuota(event: BaseEvent): Boolean {
         return (event.userId != null && exceededDailyQuotaUsers.contains(event.userId)) ||
-                (event.deviceId != null && exceededDailyQuotaDevices.contains(event.deviceId))
+            (event.deviceId != null && exceededDailyQuotaDevices.contains(event.deviceId))
     }
 }
 

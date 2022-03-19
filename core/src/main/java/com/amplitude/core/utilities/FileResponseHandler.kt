@@ -16,7 +16,7 @@ internal class FileResponseHandler(
     private val dispatcher: CoroutineDispatcher,
     private val eventFilePath: String,
     private val eventsString: String
-): ResponseHandler {
+) : ResponseHandler {
 
     override fun handleSuccessResponse(successResponse: SuccessResponse) {
         val events = JSONArray(eventsString).toEvents()
@@ -36,7 +36,7 @@ internal class FileResponseHandler(
         val droppedIndices = badRequestResponse.getEventIndicesToDrop()
         val eventsToDrop = mutableListOf<BaseEvent>()
         val eventsToRetry = mutableListOf<BaseEvent>()
-        events.forEachIndexed{ index, event ->
+        events.forEachIndexed { index, event ->
             if (droppedIndices.contains(index) || badRequestResponse.isEventSilenced(event)) {
                 eventsToDrop.add(event)
             } else {
@@ -84,7 +84,7 @@ internal class FileResponseHandler(
             configuration.callback?.let {
                 it(event, status, message)
             }
-            storage.getEventCallback(event.insertId)?.let{
+            storage.getEventCallback(event.insertId)?.let {
                 it(event, status, message)
                 storage.removeEventCallback(event.insertId)
             }

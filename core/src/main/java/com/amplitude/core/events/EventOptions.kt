@@ -1,7 +1,7 @@
 package com.amplitude.core.events
 
 import com.amplitude.core.EventCallBack
-import java.util.*
+import java.util.UUID
 
 open class EventOptions {
     var userId: String? = null

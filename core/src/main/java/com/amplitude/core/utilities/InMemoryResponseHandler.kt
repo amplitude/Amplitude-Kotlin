@@ -1,10 +1,12 @@
 package com.amplitude.core.utilities
 
 import com.amplitude.core.Configuration
-import com.amplitude.core.Logger
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 internal class InMemoryResponseHandler(
     val eventPipeline: EventPipeline,
@@ -12,7 +14,7 @@ internal class InMemoryResponseHandler(
     val scope: CoroutineScope,
     val dispatcher: CoroutineDispatcher,
     val events: List<BaseEvent>
-    ): ResponseHandler {
+) : ResponseHandler {
 
     companion object {
         const val BACK_OFF: Long = 30000
@@ -30,7 +32,7 @@ internal class InMemoryResponseHandler(
         val droppedIndices = badRequestResponse.getEventIndicesToDrop()
         val eventsToDrop = mutableListOf<BaseEvent>()
         val eventsToRetry = mutableListOf<BaseEvent>()
-        events.forEachIndexed{ index, event ->
+        events.forEachIndexed { index, event ->
             if (droppedIndices.contains(index) || badRequestResponse.isEventSilenced(event)) {
                 eventsToDrop.add(event)
             } else {
@@ -57,7 +59,7 @@ internal class InMemoryResponseHandler(
         val eventsToDrop = mutableListOf<BaseEvent>()
         val eventsToRetryNow = mutableListOf<BaseEvent>()
         val eventsToRetryLater = mutableListOf<BaseEvent>()
-        events.forEachIndexed{index, event ->
+        events.forEachIndexed { index, event ->
             if (tooManyRequestsResponse.isEventExceedDailyQuota(event)) {
                 eventsToDrop.add(event)
             } else if (tooManyRequestsResponse.throttledEvents.contains(index)) {
@@ -90,7 +92,7 @@ internal class InMemoryResponseHandler(
     override fun handleFailedResponse(failedResponse: FailedResponse) {
         val eventsToDrop = mutableListOf<BaseEvent>()
         val eventsToRetry = mutableListOf<BaseEvent>()
-        events.forEach{ event ->
+        events.forEach { event ->
             if (event.attempts >= configuration.flushMaxRetries) {
                 eventsToDrop.add(event)
             } else {

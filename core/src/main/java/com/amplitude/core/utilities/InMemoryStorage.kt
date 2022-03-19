@@ -25,7 +25,6 @@ class InMemoryStorage(
     }
 
     override suspend fun rollover() {
-
     }
 
     override fun read(key: Storage.Constants): String? {

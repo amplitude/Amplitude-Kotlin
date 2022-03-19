@@ -2,7 +2,6 @@ package com.amplitude.core.platform
 
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
-import com.amplitude.core.utilities.*
 import com.amplitude.core.utilities.FileResponseHandler
 import com.amplitude.core.utilities.HttpClient
 import com.amplitude.core.utilities.ResponseHandler
@@ -82,7 +81,7 @@ internal class EventPipeline(
             if (!triggerFlush && message.event != null) try {
                 storage.writeEvent(message.event)
             } catch (e: Exception) {
-                e.message?.let{
+                e.message?.let {
                     amplitude.logger.error(it)
                 }
             }

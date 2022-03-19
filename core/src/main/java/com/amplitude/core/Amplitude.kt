@@ -32,7 +32,7 @@ open class Amplitude internal constructor(
     val networkIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
     val storageIODispatcher: CoroutineDispatcher = Executors.newFixedThreadPool(2).asCoroutineDispatcher(),
     val retryDispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
-){
+) {
     internal val timeline: Timeline
     val storage: Storage
     val logger: Logger
@@ -117,7 +117,7 @@ open class Amplitude internal constructor(
         }
     }
 
-    fun add(plugin: Plugin) : Amplitude {
+    fun add(plugin: Plugin): Amplitude {
         when (plugin) {
             is ObservePlugin -> {
                 this.store.add(plugin)

@@ -22,7 +22,7 @@ interface Storage {
 
     fun readEventsContent(): List<Any>
 
-    fun getEventsString(content: Any) : String
+    fun getEventsString(content: Any): String
 }
 
 interface StorageProvider {

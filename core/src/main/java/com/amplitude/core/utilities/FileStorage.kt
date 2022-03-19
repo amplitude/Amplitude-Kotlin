@@ -31,7 +31,7 @@ class FileStorage(
 
     override suspend fun writeEvent(event: BaseEvent) {
         eventsFile.storeEvent(JSONUtil.eventToString(event))
-        event.callback?.let{
+        event.callback?.let {
             eventCallbacksMap.put(event.insertId, it)
         }
     }
@@ -78,7 +78,7 @@ class FileStorage(
     }
 }
 
-class FileStorageProvider: StorageProvider {
+class FileStorageProvider : StorageProvider {
     override fun getStorage(amplitude: Amplitude): Storage {
         return FileStorage(amplitude.configuration.apiKey)
     }
