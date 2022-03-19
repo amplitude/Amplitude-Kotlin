@@ -3,7 +3,10 @@ package com.amplitude.core.platform
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.FileResponseHandler
+import com.amplitude.core.utilities.FileStorage
 import com.amplitude.core.utilities.HttpClient
+import com.amplitude.core.utilities.InMemoryResponseHandler
+import com.amplitude.core.utilities.InMemoryStorage
 import com.amplitude.core.utilities.ResponseHandler
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
@@ -118,7 +121,9 @@ internal class EventPipeline(
                     val responseHandler = createResponseHandler(events, eventsString)
                     responseHandler?.handle(connection.response)
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    e.message?.let {
+                        amplitude.logger.error(it)
+                    }
                 }
             }
         }
