@@ -1,10 +1,9 @@
 package com.amplitude.common.android
 
 import android.Manifest
-import android.content.pm.PackageManager
-
 import android.app.Activity
 import android.content.Context
+import android.content.pm.PackageManager
 import android.os.Build
 import java.lang.Exception
 
@@ -12,7 +11,7 @@ object Utils {
 
     fun checkLocationPermissionAllowed(context: Context?): Boolean {
         return checkPermissionAllowed(context, Manifest.permission.ACCESS_COARSE_LOCATION) ||
-                checkPermissionAllowed(context, Manifest.permission.ACCESS_FINE_LOCATION)
+            checkPermissionAllowed(context, Manifest.permission.ACCESS_FINE_LOCATION)
     }
 
     fun checkPermissionAllowed(context: Context?, permission: String?): Boolean {

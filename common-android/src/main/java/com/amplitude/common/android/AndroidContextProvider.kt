@@ -9,14 +9,13 @@ import android.location.LocationManager
 import android.os.Build
 import android.provider.Settings.Secure
 import android.telephony.TelephonyManager
+import com.amplitude.common.ContextProvider
 import java.io.IOException
 import java.lang.Exception
 import java.lang.IllegalArgumentException
 import java.lang.IllegalStateException
 import java.lang.NullPointerException
 import java.lang.reflect.InvocationTargetException
-import java.util.*
-import com.amplitude.common.ContextProvider
 
 class AndroidContextProvider(private val context: Context, locationListening: Boolean) :
     ContextProvider {
@@ -48,18 +47,18 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
         var appSetId: String
 
         init {
-            advertisingId = fetchAdvertisingId();
-            versionName = fetchVersionName();
+            advertisingId = fetchAdvertisingId()
+            versionName = fetchVersionName()
             osName = OS_NAME
-            osVersion = fetchOsVersion();
-            brand = fetchBrand();
-            manufacturer = fetchManufacturer();
-            model = fetchModel();
-            carrier = fetchCarrier();
-            country = fetchCountry();
-            language = fetchLanguage();
-            gpsEnabled = checkGPSEnabled();
-            appSetId = fetchAppSetId();
+            osVersion = fetchOsVersion()
+            brand = fetchBrand()
+            manufacturer = fetchManufacturer()
+            model = fetchModel()
+            carrier = fetchCarrier()
+            country = fetchCountry()
+            language = fetchLanguage()
+            gpsEnabled = checkGPSEnabled()
+            appSetId = fetchAppSetId()
         }
 
         /**
@@ -116,7 +115,7 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
             return if (!country.isNullOrEmpty()) {
                 country
             } else countryFromLocale
-        }// Customized Android System without Google Play Service Installed// sometimes the location manager is unavailable// Bad lat / lon values can cause Geocoder to throw IllegalArgumentExceptions// failed to fetch geocoder// Failed to reverse geocode location
+        } // Customized Android System without Google Play Service Installed// sometimes the location manager is unavailable// Bad lat / lon values can cause Geocoder to throw IllegalArgumentExceptions// failed to fetch geocoder// Failed to reverse geocode location
 
         // Failed to reverse geocode location
         private val countryFromLocation: String?
@@ -323,7 +322,7 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
     val advertisingId: String
         get() = cachedInfo!!.advertisingId
     val appSetId: String
-        get() = cachedInfo!!.appSetId// other causes// failed to get providers list
+        get() = cachedInfo!!.appSetId // other causes// failed to get providers list
     // Don't crash if the device does not have location services.
 
     // It's possible that the location service is running out of process

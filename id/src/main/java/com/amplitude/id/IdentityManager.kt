@@ -39,7 +39,7 @@ interface IdentityManager {
     fun isInitialized(): Boolean
 }
 
-internal class IdentityManagerImpl(private val identityStorage: IdentityStorage): IdentityManager {
+internal class IdentityManagerImpl(private val identityStorage: IdentityStorage) : IdentityManager {
 
     private val identityLock = ReentrantReadWriteLock(true)
     private var identity = Identity()
