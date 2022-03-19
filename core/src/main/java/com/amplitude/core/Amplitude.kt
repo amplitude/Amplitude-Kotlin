@@ -1,5 +1,6 @@
 package com.amplitude.core
 
+import com.amplitude.common.Logger
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.Identify
 import com.amplitude.core.events.Revenue
@@ -78,7 +79,7 @@ open class Amplitude internal constructor(
     }
 
     fun setDeviceId(deviceId: String) {
-        this.idContainer.identityManager.editIdentity().setUserId(deviceId).commit()
+        this.idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
     }
 
     fun groupIdentify(identify: Identify) {

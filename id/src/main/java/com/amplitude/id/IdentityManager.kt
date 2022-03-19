@@ -4,10 +4,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 
-internal const val ID_OP_SET = "\$set"
-internal const val ID_OP_UNSET = "\$unset"
-internal const val ID_OP_CLEAR_ALL = "\$clearAll"
-
 interface IdentityListener {
 
     fun onUserIdChange(userId: String?)
@@ -19,8 +15,7 @@ interface IdentityListener {
 
 data class Identity(
     val userId: String? = null,
-    val deviceId: String? = null,
-    val userProperties: Map<String, Any?> = mapOf(),
+    val deviceId: String? = null
 )
 
 enum class IdentityUpdateType {
@@ -33,8 +28,6 @@ interface IdentityManager {
 
         fun setUserId(userId: String?): Editor
         fun setDeviceId(deviceId: String?): Editor
-        fun setUserProperties(userProperties: Map<String, Any?>): Editor
-        fun updateUserProperties(actions: Map<String, Map<String, Any?>>): Editor
         fun commit()
     }
 
@@ -46,7 +39,7 @@ interface IdentityManager {
     fun isInitialized(): Boolean
 }
 
-internal class IdentityManagerImpl(val identityStorage: IdentityStorage) : IdentityManager {
+internal class IdentityManagerImpl(private val identityStorage: IdentityStorage): IdentityManager {
 
     private val identityLock = ReentrantReadWriteLock(true)
     private var identity = Identity()
@@ -65,7 +58,6 @@ internal class IdentityManagerImpl(val identityStorage: IdentityStorage) : Ident
 
             private var userId: String? = originalIdentity.userId
             private var deviceId: String? = originalIdentity.deviceId
-            private var userProperties: Map<String, Any?> = originalIdentity.userProperties
 
             override fun setUserId(userId: String?): IdentityManager.Editor {
                 this.userId = userId
@@ -77,36 +69,8 @@ internal class IdentityManagerImpl(val identityStorage: IdentityStorage) : Ident
                 return this
             }
 
-            override fun setUserProperties(userProperties: Map<String, Any?>): IdentityManager.Editor {
-                this.userProperties = userProperties
-                return this
-            }
-
-            override fun updateUserProperties(actions: Map<String, Map<String, Any?>>): IdentityManager.Editor {
-                val actingProperties = this.userProperties.toMutableMap()
-                for (actionEntry in actions.entries) {
-                    val action = actionEntry.key
-                    val properties = actionEntry.value
-                    when (action) {
-                        ID_OP_SET -> {
-                            actingProperties.putAll(properties)
-                        }
-                        ID_OP_UNSET -> {
-                            for (entry in properties.entries) {
-                                actingProperties.remove(entry.key)
-                            }
-                        }
-                        ID_OP_CLEAR_ALL -> {
-                            actingProperties.clear()
-                        }
-                    }
-                }
-                this.userProperties = actingProperties
-                return this
-            }
-
             override fun commit() {
-                val newIdentity = Identity(userId, deviceId, userProperties)
+                val newIdentity = Identity(userId, deviceId)
                 setIdentity(newIdentity)
             }
         }
