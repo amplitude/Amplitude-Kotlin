@@ -6,7 +6,7 @@ import org.junit.jupiter.api.Test
 internal class AmplitudeTest {
 
     @Test
-    fun `test place holder` () {
+    fun `test place holder`() {
         assertTrue(true)
     }
 }

@@ -19,10 +19,8 @@ class Identify() {
     internal val properties: MutableMap<String, Any> = mutableMapOf()
 
     init {
-
     }
 
     internal fun setUserProperty(operation: IdentifyOperation, property: String, value: Any) {
-
     }
 }

@@ -1,4 +1,4 @@
-package com.amplitude.core
+package com.amplitude.common
 
 interface Logger {
     enum class LogMode(i: Int) {
@@ -18,8 +18,4 @@ interface Logger {
     fun info(message: String)
 
     fun warn(message: String)
-}
-
-interface LoggerProvider {
-    fun getLogger(amplitude: Amplitude): Logger
 }

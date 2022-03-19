@@ -6,10 +6,13 @@ import com.amplitude.core.utilities.*
 import com.amplitude.core.utilities.FileResponseHandler
 import com.amplitude.core.utilities.HttpClient
 import com.amplitude.core.utilities.ResponseHandler
-import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
 import kotlinx.coroutines.channels.consumeEach
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.lang.Exception
 import java.util.concurrent.atomic.AtomicInteger
 

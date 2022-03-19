@@ -1,4 +1,3 @@
 package com.amplitude.core.events
 
-class IdentifyEvent : BaseEvent() {
-}
+class IdentifyEvent : BaseEvent()

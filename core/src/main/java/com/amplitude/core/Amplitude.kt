@@ -1,5 +1,6 @@
 package com.amplitude.core
 
+import com.amplitude.common.Logger
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.Identify
 import com.amplitude.core.events.Revenue
@@ -9,11 +10,18 @@ import com.amplitude.core.platform.Plugin
 import com.amplitude.core.platform.Timeline
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.ContextPlugin
+import com.amplitude.core.utilities.AnalyticsEventReceiver
 import com.amplitude.core.utilities.AnalyticsIdentityListener
+import com.amplitude.eventbridge.EventBridgeContainer
+import com.amplitude.eventbridge.EventChannel
 import com.amplitude.id.IMIdentityStorageProvider
 import com.amplitude.id.IdentityConfiguration
 import com.amplitude.id.IdentityContainer
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 
 open class Amplitude internal constructor(
@@ -25,7 +33,6 @@ open class Amplitude internal constructor(
     val storageIODispatcher: CoroutineDispatcher = Executors.newFixedThreadPool(2).asCoroutineDispatcher(),
     val retryDispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
 ){
-
     internal val timeline: Timeline
     val storage: Storage
     val logger: Logger
@@ -47,11 +54,11 @@ open class Amplitude internal constructor(
     open fun build() {
         idContainer = IdentityContainer.getInstance(IdentityConfiguration(instanceName = configuration.instanceName, apiKey = configuration.apiKey, identityStorageProvider = IMIdentityStorageProvider()))
         idContainer.identityManager.addIdentityListener(AnalyticsIdentityListener(store))
+        EventBridgeContainer.getInstance(configuration.instanceName).eventBridge.setEventReceiver(EventChannel.EVENT, AnalyticsEventReceiver(this))
         add(ContextPlugin())
         add(AmplitudeDestination())
 
-        amplitudeScope.launch (amplitudeDispatcher) {
-
+        amplitudeScope.launch(amplitudeDispatcher) {
         }
     }
 
@@ -65,7 +72,6 @@ open class Amplitude internal constructor(
     }
 
     fun identify(identify: Identify) {
-
     }
 
     fun identify(userId: String) {
@@ -73,15 +79,13 @@ open class Amplitude internal constructor(
     }
 
     fun setDeviceId(deviceId: String) {
-        this.idContainer.identityManager.editIdentity().setUserId(deviceId).commit()
+        this.idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
     }
 
     fun groupIdentify(identify: Identify) {
-
     }
 
     fun setGroup(groupType: String, groupName: Array<String>) {
-
     }
 
     @Deprecated("Please use 'revenue' instead.", ReplaceWith("revenue"))
@@ -138,6 +142,5 @@ open class Amplitude internal constructor(
     }
 
     fun flush() {
-
     }
 }

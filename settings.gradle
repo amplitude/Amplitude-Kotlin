@@ -1,8 +1,16 @@
 rootProject.name = 'kotlin-sdk'
+include 'common'
+project(':common').projectDir = file('common')
+include 'common-jvm'
+project(':common-jvm').projectDir = file('common-jvm')
+include 'common-android'
+project(':common-android').projectDir = file('common-android')
 include 'core'
 project(':core').projectDir = file('core')
 include 'samples:kotlin-jvm-app'
 project(':samples:kotlin-jvm-app').projectDir = file('samples/kotlin-jvm-app')
+include 'event-bridge'
+project(':event-bridge').projectDir = file('event-bridge')
 include 'android'
 project(':android').projectDir = file('android')
 include 'id'
