@@ -16,6 +16,9 @@ import java.lang.IllegalArgumentException
 import java.lang.IllegalStateException
 import java.lang.NullPointerException
 import java.lang.reflect.InvocationTargetException
+import java.util.Locale
+import java.util.UUID
+import kotlin.collections.ArrayList
 
 class AndroidContextProvider(private val context: Context, locationListening: Boolean) :
     ContextProvider {
