@@ -5,7 +5,7 @@ import com.amplitude.core.platform.ObservePlugin
 class State {
     var userId: String? = null
         set(value: String?) {
-            userId = value
+            field = value
             plugins.forEach { plugin ->
                 plugin.onUserIdChanged(value)
             }
@@ -13,7 +13,7 @@ class State {
 
     var deviceId: String? = null
         set(value: String?) {
-            deviceId = value
+            field = value
             plugins.forEach { plugin ->
                 plugin.onDeviceIdChanged(value)
             }

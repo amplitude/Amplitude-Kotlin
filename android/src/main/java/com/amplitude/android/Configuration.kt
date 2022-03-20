@@ -10,7 +10,7 @@ import com.amplitude.core.utilities.FileStorageProvider
 
 class Configuration(
     apiKey: String,
-    context: Context,
+    val context: Context,
     flushQueueSize: Int = FLUSH_QUEUE_SIZE,
     flushIntervalMillis: Int = FLUSH_INTERVAL_MILLIS,
     instanceName: String = DEFAULT_INSTANCE,
@@ -19,7 +19,10 @@ class Configuration(
     loggerProvider: LoggerProvider = AndroidLoggerProvider(),
     minIdLength: Int? = null,
     callback: ((BaseEvent) -> Unit)? = null,
-    useAdvertisingIdForDeviceId: Boolean = false,
-    useAppSetIdForDeviceId: Boolean = false,
-    enableCoppaControl: Boolean = false
+    val useAdvertisingIdForDeviceId: Boolean = false,
+    val useAppSetIdForDeviceId: Boolean = false,
+    val newDeviceIdPerInstall: Boolean = false,
+    val trackingOptions: TrackingOptions = TrackingOptions(),
+    val enableCoppaControl: Boolean = false,
+    val locationListening: Boolean = true
 ) : Configuration(apiKey, flushQueueSize, flushIntervalMillis, instanceName, optOut, storageProvider, loggerProvider, minIdLength, callback)

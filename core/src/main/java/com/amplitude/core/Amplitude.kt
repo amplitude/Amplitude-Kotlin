@@ -22,6 +22,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 import java.util.concurrent.Executors
 
 open class Amplitude internal constructor(
@@ -68,6 +69,13 @@ open class Amplitude internal constructor(
     }
 
     fun track(event: BaseEvent, callback: ((BaseEvent) -> Unit)? = null) {
+        process(event)
+    }
+
+    fun track(eventType: String, eventProperties: JSONObject? = null) {
+        val event = BaseEvent()
+        event.eventType = eventType
+        event.eventProperties = eventProperties
         process(event)
     }
 

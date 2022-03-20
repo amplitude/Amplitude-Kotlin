@@ -15,6 +15,8 @@ class ContextPlugin : Plugin {
 
     private fun applyContextData(event: BaseEvent) {
         event.library = Constants.SDK_LIBRARY + "/" + Constants.SDK_VERSION
+        event.userId = amplitude.store.userId
+        event.deviceId = amplitude.store.deviceId
     }
 
     override fun execute(event: BaseEvent): BaseEvent? {
