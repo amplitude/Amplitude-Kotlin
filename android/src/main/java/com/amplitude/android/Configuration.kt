@@ -24,5 +24,12 @@ class Configuration(
     val newDeviceIdPerInstall: Boolean = false,
     val trackingOptions: TrackingOptions = TrackingOptions(),
     val enableCoppaControl: Boolean = false,
-    val locationListening: Boolean = true
-) : Configuration(apiKey, flushQueueSize, flushIntervalMillis, instanceName, optOut, storageProvider, loggerProvider, minIdLength, callback)
+    val locationListening: Boolean = true,
+    val flushEventsOnClose: Boolean = true,
+    val minTimeBetweenSessionsMillis: Long = MIN_TIME_BETWEEN_SESSIONS_MILLIS,
+    val trackingSessionEvents: Boolean = true
+) : Configuration(apiKey, flushQueueSize, flushIntervalMillis, instanceName, optOut, storageProvider, loggerProvider, minIdLength, callback) {
+    companion object {
+        const val MIN_TIME_BETWEEN_SESSIONS_MILLIS: Long = 5 * 60 * 1000
+    }
+}

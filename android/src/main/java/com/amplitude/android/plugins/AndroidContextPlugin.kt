@@ -52,6 +52,7 @@ class AndroidContextPlugin : Plugin {
         event.library = "$SDK_LIBRARY/$SDK_VERSION"
         event.userId = amplitude.store.userId
         event.deviceId = amplitude.store.deviceId
+        event.sessionId = (amplitude as com.amplitude.android.Amplitude).sessionId
         val trackingOptions = configuration.trackingOptions
         if (configuration.enableCoppaControl) {
             trackingOptions.mergeIn(TrackingOptions.forCoppaControl())
