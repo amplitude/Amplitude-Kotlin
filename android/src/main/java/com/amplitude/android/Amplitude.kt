@@ -64,33 +64,33 @@ open class Amplitude(
         }
     }
 
-    fun startNewSessionIfNeeded(timestamp: Long) : Boolean{
+    fun startNewSessionIfNeeded(timestamp: Long): Boolean {
         if (inSession()) {
 
             if (isWithinMinTimeBetweenSessions(timestamp)) {
-                refreshSessionTime(timestamp);
-                return false;
+                refreshSessionTime(timestamp)
+                return false
             }
 
-            startNewSession(timestamp);
-            return true;
+            startNewSession(timestamp)
+            return true
         }
 
         // no current session - check for previous session
         if (isWithinMinTimeBetweenSessions(timestamp)) {
             if (previousSessionId == -1L) {
-                startNewSession(timestamp);
-                return true;
+                startNewSession(timestamp)
+                return true
             }
 
             // extend previous session
-            setSessionId(previousSessionId);
-            refreshSessionTime(timestamp);
-            return false;
+            setSessionId(previousSessionId)
+            refreshSessionTime(timestamp)
+            return false
         }
 
-        startNewSession(timestamp);
-        return true;
+        startNewSession(timestamp)
+        return true
     }
 
     private fun setSessionId(timestamp: Long) {
@@ -104,14 +104,14 @@ open class Amplitude(
     private fun startNewSession(timestamp: Long) {
         // end previous session
         if ((configuration as Configuration).trackingSessionEvents) {
-            sendSessionEvent(END_SESSION_EVENT);
+            sendSessionEvent(END_SESSION_EVENT)
         }
 
         // start new session
-        setSessionId(timestamp);
-        refreshSessionTime(timestamp);
+        setSessionId(timestamp)
+        refreshSessionTime(timestamp)
         if ((configuration as Configuration).trackingSessionEvents) {
-            sendSessionEvent(START_SESSION_EVENT);
+            sendSessionEvent(START_SESSION_EVENT)
         }
     }
 
@@ -145,10 +145,10 @@ open class Amplitude(
         /**
          * The event type for start session events.
          */
-        const val START_SESSION_EVENT = "session_start";
+        const val START_SESSION_EVENT = "session_start"
         /**
          * The event type for end session events.
          */
-        const val END_SESSION_EVENT = "session_end";
+        const val END_SESSION_EVENT = "session_end"
     }
 }

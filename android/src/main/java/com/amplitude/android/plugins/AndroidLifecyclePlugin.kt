@@ -23,11 +23,11 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     }
 
     override fun onActivityResumed(p0: Activity) {
-        (amplitude as com.amplitude.android.Amplitude).onEnterForeground(getCurrentTimeMillis());
+        (amplitude as com.amplitude.android.Amplitude).onEnterForeground(getCurrentTimeMillis())
     }
 
     override fun onActivityPaused(p0: Activity) {
-        (amplitude as com.amplitude.android.Amplitude).onExitForeground(getCurrentTimeMillis());
+        (amplitude as com.amplitude.android.Amplitude).onExitForeground(getCurrentTimeMillis())
     }
 
     override fun onActivityStopped(p0: Activity) {
@@ -40,7 +40,7 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     }
 
     companion object {
-        fun getCurrentTimeMillis() : Long {
+        fun getCurrentTimeMillis(): Long {
             return System.currentTimeMillis()
         }
     }
