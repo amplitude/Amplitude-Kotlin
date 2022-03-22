@@ -15,8 +15,12 @@ class ContextPlugin : Plugin {
     }
 
     private fun applyContextData(event: BaseEvent) {
-        event.timestamp = System.currentTimeMillis()
-        event.insertId = UUID.randomUUID().toString()
+        event.timestamp ?: run {
+            event.timestamp = System.currentTimeMillis()
+        }
+        event.insertId ?: run {
+            event.insertId = UUID.randomUUID().toString()
+        }
         event.library = Constants.SDK_LIBRARY + "/" + Constants.SDK_VERSION
         event.userId = amplitude.store.userId
         event.deviceId = amplitude.store.deviceId
