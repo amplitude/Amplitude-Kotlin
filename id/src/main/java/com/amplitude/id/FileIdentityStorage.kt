@@ -17,7 +17,7 @@ class FileIdentityStorage(val configuration: IdentityConfiguration) : IdentitySt
 
     init {
         val instanceName = configuration.instanceName
-        val storageDirectory = File("/tmp/amplitude-identity/$instanceName}")
+        val storageDirectory = configuration.storageDirectory ?: File("/tmp/$STORAGE_PREFIX/$instanceName}")
         createDirectory(storageDirectory)
         propertiesFile = PropertiesFile(storageDirectory, instanceName, STORAGE_PREFIX)
     }
