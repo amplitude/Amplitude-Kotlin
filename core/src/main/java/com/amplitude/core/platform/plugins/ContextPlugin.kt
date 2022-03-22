@@ -18,6 +18,8 @@ class ContextPlugin : Plugin {
         event.timestamp = System.currentTimeMillis()
         event.insertId = UUID.randomUUID().toString()
         event.library = Constants.SDK_LIBRARY + "/" + Constants.SDK_VERSION
+        event.userId = amplitude.store.userId
+        event.deviceId = amplitude.store.deviceId
     }
 
     override fun execute(event: BaseEvent): BaseEvent? {
