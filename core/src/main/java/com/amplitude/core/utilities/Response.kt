@@ -28,15 +28,15 @@ internal object HttpResponse {
     }
 }
 
-internal interface Response {
+interface Response {
     val status: HttpStatus
 }
 
-internal class SuccessResponse() : Response {
+class SuccessResponse() : Response {
     override val status: HttpStatus = HttpStatus.SUCCESS
 }
 
-internal class BadRequestResponse(response: JSONObject) : Response {
+class BadRequestResponse(response: JSONObject) : Response {
     override val status: HttpStatus = HttpStatus.BAD_REQUEST
     val error: String = response.getStringWithDefault("error", "")
     val missingField: String = response.getStringWithDefault("missing_field", "")
@@ -79,12 +79,12 @@ internal class BadRequestResponse(response: JSONObject) : Response {
     }
 }
 
-internal class PayloadTooLargeResponse(response: JSONObject) : Response {
+class PayloadTooLargeResponse(response: JSONObject) : Response {
     override val status: HttpStatus = HttpStatus.PAYLOAD_TOO_LARGE
     val error: String = response.getStringWithDefault("error", "")
 }
 
-internal class TooManyRequestsResponse(response: JSONObject) : Response {
+class TooManyRequestsResponse(response: JSONObject) : Response {
     override val status: HttpStatus = HttpStatus.TOO_MANY_REQUESTS
     val error: String = response.getStringWithDefault("error", "")
     val epsThreshold = response.getInt("eps_threshold")
@@ -119,16 +119,16 @@ internal class TooManyRequestsResponse(response: JSONObject) : Response {
     }
 }
 
-internal class TimeoutResponse() : Response {
+class TimeoutResponse() : Response {
     override val status: HttpStatus = HttpStatus.TIMEOUT
 }
 
-internal class FailedResponse(response: JSONObject) : Response {
+class FailedResponse(response: JSONObject) : Response {
     override val status: HttpStatus = HttpStatus.FAILED
     val error: String = response.getStringWithDefault("error", "")
 }
 
-internal interface ResponseHandler {
+interface ResponseHandler {
     fun handle(response: Response) {
         when (response) {
             is SuccessResponse -> {

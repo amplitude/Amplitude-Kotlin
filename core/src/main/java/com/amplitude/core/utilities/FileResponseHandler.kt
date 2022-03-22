@@ -85,9 +85,11 @@ internal class FileResponseHandler(
             configuration.callback?.let {
                 it(event, status, message)
             }
-            storage.getEventCallback(event.insertId)?.let {
-                it(event, status, message)
-                storage.removeEventCallback(event.insertId)
+            event.insertId?.let { insertId ->
+                storage.getEventCallback(insertId)?.let {
+                    it(event, status, message)
+                    storage.removeEventCallback(insertId)
+                }
             }
         }
     }

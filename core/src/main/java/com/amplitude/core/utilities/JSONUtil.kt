@@ -154,7 +154,7 @@ internal fun JSONObject.toBaseEvent(): BaseEvent {
     event.eventType = this.getString("event_type")
     event.userId = this.optString("user_id", null)
     event.deviceId = this.optString("device_id", null)
-    event.timestamp = this.getLong("time")
+    event.timestamp = if (this.has("time")) this.getLong("time") else null
     event.eventProperties = this.optJSONObject("event_properties", null)
     event.userProperties = this.optJSONObject("user_properties", null)
     event.groups = this.optJSONObject("groups", null)
@@ -185,7 +185,7 @@ internal fun JSONObject.toBaseEvent(): BaseEvent {
     event.androidId = this.optString("android_id", null)
     event.eventId = if (this.has("event_id")) this.getInt("event_id") else null
     event.sessionId = this.getLong("session_id")
-    event.insertId = this.getString("insert_id")
+    event.insertId = this.optString("insert_id", null)
     event.library = if (this.has("library")) this.getString("library") else null
     return event
 }

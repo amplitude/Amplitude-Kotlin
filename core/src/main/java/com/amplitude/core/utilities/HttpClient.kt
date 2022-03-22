@@ -130,7 +130,7 @@ abstract class Connection(
     }
 }
 
-internal enum class HttpStatus(val code: Int) {
+enum class HttpStatus(val code: Int) {
     SUCCESS(200),
     BAD_REQUEST(400),
     TIMEOUT(408),

@@ -1,11 +1,15 @@
 package com.amplitude.core.utilities
 
 import com.amplitude.core.Amplitude
+import com.amplitude.core.Configuration
 import com.amplitude.core.EventCallBack
 import com.amplitude.core.Storage
 import com.amplitude.core.StorageProvider
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.platform.EventPipeline
 import com.amplitude.id.utilities.PropertiesFile
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import org.json.JSONArray
 import java.io.BufferedReader
 import java.io.File
@@ -31,8 +35,10 @@ class FileStorage(
 
     override suspend fun writeEvent(event: BaseEvent) {
         eventsFile.storeEvent(JSONUtil.eventToString(event))
-        event.callback?.let {
-            eventCallbacksMap.put(event.insertId, it)
+        event.callback?.let { callback ->
+            event.insertId?. let {
+                eventCallbacksMap.put(it, callback)
+            }
         }
     }
 
@@ -59,6 +65,26 @@ class FileStorage(
         bufferedReader.use {
             return it.readText()
         }
+    }
+
+    override fun getResponseHandler(
+        storage: Storage,
+        eventPipeline: EventPipeline,
+        configuration: Configuration,
+        scope: CoroutineScope,
+        dispatcher: CoroutineDispatcher,
+        events: Any,
+        eventsString: String
+    ): ResponseHandler {
+        return FileResponseHandler(
+            storage as FileStorage,
+            eventPipeline,
+            configuration,
+            scope,
+            dispatcher,
+            events as String,
+            eventsString
+        )
     }
 
     fun removeFile(filePath: String): Boolean {

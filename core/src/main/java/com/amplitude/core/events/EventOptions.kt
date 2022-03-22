@@ -1,15 +1,14 @@
 package com.amplitude.core.events
 
 import com.amplitude.core.EventCallBack
-import java.util.UUID
 
 open class EventOptions {
     var userId: String? = null
     var deviceId: String? = null
-    var timestamp: Long = System.currentTimeMillis()
+    var timestamp: Long? = null
     var eventId: Int? = null
     var sessionId: Long = -1
-    var insertId: String = UUID.randomUUID().toString()
+    var insertId: String? = null
     var locationLat: Double? = null
     var locationLng: Double? = null
     var appVersion: String? = null
@@ -41,5 +40,5 @@ open class EventOptions {
     var revenueType: String? = null
     var extra: Map<String, Any>? = null
     var callback: EventCallBack? = null
-    var attempts: Int = 0
+    internal var attempts: Int = 0
 }

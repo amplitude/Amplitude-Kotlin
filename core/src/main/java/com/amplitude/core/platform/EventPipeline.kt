@@ -2,12 +2,7 @@ package com.amplitude.core.platform
 
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
-import com.amplitude.core.utilities.FileResponseHandler
-import com.amplitude.core.utilities.FileStorage
 import com.amplitude.core.utilities.HttpClient
-import com.amplitude.core.utilities.InMemoryResponseHandler
-import com.amplitude.core.utilities.InMemoryStorage
-import com.amplitude.core.utilities.ResponseHandler
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
 import kotlinx.coroutines.channels.consumeEach
@@ -18,7 +13,7 @@ import kotlinx.coroutines.withContext
 import java.lang.Exception
 import java.util.concurrent.atomic.AtomicInteger
 
-internal class EventPipeline(
+class EventPipeline(
     private val amplitude: Amplitude
 ) {
 
@@ -118,7 +113,7 @@ internal class EventPipeline(
                         // Upload the payloads.
                         connection.close()
                     }
-                    val responseHandler = createResponseHandler(events, eventsString)
+                    val responseHandler = storage.getResponseHandler(storage, this@EventPipeline, amplitude.configuration, scope, amplitude.retryDispatcher, events, eventsString)
                     responseHandler?.handle(connection.response)
                 } catch (e: Exception) {
                     e.message?.let {
@@ -127,33 +122,6 @@ internal class EventPipeline(
                 }
             }
         }
-    }
-
-    private fun createResponseHandler(events: Any, eventsString: String): ResponseHandler? {
-        var responseHandler: ResponseHandler? = null
-        when (storage) {
-            is FileStorage -> {
-                responseHandler = FileResponseHandler(
-                    storage as FileStorage,
-                    this,
-                    amplitude.configuration,
-                    scope,
-                    amplitude.storageIODispatcher,
-                    events as String,
-                    eventsString
-                )
-            }
-            is InMemoryStorage -> {
-                responseHandler = InMemoryResponseHandler(
-                    this,
-                    amplitude.configuration,
-                    scope,
-                    amplitude.retryDispatcher,
-                    events as List<BaseEvent>
-                )
-            }
-        }
-        return responseHandler
     }
 
     private fun getFlushCount(): Int {
