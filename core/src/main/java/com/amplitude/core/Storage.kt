@@ -1,6 +1,10 @@
 package com.amplitude.core
 
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.platform.EventPipeline
+import com.amplitude.core.utilities.ResponseHandler
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 
 interface Storage {
 
@@ -20,7 +24,11 @@ interface Storage {
 
     fun read(key: Constants): String?
 
-    fun getEvents(): List<String>
+    fun readEventsContent(): List<Any>
+
+    fun getEventsString(content: Any): String
+
+    fun getResponseHandler(storage: Storage, eventPipeline: EventPipeline, configuration: Configuration, scope: CoroutineScope, dispatcher: CoroutineDispatcher, events: Any, eventsString: String): ResponseHandler
 }
 
 interface StorageProvider {

@@ -13,7 +13,7 @@ import kotlinx.coroutines.withContext
 import java.lang.Exception
 import java.util.concurrent.atomic.AtomicInteger
 
-internal class EventPipeline(
+class EventPipeline(
     private val amplitude: Amplitude
 ) {
 
@@ -35,6 +35,8 @@ internal class EventPipeline(
     var scheduled: Boolean
         private set
 
+    var flushSizeDivider: AtomicInteger = AtomicInteger(1)
+
     companion object {
         internal const val UPLOAD_SIG = "#!upload"
     }
@@ -50,6 +52,7 @@ internal class EventPipeline(
     }
 
     fun put(event: BaseEvent) {
+        event.attempts += 1
         writeChannel.trySend(WriteQueueMessage(WriteQueueMessageType.EVENT, event))
     }
 
@@ -76,7 +79,9 @@ internal class EventPipeline(
             if (!triggerFlush && message.event != null) try {
                 storage.writeEvent(message.event)
             } catch (e: Exception) {
-                e.printStackTrace()
+                e.message?.let {
+                    amplitude.logger.error(it)
+                }
             }
 
             // if flush condition met, generate paths
@@ -96,27 +101,32 @@ internal class EventPipeline(
                 storage.rollover()
             }
 
-            val eventsData = storage.getEvents()
+            val eventsData = storage.readEventsContent()
             for (events in eventsData) {
-                if (events.isEmpty()) continue
+                val eventsString = storage.getEventsString(events)
+                if (eventsString.isEmpty()) continue
 
                 try {
                     val connection = httpClient.upload()
                     connection.outputStream?.let {
-                        connection.setEvents(events)
+                        connection.setEvents(eventsString)
                         // Upload the payloads.
                         connection.close()
                     }
+                    val responseHandler = storage.getResponseHandler(storage, this@EventPipeline, amplitude.configuration, scope, amplitude.retryDispatcher, events, eventsString)
+                    responseHandler?.handle(connection.response)
                 } catch (e: Exception) {
-                    e.printStackTrace()
+                    e.message?.let {
+                        amplitude.logger.error(it)
+                    }
                 }
-                // @TODO: handle failures and retry
             }
         }
     }
 
     private fun getFlushCount(): Int {
-        return amplitude.configuration.flushQueueSize
+        val count = amplitude.configuration.flushQueueSize / flushSizeDivider.get()
+        return count.takeUnless { it == 0 } ?: 1
     }
 
     private fun getFlushIntervalInMillis(): Long {

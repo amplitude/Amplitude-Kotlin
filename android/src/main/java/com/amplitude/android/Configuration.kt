@@ -3,9 +3,9 @@ package com.amplitude.android
 import android.content.Context
 import com.amplitude.android.utilities.AndroidLoggerProvider
 import com.amplitude.core.Configuration
+import com.amplitude.core.EventCallBack
 import com.amplitude.core.LoggerProvider
 import com.amplitude.core.StorageProvider
-import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.FileStorageProvider
 
 class Configuration(
@@ -18,7 +18,7 @@ class Configuration(
     storageProvider: StorageProvider = FileStorageProvider(),
     loggerProvider: LoggerProvider = AndroidLoggerProvider(),
     minIdLength: Int? = null,
-    callback: ((BaseEvent) -> Unit)? = null,
+    callback: EventCallBack? = null,
     val useAdvertisingIdForDeviceId: Boolean = false,
     val useAppSetIdForDeviceId: Boolean = false,
     val newDeviceIdPerInstall: Boolean = false,

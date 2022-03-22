@@ -1,5 +1,7 @@
 package com.amplitude.core.events
 
+import com.amplitude.core.EventCallBack
+
 open class EventOptions {
     var userId: String? = null
     var deviceId: String? = null
@@ -37,5 +39,6 @@ open class EventOptions {
     var productId: String? = null
     var revenueType: String? = null
     var extra: Map<String, Any>? = null
-    var callback: ((BaseEvent) -> Unit)? = null
+    var callback: EventCallBack? = null
+    internal var attempts: Int = 0
 }

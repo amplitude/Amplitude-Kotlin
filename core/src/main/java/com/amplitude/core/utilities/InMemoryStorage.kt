@@ -1,9 +1,13 @@
 package com.amplitude.core.utilities
 
 import com.amplitude.core.Amplitude
+import com.amplitude.core.Configuration
 import com.amplitude.core.Storage
 import com.amplitude.core.StorageProvider
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.platform.EventPipeline
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import java.util.concurrent.ConcurrentHashMap
 
 class InMemoryStorage(
@@ -31,13 +35,31 @@ class InMemoryStorage(
         return valuesMap.getOrDefault(key.rawVal, null)
     }
 
-    override fun getEvents(): List<String> {
+    override fun readEventsContent(): List<Any> {
         val eventsToSend: List<BaseEvent>
         synchronized(eventsListLock) {
             eventsToSend = ArrayList(eventsBuffer)
             eventsBuffer.clear()
         }
-        return JSONUtil.eventsToString(eventsToSend)
+        // return List<List<BaseEvent>>
+        return listOf(eventsToSend)
+    }
+
+    override fun getEventsString(content: Any): String {
+        // content is list of BaseEvent
+        return JSONUtil.eventsToString(content as List<BaseEvent>)
+    }
+
+    override fun getResponseHandler(
+        storage: Storage,
+        eventPipeline: EventPipeline,
+        configuration: Configuration,
+        scope: CoroutineScope,
+        dispatcher: CoroutineDispatcher,
+        events: Any,
+        eventsString: String
+    ): ResponseHandler {
+        return InMemoryResponseHandler(eventPipeline, configuration, scope, dispatcher, events as List<BaseEvent>)
     }
 }
 

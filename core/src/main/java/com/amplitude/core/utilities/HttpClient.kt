@@ -2,6 +2,7 @@ package com.amplitude.core.utilities
 
 import com.amplitude.core.Configuration
 import com.amplitude.core.Constants
+import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.Closeable
 import java.io.IOException
@@ -10,7 +11,6 @@ import java.io.OutputStream
 import java.net.HttpURLConnection
 import java.net.MalformedURLException
 import java.net.URL
-import java.nio.charset.StandardCharsets
 
 internal class HttpClient(
     private val configuration: Configuration
@@ -29,21 +29,16 @@ internal class HttpClient(
                     this.setBody()
                     this.outputStream?.close()
                     val responseCode: Int = connection.responseCode
-                    if (responseCode > HttpStatus.SUCCESS.code) {
-                        var responseBody: String?
-                        var inputStream: InputStream? = null
-                        try {
-                            inputStream = getInputStream(this.connection)
-                            responseBody = inputStream?.bufferedReader()?.use(BufferedReader::readText)
-                        } catch (e: IOException) {
-                            responseBody = (
-                                "Could not read response body for rejected message: " +
-                                    e.toString()
-                                )
-                        } finally {
-                            inputStream?.close()
-                        }
-                        // @TODO: handle failures
+                    var responseBody: String?
+                    var inputStream: InputStream? = null
+                    try {
+                        inputStream = getInputStream(this.connection)
+                        responseBody = inputStream?.bufferedReader()?.use(BufferedReader::readText)
+                        this.response = HttpResponse.createHttpResponse(responseCode, JSONObject(responseBody))
+                    } catch (e: IOException) {
+                        this.response = HttpResponse.createHttpResponse(408, null)
+                    } finally {
+                        inputStream?.close()
                     }
                 } finally {
                     super.close()
@@ -100,6 +95,7 @@ abstract class Connection(
     private lateinit var apiKey: String
     private lateinit var events: String
     private var minIdLength: Int? = null
+    internal lateinit var response: Response
 
     @Throws(IOException::class)
     override fun close() {
@@ -121,7 +117,7 @@ abstract class Connection(
     internal fun setBody() {
         this.outputStream?.let {
             val bodyString = getBodyStr()
-            val input = bodyString.toByteArray(StandardCharsets.UTF_8)
+            val input = bodyString.toByteArray()
             this.outputStream.write(input, 0, input.size)
         }
     }
@@ -134,7 +130,7 @@ abstract class Connection(
     }
 }
 
-internal enum class HttpStatus(val code: Int) {
+enum class HttpStatus(val code: Int) {
     SUCCESS(200),
     BAD_REQUEST(400),
     TIMEOUT(408),
