@@ -16,7 +16,7 @@ import java.io.File
 
 class FileStorage(
     private val apiKey: String
-) : Storage {
+) : Storage, EventsFileStorage {
 
     companion object {
         const val STORAGE_PREFIX = "amplitude-kotlin"
@@ -68,7 +68,6 @@ class FileStorage(
     }
 
     override fun getResponseHandler(
-        storage: Storage,
         eventPipeline: EventPipeline,
         configuration: Configuration,
         scope: CoroutineScope,
@@ -77,7 +76,7 @@ class FileStorage(
         eventsString: String
     ): ResponseHandler {
         return FileResponseHandler(
-            storage as FileStorage,
+            this,
             eventPipeline,
             configuration,
             scope,
@@ -87,19 +86,19 @@ class FileStorage(
         )
     }
 
-    fun removeFile(filePath: String): Boolean {
+    override fun removeFile(filePath: String): Boolean {
         return eventsFile.remove(filePath)
     }
 
-    fun getEventCallback(insertId: String): EventCallBack? {
+    override fun getEventCallback(insertId: String): EventCallBack? {
         return eventCallbacksMap.getOrDefault(insertId, null)
     }
 
-    fun removeEventCallback(insertId: String) {
+    override fun removeEventCallback(insertId: String) {
         eventCallbacksMap.remove(insertId)
     }
 
-    fun splitEventFile(filePath: String, events: JSONArray) {
+    override fun splitEventFile(filePath: String, events: JSONArray) {
         eventsFile.splitFile(filePath, events)
     }
 }
@@ -108,4 +107,14 @@ class FileStorageProvider : StorageProvider {
     override fun getStorage(amplitude: Amplitude): Storage {
         return FileStorage(amplitude.configuration.apiKey)
     }
+}
+
+interface EventsFileStorage {
+    fun removeFile(filePath: String): Boolean
+
+    fun getEventCallback(insertId: String): EventCallBack?
+
+    fun removeEventCallback(insertId: String)
+
+    fun splitEventFile(filePath: String, events: JSONArray)
 }

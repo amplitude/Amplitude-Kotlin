@@ -51,7 +51,6 @@ class InMemoryStorage(
     }
 
     override fun getResponseHandler(
-        storage: Storage,
         eventPipeline: EventPipeline,
         configuration: Configuration,
         scope: CoroutineScope,
