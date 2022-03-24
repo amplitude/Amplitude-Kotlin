@@ -6,7 +6,7 @@ import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
-import java.util.*
+import java.util.UUID
 
 class AndroidContextPlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Before
