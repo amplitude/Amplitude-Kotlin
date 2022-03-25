@@ -46,6 +46,7 @@ object JSONUtil {
         eventJSON.addValue("session_id", event.sessionId)
         eventJSON.addValue("insert_id", event.insertId)
         eventJSON.addValue("library", event.library)
+        eventJSON.addValue("partner_id", event.partnerId)
         return eventJSON
     }
 
@@ -187,6 +188,7 @@ internal fun JSONObject.toBaseEvent(): BaseEvent {
     event.sessionId = this.getLong("session_id")
     event.insertId = this.optString("insert_id", null)
     event.library = if (this.has("library")) this.getString("library") else null
+    event.partnerId = this.optString("partner_id", null)
     return event
 }
 

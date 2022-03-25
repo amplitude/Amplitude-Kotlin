@@ -30,6 +30,11 @@ class ContextPlugin : Plugin {
         event.deviceId ?: let {
             event.deviceId = amplitude.store.deviceId
         }
+        event.partnerId ?: let {
+            amplitude.configuration.partnerId ?. let {
+                event.partnerId = it
+            }
+        }
     }
 
     override fun execute(event: BaseEvent): BaseEvent? {

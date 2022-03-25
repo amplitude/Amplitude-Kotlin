@@ -116,6 +116,11 @@ class AndroidContextPlugin : Plugin {
                 event.appSetId = it
             }
         }
+        event.partnerId ?: let {
+            amplitude.configuration.partnerId ?. let {
+                event.partnerId = it
+            }
+        }
     }
 
     companion object {
