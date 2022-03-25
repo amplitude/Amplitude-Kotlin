@@ -15,6 +15,7 @@ open class Configuration(
     val storageProvider: StorageProvider = InMemoryStorageProvider(),
     val loggerProvider: LoggerProvider = ConsoleLoggerProvider(),
     val minIdLength: Int? = null,
+    val partnerId: String? = null,
     val callback: EventCallBack? = null,
     val flushMaxRetries: Int = FLUSH_MAX_RETRIES,
     val useBatch: Boolean = false,

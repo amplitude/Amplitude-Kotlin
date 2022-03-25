@@ -40,5 +40,6 @@ open class EventOptions {
     var revenueType: String? = null
     var extra: Map<String, Any>? = null
     var callback: EventCallBack? = null
+    var partnerId: String? = null
     internal var attempts: Int = 0
 }

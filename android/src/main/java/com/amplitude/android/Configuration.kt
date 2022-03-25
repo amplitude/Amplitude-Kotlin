@@ -19,6 +19,7 @@ class Configuration(
     storageProvider: StorageProvider = FileStorageProvider(),
     loggerProvider: LoggerProvider = AndroidLoggerProvider(),
     minIdLength: Int? = null,
+    partnerId: String? = null,
     callback: EventCallBack? = null,
     flushMaxRetries: Int = FLUSH_MAX_RETRIES,
     useBatch: Boolean = false,
@@ -33,7 +34,7 @@ class Configuration(
     val flushEventsOnClose: Boolean = true,
     val minTimeBetweenSessionsMillis: Long = MIN_TIME_BETWEEN_SESSIONS_MILLIS,
     val trackingSessionEvents: Boolean = true
-) : Configuration(apiKey, flushQueueSize, flushIntervalMillis, instanceName, optOut, storageProvider, loggerProvider, minIdLength, callback, flushMaxRetries, useBatch, serverZone, serverUrl) {
+) : Configuration(apiKey, flushQueueSize, flushIntervalMillis, instanceName, optOut, storageProvider, loggerProvider, minIdLength, partnerId, callback, flushMaxRetries, useBatch, serverZone, serverUrl) {
     companion object {
         const val MIN_TIME_BETWEEN_SESSIONS_MILLIS: Long = 5 * 60 * 1000
     }
