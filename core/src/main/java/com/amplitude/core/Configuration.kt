@@ -17,7 +17,10 @@ open class Configuration(
     val minIdLength: Int? = null,
     val partnerId: String? = null,
     val callback: EventCallBack? = null,
-    val flushMaxRetries: Int = FLUSH_MAX_RETRIES
+    val flushMaxRetries: Int = FLUSH_MAX_RETRIES,
+    val useBatch: Boolean = false,
+    val serverZone: ServerZone = ServerZone.US,
+    val serverUrl: String? = null
 ) {
 
     companion object {
@@ -37,4 +40,8 @@ open class Configuration(
         }
         return minIdLength > 0
     }
+}
+
+enum class ServerZone {
+    US, EU
 }
