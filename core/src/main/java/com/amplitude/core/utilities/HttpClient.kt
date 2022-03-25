@@ -2,6 +2,7 @@ package com.amplitude.core.utilities
 
 import com.amplitude.core.Configuration
 import com.amplitude.core.Constants
+import com.amplitude.core.ServerZone
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.Closeable
@@ -66,7 +67,13 @@ internal class HttpClient(
     }
 
     private fun getApiHost(): String {
-        return Constants.DEFAULT_API_HOST
+        if (!configuration.serverUrl.isNullOrEmpty()) {
+            return configuration.serverUrl
+        }
+        if (configuration.serverZone == ServerZone.EU) {
+            return if (configuration.useBatch) Constants.EU_BATCH_API_HOST else Constants.EU_DEFAULT_API_HOST
+        }
+        return if (configuration.useBatch) Constants.BATCH_API_HOST else Constants.DEFAULT_API_HOST
     }
 
     internal fun getApiKey(): String {
