@@ -18,6 +18,7 @@ class Configuration(
     storageProvider: StorageProvider = FileStorageProvider(),
     loggerProvider: LoggerProvider = AndroidLoggerProvider(),
     minIdLength: Int? = null,
+    partnerId: String? = null,
     callback: EventCallBack? = null,
     val useAdvertisingIdForDeviceId: Boolean = false,
     val useAppSetIdForDeviceId: Boolean = false,
@@ -27,8 +28,8 @@ class Configuration(
     val locationListening: Boolean = true,
     val flushEventsOnClose: Boolean = true,
     val minTimeBetweenSessionsMillis: Long = MIN_TIME_BETWEEN_SESSIONS_MILLIS,
-    val trackingSessionEvents: Boolean = true
-) : Configuration(apiKey, flushQueueSize, flushIntervalMillis, instanceName, optOut, storageProvider, loggerProvider, minIdLength, callback) {
+    val trackingSessionEvents: Boolean = true,
+) : Configuration(apiKey, flushQueueSize, flushIntervalMillis, instanceName, optOut, storageProvider, loggerProvider, minIdLength, partnerId, callback) {
     companion object {
         const val MIN_TIME_BETWEEN_SESSIONS_MILLIS: Long = 5 * 60 * 1000
     }
