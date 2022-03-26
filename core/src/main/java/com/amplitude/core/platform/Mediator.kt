@@ -52,4 +52,10 @@ internal class Mediator(private val plugins: MutableList<Plugin>) {
         }
         return result
     }
+
+    fun applyClosure(closure: (Plugin) -> Unit) = synchronized(plugins) {
+        plugins.forEach {
+            closure(it)
+        }
+    }
 }

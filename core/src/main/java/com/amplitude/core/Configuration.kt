@@ -11,7 +11,7 @@ open class Configuration(
     val flushQueueSize: Int = FLUSH_QUEUE_SIZE,
     val flushIntervalMillis: Int = FLUSH_INTERVAL_MILLIS,
     val instanceName: String = DEFAULT_INSTANCE,
-    val optOut: Boolean = false,
+    var optOut: Boolean = false,
     val storageProvider: StorageProvider = InMemoryStorageProvider(),
     val loggerProvider: LoggerProvider = ConsoleLoggerProvider(),
     val minIdLength: Int? = null,

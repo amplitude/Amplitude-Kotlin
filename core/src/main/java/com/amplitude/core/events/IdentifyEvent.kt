@@ -1,3 +1,7 @@
 package com.amplitude.core.events
 
-class IdentifyEvent : BaseEvent()
+import com.amplitude.core.Constants
+
+class IdentifyEvent : BaseEvent() {
+    override var eventType = Constants.IDENTIFY_EVENT
+}

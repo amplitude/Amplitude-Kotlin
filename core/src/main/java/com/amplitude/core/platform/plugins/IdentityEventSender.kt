@@ -3,6 +3,7 @@ package com.amplitude.core.platform.plugins
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
+import com.amplitude.core.utilities.toMapObj
 import com.amplitude.eventbridge.Event
 import com.amplitude.eventbridge.EventBridge
 import com.amplitude.eventbridge.EventBridgeContainer
@@ -30,9 +31,9 @@ internal class IdentityEventSender : Plugin {
 internal fun BaseEvent.toBridgeEvent(): Event {
     return Event(
         this.eventType,
-        this.eventProperties?.toMap(),
-        this.userProperties?.toMap(),
-        this.groups?.toMap(),
-        this.groupProperties?.toMap()
+        this.eventProperties?.toMapObj(),
+        this.userProperties?.toMapObj(),
+        this.groups?.toMapObj(),
+        this.groupProperties?.toMapObj()
     )
 }
