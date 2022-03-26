@@ -8,8 +8,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 
-internal class FileResponseHandler(
-    private val storage: FileStorage,
+class FileResponseHandler(
+    private val storage: EventsFileStorage,
     private val eventPipeline: EventPipeline,
     private val configuration: Configuration,
     private val scope: CoroutineScope,

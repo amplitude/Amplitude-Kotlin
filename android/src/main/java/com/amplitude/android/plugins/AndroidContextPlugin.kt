@@ -6,6 +6,7 @@ import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
+import java.util.UUID
 
 class AndroidContextPlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Before
@@ -49,9 +50,21 @@ class AndroidContextPlugin : Plugin {
 
     private fun applyContextData(event: BaseEvent) {
         val configuration = amplitude.configuration as Configuration
-        event.library = "$SDK_LIBRARY/$SDK_VERSION"
-        event.userId = amplitude.store.userId
-        event.deviceId = amplitude.store.deviceId
+        event.timestamp ?: let {
+            event.timestamp = System.currentTimeMillis()
+        }
+        event.insertId ?: let {
+            event.insertId = UUID.randomUUID().toString()
+        }
+        event.library ?: let {
+            event.library = "$SDK_LIBRARY/$SDK_VERSION"
+        }
+        event.userId ?: let {
+            event.userId = amplitude.store.userId
+        }
+        event.deviceId ?: let {
+            event.deviceId = amplitude.store.deviceId
+        }
         event.sessionId = (amplitude as com.amplitude.android.Amplitude).sessionId
         val trackingOptions = configuration.trackingOptions
         if (configuration.enableCoppaControl) {

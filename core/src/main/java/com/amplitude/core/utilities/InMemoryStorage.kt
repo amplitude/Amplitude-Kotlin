@@ -32,7 +32,10 @@ class InMemoryStorage(
     }
 
     override fun read(key: Storage.Constants): String? {
-        return valuesMap.getOrDefault(key.rawVal, null)
+        if (!valuesMap.contains(key.rawVal)) {
+            return null
+        }
+        return valuesMap.get(key.rawVal)
     }
 
     override fun readEventsContent(): List<Any> {
@@ -51,7 +54,6 @@ class InMemoryStorage(
     }
 
     override fun getResponseHandler(
-        storage: Storage,
         eventPipeline: EventPipeline,
         configuration: Configuration,
         scope: CoroutineScope,

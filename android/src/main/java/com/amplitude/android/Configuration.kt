@@ -2,12 +2,12 @@ package com.amplitude.android
 
 import android.content.Context
 import com.amplitude.android.utilities.AndroidLoggerProvider
+import com.amplitude.android.utilities.AndroidStorageProvider
 import com.amplitude.core.Configuration
 import com.amplitude.core.EventCallBack
 import com.amplitude.core.LoggerProvider
 import com.amplitude.core.ServerZone
 import com.amplitude.core.StorageProvider
-import com.amplitude.core.utilities.FileStorageProvider
 
 class Configuration(
     apiKey: String,
@@ -16,7 +16,7 @@ class Configuration(
     flushIntervalMillis: Int = FLUSH_INTERVAL_MILLIS,
     instanceName: String = DEFAULT_INSTANCE,
     optOut: Boolean = false,
-    storageProvider: StorageProvider = FileStorageProvider(),
+    storageProvider: StorageProvider = AndroidStorageProvider(),
     loggerProvider: LoggerProvider = AndroidLoggerProvider(),
     minIdLength: Int? = null,
     partnerId: String? = null,
