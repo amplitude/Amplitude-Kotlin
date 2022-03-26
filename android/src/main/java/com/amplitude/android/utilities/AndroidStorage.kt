@@ -30,7 +30,7 @@ class AndroidStorage(
     }
 
     private val sharedPreferences: SharedPreferences =
-        context.getSharedPreferences("${ STORAGE_PREFIX}-$apiKey", Context.MODE_PRIVATE)
+        context.getSharedPreferences("${STORAGE_PREFIX}-$apiKey", Context.MODE_PRIVATE)
     private val storageDirectory: File = context.getDir("segment-disk-queue", Context.MODE_PRIVATE)
     private val eventsFile =
         EventsFileManager(storageDirectory, apiKey, AndroidKVS(sharedPreferences))
