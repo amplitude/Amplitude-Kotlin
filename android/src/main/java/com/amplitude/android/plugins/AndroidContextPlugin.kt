@@ -1,5 +1,6 @@
 package com.amplitude.android.plugins
 
+import com.amplitude.android.BuildConfig
 import com.amplitude.android.Configuration
 import com.amplitude.android.TrackingOptions
 import com.amplitude.common.android.AndroidContextProvider
@@ -126,7 +127,7 @@ class AndroidContextPlugin : Plugin {
     companion object {
         const val PLATFORM = "Android"
         const val SDK_LIBRARY = "amplitude-android-kotlin"
-        const val SDK_VERSION = "0.0.1"
+        const val SDK_VERSION = BuildConfig.AMPLITUDE_VERSION
         private val INVALID_DEVICE_IDS = setOf("", "9774d56d682e549c", "unknown", "000000000000000", "Android", "DEFACE", "00000000-0000-0000-0000-000000000000")
         fun validDeviceId(deviceId: String): Boolean {
             return !(deviceId.isEmpty() || INVALID_DEVICE_IDS.contains(deviceId))

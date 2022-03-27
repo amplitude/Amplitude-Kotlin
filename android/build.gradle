@@ -3,6 +3,17 @@ plugins {
     id 'kotlin-android'
 }
 
+ext {
+    PUBLISH_NAME = 'Amplitude Android Kotlin SDK'
+    PUBLISH_DESCRIPTION = 'Amplitude Kotlin client-side SDK for Android'
+    PUBLISH_GROUP_ID = 'com.amplitude'
+    PUBLISH_VERSION = '0.1.0'
+    PUBLISH_ARTIFACT_ID = 'amplitude-android'
+}
+
+apply from: "${rootDir}/gradle/publish-module.gradle"
+version = PUBLISH_VERSION
+
 android {
     compileSdk 31
 
@@ -11,8 +22,8 @@ android {
 
         minSdk 16
         targetSdk 31
-        versionCode 1
-        versionName "1.0"
+        versionName PUBLISH_VERSION
+        buildConfigField "String", "AMPLITUDE_VERSION", "\"${version}\""
 
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
