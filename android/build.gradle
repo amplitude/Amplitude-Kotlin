@@ -59,3 +59,7 @@ dependencies {
     testImplementation 'org.robolectric:robolectric:4.7.3'
     testImplementation 'androidx.test:core:1.4.0'
 }
+
+tasks.dokkaHtmlPartial.configure {
+    failOnWarning.set(true)
+}
