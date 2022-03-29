@@ -1,0 +1,25 @@
+$dokka.format:html-v1
+$dokka.linkExtension:html
+$dokka.location:////PointingToDeclaration/kotlin-jvm-app/[root]/index.html
+$dokka.location://main/#/PointingToDeclaration/kotlin-jvm-app/[root]/main.html
+module:android
+com.amplitude.android
+com.amplitude.android.plugins
+com.amplitude.android.utilities
+module:common
+com.amplitude.common
+module:common-android
+com.amplitude.common.android
+module:common-jvm
+com.amplitude.common.jvm
+module:core
+com.amplitude.core
+com.amplitude.core.events
+com.amplitude.core.platform
+com.amplitude.core.platform.plugins
+com.amplitude.core.utilities
+module:event-bridge
+com.amplitude.eventbridge
+module:id
+com.amplitude.id
+com.amplitude.id.utilities
