@@ -3,6 +3,7 @@ package com.amplitude.common.android
 import android.content.Context
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
+import android.content.res.Resources
 import android.location.Geocoder
 import android.location.Location
 import android.location.LocationManager
@@ -178,11 +179,26 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
                 return null
             }
 
+        private val locale: Locale
+            private get() {
+                val configuration = Resources.getSystem().configuration
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    val localeList = configuration.locales
+                    if (localeList.isEmpty) {
+                        return Locale.getDefault()
+                    } else {
+                        return localeList.get(0)
+                    }
+                } else {
+                    return configuration.locale
+                }
+            }
+
         private val countryFromLocale: String
-            private get() = Locale.getDefault().country
+            private get() = locale.country
 
         private fun fetchLanguage(): String {
-            return Locale.getDefault().language
+            return locale.language
         }
 
         private fun fetchAdvertisingId(): String {
@@ -209,12 +225,12 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
                 val getId = appSetInfo.javaClass.getMethod("getId")
                 appSetId = getId.invoke(appSetInfo) as String
             } catch (e: ClassNotFoundException) {
-                AndroidLogger.logger
+                LogcatLogger.logger
                     .warn("Google Play Services SDK not found for app set id!")
             } catch (e: InvocationTargetException) {
-                AndroidLogger.logger.warn("Google Play Services not available for app set id")
+                LogcatLogger.logger.warn("Google Play Services not available for app set id")
             } catch (e: Exception) {
-                AndroidLogger.logger.error(
+                LogcatLogger.logger.error(
                     "Encountered an error connecting to Google Play Services for app set id"
                 )
             }
@@ -248,13 +264,13 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
                     val getId = advertisingInfo.javaClass.getMethod("getId")
                     advertisingId = getId.invoke(advertisingInfo) as String
                 } catch (e: ClassNotFoundException) {
-                    AndroidLogger.logger
+                    LogcatLogger.logger
                         .warn("Google Play Services SDK not found for advertising id!")
                 } catch (e: InvocationTargetException) {
-                    AndroidLogger.logger
+                    LogcatLogger.logger
                         .warn("Google Play Services not available for advertising id")
                 } catch (e: Exception) {
-                    AndroidLogger.logger.error(
+                    LogcatLogger.logger.error(
                         "Encountered an error connecting to Google Play Services for advertising id"
                     )
                 }
@@ -274,17 +290,17 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
                 // status 0 corresponds to com.google.android.gms.common.ConnectionResult.SUCCESS;
                 return status != null && status == 0
             } catch (e: NoClassDefFoundError) {
-                AndroidLogger.logger.warn("Google Play Services Util not found!")
+                LogcatLogger.logger.warn("Google Play Services Util not found!")
             } catch (e: ClassNotFoundException) {
-                AndroidLogger.logger.warn("Google Play Services Util not found!")
+                LogcatLogger.logger.warn("Google Play Services Util not found!")
             } catch (e: NoSuchMethodException) {
-                AndroidLogger.logger.warn("Google Play Services not available")
+                LogcatLogger.logger.warn("Google Play Services not available")
             } catch (e: InvocationTargetException) {
-                AndroidLogger.logger.warn("Google Play Services not available")
+                LogcatLogger.logger.warn("Google Play Services not available")
             } catch (e: IllegalAccessException) {
-                AndroidLogger.logger.warn("Google Play Services not available")
+                LogcatLogger.logger.warn("Google Play Services not available")
             } catch (e: Exception) {
-                AndroidLogger.logger.warn(
+                LogcatLogger.logger.warn(
                     "Error when checking for Google Play Services: $e"
                 )
             }
@@ -363,9 +379,9 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
                 try {
                     location = locationManager.getLastKnownLocation(provider!!)
                 } catch (e: SecurityException) {
-                    AndroidLogger.logger.warn("Failed to get most recent location")
+                    LogcatLogger.logger.warn("Failed to get most recent location")
                 } catch (e: Exception) {
-                    AndroidLogger.logger.warn("Failed to get most recent location")
+                    LogcatLogger.logger.warn("Failed to get most recent location")
                 }
                 if (location != null) {
                     locations.add(location)
