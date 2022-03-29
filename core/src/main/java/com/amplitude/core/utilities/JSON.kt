@@ -17,7 +17,7 @@ internal fun Map<*, *>?.toJSONObject(): JSONObject? {
     return jsonObject
 }
 
-internal fun JSONObject.toMap(): Map<String, Any?> {
+internal fun JSONObject.toMapObj(): Map<String, Any?> {
     val map = mutableMapOf<String, Any?>()
     for (key in this.keys()) {
         map[key] = this[key].fromJSON()
@@ -25,7 +25,7 @@ internal fun JSONObject.toMap(): Map<String, Any?> {
     return map
 }
 
-internal fun JSONArray.toList(): List<Any?> {
+internal fun JSONArray.toListObj(): List<Any?> {
     val list = mutableListOf<Any?>()
     for (i in 0 until this.length()) {
         val value = this[i].fromJSON()
@@ -47,8 +47,8 @@ internal fun List<*>?.toJSONArray(): JSONArray? {
 
 private fun Any?.fromJSON(): Any? {
     return when (this) {
-        is JSONObject -> this.toMap()
-        is JSONArray -> this.toList()
+        is JSONObject -> this.toMapObj()
+        is JSONArray -> this.toListObj()
         // org.json uses BigDecimal for doubles and floats; normalize to double
         // to make testing for equality easier.
         is BigDecimal -> this.toDouble()

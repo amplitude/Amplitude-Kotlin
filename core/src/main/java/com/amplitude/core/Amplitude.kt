@@ -2,9 +2,13 @@ package com.amplitude.core
 
 import com.amplitude.common.Logger
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.events.EventOptions
+import com.amplitude.core.events.GroupIdentifyEvent
 import com.amplitude.core.events.Identify
+import com.amplitude.core.events.IdentifyEvent
 import com.amplitude.core.events.Revenue
 import com.amplitude.core.events.RevenueEvent
+import com.amplitude.core.platform.EventPlugin
 import com.amplitude.core.platform.ObservePlugin
 import com.amplitude.core.platform.Plugin
 import com.amplitude.core.platform.Timeline
@@ -68,18 +72,33 @@ open class Amplitude internal constructor(
         track(event)
     }
 
-    fun track(event: BaseEvent, callback: ((BaseEvent) -> Unit)? = null) {
+    fun track(event: BaseEvent, callback: EventCallBack? = null) {
+        callback ?. let {
+            event.callback = it
+        }
         process(event)
     }
 
-    fun track(eventType: String, eventProperties: JSONObject? = null) {
+    fun track(eventType: String, eventProperties: JSONObject? = null, options: EventOptions? = null) {
         val event = BaseEvent()
         event.eventType = eventType
         event.eventProperties = eventProperties
+        options ?. let {
+            event.mergeEventOptions(it)
+        }
         process(event)
     }
 
-    fun identify(identify: Identify) {
+    /**
+     * Identify. Use this to send an Identify object containing user property operations to Amplitude server.
+     */
+    fun identify(identify: Identify, options: EventOptions? = null) {
+        val event = IdentifyEvent()
+        event.userProperties = identify.properties
+        options ?. let {
+            event.mergeEventOptions(it)
+        }
+        process(event)
     }
 
     fun identify(userId: String) {
@@ -90,10 +109,36 @@ open class Amplitude internal constructor(
         this.idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
     }
 
-    fun groupIdentify(identify: Identify) {
+    fun groupIdentify(groupType: String, groupName: String, identify: Identify, options: EventOptions? = null) {
+        val event = GroupIdentifyEvent()
+        var group: JSONObject? = null
+        try {
+            group = JSONObject().put(groupType, groupName)
+        } catch (e: Exception) {
+            logger.error(e.toString())
+        }
+        event.groups = group
+        event.groupProperties = identify.properties
+        options ?. let {
+            event.mergeEventOptions(it)
+        }
+        process(event)
     }
 
-    fun setGroup(groupType: String, groupName: Array<String>) {
+    /**
+     * Sets the user's group.
+     */
+    fun setGroup(groupType: String, groupName: String, options: EventOptions? = null) {
+        val identify = Identify().set(groupType, groupName)
+        identify(identify, options)
+    }
+
+    /**
+     * ets the user's groups.
+     */
+    fun setGroup(groupType: String, groupName: Array<String>, options: EventOptions? = null) {
+        val identify = Identify().set(groupType, groupName)
+        identify(identify, options)
     }
 
     @Deprecated("Please use 'revenue' instead.", ReplaceWith("revenue"))
@@ -105,11 +150,15 @@ open class Amplitude internal constructor(
      * Create a Revenue object to hold your revenue data and properties,
      * and log it as a revenue event using this method.
      */
-    fun revenue(revenue: Revenue) {
+    fun revenue(revenue: Revenue, options: EventOptions? = null) {
         if (!revenue.isValid()) {
             return
         }
-        revenue(revenue.toRevenueEvent())
+        val event = revenue.toRevenueEvent()
+        options ?. let {
+            event.mergeEventOptions(it)
+        }
+        revenue(event)
     }
 
     /**
@@ -119,7 +168,10 @@ open class Amplitude internal constructor(
         process(event)
     }
 
-    fun process(event: BaseEvent) {
+    private fun process(event: BaseEvent) {
+        if (configuration.optOut) {
+            logger.info("Skip event for opt out config.")
+        }
         amplitudeScope.launch(amplitudeDispatcher) {
             timeline.process(event)
         }
@@ -150,5 +202,8 @@ open class Amplitude internal constructor(
     }
 
     fun flush() {
+        this.timeline.applyClosure {
+            (it as? EventPlugin)?.flush()
+        }
     }
 }

@@ -1,7 +1,7 @@
 package com.amplitude.core.events
 
-open class Plan(
-    var branch: String?,
-    var source: String?,
-    var version: String?
+data class Plan(
+    val branch: String? = null,
+    val source: String? = null,
+    val version: String? = null
 )

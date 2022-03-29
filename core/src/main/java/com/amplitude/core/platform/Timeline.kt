@@ -47,4 +47,11 @@ internal class Timeline {
             list.remove(plugin)
         }
     }
+
+    // Applies a closure on all registered plugins
+    fun applyClosure(closure: (Plugin) -> Unit) {
+        plugins.forEach { (_, mediator) ->
+            mediator.applyClosure(closure)
+        }
+    }
 }
