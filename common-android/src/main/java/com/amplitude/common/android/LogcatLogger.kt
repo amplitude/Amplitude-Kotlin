@@ -3,7 +3,7 @@ package com.amplitude.common.android
 import android.util.Log
 import com.amplitude.common.Logger
 
-class AndroidLogger() : Logger {
+class LogcatLogger() : Logger {
     override var logMode: Logger.LogMode = Logger.LogMode.INFO
     private val tag = "Amplitude"
 
@@ -32,6 +32,6 @@ class AndroidLogger() : Logger {
     }
 
     companion object {
-        val logger = AndroidLogger()
+        val logger = LogcatLogger()
     }
 }
