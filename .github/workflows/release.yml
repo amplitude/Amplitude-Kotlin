@@ -49,9 +49,6 @@ jobs:
           GPG_KEY_CONTENTS: ${{ secrets.GPG_KEY_CONTENTS }}
           SIGNING_SECRET_KEY_RING_FILE: ${{ secrets.SIGNING_SECRET_KEY_RING_FILE }}
         run: |
-          pwd
-          echo $SIGNING_SECRET_KEY_RING_FILE
-          touch $SIGNING_SECRET_KEY_RING_FILE 
           sudo bash -c "echo '$GPG_KEY_CONTENTS' | base64 -d > '$SIGNING_SECRET_KEY_RING_FILE'"
 
       - name: Configure Sonatype
@@ -81,7 +78,7 @@ jobs:
           -p @semantic-release/git@9 \
           -p @google/semantic-release-replace-plugin@1 \
           -p @semantic-release/exec@5 \
-          semantic-release --dry-run
+          semantic-release --dry-run --branches main
 
       - name: Semantic Release
         if: ${{ github.event.inputs.dryRun == 'false'}}
@@ -99,4 +96,4 @@ jobs:
           -p @semantic-release/git@9 \
           -p @google/semantic-release-replace-plugin@1 \
           -p @semantic-release/exec@5 \
-          semantic-release
+          semantic-release --branches main
