@@ -1,7 +1,7 @@
 module.exports = {
   "branches": [
-    {name: 'main', prerelease: true},
-    "main-holder"
+    {name: 'beta', prerelease: true},
+    "main"
   ],
   "tagFormat": ["${version}"],
   "plugins": [
