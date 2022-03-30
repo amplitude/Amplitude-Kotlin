@@ -126,7 +126,7 @@ class AndroidContextPlugin : Plugin {
 
     companion object {
         const val PLATFORM = "Android"
-        const val SDK_LIBRARY = "amplitude-android-kotlin"
+        const val SDK_LIBRARY = "amplitude-analytics-android"
         const val SDK_VERSION = BuildConfig.AMPLITUDE_VERSION
         private val INVALID_DEVICE_IDS = setOf("", "9774d56d682e549c", "unknown", "000000000000000", "Android", "DEFACE", "00000000-0000-0000-0000-000000000000")
         fun validDeviceId(deviceId: String): Boolean {
