@@ -1,5 +1,6 @@
 module.exports = {
   "branches": [
+    {name: 'main-holder'},
     {name: 'main', channel: 'beta', prerelease: true}
   ],
   "tagFormat": ["${version}"],
