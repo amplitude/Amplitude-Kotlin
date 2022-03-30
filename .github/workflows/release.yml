@@ -62,7 +62,7 @@ jobs:
           echo "signing.password=${{ secrets.SIGNING_PASSWORD }}" >> $GRADLE_PROP_FILE
           echo "signing.secretKeyRingFile=${{ secrets.SIGNING_SECRET_KEY_RING_FILE }}" >> $GRADLE_PROP_FILE
 
-       - name: Semantic Release --dry-run
+      - name: Semantic Release --dry-run
         if: ${{ github.event.inputs.dryRun == 'true'}}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
