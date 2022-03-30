@@ -78,7 +78,7 @@ jobs:
           -p @semantic-release/git@9 \
           -p @google/semantic-release-replace-plugin@1 \
           -p @semantic-release/exec@5 \
-          semantic-release --dry-run --branches beta
+          semantic-release --dry-run --branches {name: 'beta', prerelease: true}
 
       - name: Semantic Release
         if: ${{ github.event.inputs.dryRun == 'false'}}
@@ -96,4 +96,4 @@ jobs:
           -p @semantic-release/git@9 \
           -p @google/semantic-release-replace-plugin@1 \
           -p @semantic-release/exec@5 \
-          semantic-release --branches beta
+          semantic-release --branches {name: 'beta', prerelease: true}
