@@ -2,6 +2,7 @@ package com.amplitude.core.utilities
 
 import com.amplitude.core.Constants
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.events.Plan
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -47,6 +48,9 @@ object JSONUtil {
         eventJSON.addValue("insert_id", event.insertId)
         eventJSON.addValue("library", event.library)
         eventJSON.addValue("partner_id", event.partnerId)
+        event.plan?. let {
+            eventJSON.put("plan", it.toJSONObject())
+        }
         return eventJSON
     }
 
@@ -189,6 +193,7 @@ internal fun JSONObject.toBaseEvent(): BaseEvent {
     event.insertId = this.optString("insert_id", null)
     event.library = if (this.has("library")) this.getString("library") else null
     event.partnerId = this.optString("partner_id", null)
+    event.plan = if (this.has("plan")) Plan.fromJSONObject(this.getJSONObject("plan")) else null
     return event
 }
 
