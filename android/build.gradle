@@ -8,7 +8,7 @@ ext {
     PUBLISH_DESCRIPTION = 'Amplitude Kotlin client-side SDK for Android'
     PUBLISH_GROUP_ID = 'com.amplitude'
     PUBLISH_VERSION = '0.1.0'
-    PUBLISH_ARTIFACT_ID = 'amplitude-android'
+    PUBLISH_ARTIFACT_ID = 'analytics-android'
 }
 
 apply from: "${rootDir}/gradle/publish-module.gradle"
