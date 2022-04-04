@@ -48,6 +48,7 @@ object JSONUtil {
         eventJSON.addValue("insert_id", event.insertId)
         eventJSON.addValue("library", event.library)
         eventJSON.addValue("partner_id", event.partnerId)
+        eventJSON.addValue("android_app_set_id", event.appSetId)
         event.plan?. let {
             eventJSON.put("plan", it.toJSONObject())
         }
@@ -188,6 +189,7 @@ internal fun JSONObject.toBaseEvent(): BaseEvent {
     event.idfv = this.optionalString("idfv", null)
     event.adid = this.optionalString("adid", null)
     event.androidId = this.optionalString("android_id", null)
+    event.appSetId = this.optString("android_app_set_id", null)
     event.eventId = if (this.has("event_id")) this.getInt("event_id") else null
     event.sessionId = this.getLong("session_id")
     event.insertId = this.optionalString("insert_id", null)
@@ -225,14 +227,14 @@ internal fun JSONObject.addValue(key: String, value: Any?) {
     }
 }
 
-inline fun JSONObject.optionalJSONObject(key: String, defaultValue: JSONObject?): JSONObject?{
+inline fun JSONObject.optionalJSONObject(key: String, defaultValue: JSONObject?): JSONObject? {
     if (this.has(key)) {
         return this.getJSONObject(key)
     }
     return defaultValue
 }
 
-inline fun JSONObject.optionalString(key: String, defaultValue: String?): String?{
+inline fun JSONObject.optionalString(key: String, defaultValue: String?): String? {
     if (this.has(key)) {
         return this.getString(key)
     }

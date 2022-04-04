@@ -32,7 +32,7 @@ import java.util.concurrent.Executors
 /**
  * <h1>Amplitude</h1>
  * This is the SDK instance class that contains all of the SDK functionality.<br><br>
- * Many of the SDK functions return the SDK instance back, allowing you to chain multiple method calls together
+ * Many of the SDK functions return the SDK instance back, allowing you to chain multiple methods calls together.
  */
 open class Amplitude internal constructor(
     val configuration: Configuration,
@@ -57,7 +57,7 @@ open class Amplitude internal constructor(
     }
 
     /**
-     * Public Constructor
+     * Public Constructor.
      */
     constructor(configuration: Configuration) : this(configuration, State())
 
@@ -140,7 +140,7 @@ open class Amplitude internal constructor(
         try {
             group = JSONObject().put(groupType, groupName)
         } catch (e: Exception) {
-            logger.error("Error in groupIdentif: ${e.toString()}")
+            logger.error("Error in groupIdentify: $e")
         }
         event.groups = group
         event.groupProperties = identify.properties
@@ -152,7 +152,7 @@ open class Amplitude internal constructor(
     }
 
     /**
-     * Sets the user's group.
+     * Set the user's group.
      */
     fun setGroup(groupType: String, groupName: String, options: EventOptions? = null): Amplitude {
         val identify = Identify().set(groupType, groupName)
@@ -161,7 +161,7 @@ open class Amplitude internal constructor(
     }
 
     /**
-     * ets the user's groups.
+     * Sets the user's groups.
      */
     fun setGroup(groupType: String, groupName: Array<String>, options: EventOptions? = null): Amplitude {
         val identify = Identify().set(groupType, groupName)
