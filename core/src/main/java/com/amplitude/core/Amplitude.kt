@@ -78,7 +78,11 @@ open class Amplitude internal constructor(
     }
 
     /**
-     * Track an event
+     * Track an event.
+     *
+     * @param event the event
+     * @param callback the optional event callback
+     * @return the Amplitude
      */
     fun track(event: BaseEvent, callback: EventCallBack? = null): Amplitude {
         callback ?. let {
@@ -89,7 +93,12 @@ open class Amplitude internal constructor(
     }
 
     /**
-     * Log event with the specified event type, event properties, and optional event options
+     * Log event with the specified event type, event properties, and optional event options.
+     *
+     * @param eventType the event type
+     * @param eventProperties the event properties
+     * @param options optional event options
+     * @return the Amplitude
      */
     fun track(eventType: String, eventProperties: JSONObject? = null, options: EventOptions? = null): Amplitude {
         val event = BaseEvent()
@@ -103,7 +112,12 @@ open class Amplitude internal constructor(
     }
 
     /**
-     * Identify. Use this to send an Identify object containing user property operations to Amplitude server.
+     * Identify lets you to send an Identify object containing user property operations to Amplitude server.
+     * You can modify user properties by calling this api.
+     *
+     * @param identify identify object
+     * @param options optional event options
+     * @return the Amplitude
      */
     fun identify(identify: Identify, options: EventOptions? = null): Amplitude {
         val event = IdentifyEvent()
@@ -116,7 +130,10 @@ open class Amplitude internal constructor(
     }
 
     /**
-     * Sets the user id (can be null).
+     * Set the user id (can be null).
+     *
+     * @param userId custom user id
+     * @return the Amplitude
      */
     fun setUserId(userId: String?): Amplitude {
         this.idContainer.identityManager.editIdentity().setUserId(userId).commit()
@@ -125,6 +142,9 @@ open class Amplitude internal constructor(
 
     /**
      * Sets a custom device id. <b>Note: only do this if you know what you are doing!</b>
+     *
+     * @param deviceId custom device id
+     * @return the Amplitude
      */
     fun setDeviceId(deviceId: String): Amplitude {
         this.idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
@@ -132,7 +152,13 @@ open class Amplitude internal constructor(
     }
 
     /**
-     * Identify a group
+     * Identify a group. You can modify group properties by calling this api.
+     *
+     * @param groupType the group type
+     * @param groupName the group name
+     * @param identify identify object
+     * @param options optional event options
+     * @return the Amplitude
      */
     fun groupIdentify(groupType: String, groupName: String, identify: Identify, options: EventOptions? = null): Amplitude {
         val event = GroupIdentifyEvent()
@@ -153,6 +179,11 @@ open class Amplitude internal constructor(
 
     /**
      * Set the user's group.
+     *
+     * @param groupType the group type
+     * @param groupName the group name
+     * @param options optional event options
+     * @return the Amplitude
      */
     fun setGroup(groupType: String, groupName: String, options: EventOptions? = null): Amplitude {
         val identify = Identify().set(groupType, groupName)
@@ -162,6 +193,11 @@ open class Amplitude internal constructor(
 
     /**
      * Sets the user's groups.
+     *
+     * @param groupType the group type
+     * @param groupName the group name
+     * @param options optional event options
+     * @return the Amplitude
      */
     fun setGroup(groupType: String, groupName: Array<String>, options: EventOptions? = null): Amplitude {
         val identify = Identify().set(groupType, groupName)
@@ -178,6 +214,10 @@ open class Amplitude internal constructor(
     /**
      * Create a Revenue object to hold your revenue data and properties,
      * and log it as a revenue event using this method.
+     *
+     * @param revenue revenue object
+     * @param options optional event options
+     * @return the Amplitude
      */
     fun revenue(revenue: Revenue, options: EventOptions? = null): Amplitude {
         if (!revenue.isValid()) {
@@ -193,7 +233,10 @@ open class Amplitude internal constructor(
     }
 
     /**
-     * Log a Revenue Event
+     * Log a Revenue Event.
+     *
+     * @param event the revenue event
+     * @return the Amplitude
      */
     fun revenue(event: RevenueEvent): Amplitude {
         process(event)
@@ -209,6 +252,12 @@ open class Amplitude internal constructor(
         }
     }
 
+    /**
+     * Add a plugin.
+     *
+     * @param plugin the plugin
+     * @return the Amplitude
+     */
     fun add(plugin: Plugin): Amplitude {
         when (plugin) {
             is ObservePlugin -> {
