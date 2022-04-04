@@ -24,9 +24,15 @@ class MainActivity : AppCompatActivity() {
         amplitude.identify(identify, options)
 
         // set groups fro this user
-        amplitude.setGroup("test-group-type", "android-kotlin-sample")
+        val groupType = "test-group-type"
+        val groupName = "android-kotlin-sample"
+        amplitude.setGroup(groupType, groupName)
         amplitude.setGroup("orgId", "15")
         amplitude.setGroup("sport", arrayOf("tennis", "soccer")) // list values
+
+        // group identify to set group properties
+        val groupIdentifyObj = Identify().set("key", "value")
+        amplitude.groupIdentify(groupType, groupName, groupIdentifyObj)
 
         // log revenue call
         val revenue = Revenue()
