@@ -29,6 +29,11 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.util.concurrent.Executors
 
+/**
+ * <h1>Amplitude</h1>
+ * This is the SDK instance class that contains all of the SDK functionality.<br><br>
+ * Many of the SDK functions return the SDK instance back, allowing you to chain multiple method calls together
+ */
 open class Amplitude internal constructor(
     val configuration: Configuration,
     val store: State,
@@ -68,18 +73,25 @@ open class Amplitude internal constructor(
     }
 
     @Deprecated("Please use 'track' instead.", ReplaceWith("track"))
-    fun logEvent(event: BaseEvent) {
-        track(event)
+    fun logEvent(event: BaseEvent): Amplitude {
+        return track(event)
     }
 
-    fun track(event: BaseEvent, callback: EventCallBack? = null) {
+    /**
+     * Track an event
+     */
+    fun track(event: BaseEvent, callback: EventCallBack? = null): Amplitude {
         callback ?. let {
             event.callback = it
         }
         process(event)
+        return this
     }
 
-    fun track(eventType: String, eventProperties: JSONObject? = null, options: EventOptions? = null) {
+    /**
+     * Log event with the specified event type, event properties, and optional event options
+     */
+    fun track(eventType: String, eventProperties: JSONObject? = null, options: EventOptions? = null): Amplitude {
         val event = BaseEvent()
         event.eventType = eventType
         event.eventProperties = eventProperties
@@ -87,35 +99,48 @@ open class Amplitude internal constructor(
             event.mergeEventOptions(it)
         }
         process(event)
+        return this
     }
 
     /**
      * Identify. Use this to send an Identify object containing user property operations to Amplitude server.
      */
-    fun identify(identify: Identify, options: EventOptions? = null) {
+    fun identify(identify: Identify, options: EventOptions? = null): Amplitude {
         val event = IdentifyEvent()
         event.userProperties = identify.properties
         options ?. let {
             event.mergeEventOptions(it)
         }
         process(event)
+        return this
     }
 
-    fun identify(userId: String) {
+    /**
+     * Sets the user id (can be null).
+     */
+    fun setUserId(userId: String?): Amplitude {
         this.idContainer.identityManager.editIdentity().setUserId(userId).commit()
+        return this
     }
 
-    fun setDeviceId(deviceId: String) {
+    /**
+     * Sets a custom device id. <b>Note: only do this if you know what you are doing!</b>
+     */
+    fun setDeviceId(deviceId: String): Amplitude {
         this.idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
+        return this
     }
 
-    fun groupIdentify(groupType: String, groupName: String, identify: Identify, options: EventOptions? = null) {
+    /**
+     * Identify a group
+     */
+    fun groupIdentify(groupType: String, groupName: String, identify: Identify, options: EventOptions? = null): Amplitude {
         val event = GroupIdentifyEvent()
         var group: JSONObject? = null
         try {
             group = JSONObject().put(groupType, groupName)
         } catch (e: Exception) {
-            logger.error(e.toString())
+            logger.error("Error in groupIdentif: ${e.toString()}")
         }
         event.groups = group
         event.groupProperties = identify.properties
@@ -123,49 +148,56 @@ open class Amplitude internal constructor(
             event.mergeEventOptions(it)
         }
         process(event)
+        return this
     }
 
     /**
      * Sets the user's group.
      */
-    fun setGroup(groupType: String, groupName: String, options: EventOptions? = null) {
+    fun setGroup(groupType: String, groupName: String, options: EventOptions? = null): Amplitude {
         val identify = Identify().set(groupType, groupName)
         identify(identify, options)
+        return this
     }
 
     /**
      * ets the user's groups.
      */
-    fun setGroup(groupType: String, groupName: Array<String>, options: EventOptions? = null) {
+    fun setGroup(groupType: String, groupName: Array<String>, options: EventOptions? = null): Amplitude {
         val identify = Identify().set(groupType, groupName)
         identify(identify, options)
+        return this
     }
 
     @Deprecated("Please use 'revenue' instead.", ReplaceWith("revenue"))
-    fun logRevenue(revenue: Revenue) {
+    fun logRevenue(revenue: Revenue): Amplitude {
         revenue(revenue)
+        return this
     }
 
     /**
      * Create a Revenue object to hold your revenue data and properties,
      * and log it as a revenue event using this method.
      */
-    fun revenue(revenue: Revenue, options: EventOptions? = null) {
+    fun revenue(revenue: Revenue, options: EventOptions? = null): Amplitude {
         if (!revenue.isValid()) {
-            return
+            logger.warn("Invalid revenue object, missing required fields")
+            return this
         }
         val event = revenue.toRevenueEvent()
         options ?. let {
             event.mergeEventOptions(it)
         }
         revenue(event)
+        return this
     }
 
     /**
      * Log a Revenue Event
      */
-    fun revenue(event: RevenueEvent) {
+    fun revenue(event: RevenueEvent): Amplitude {
         process(event)
+        return this
     }
 
     private fun process(event: BaseEvent) {
