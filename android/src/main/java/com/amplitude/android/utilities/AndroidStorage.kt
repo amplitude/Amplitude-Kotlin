@@ -92,7 +92,10 @@ class AndroidStorage(
     }
 
     override fun getEventCallback(insertId: String): EventCallBack? {
-        return eventCallbacksMap.getOrDefault(insertId, null)
+        if (eventCallbacksMap.contains(insertId)) {
+            return eventCallbacksMap.get(insertId)
+        }
+        return null
     }
 
     override fun removeEventCallback(insertId: String) {

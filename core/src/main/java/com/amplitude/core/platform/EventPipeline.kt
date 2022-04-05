@@ -80,7 +80,7 @@ class EventPipeline(
                 storage.writeEvent(message.event)
             } catch (e: Exception) {
                 e.message?.let {
-                    amplitude.logger.error(it)
+                    amplitude.logger.error("Error when write event: $it")
                 }
             }
 
@@ -117,7 +117,7 @@ class EventPipeline(
                     responseHandler?.handle(connection.response)
                 } catch (e: Exception) {
                     e.message?.let {
-                        amplitude.logger.error(it)
+                        amplitude.logger.error("Error when upload event: $it")
                     }
                 }
             }
