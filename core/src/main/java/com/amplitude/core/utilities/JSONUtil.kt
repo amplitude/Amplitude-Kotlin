@@ -48,6 +48,7 @@ object JSONUtil {
         eventJSON.addValue("insert_id", event.insertId)
         eventJSON.addValue("library", event.library)
         eventJSON.addValue("partner_id", event.partnerId)
+        eventJSON.addValue("android_app_set_id", event.appSetId)
         event.plan?. let {
             eventJSON.put("plan", it.toJSONObject())
         }
@@ -157,50 +158,51 @@ internal fun JSONArray.toIntArray(): IntArray {
 internal fun JSONObject.toBaseEvent(): BaseEvent {
     val event = BaseEvent()
     event.eventType = this.getString("event_type")
-    event.userId = this.optString("user_id", null)
-    event.deviceId = this.optString("device_id", null)
+    event.userId = this.optionalString("user_id", null)
+    event.deviceId = this.optionalString("device_id", null)
     event.timestamp = if (this.has("time")) this.getLong("time") else null
-    event.eventProperties = this.optJSONObject("event_properties", null)
-    event.userProperties = this.optJSONObject("user_properties", null)
-    event.groups = this.optJSONObject("groups", null)
-    event.appVersion = this.optString("app_version", null)
-    event.platform = this.optString("platform", null)
-    event.osName = this.optString("os_name", null)
-    event.osVersion = this.optString("os_version", null)
-    event.deviceBrand = this.optString("device_brand", null)
-    event.deviceManufacturer = this.optString("device_manufacturer", null)
-    event.deviceModel = this.optString("device_model", null)
-    event.carrier = this.optString("carrier", null)
-    event.country = this.optString("country", null)
-    event.region = this.optString("region", null)
-    event.city = this.optString("city", null)
-    event.dma = this.optString("dma", null)
-    event.language = this.optString("language", null)
+    event.eventProperties = this.optionalJSONObject("event_properties", null)
+    event.userProperties = this.optionalJSONObject("user_properties", null)
+    event.groups = this.optionalJSONObject("groups", null)
+    event.appVersion = this.optionalString("app_version", null)
+    event.platform = this.optionalString("platform", null)
+    event.osName = this.optionalString("os_name", null)
+    event.osVersion = this.optionalString("os_version", null)
+    event.deviceBrand = this.optionalString("device_brand", null)
+    event.deviceManufacturer = this.optionalString("device_manufacturer", null)
+    event.deviceModel = this.optionalString("device_model", null)
+    event.carrier = this.optionalString("carrier", null)
+    event.country = this.optionalString("country", null)
+    event.region = this.optionalString("region", null)
+    event.city = this.optionalString("city", null)
+    event.dma = this.optionalString("dma", null)
+    event.language = this.optionalString("language", null)
     event.price = if (this.has("price")) this.getDouble("price") else null
     event.quantity = if (this.has("quantity")) this.getInt("quantity") else null
     event.revenue = if (this.has("revenue")) this.getDouble("revenue") else null
-    event.productId = this.optString("productId", null)
-    event.revenueType = this.optString("revenueType", null)
+    event.productId = this.optionalString("productId", null)
+    event.revenueType = this.optionalString("revenueType", null)
     event.locationLat = if (this.has("location_lat")) this.getDouble("location_lat") else null
     event.locationLng = if (this.has("location_lng")) this.getDouble("location_lng") else null
-    event.ip = this.optString("ip", null)
-    event.idfa = this.optString("idfa", null)
-    event.idfv = this.optString("idfv", null)
-    event.adid = this.optString("adid", null)
-    event.androidId = this.optString("android_id", null)
+    event.ip = this.optionalString("ip", null)
+    event.idfa = this.optionalString("idfa", null)
+    event.idfv = this.optionalString("idfv", null)
+    event.adid = this.optionalString("adid", null)
+    event.androidId = this.optionalString("android_id", null)
+    event.appSetId = this.optString("android_app_set_id", null)
     event.eventId = if (this.has("event_id")) this.getInt("event_id") else null
     event.sessionId = this.getLong("session_id")
-    event.insertId = this.optString("insert_id", null)
+    event.insertId = this.optionalString("insert_id", null)
     event.library = if (this.has("library")) this.getString("library") else null
-    event.partnerId = this.optString("partner_id", null)
+    event.partnerId = this.optionalString("partner_id", null)
     event.plan = if (this.has("plan")) Plan.fromJSONObject(this.getJSONObject("plan")) else null
     return event
 }
 
 internal fun JSONArray.toEvents(): List<BaseEvent> {
     val events = mutableListOf<BaseEvent>()
-    this.forEach {
-        events.add((it as JSONObject).toBaseEvent())
+    (0 until this.length()).forEach {
+        events.add((this.getJSONObject(it)).toBaseEvent())
     }
     return events
 }
@@ -209,11 +211,11 @@ internal fun JSONArray.split(): Pair<String, String> {
     val mid = this.length() / 2
     val firstHalf = JSONArray()
     val secondHalf = JSONArray()
-    this.forEachIndexed { index, obj ->
+    (0 until this.length()).forEach { index, ->
         if (index < mid) {
-            firstHalf.put(obj)
+            firstHalf.put(this.getJSONObject(index))
         } else {
-            secondHalf.put(obj)
+            secondHalf.put(this.getJSONObject(index))
         }
     }
     return Pair(firstHalf.toString(), secondHalf.toString())
@@ -223,4 +225,18 @@ internal fun JSONObject.addValue(key: String, value: Any?) {
     value?.let {
         this.put(key, value)
     }
+}
+
+inline fun JSONObject.optionalJSONObject(key: String, defaultValue: JSONObject?): JSONObject? {
+    if (this.has(key)) {
+        return this.getJSONObject(key)
+    }
+    return defaultValue
+}
+
+inline fun JSONObject.optionalString(key: String, defaultValue: String?): String? {
+    if (this.has(key)) {
+        return this.getString(key)
+    }
+    return defaultValue
 }

@@ -569,7 +569,7 @@ class Identify() {
             properties.getJSONObject(operation.operationType).put(property, value)
             propertySet.add(property)
         } catch (e: Exception) {
-            ConsoleLogger.logger.error(e.toString())
+            ConsoleLogger.logger.error("Error in set user property: $e")
         }
     }
 
