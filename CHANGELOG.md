@@ -1,3 +1,10 @@
+# [0.1.0-beta.2](https://github.com/amplitude/Amplitude-Kotlin/compare/0.1.0-beta.1...0.1.0-beta.2) (2022-04-05)
+
+
+### Features
+
+* add Kotlin android sample ([#23](https://github.com/amplitude/Amplitude-Kotlin/issues/23)) ([3b948c8](https://github.com/amplitude/Amplitude-Kotlin/commit/3b948c8bac688ff2896bc7e634e1519c5520ce65))
+
 # [0.1.0-beta.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v0.0.0...0.1.0-beta.1) (2022-03-31)
 
 
