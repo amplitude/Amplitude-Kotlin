@@ -82,7 +82,7 @@ open class Amplitude internal constructor(
      *
      * @param event the event
      * @param callback the optional event callback
-     * @return the Amplitude
+     * @return the Amplitude instance
      */
     fun track(event: BaseEvent, callback: EventCallBack? = null): Amplitude {
         callback ?. let {
@@ -98,7 +98,7 @@ open class Amplitude internal constructor(
      * @param eventType the event type
      * @param eventProperties the event properties
      * @param options optional event options
-     * @return the Amplitude
+     * @return the Amplitude instance
      */
     fun track(eventType: String, eventProperties: JSONObject? = null, options: EventOptions? = null): Amplitude {
         val event = BaseEvent()
@@ -117,7 +117,7 @@ open class Amplitude internal constructor(
      *
      * @param identify identify object
      * @param options optional event options
-     * @return the Amplitude
+     * @return the Amplitude instance
      */
     fun identify(identify: Identify, options: EventOptions? = null): Amplitude {
         val event = IdentifyEvent()
@@ -133,7 +133,7 @@ open class Amplitude internal constructor(
      * Set the user id (can be null).
      *
      * @param userId custom user id
-     * @return the Amplitude
+     * @return the Amplitude instance
      */
     fun setUserId(userId: String?): Amplitude {
         this.idContainer.identityManager.editIdentity().setUserId(userId).commit()
@@ -144,7 +144,7 @@ open class Amplitude internal constructor(
      * Sets a custom device id. <b>Note: only do this if you know what you are doing!</b>
      *
      * @param deviceId custom device id
-     * @return the Amplitude
+     * @return the Amplitude instance
      */
     fun setDeviceId(deviceId: String): Amplitude {
         this.idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
@@ -158,7 +158,7 @@ open class Amplitude internal constructor(
      * @param groupName the group name
      * @param identify identify object
      * @param options optional event options
-     * @return the Amplitude
+     * @return the Amplitude instance
      */
     fun groupIdentify(groupType: String, groupName: String, identify: Identify, options: EventOptions? = null): Amplitude {
         val event = GroupIdentifyEvent()
@@ -183,7 +183,7 @@ open class Amplitude internal constructor(
      * @param groupType the group type
      * @param groupName the group name
      * @param options optional event options
-     * @return the Amplitude
+     * @return the Amplitude instance
      */
     fun setGroup(groupType: String, groupName: String, options: EventOptions? = null): Amplitude {
         val identify = Identify().set(groupType, groupName)
@@ -197,7 +197,7 @@ open class Amplitude internal constructor(
      * @param groupType the group type
      * @param groupName the group name
      * @param options optional event options
-     * @return the Amplitude
+     * @return the Amplitude instance
      */
     fun setGroup(groupType: String, groupName: Array<String>, options: EventOptions? = null): Amplitude {
         val identify = Identify().set(groupType, groupName)
@@ -217,7 +217,7 @@ open class Amplitude internal constructor(
      *
      * @param revenue revenue object
      * @param options optional event options
-     * @return the Amplitude
+     * @return the Amplitude instance
      */
     fun revenue(revenue: Revenue, options: EventOptions? = null): Amplitude {
         if (!revenue.isValid()) {
@@ -236,7 +236,7 @@ open class Amplitude internal constructor(
      * Log a Revenue Event.
      *
      * @param event the revenue event
-     * @return the Amplitude
+     * @return the Amplitude instance
      */
     fun revenue(event: RevenueEvent): Amplitude {
         process(event)
@@ -256,7 +256,7 @@ open class Amplitude internal constructor(
      * Add a plugin.
      *
      * @param plugin the plugin
-     * @return the Amplitude
+     * @return the Amplitude instance
      */
     fun add(plugin: Plugin): Amplitude {
         when (plugin) {
