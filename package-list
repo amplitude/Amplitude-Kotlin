@@ -23,3 +23,5 @@ com.amplitude.eventbridge
 module:id
 com.amplitude.id
 com.amplitude.id.utilities
+module:kotlin-android-app
+com.amplitude.android.sample
