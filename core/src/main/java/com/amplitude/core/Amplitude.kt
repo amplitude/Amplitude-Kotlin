@@ -84,6 +84,7 @@ open class Amplitude internal constructor(
      * @param callback the optional event callback
      * @return the Amplitude instance
      */
+    @JvmOverloads
     fun track(event: BaseEvent, callback: EventCallBack? = null): Amplitude {
         callback ?. let {
             event.callback = it
@@ -100,6 +101,7 @@ open class Amplitude internal constructor(
      * @param options optional event options
      * @return the Amplitude instance
      */
+    @JvmOverloads
     fun track(eventType: String, eventProperties: JSONObject? = null, options: EventOptions? = null): Amplitude {
         val event = BaseEvent()
         event.eventType = eventType
@@ -119,6 +121,7 @@ open class Amplitude internal constructor(
      * @param options optional event options
      * @return the Amplitude instance
      */
+    @JvmOverloads
     fun identify(identify: Identify, options: EventOptions? = null): Amplitude {
         val event = IdentifyEvent()
         event.userProperties = identify.properties
@@ -160,6 +163,7 @@ open class Amplitude internal constructor(
      * @param options optional event options
      * @return the Amplitude instance
      */
+    @JvmOverloads
     fun groupIdentify(groupType: String, groupName: String, identify: Identify, options: EventOptions? = null): Amplitude {
         val event = GroupIdentifyEvent()
         var group: JSONObject? = null
@@ -185,6 +189,7 @@ open class Amplitude internal constructor(
      * @param options optional event options
      * @return the Amplitude instance
      */
+    @JvmOverloads
     fun setGroup(groupType: String, groupName: String, options: EventOptions? = null): Amplitude {
         val identify = Identify().set(groupType, groupName)
         identify(identify, options)
@@ -199,6 +204,7 @@ open class Amplitude internal constructor(
      * @param options optional event options
      * @return the Amplitude instance
      */
+    @JvmOverloads
     fun setGroup(groupType: String, groupName: Array<String>, options: EventOptions? = null): Amplitude {
         val identify = Identify().set(groupType, groupName)
         identify(identify, options)
@@ -219,6 +225,7 @@ open class Amplitude internal constructor(
      * @param options optional event options
      * @return the Amplitude instance
      */
+    @JvmOverloads
     fun revenue(revenue: Revenue, options: EventOptions? = null): Amplitude {
         if (!revenue.isValid()) {
             logger.warn("Invalid revenue object, missing required fields")

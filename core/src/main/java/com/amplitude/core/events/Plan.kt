@@ -4,7 +4,7 @@ import com.amplitude.common.jvm.ConsoleLogger
 import org.json.JSONException
 import org.json.JSONObject
 
-data class Plan(
+data class Plan @JvmOverloads constructor(
     val branch: String? = null,
     val source: String? = null,
     val version: String? = null,

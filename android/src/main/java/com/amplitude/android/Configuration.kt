@@ -9,7 +9,7 @@ import com.amplitude.core.LoggerProvider
 import com.amplitude.core.ServerZone
 import com.amplitude.core.StorageProvider
 
-class Configuration(
+class Configuration @JvmOverloads constructor(
     apiKey: String,
     val context: Context,
     flushQueueSize: Int = FLUSH_QUEUE_SIZE,

@@ -63,32 +63,32 @@ class Identify() {
     }
 
     fun set(property: String, value: Array<Boolean>): Identify {
-        setUserProperty(IdentifyOperation.SET, property, value)
+        setUserProperty(IdentifyOperation.SET, property, booleanArrayToJSONArray(value))
         return this
     }
 
     fun set(property: String, value: Array<Double>): Identify {
-        setUserProperty(IdentifyOperation.SET, property, value)
+        setUserProperty(IdentifyOperation.SET, property, doubleArrayToJSONArray(value))
         return this
     }
 
     fun set(property: String, value: Array<Float>): Identify {
-        setUserProperty(IdentifyOperation.SET, property, value)
+        setUserProperty(IdentifyOperation.SET, property, floatArrayToJSONArray(value))
         return this
     }
 
     fun set(property: String, value: Array<Int>): Identify {
-        setUserProperty(IdentifyOperation.SET, property, value)
+        setUserProperty(IdentifyOperation.SET, property, intArrayToJSONArray(value))
         return this
     }
 
     fun set(property: String, value: Array<Long>): Identify {
-        setUserProperty(IdentifyOperation.SET, property, value)
+        setUserProperty(IdentifyOperation.SET, property, longArrayToJSONArray(value))
         return this
     }
 
     fun set(property: String, value: Array<String>): Identify {
-        setUserProperty(IdentifyOperation.SET, property, value)
+        setUserProperty(IdentifyOperation.SET, property, stringArrayToJSONArray(value))
         return this
     }
 
@@ -133,32 +133,32 @@ class Identify() {
     }
 
     fun setOnce(property: String, value: Array<Boolean>): Identify {
-        setUserProperty(IdentifyOperation.SET_ONCE, property, value)
+        setUserProperty(IdentifyOperation.SET_ONCE, property, booleanArrayToJSONArray(value))
         return this
     }
 
     fun setOnce(property: String, value: Array<Double>): Identify {
-        setUserProperty(IdentifyOperation.SET_ONCE, property, value)
+        setUserProperty(IdentifyOperation.SET_ONCE, property, doubleArrayToJSONArray(value))
         return this
     }
 
     fun setOnce(property: String, value: Array<Float>): Identify {
-        setUserProperty(IdentifyOperation.SET_ONCE, property, value)
+        setUserProperty(IdentifyOperation.SET_ONCE, property, floatArrayToJSONArray(value))
         return this
     }
 
     fun setOnce(property: String, value: Array<Int>): Identify {
-        setUserProperty(IdentifyOperation.SET_ONCE, property, value)
+        setUserProperty(IdentifyOperation.SET_ONCE, property, intArrayToJSONArray(value))
         return this
     }
 
     fun setOnce(property: String, value: Array<Long>): Identify {
-        setUserProperty(IdentifyOperation.SET_ONCE, property, value)
+        setUserProperty(IdentifyOperation.SET_ONCE, property, longArrayToJSONArray(value))
         return this
     }
 
     fun setOnce(property: String, value: Array<String>): Identify {
-        setUserProperty(IdentifyOperation.SET_ONCE, property, value)
+        setUserProperty(IdentifyOperation.SET_ONCE, property, stringArrayToJSONArray(value))
         return this
     }
 
@@ -203,32 +203,32 @@ class Identify() {
     }
 
     fun prepend(property: String, value: Array<Boolean>): Identify {
-        setUserProperty(IdentifyOperation.PREPEND, property, value)
+        setUserProperty(IdentifyOperation.PREPEND, property, booleanArrayToJSONArray(value))
         return this
     }
 
     fun prepend(property: String, value: Array<Double>): Identify {
-        setUserProperty(IdentifyOperation.PREPEND, property, value)
+        setUserProperty(IdentifyOperation.PREPEND, property, doubleArrayToJSONArray(value))
         return this
     }
 
     fun prepend(property: String, value: Array<Float>): Identify {
-        setUserProperty(IdentifyOperation.PREPEND, property, value)
+        setUserProperty(IdentifyOperation.PREPEND, property, floatArrayToJSONArray(value))
         return this
     }
 
     fun prepend(property: String, value: Array<Int>): Identify {
-        setUserProperty(IdentifyOperation.PREPEND, property, value)
+        setUserProperty(IdentifyOperation.PREPEND, property, intArrayToJSONArray(value))
         return this
     }
 
     fun prepend(property: String, value: Array<Long>): Identify {
-        setUserProperty(IdentifyOperation.PREPEND, property, value)
+        setUserProperty(IdentifyOperation.PREPEND, property, longArrayToJSONArray(value))
         return this
     }
 
     fun prepend(property: String, value: Array<String>): Identify {
-        setUserProperty(IdentifyOperation.PREPEND, property, value)
+        setUserProperty(IdentifyOperation.PREPEND, property, stringArrayToJSONArray(value))
         return this
     }
 
@@ -273,32 +273,32 @@ class Identify() {
     }
 
     fun append(property: String, value: Array<Boolean>): Identify {
-        setUserProperty(IdentifyOperation.APPEND, property, value)
+        setUserProperty(IdentifyOperation.APPEND, property, booleanArrayToJSONArray(value))
         return this
     }
 
     fun append(property: String, value: Array<Double>): Identify {
-        setUserProperty(IdentifyOperation.APPEND, property, value)
+        setUserProperty(IdentifyOperation.APPEND, property, doubleArrayToJSONArray(value))
         return this
     }
 
     fun append(property: String, value: Array<Float>): Identify {
-        setUserProperty(IdentifyOperation.APPEND, property, value)
+        setUserProperty(IdentifyOperation.APPEND, property, floatArrayToJSONArray(value))
         return this
     }
 
     fun append(property: String, value: Array<Int>): Identify {
-        setUserProperty(IdentifyOperation.APPEND, property, value)
+        setUserProperty(IdentifyOperation.APPEND, property, intArrayToJSONArray(value))
         return this
     }
 
     fun append(property: String, value: Array<Long>): Identify {
-        setUserProperty(IdentifyOperation.APPEND, property, value)
+        setUserProperty(IdentifyOperation.APPEND, property, longArrayToJSONArray(value))
         return this
     }
 
     fun append(property: String, value: Array<String>): Identify {
-        setUserProperty(IdentifyOperation.APPEND, property, value)
+        setUserProperty(IdentifyOperation.APPEND, property, stringArrayToJSONArray(value))
         return this
     }
 
@@ -343,32 +343,32 @@ class Identify() {
     }
 
     fun postInsert(property: String, value: Array<Boolean>): Identify {
-        setUserProperty(IdentifyOperation.POST_INSERT, property, value)
+        setUserProperty(IdentifyOperation.POST_INSERT, property, booleanArrayToJSONArray(value))
         return this
     }
 
     fun postInsert(property: String, value: Array<Double>): Identify {
-        setUserProperty(IdentifyOperation.POST_INSERT, property, value)
+        setUserProperty(IdentifyOperation.POST_INSERT, property, doubleArrayToJSONArray(value))
         return this
     }
 
     fun postInsert(property: String, value: Array<Float>): Identify {
-        setUserProperty(IdentifyOperation.POST_INSERT, property, value)
+        setUserProperty(IdentifyOperation.POST_INSERT, property, floatArrayToJSONArray(value))
         return this
     }
 
     fun postInsert(property: String, value: Array<Int>): Identify {
-        setUserProperty(IdentifyOperation.POST_INSERT, property, value)
+        setUserProperty(IdentifyOperation.POST_INSERT, property, intArrayToJSONArray(value))
         return this
     }
 
     fun postInsert(property: String, value: Array<Long>): Identify {
-        setUserProperty(IdentifyOperation.POST_INSERT, property, value)
+        setUserProperty(IdentifyOperation.POST_INSERT, property, longArrayToJSONArray(value))
         return this
     }
 
     fun postInsert(property: String, value: Array<String>): Identify {
-        setUserProperty(IdentifyOperation.POST_INSERT, property, value)
+        setUserProperty(IdentifyOperation.POST_INSERT, property, stringArrayToJSONArray(value))
         return this
     }
 
@@ -413,32 +413,32 @@ class Identify() {
     }
 
     fun preInsert(property: String, value: Array<Boolean>): Identify {
-        setUserProperty(IdentifyOperation.PRE_INSERT, property, value)
+        setUserProperty(IdentifyOperation.PRE_INSERT, property, booleanArrayToJSONArray(value))
         return this
     }
 
     fun preInsert(property: String, value: Array<Double>): Identify {
-        setUserProperty(IdentifyOperation.PRE_INSERT, property, value)
+        setUserProperty(IdentifyOperation.PRE_INSERT, property, doubleArrayToJSONArray(value))
         return this
     }
 
     fun preInsert(property: String, value: Array<Float>): Identify {
-        setUserProperty(IdentifyOperation.PRE_INSERT, property, value)
+        setUserProperty(IdentifyOperation.PRE_INSERT, property, floatArrayToJSONArray(value))
         return this
     }
 
     fun preInsert(property: String, value: Array<Int>): Identify {
-        setUserProperty(IdentifyOperation.PRE_INSERT, property, value)
+        setUserProperty(IdentifyOperation.PRE_INSERT, property, intArrayToJSONArray(value))
         return this
     }
 
     fun preInsert(property: String, value: Array<Long>): Identify {
-        setUserProperty(IdentifyOperation.PRE_INSERT, property, value)
+        setUserProperty(IdentifyOperation.PRE_INSERT, property, longArrayToJSONArray(value))
         return this
     }
 
     fun preInsert(property: String, value: Array<String>): Identify {
-        setUserProperty(IdentifyOperation.PRE_INSERT, property, value)
+        setUserProperty(IdentifyOperation.PRE_INSERT, property, stringArrayToJSONArray(value))
         return this
     }
 
@@ -483,32 +483,32 @@ class Identify() {
     }
 
     fun remove(property: String, value: Array<Boolean>): Identify {
-        setUserProperty(IdentifyOperation.REMOVE, property, value)
+        setUserProperty(IdentifyOperation.REMOVE, property, booleanArrayToJSONArray(value))
         return this
     }
 
     fun remove(property: String, value: Array<Double>): Identify {
-        setUserProperty(IdentifyOperation.REMOVE, property, value)
+        setUserProperty(IdentifyOperation.REMOVE, property, doubleArrayToJSONArray(value))
         return this
     }
 
     fun remove(property: String, value: Array<Float>): Identify {
-        setUserProperty(IdentifyOperation.REMOVE, property, value)
+        setUserProperty(IdentifyOperation.REMOVE, property, floatArrayToJSONArray(value))
         return this
     }
 
     fun remove(property: String, value: Array<Int>): Identify {
-        setUserProperty(IdentifyOperation.REMOVE, property, value)
+        setUserProperty(IdentifyOperation.REMOVE, property, intArrayToJSONArray(value))
         return this
     }
 
     fun remove(property: String, value: Array<Long>): Identify {
-        setUserProperty(IdentifyOperation.REMOVE, property, value)
+        setUserProperty(IdentifyOperation.REMOVE, property, longArrayToJSONArray(value))
         return this
     }
 
     fun remove(property: String, value: Array<String>): Identify {
-        setUserProperty(IdentifyOperation.REMOVE, property, value)
+        setUserProperty(IdentifyOperation.REMOVE, property, stringArrayToJSONArray(value))
         return this
     }
 
@@ -571,6 +571,54 @@ class Identify() {
         } catch (e: Exception) {
             ConsoleLogger.logger.error("Error in set user property: $e")
         }
+    }
+
+    private fun booleanArrayToJSONArray(values: Array<Boolean>): JSONArray {
+        val array = JSONArray()
+        for (value in values) array.put(value)
+        return array
+    }
+
+    private fun floatArrayToJSONArray(values: Array<Float>): JSONArray {
+        val array = JSONArray()
+        for (value in values) {
+            try {
+                array.put(value.toDouble())
+            } catch (e: Exception) {
+                ConsoleLogger.logger.error("Error converting float $value to JSON: $e")
+            }
+        }
+        return array
+    }
+
+    private fun doubleArrayToJSONArray(values: Array<Double>): JSONArray {
+        val array = JSONArray()
+        for (value in values) {
+            try {
+                array.put(value)
+            } catch (e: Exception) {
+                ConsoleLogger.logger.error("Error converting double $value to JSON: $e")
+            }
+        }
+        return array
+    }
+
+    private fun intArrayToJSONArray(values: Array<Int>): JSONArray {
+        val array = JSONArray()
+        for (value in values) array.put(value)
+        return array
+    }
+
+    private fun longArrayToJSONArray(values: Array<Long>): JSONArray {
+        val array = JSONArray()
+        for (value in values) array.put(value)
+        return array
+    }
+
+    private fun stringArrayToJSONArray(values: Array<String>): JSONArray {
+        val array = JSONArray()
+        for (value in values) array.put(value)
+        return array
     }
 
     companion object {
