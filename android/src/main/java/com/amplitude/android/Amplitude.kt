@@ -17,11 +17,11 @@ open class Amplitude(
     configuration: Configuration
 ) : Amplitude(configuration) {
 
-    private var inForeground = false
+    internal var inForeground = false
     var sessionId: Long = -1
         private set
-    private var lastEventId: Long = -1
-    private var lastEventTime: Long = -1
+    internal var lastEventId: Long = 0
+    var lastEventTime: Long = -1
     private var previousSessionId: Long = -1
 
     override fun build() {
@@ -39,7 +39,15 @@ open class Amplitude(
             previousSessionId = storage.read(Storage.Constants.PREVIOUS_SESSION_ID) ?.let {
                 it.toLong()
             } ?: -1
-
+            if (previousSessionId >= 0) {
+                sessionId = previousSessionId
+            }
+            lastEventId = storage.read(Storage.Constants.LAST_EVENT_ID) ?. let {
+                it.toLong()
+            } ?: 0
+            lastEventTime = storage.read(Storage.Constants.LAST_EVENT_TIME) ?. let {
+                it.toLong()
+            } ?: -1
             add(AndroidContextPlugin())
         }
         add(AmplitudeDestination())
