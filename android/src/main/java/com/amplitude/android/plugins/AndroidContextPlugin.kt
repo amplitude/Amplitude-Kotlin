@@ -58,14 +58,14 @@ class AndroidContextPlugin : Plugin {
         event.timestamp ?: let {
             val eventTime = System.currentTimeMillis()
             event.timestamp = eventTime
-            (amplitude as com.amplitude.android.Amplitude).lastEventTime = eventTime
+            getAndroidAmplitude().lastEventTime = eventTime
         }
         event.timestamp ?. let {
             if (!(event.eventType == START_SESSION_EVENT || event.eventType == END_SESSION_EVENT)) {
-                if (!(amplitude as com.amplitude.android.Amplitude).inForeground) {
-                    (amplitude as com.amplitude.android.Amplitude).startNewSessionIfNeeded(it)
+                if (!getAndroidAmplitude().inForeground) {
+                    getAndroidAmplitude().startNewSessionIfNeeded(it)
                 } else {
-                    (amplitude as com.amplitude.android.Amplitude).refreshSessionTime(it)
+                    getAndroidAmplitude().refreshSessionTime(it)
                 }
             }
         }
@@ -81,11 +81,11 @@ class AndroidContextPlugin : Plugin {
         event.deviceId ?: let {
             event.deviceId = amplitude.store.deviceId
         }
-        event.sessionId = (amplitude as com.amplitude.android.Amplitude).sessionId
+        event.sessionId = getAndroidAmplitude().sessionId
         event.eventId ?: let {
-            val newEventId = (amplitude as com.amplitude.android.Amplitude).lastEventId + 1
+            val newEventId = getAndroidAmplitude().lastEventId + 1
             event.eventId = newEventId
-            (amplitude as com.amplitude.android.Amplitude).lastEventId = newEventId
+            getAndroidAmplitude().lastEventId = newEventId
             amplitude.amplitudeScope.launch(amplitude.amplitudeDispatcher) {
                 amplitude.storage.write(Storage.Constants.LAST_EVENT_ID, newEventId.toString())
             }
@@ -145,6 +145,10 @@ class AndroidContextPlugin : Plugin {
                 event.partnerId = it
             }
         }
+    }
+
+    private fun getAndroidAmplitude(): com.amplitude.android.Amplitude {
+        return amplitude as com.amplitude.android.Amplitude
     }
 
     companion object {
