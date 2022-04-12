@@ -6,7 +6,7 @@ open class EventOptions {
     var userId: String? = null
     var deviceId: String? = null
     var timestamp: Long? = null
-    var eventId: Int? = null
+    var eventId: Long? = null
     var sessionId: Long = -1
     var insertId: String? = null
     var locationLat: Double? = null
