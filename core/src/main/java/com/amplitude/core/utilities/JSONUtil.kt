@@ -162,10 +162,10 @@ internal fun JSONObject.toBaseEvent(): BaseEvent {
     event.userId = this.optionalString("user_id", null)
     event.deviceId = this.optionalString("device_id", null)
     event.timestamp = if (this.has("time")) this.getLong("time") else null
-    event.eventProperties = this.optionalJSONObject("event_properties", null)?.let{ it.toMapObj().toMutableMap()}
-    event.userProperties = this.optionalJSONObject("user_properties", null)?.let{ it.toMapObj().toMutableMap()}
-    event.groups = this.optionalJSONObject("groups", null)?.let{ it.toMapObj().toMutableMap()}
-    event.groupProperties = this.optionalJSONObject("group_properties", null)?.let{ it.toMapObj().toMutableMap()}
+    event.eventProperties = this.optionalJSONObject("event_properties", null)?.let { it.toMapObj().toMutableMap() }
+    event.userProperties = this.optionalJSONObject("user_properties", null)?.let { it.toMapObj().toMutableMap() }
+    event.groups = this.optionalJSONObject("groups", null)?.let { it.toMapObj().toMutableMap() }
+    event.groupProperties = this.optionalJSONObject("group_properties", null)?.let { it.toMapObj().toMutableMap() }
     event.appVersion = this.optionalString("app_version", null)
     event.platform = this.optionalString("platform", null)
     event.osName = this.optionalString("os_name", null)

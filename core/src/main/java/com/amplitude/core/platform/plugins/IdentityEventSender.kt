@@ -3,7 +3,6 @@ package com.amplitude.core.platform.plugins
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
-import com.amplitude.core.utilities.toMapObj
 import com.amplitude.eventbridge.Event
 import com.amplitude.eventbridge.EventBridge
 import com.amplitude.eventbridge.EventBridgeContainer
