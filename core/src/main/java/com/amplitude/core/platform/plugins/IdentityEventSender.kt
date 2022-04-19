@@ -31,9 +31,9 @@ internal class IdentityEventSender : Plugin {
 internal fun BaseEvent.toBridgeEvent(): Event {
     return Event(
         this.eventType,
-        this.eventProperties?.toMapObj(),
-        this.userProperties?.toMapObj(),
-        this.groups?.toMapObj(),
-        this.groupProperties?.toMapObj()
+        this.eventProperties,
+        this.userProperties,
+        this.groups,
+        this.groupProperties
     )
 }

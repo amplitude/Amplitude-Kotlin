@@ -10,8 +10,7 @@ import com.amplitude.core.events.Identify;
 import com.amplitude.core.events.Plan;
 import com.amplitude.core.events.Revenue;
 
-import org.json.JSONException;
-import org.json.JSONObject;
+import java.util.HashMap;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -48,10 +47,8 @@ public class MainActivity extends AppCompatActivity {
         amplitude.revenue(revenue);
 
         // track event with event properties
-        try {
-            amplitude.track("test event properties", new JSONObject().put("test", "test event property value"));
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
+        amplitude.track("test event properties", new HashMap() {{
+            put("test", "test event property value");
+        }});
     }
 }

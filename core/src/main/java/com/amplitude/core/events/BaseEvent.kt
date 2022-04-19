@@ -1,13 +1,11 @@
 package com.amplitude.core.events
 
-import org.json.JSONObject
-
 open class BaseEvent : EventOptions() {
     open lateinit var eventType: String
-    var eventProperties: JSONObject? = null
-    var userProperties: JSONObject? = null
-    var groups: JSONObject? = null
-    var groupProperties: JSONObject? = null
+    var eventProperties: MutableMap<String, Any?>? = null
+    var userProperties: MutableMap<String, Any?>? = null
+    var groups: MutableMap<String, Any?>? = null
+    var groupProperties: MutableMap<String, Any?>? = null
 
     fun mergeEventOptions(options: EventOptions) {
         userId ?: let { userId = options.userId }

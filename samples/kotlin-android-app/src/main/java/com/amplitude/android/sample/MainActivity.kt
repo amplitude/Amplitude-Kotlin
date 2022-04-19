@@ -6,7 +6,6 @@ import com.amplitude.core.events.EventOptions
 import com.amplitude.core.events.Identify
 import com.amplitude.core.events.Plan
 import com.amplitude.core.events.Revenue
-import org.json.JSONObject
 
 class MainActivity : AppCompatActivity() {
     private val amplitude = MainApplication.amplitude
@@ -42,6 +41,6 @@ class MainActivity : AppCompatActivity() {
         amplitude.revenue(revenue)
 
         // track event with event properties
-        amplitude.track("test event properties", JSONObject().put("test", "test event property value"))
+        amplitude.track("test event properties", mutableMapOf("test" to "test event property value"))
     }
 }

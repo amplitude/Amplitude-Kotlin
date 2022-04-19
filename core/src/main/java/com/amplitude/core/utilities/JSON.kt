@@ -45,6 +45,17 @@ internal fun List<*>?.toJSONArray(): JSONArray? {
     return jsonArray
 }
 
+internal fun Array<*>?.toJSONArray(): JSONArray? {
+    if (this == null) {
+        return null
+    }
+    val jsonArray = JSONArray()
+    for (element in this) {
+        jsonArray.put(element.toJSON())
+    }
+    return jsonArray
+}
+
 private fun Any?.fromJSON(): Any? {
     return when (this) {
         is JSONObject -> this.toMapObj()
@@ -61,6 +72,7 @@ private fun Any?.toJSON(): Any? {
     return when (this) {
         is Map<*, *> -> this.toJSONObject()
         is List<*> -> this.toJSONArray()
+        is Array<*> -> this.toJSONArray()
         else -> this
     }
 }
