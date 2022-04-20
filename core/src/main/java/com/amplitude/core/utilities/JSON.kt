@@ -34,7 +34,7 @@ internal fun JSONArray.toListObj(): List<Any?> {
     return list
 }
 
-internal fun List<*>?.toJSONArray(): JSONArray? {
+internal fun Collection<*>?.toJSONArray(): JSONArray? {
     if (this == null) {
         return null
     }
@@ -71,7 +71,7 @@ private fun Any?.fromJSON(): Any? {
 private fun Any?.toJSON(): Any? {
     return when (this) {
         is Map<*, *> -> this.toJSONObject()
-        is List<*> -> this.toJSONArray()
+        is Collection<*> -> this.toJSONArray()
         is Array<*> -> this.toJSONArray()
         else -> this
     }

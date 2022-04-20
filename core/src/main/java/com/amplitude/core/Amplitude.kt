@@ -101,10 +101,10 @@ open class Amplitude internal constructor(
      * @return the Amplitude instance
      */
     @JvmOverloads
-    fun track(eventType: String, eventProperties: MutableMap<String, Any?>? = null, options: EventOptions? = null): Amplitude {
+    fun track(eventType: String, eventProperties: Map<String, Any?>? = null, options: EventOptions? = null): Amplitude {
         val event = BaseEvent()
         event.eventType = eventType
-        event.eventProperties = eventProperties
+        event.eventProperties = eventProperties?.toMutableMap()
         options ?. let {
             event.mergeEventOptions(it)
         }
