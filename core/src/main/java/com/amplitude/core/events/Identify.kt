@@ -1,8 +1,6 @@
 package com.amplitude.core.events
 
 import com.amplitude.common.jvm.ConsoleLogger
-import org.json.JSONArray
-import org.json.JSONObject
 
 enum class IdentifyOperation(val operationType: String) {
     SET("\$set"),
@@ -20,7 +18,7 @@ enum class IdentifyOperation(val operationType: String) {
 class Identify() {
 
     private val propertySet: MutableSet<String> = mutableSetOf()
-    val properties = JSONObject()
+    val properties = mutableMapOf<String, Any?>()
 
     fun set(property: String, value: Boolean): Identify {
         setUserProperty(IdentifyOperation.SET, property, value)
@@ -52,12 +50,12 @@ class Identify() {
         return this
     }
 
-    fun set(property: String, value: JSONObject): Identify {
+    fun set(property: String, value: Map<String, Any>): Identify {
         setUserProperty(IdentifyOperation.SET, property, value)
         return this
     }
 
-    fun set(property: String, value: JSONArray): Identify {
+    fun set(property: String, value: List<Any>): Identify {
         setUserProperty(IdentifyOperation.SET, property, value)
         return this
     }
@@ -122,12 +120,12 @@ class Identify() {
         return this
     }
 
-    fun setOnce(property: String, value: JSONObject): Identify {
+    fun setOnce(property: String, value: Map<String, Any>): Identify {
         setUserProperty(IdentifyOperation.SET_ONCE, property, value)
         return this
     }
 
-    fun setOnce(property: String, value: JSONArray): Identify {
+    fun setOnce(property: String, value: List<Any>): Identify {
         setUserProperty(IdentifyOperation.SET_ONCE, property, value)
         return this
     }
@@ -192,12 +190,12 @@ class Identify() {
         return this
     }
 
-    fun prepend(property: String, value: JSONObject): Identify {
+    fun prepend(property: String, value: Map<String, Any>): Identify {
         setUserProperty(IdentifyOperation.PREPEND, property, value)
         return this
     }
 
-    fun prepend(property: String, value: JSONArray): Identify {
+    fun prepend(property: String, value: List<Any>): Identify {
         setUserProperty(IdentifyOperation.PREPEND, property, value)
         return this
     }
@@ -262,12 +260,12 @@ class Identify() {
         return this
     }
 
-    fun append(property: String, value: JSONObject): Identify {
+    fun append(property: String, value: Map<String, Any>): Identify {
         setUserProperty(IdentifyOperation.APPEND, property, value)
         return this
     }
 
-    fun append(property: String, value: JSONArray): Identify {
+    fun append(property: String, value: List<Any>): Identify {
         setUserProperty(IdentifyOperation.APPEND, property, value)
         return this
     }
@@ -332,12 +330,12 @@ class Identify() {
         return this
     }
 
-    fun postInsert(property: String, value: JSONObject): Identify {
+    fun postInsert(property: String, value: Map<String, Any>): Identify {
         setUserProperty(IdentifyOperation.POST_INSERT, property, value)
         return this
     }
 
-    fun postInsert(property: String, value: JSONArray): Identify {
+    fun postInsert(property: String, value: List<Any>): Identify {
         setUserProperty(IdentifyOperation.POST_INSERT, property, value)
         return this
     }
@@ -402,12 +400,12 @@ class Identify() {
         return this
     }
 
-    fun preInsert(property: String, value: JSONObject): Identify {
+    fun preInsert(property: String, value: Map<String, Any>): Identify {
         setUserProperty(IdentifyOperation.PRE_INSERT, property, value)
         return this
     }
 
-    fun preInsert(property: String, value: JSONArray): Identify {
+    fun preInsert(property: String, value: List<Any>): Identify {
         setUserProperty(IdentifyOperation.PRE_INSERT, property, value)
         return this
     }
@@ -472,12 +470,12 @@ class Identify() {
         return this
     }
 
-    fun remove(property: String, value: JSONObject): Identify {
+    fun remove(property: String, value: Map<String, Any>): Identify {
         setUserProperty(IdentifyOperation.REMOVE, property, value)
         return this
     }
 
-    fun remove(property: String, value: JSONArray): Identify {
+    fun remove(property: String, value: List<Any>): Identify {
         setUserProperty(IdentifyOperation.REMOVE, property, value)
         return this
     }
@@ -553,7 +551,7 @@ class Identify() {
             return
         }
         // check that clearAll wasn't already used in this Identify
-        if (properties.has(IdentifyOperation.CLEAR_ALL.operationType)) {
+        if (properties.containsKey(IdentifyOperation.CLEAR_ALL.operationType)) {
             ConsoleLogger.logger.warn("This Identify already contains a \$clearAll operation, ignoring operation %s")
             return
         }
@@ -562,15 +560,11 @@ class Identify() {
             ConsoleLogger.logger.warn("Already used property $property in previous operation, ignoring operation ${operation.operationType}")
             return
         }
-        try {
-            if (!properties.has(operation.operationType)) {
-                properties.put(operation.operationType, JSONObject())
-            }
-            properties.getJSONObject(operation.operationType).put(property, value)
-            propertySet.add(property)
-        } catch (e: Exception) {
-            ConsoleLogger.logger.error("Error in set user property: $e")
+        if (!properties.containsKey(operation.operationType)) {
+            properties[operation.operationType] = mutableMapOf<String, Any>()
         }
+        (properties[operation.operationType] as MutableMap<String, Any>)[property] = value
+        propertySet.add(property)
     }
 
     companion object {

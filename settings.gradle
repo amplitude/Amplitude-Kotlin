@@ -17,3 +17,5 @@ include 'id'
 project(':id').projectDir = file('id')
 include 'samples:kotlin-android-app'
 project(':samples:kotlin-android-app').projectDir = file('samples/kotlin-android-app')
+include 'samples:java-android-app'
+project(':samples:java-android-app').projectDir = file('samples/java-android-app')

@@ -1,8 +1,5 @@
 package com.amplitude.core.events
 
-import org.json.JSONException
-import org.json.JSONObject
-
 class Revenue {
     /**
      * The Product ID field.
@@ -52,7 +49,7 @@ class Revenue {
     /**
      * The Revenue Event Properties field with (optional).
      */
-    var properties: JSONObject? = null
+    var properties: MutableMap<String, Any?>? = null
 
     /**
      * The revenue amount
@@ -95,18 +92,14 @@ class Revenue {
 
     fun toRevenueEvent(): RevenueEvent {
         val event = RevenueEvent()
-        val eventProperties = properties ?: JSONObject()
-        try {
-            eventProperties.put(REVENUE_PRODUCT_ID, productId)
-            eventProperties.put(REVENUE_QUANTITY, quantity)
-            eventProperties.put(REVENUE_PRICE, price)
-            eventProperties.put(REVENUE_TYPE, revenueType)
-            eventProperties.put(REVENUE_RECEIPT, receipt)
-            eventProperties.put(REVENUE_RECEIPT_SIG, receiptSig)
-            eventProperties.put(REVENUE, revenue)
-        } catch (e: JSONException) {
-            e.printStackTrace()
-        }
+        val eventProperties = properties ?: mutableMapOf<String, Any?>()
+        productId?.let { eventProperties.put(REVENUE_PRODUCT_ID, it) }
+        eventProperties.put(REVENUE_QUANTITY, quantity)
+        price?.let { eventProperties.put(REVENUE_PRICE, it) }
+        revenueType?.let { eventProperties.put(REVENUE_TYPE, it) }
+        receipt?.let { eventProperties.put(REVENUE_RECEIPT, it) }
+        receiptSig?.let { eventProperties.put(REVENUE_RECEIPT_SIG, it) }
+        revenue?.let { eventProperties.put(REVENUE, it) }
         event.eventProperties = eventProperties
         return event
     }

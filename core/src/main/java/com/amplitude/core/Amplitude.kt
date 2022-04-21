@@ -26,7 +26,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
-import org.json.JSONObject
 import java.util.concurrent.Executors
 
 /**
@@ -84,6 +83,7 @@ open class Amplitude internal constructor(
      * @param callback the optional event callback
      * @return the Amplitude instance
      */
+    @JvmOverloads
     fun track(event: BaseEvent, callback: EventCallBack? = null): Amplitude {
         callback ?. let {
             event.callback = it
@@ -100,10 +100,11 @@ open class Amplitude internal constructor(
      * @param options optional event options
      * @return the Amplitude instance
      */
-    fun track(eventType: String, eventProperties: JSONObject? = null, options: EventOptions? = null): Amplitude {
+    @JvmOverloads
+    fun track(eventType: String, eventProperties: Map<String, Any?>? = null, options: EventOptions? = null): Amplitude {
         val event = BaseEvent()
         event.eventType = eventType
-        event.eventProperties = eventProperties
+        event.eventProperties = eventProperties?.toMutableMap()
         options ?. let {
             event.mergeEventOptions(it)
         }
@@ -119,6 +120,7 @@ open class Amplitude internal constructor(
      * @param options optional event options
      * @return the Amplitude instance
      */
+    @JvmOverloads
     fun identify(identify: Identify, options: EventOptions? = null): Amplitude {
         val event = IdentifyEvent()
         event.userProperties = identify.properties
@@ -160,14 +162,11 @@ open class Amplitude internal constructor(
      * @param options optional event options
      * @return the Amplitude instance
      */
+    @JvmOverloads
     fun groupIdentify(groupType: String, groupName: String, identify: Identify, options: EventOptions? = null): Amplitude {
         val event = GroupIdentifyEvent()
-        var group: JSONObject? = null
-        try {
-            group = JSONObject().put(groupType, groupName)
-        } catch (e: Exception) {
-            logger.error("Error in groupIdentify: $e")
-        }
+        val group = mutableMapOf<String, Any?>()
+        group.put(groupType, groupName)
         event.groups = group
         event.groupProperties = identify.properties
         options ?. let {
@@ -185,6 +184,7 @@ open class Amplitude internal constructor(
      * @param options optional event options
      * @return the Amplitude instance
      */
+    @JvmOverloads
     fun setGroup(groupType: String, groupName: String, options: EventOptions? = null): Amplitude {
         val identify = Identify().set(groupType, groupName)
         identify(identify, options)
@@ -199,6 +199,7 @@ open class Amplitude internal constructor(
      * @param options optional event options
      * @return the Amplitude instance
      */
+    @JvmOverloads
     fun setGroup(groupType: String, groupName: Array<String>, options: EventOptions? = null): Amplitude {
         val identify = Identify().set(groupType, groupName)
         identify(identify, options)
@@ -219,6 +220,7 @@ open class Amplitude internal constructor(
      * @param options optional event options
      * @return the Amplitude instance
      */
+    @JvmOverloads
     fun revenue(revenue: Revenue, options: EventOptions? = null): Amplitude {
         if (!revenue.isValid()) {
             logger.warn("Invalid revenue object, missing required fields")
