@@ -10,8 +10,7 @@ import com.amplitude.android.Configuration;
 import com.amplitude.core.events.BaseEvent;
 import com.amplitude.core.platform.Plugin;
 
-import org.json.JSONException;
-import org.json.JSONObject;
+import java.util.HashMap;
 
 public class MainApplication extends Application {
     private static Amplitude amplitude;
@@ -65,13 +64,9 @@ class SamplePlugin implements Plugin {
     @Override
     public BaseEvent execute(@NonNull BaseEvent event) {
         if (event.getEventProperties() == null) {
-            event.setEventProperties(new JSONObject());
+            event.setEventProperties(new HashMap<>());
         }
-        try {
-            event.getEventProperties().put("custom android event property", "test");
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
+        event.getEventProperties().put("custom android event property", "test");
         return event;
     }
 }

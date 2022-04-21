@@ -26,7 +26,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
-import org.json.JSONObject
 import java.util.concurrent.Executors
 
 /**
@@ -102,10 +101,10 @@ open class Amplitude internal constructor(
      * @return the Amplitude instance
      */
     @JvmOverloads
-    fun track(eventType: String, eventProperties: JSONObject? = null, options: EventOptions? = null): Amplitude {
+    fun track(eventType: String, eventProperties: Map<String, Any?>? = null, options: EventOptions? = null): Amplitude {
         val event = BaseEvent()
         event.eventType = eventType
-        event.eventProperties = eventProperties
+        event.eventProperties = eventProperties?.toMutableMap()
         options ?. let {
             event.mergeEventOptions(it)
         }
@@ -166,12 +165,8 @@ open class Amplitude internal constructor(
     @JvmOverloads
     fun groupIdentify(groupType: String, groupName: String, identify: Identify, options: EventOptions? = null): Amplitude {
         val event = GroupIdentifyEvent()
-        var group: JSONObject? = null
-        try {
-            group = JSONObject().put(groupType, groupName)
-        } catch (e: Exception) {
-            logger.error("Error in groupIdentify: $e")
-        }
+        val group = mutableMapOf<String, Any?>()
+        group.put(groupType, groupName)
         event.groups = group
         event.groupProperties = identify.properties
         options ?. let {

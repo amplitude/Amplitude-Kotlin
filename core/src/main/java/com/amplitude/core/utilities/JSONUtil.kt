@@ -15,9 +15,10 @@ object JSONUtil {
         eventJSON.addValue("user_id", event.userId)
         eventJSON.addValue("device_id", event.deviceId)
         eventJSON.addValue("time", event.timestamp)
-        eventJSON.addValue("event_properties", truncate(event.eventProperties))
-        eventJSON.addValue("user_properties", truncate(event.userProperties))
-        eventJSON.addValue("groups", truncate(event.groups))
+        eventJSON.addValue("event_properties", truncate(event.eventProperties.toJSONObject()))
+        eventJSON.addValue("user_properties", truncate(event.userProperties.toJSONObject()))
+        eventJSON.addValue("groups", truncate(event.groups.toJSONObject()))
+        eventJSON.addValue("group_properties", truncate(event.groupProperties.toJSONObject()))
         eventJSON.addValue("app_version", event.appVersion)
         eventJSON.addValue("platform", event.platform)
         eventJSON.addValue("os_name", event.osName)
@@ -161,9 +162,10 @@ internal fun JSONObject.toBaseEvent(): BaseEvent {
     event.userId = this.optionalString("user_id", null)
     event.deviceId = this.optionalString("device_id", null)
     event.timestamp = if (this.has("time")) this.getLong("time") else null
-    event.eventProperties = this.optionalJSONObject("event_properties", null)
-    event.userProperties = this.optionalJSONObject("user_properties", null)
-    event.groups = this.optionalJSONObject("groups", null)
+    event.eventProperties = this.optionalJSONObject("event_properties", null)?.let { it.toMapObj().toMutableMap() }
+    event.userProperties = this.optionalJSONObject("user_properties", null)?.let { it.toMapObj().toMutableMap() }
+    event.groups = this.optionalJSONObject("groups", null)?.let { it.toMapObj().toMutableMap() }
+    event.groupProperties = this.optionalJSONObject("group_properties", null)?.let { it.toMapObj().toMutableMap() }
     event.appVersion = this.optionalString("app_version", null)
     event.platform = this.optionalString("platform", null)
     event.osName = this.optionalString("os_name", null)

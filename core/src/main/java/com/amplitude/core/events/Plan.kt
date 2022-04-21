@@ -15,7 +15,7 @@ data class Plan @JvmOverloads constructor(
      * Get JSONObject of current tacking plan
      * @return JSONObject including plan information
      */
-    fun toJSONObject(): JSONObject? {
+    internal fun toJSONObject(): JSONObject? {
         val plan = JSONObject()
         try {
             if (!branch.isNullOrEmpty()) {
@@ -42,7 +42,7 @@ data class Plan @JvmOverloads constructor(
         const val AMP_PLAN_VERSION = "version"
         const val AMP_PLAN_VERSION_ID = "versionId"
 
-        fun fromJSONObject(jsonObject: JSONObject): Plan {
+        internal fun fromJSONObject(jsonObject: JSONObject): Plan {
             val branch = jsonObject.optString(AMP_PLAN_BRANCH, null)
             val source = jsonObject.optString(AMP_PLAN_SOURCE, null)
             val version = jsonObject.optString(AMP_PLAN_VERSION, null)
