@@ -3,7 +3,7 @@ module.exports = {
     {name: 'beta', prerelease: true},
     "main"
   ],
-  "tagFormat": ["v${version}"],
+  "tagFormat": ["${version}"],
   "plugins": [
     ["@semantic-release/commit-analyzer", {
       "preset": "angular",
