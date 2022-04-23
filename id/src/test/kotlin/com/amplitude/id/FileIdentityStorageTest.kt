@@ -9,8 +9,7 @@ import org.junit.jupiter.api.TestInstance
 class FileIdentityStorageTest {
 
     @Test
-    @Order(1)
-    fun `test FileIdentityStorage save success`() {
+    fun `test FileIdentityStorage create and save success`() {
         val identityStorageProvider = FileIdentityStorageProvider()
         val identityConfiguration = IdentityConfiguration(
             instanceName = "testInstance",
@@ -26,7 +25,6 @@ class FileIdentityStorageTest {
     }
 
     @Test
-    @Order(2)
     fun `test FileIdentityStorage load from file success`() {
         val identityStorageProvider = FileIdentityStorageProvider()
         val identityConfiguration = IdentityConfiguration(
@@ -41,7 +39,6 @@ class FileIdentityStorageTest {
     }
 
     @Test
-    @Order(3)
     fun `test FileIdentityStorage load with different apiKey will clear the data`() {
         val identityStorageProvider = FileIdentityStorageProvider()
         val identityConfiguration = IdentityConfiguration(
