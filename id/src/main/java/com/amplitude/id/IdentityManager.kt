@@ -22,6 +22,10 @@ enum class IdentityUpdateType {
     Initialized, Updated
 }
 
+/**
+ * Identity Manager manages the identity for certain instance.
+ *
+ */
 interface IdentityManager {
 
     interface Editor {

@@ -1,5 +1,11 @@
 package com.amplitude.id
 
+/**
+ * Identify Container manages the identity like user id and device id,
+ * shared by both Analytics and Experiment.
+ *
+ * @property configuration IdentityConfiguration for instance
+ */
 class IdentityContainer private constructor(val configuration: IdentityConfiguration) {
     val identityManager: IdentityManager
 

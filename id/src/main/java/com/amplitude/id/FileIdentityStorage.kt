@@ -17,9 +17,11 @@ class FileIdentityStorage(val configuration: IdentityConfiguration) : IdentitySt
 
     init {
         val instanceName = configuration.instanceName
-        val storageDirectory = configuration.storageDirectory ?: File("/tmp/$STORAGE_PREFIX/$instanceName}")
+        val storageDirectory = configuration.storageDirectory ?: File("/tmp/$STORAGE_PREFIX/$instanceName")
         createDirectory(storageDirectory)
         propertiesFile = PropertiesFile(storageDirectory, instanceName, STORAGE_PREFIX)
+        propertiesFile.load()
+        safetyCheck()
     }
 
     override fun saveUserId(userId: String?) {
@@ -31,22 +33,22 @@ class FileIdentityStorage(val configuration: IdentityConfiguration) : IdentitySt
     }
 
     override fun load(): Identity {
-        safetyCheck()
         val userId = propertiesFile.getString(USER_ID_KEY, null)
         val deviceId = propertiesFile.getString(DEVICE_ID_KEY, null)
         return Identity(userId, deviceId)
     }
 
     private fun safetyCheck() {
-        if (safeForKey(API_KEY, configuration.apiKey) && safeForKey(
-                EXPERIMENT_API_KEY,
-                configuration.experimentApiKey
+        if (!(
+            safeForKey(API_KEY, configuration.apiKey) && safeForKey(
+                    EXPERIMENT_API_KEY,
+                    configuration.experimentApiKey
+                )
             )
         ) {
-            return
+            // api key not matching saved one, clear current value
+            propertiesFile.remove(listOf(USER_ID_KEY, DEVICE_ID_KEY, API_KEY, EXPERIMENT_API_KEY))
         }
-        // api key not matching saved one, clear current value
-        propertiesFile.remove(listOf(USER_ID_KEY, DEVICE_ID_KEY, API_KEY, EXPERIMENT_API_KEY))
         configuration.apiKey?.let {
             propertiesFile.putString(API_KEY, it)
         }
