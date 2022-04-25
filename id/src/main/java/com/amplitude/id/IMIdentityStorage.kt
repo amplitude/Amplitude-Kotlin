@@ -1,5 +1,8 @@
 package com.amplitude.id
 
+/**
+ * In Memory Identity Storage
+ */
 class IMIdentityStorage : IdentityStorage {
     var userId: String? = null
     var deviceId: String? = null
@@ -17,6 +20,9 @@ class IMIdentityStorage : IdentityStorage {
     }
 }
 
+/**
+ * In Memory Identity Storage Provider
+ */
 class IMIdentityStorageProvider : IdentityStorageProvider {
     override fun getIdentityStorage(configuration: IdentityConfiguration): IdentityStorage {
         return IMIdentityStorage()
