@@ -1,6 +1,7 @@
 package com.amplitude.eventbridge
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 
@@ -12,11 +13,13 @@ class EventBridgeTest {
         val testEvent = Event("test")
         val identifyEvent = Event("identify")
         val eventBridge = EventBridgeImpl()
+        var wasEventReceiverCalled = false
         eventBridge.setEventReceiver(
             EventChannel.EVENT,
             object : EventReceiver {
                 override fun receive(channel: EventChannel, event: Event) {
                     assertEquals(event, testEvent)
+                    wasEventReceiverCalled = true
                 }
             }
         )
@@ -25,11 +28,13 @@ class EventBridgeTest {
             object : EventReceiver {
                 override fun receive(channel: EventChannel, event: Event) {
                     assertEquals(event, identifyEvent)
+                    wasEventReceiverCalled = true
                 }
             }
         )
         eventBridge.sendEvent(EventChannel.EVENT, testEvent)
         eventBridge.sendEvent(EventChannel.IDENTIFY, identifyEvent)
+        assertTrue(wasEventReceiverCalled)
     }
 
     @Test
