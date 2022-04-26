@@ -37,7 +37,11 @@ class AmplitudeDestination : DestinationPlugin() {
 
     private fun enqueue(payload: BaseEvent?) {
         payload?.let {
-            pipeline.put(it)
+            if (it.isValid()) {
+                pipeline.put(it)
+            } else {
+                amplitude.logger.warn("Event is invalid. Dropping event: ${it.eventType}")
+            }
         }
     }
 

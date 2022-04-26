@@ -1,5 +1,8 @@
 package com.amplitude.core.events
 
+/**
+ * BaseEvent for SDK
+ */
 open class BaseEvent : EventOptions() {
     open lateinit var eventType: String
     var eventProperties: MutableMap<String, Any?>? = null
@@ -45,5 +48,12 @@ open class BaseEvent : EventOptions() {
         extra ?: let { extra = options.extra }
         callback ?: let { callback = options.callback }
         partnerId ?: let { partnerId = options.partnerId }
+    }
+
+    /**
+     * Check if event is valid
+     */
+    open fun isValid(): Boolean {
+        return userId != null || deviceId != null
     }
 }

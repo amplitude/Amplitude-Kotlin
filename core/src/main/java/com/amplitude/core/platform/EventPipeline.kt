@@ -114,7 +114,7 @@ class EventPipeline(
                         connection.close()
                     }
                     val responseHandler = storage.getResponseHandler(this@EventPipeline, amplitude.configuration, scope, amplitude.retryDispatcher, events, eventsString)
-                    responseHandler?.handle(connection.response)
+                    responseHandler.handle(connection.response)
                 } catch (e: Exception) {
                     e.message?.let {
                         amplitude.logger.error("Error when upload event: $it")
