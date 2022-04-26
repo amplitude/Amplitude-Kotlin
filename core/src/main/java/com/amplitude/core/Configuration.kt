@@ -35,11 +35,11 @@ open class Configuration @JvmOverloads constructor(
     }
 
     fun isMinIdLengthValid(): Boolean {
-         return minIdLength ?. let {
-              it > 0
-         } ?: let {
-              true
-         }
+        return minIdLength ?. let {
+            it > 0
+        } ?: let {
+            true
+        }
     }
 }
 
