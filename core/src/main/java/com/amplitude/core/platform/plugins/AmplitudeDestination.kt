@@ -40,7 +40,7 @@ class AmplitudeDestination : DestinationPlugin() {
             if (it.isValid()) {
                 pipeline.put(it)
             } else {
-                amplitude.logger.warn("Event is invalid. Dropping event: ${it.eventType}")
+                amplitude.logger.warn("Event is invalid for missing information like userId and deviceId. Dropping event: ${it.eventType}")
             }
         }
     }
