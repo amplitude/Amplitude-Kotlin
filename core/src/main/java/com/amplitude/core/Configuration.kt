@@ -8,19 +8,19 @@ typealias EventCallBack = (BaseEvent, status: Int, message: String) -> Unit
 
 open class Configuration @JvmOverloads constructor(
     val apiKey: String,
-    val flushQueueSize: Int = FLUSH_QUEUE_SIZE,
-    val flushIntervalMillis: Int = FLUSH_INTERVAL_MILLIS,
-    val instanceName: String = DEFAULT_INSTANCE,
+    var flushQueueSize: Int = FLUSH_QUEUE_SIZE,
+    var flushIntervalMillis: Int = FLUSH_INTERVAL_MILLIS,
+    var instanceName: String = DEFAULT_INSTANCE,
     var optOut: Boolean = false,
     val storageProvider: StorageProvider = InMemoryStorageProvider(),
     val loggerProvider: LoggerProvider = ConsoleLoggerProvider(),
-    val minIdLength: Int? = null,
-    val partnerId: String? = null,
+    var minIdLength: Int? = null,
+    var partnerId: String? = null,
     val callback: EventCallBack? = null,
     val flushMaxRetries: Int = FLUSH_MAX_RETRIES,
-    val useBatch: Boolean = false,
-    val serverZone: ServerZone = ServerZone.US,
-    val serverUrl: String? = null
+    var useBatch: Boolean = false,
+    var serverZone: ServerZone = ServerZone.US,
+    var serverUrl: String? = null
 ) {
 
     companion object {
@@ -35,10 +35,11 @@ open class Configuration @JvmOverloads constructor(
     }
 
     fun isMinIdLengthValid(): Boolean {
-        if (minIdLength == null) {
-            return true
+        return minIdLength ?. let {
+            it > 0
+        } ?: let {
+            true
         }
-        return minIdLength > 0
     }
 }
 
