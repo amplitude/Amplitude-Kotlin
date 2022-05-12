@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.library'
     id 'kotlin-android'
+    id 'com.kezong.fat-aar'
 }
 
 ext {
@@ -51,10 +52,12 @@ android {
 }
 
 dependencies {
-    api project(':common')
-    api project(':common-android')
-    api project(':id')
-    api project(':core')
+    embed project(':common')
+    embed project(':common-jvm')
+    embed project(':common-android')
+    embed project(':core')
+    embed project(':event-bridge')
+    embed project(':id')
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.2'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.5.2'
 
