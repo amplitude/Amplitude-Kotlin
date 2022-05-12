@@ -1,3 +1,18 @@
+# [0.1.0-beta.4](https://github.com/amplitude/Amplitude-Kotlin/compare/0.1.0-beta.3...0.1.0-beta.4) (2022-05-12)
+
+
+### Bug Fixes
+
+* fix android aar issue ([#32](https://github.com/amplitude/Amplitude-Kotlin/issues/32)) ([69f5fe7](https://github.com/amplitude/Amplitude-Kotlin/commit/69f5fe7ed91d05252bc4a98b89ec7f8aade72d76))
+
+
+### Features
+
+* add unit tests for common jvm module ([#29](https://github.com/amplitude/Amplitude-Kotlin/issues/29)) ([dcc0e9d](https://github.com/amplitude/Amplitude-Kotlin/commit/dcc0e9dbbbf5464c07c5f1c6a607243882cccf13))
+* add unit tests in core module ([#30](https://github.com/amplitude/Amplitude-Kotlin/issues/30)) ([4283148](https://github.com/amplitude/Amplitude-Kotlin/commit/428314817a594bcab8bdfc03f74f183286b806f3))
+* add unit tests in event bridge module ([#28](https://github.com/amplitude/Amplitude-Kotlin/issues/28)) ([8d63c28](https://github.com/amplitude/Amplitude-Kotlin/commit/8d63c28fa79211942884ce7215e2b6e6b4c90cea))
+* add unit tests in id module ([#27](https://github.com/amplitude/Amplitude-Kotlin/issues/27)) ([dc78bc6](https://github.com/amplitude/Amplitude-Kotlin/commit/dc78bc60aed5bc42239b2ff3e0f004bf99eaf59b))
+
 # [0.1.0-beta.3](https://github.com/amplitude/Amplitude-Kotlin/compare/0.1.0-beta.2...0.1.0-beta.3) (2022-04-22)
 
 
