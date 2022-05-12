@@ -5,7 +5,7 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.util.Properties
 
-class PropertiesFile(private val directory: File, key: String, prefix: String) : KeyValueStore {
+class PropertiesFile(directory: File, key: String, prefix: String) : KeyValueStore {
     private val underlyingProperties: Properties = Properties()
     private val propertiesFileName = "$prefix-$key.properties"
     private val propertiesFile = File(directory, propertiesFileName)
@@ -22,7 +22,7 @@ class PropertiesFile(private val directory: File, key: String, prefix: String) :
         }
     }
 
-    fun save() {
+    private fun save() {
         underlyingProperties.store(FileOutputStream(propertiesFile), null)
     }
 

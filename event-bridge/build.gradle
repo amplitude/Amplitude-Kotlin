@@ -7,3 +7,11 @@ java {
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
 }
+test {
+    useJUnitPlatform()
+}
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    testImplementation platform("org.junit:junit-bom:5.7.2")
+    testImplementation "org.junit.jupiter:junit-jupiter"
+}

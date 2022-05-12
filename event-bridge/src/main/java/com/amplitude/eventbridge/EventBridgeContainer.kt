@@ -1,5 +1,8 @@
 package com.amplitude.eventbridge
 
+/**
+ * Container of EventBridge
+ */
 class EventBridgeContainer {
 
     companion object {

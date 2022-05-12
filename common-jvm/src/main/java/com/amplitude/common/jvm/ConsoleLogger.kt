@@ -2,6 +2,9 @@ package com.amplitude.common.jvm
 
 import com.amplitude.common.Logger
 
+/**
+ * Console logger
+ */
 class ConsoleLogger() : Logger {
     override var logMode: Logger.LogMode = Logger.LogMode.INFO
 

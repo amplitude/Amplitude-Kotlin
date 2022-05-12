@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.library'
     id 'kotlin-android'
+    id 'de.mannodermaus.android-junit5'
 }
 
 android {
@@ -29,11 +30,28 @@ android {
     kotlinOptions {
         jvmTarget = '1.8'
     }
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
 }
 
 dependencies {
-    implementation project(":common")
+    api project(":common")
     implementation 'androidx.core:core-ktx:1.7.0'
     implementation 'androidx.appcompat:appcompat:1.4.1'
     implementation 'com.google.android.material:material:1.5.0'
+
+    testImplementation 'com.google.android.gms:play-services-base:18.0.1'
+    testImplementation 'com.google.android.gms:play-services-ads-identifier:18.0.1'
+    testImplementation 'io.mockk:mockk:1.12.3'
+    testImplementation 'org.robolectric:robolectric:4.7.3'
+    testImplementation 'androidx.test:core:1.4.0'
+    testImplementation "org.junit.jupiter:junit-jupiter-api:5.7.2"
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.7.2"
+    testImplementation "junit:junit:4.13.2"
+    testRuntimeOnly "org.junit.vintage:junit-vintage-engine:5.7.2"
+    testImplementation 'androidx.test:runner:1.4.0'
+    testImplementation "org.mockito:mockito-core:4.3.1"
 }

@@ -34,7 +34,7 @@ internal class HttpClient(
                     var inputStream: InputStream? = null
                     try {
                         inputStream = getInputStream(this.connection)
-                        responseBody = inputStream?.bufferedReader()?.use(BufferedReader::readText)
+                        responseBody = inputStream.bufferedReader().use(BufferedReader::readText)
                         this.response = HttpResponse.createHttpResponse(responseCode, JSONObject(responseBody))
                     } catch (e: IOException) {
                         this.response = HttpResponse.createHttpResponse(408, null)
@@ -68,7 +68,7 @@ internal class HttpClient(
 
     private fun getApiHost(): String {
         if (!configuration.serverUrl.isNullOrEmpty()) {
-            return configuration.serverUrl
+            return configuration.serverUrl!!
         }
         if (configuration.serverZone == ServerZone.EU) {
             return if (configuration.useBatch) Constants.EU_BATCH_API_HOST else Constants.EU_DEFAULT_API_HOST

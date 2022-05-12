@@ -4,4 +4,8 @@ import com.amplitude.core.Constants
 
 class GroupIdentifyEvent : BaseEvent() {
     override var eventType = Constants.GROUP_IDENTIFY_EVENT
+
+    override fun isValid(): Boolean {
+        return groups != null && groupProperties != null
+    }
 }

@@ -21,6 +21,7 @@ import com.amplitude.eventbridge.EventChannel
 import com.amplitude.id.IMIdentityStorageProvider
 import com.amplitude.id.IdentityConfiguration
 import com.amplitude.id.IdentityContainer
+import com.amplitude.id.IdentityUpdateType
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -62,7 +63,11 @@ open class Amplitude internal constructor(
 
     open fun build() {
         idContainer = IdentityContainer.getInstance(IdentityConfiguration(instanceName = configuration.instanceName, apiKey = configuration.apiKey, identityStorageProvider = IMIdentityStorageProvider()))
-        idContainer.identityManager.addIdentityListener(AnalyticsIdentityListener(store))
+        val listener = AnalyticsIdentityListener(store)
+        idContainer.identityManager.addIdentityListener(listener)
+        if (idContainer.identityManager.isInitialized()) {
+            listener.onIdentityChanged(idContainer.identityManager.getIdentity(), IdentityUpdateType.Initialized)
+        }
         EventBridgeContainer.getInstance(configuration.instanceName).eventBridge.setEventReceiver(EventChannel.EVENT, AnalyticsEventReceiver(this))
         add(ContextPlugin())
         add(AmplitudeDestination())
@@ -138,7 +143,9 @@ open class Amplitude internal constructor(
      * @return the Amplitude instance
      */
     fun setUserId(userId: String?): Amplitude {
-        this.idContainer.identityManager.editIdentity().setUserId(userId).commit()
+        amplitudeScope.launch(amplitudeDispatcher) {
+            idContainer.identityManager.editIdentity().setUserId(userId).commit()
+        }
         return this
     }
 
@@ -149,7 +156,9 @@ open class Amplitude internal constructor(
      * @return the Amplitude instance
      */
     fun setDeviceId(deviceId: String): Amplitude {
-        this.idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
+        amplitudeScope.launch(amplitudeDispatcher) {
+            idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
+        }
         return this
     }
 
@@ -289,4 +298,22 @@ open class Amplitude internal constructor(
             (it as? EventPlugin)?.flush()
         }
     }
+}
+
+/**
+ * constructor function to build amplitude in dsl format with config options
+ * Usage: Amplitude("123") {
+ *            this.flushQueueSize = 10
+ *        }
+ *
+ * NOTE: this method should only be used for JVM application.
+ *
+ * @param apiKey
+ * @param configs
+ * @return
+ */
+fun Amplitude(apiKey: String, configs: Configuration.() -> Unit): Amplitude {
+    val config = Configuration(apiKey)
+    configs.invoke(config)
+    return Amplitude(config)
 }

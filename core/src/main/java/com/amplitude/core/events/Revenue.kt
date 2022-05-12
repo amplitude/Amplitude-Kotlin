@@ -39,12 +39,12 @@ class Revenue {
     /**
      * The Receipt field (required if you want to verify the revenue event).
      */
-    private var receipt: String? = null
+    var receipt: String? = null
 
     /**
      * The Receipt Signature field (required if you want to verify the revenue event).
      */
-    private var receiptSig: String? = null
+    var receiptSig: String? = null
 
     /**
      * The Revenue Event Properties field with (optional).

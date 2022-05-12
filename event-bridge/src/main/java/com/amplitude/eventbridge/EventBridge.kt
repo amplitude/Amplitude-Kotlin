@@ -18,6 +18,9 @@ interface EventReceiver {
     fun receive(channel: EventChannel, event: Event)
 }
 
+/**
+ * Bridges to transfer data between modules, like analytics and experiment
+ */
 interface EventBridge {
     fun sendEvent(channel: EventChannel, event: Event)
     fun setEventReceiver(channel: EventChannel, receiver: EventReceiver)
