@@ -118,6 +118,19 @@ open class Amplitude internal constructor(
     }
 
     /**
+     * Identify lets you set the user properties.
+     * You can modify user properties by calling this api.
+     *
+     * @param userProperties user properties
+     * @param options optional event options
+     * @return the Amplitude instance
+     */
+    @JvmOverloads
+    fun identify(userProperties: Map<String, Any>, options: EventOptions? = null): Amplitude {
+        return identify(converPropertiesToIdentify(userProperties), options)
+    }
+
+    /**
      * Identify lets you to send an Identify object containing user property operations to Amplitude server.
      * You can modify user properties by calling this api.
      *
@@ -160,6 +173,20 @@ open class Amplitude internal constructor(
             idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
         }
         return this
+    }
+
+    /**
+     * Identify a group. You can modify group properties by calling this api.
+     *
+     * @param groupType the group type
+     * @param groupName the group name
+     * @param groupProperties the group properties
+     * @param options optional event options
+     * @return the Amplitude instance
+     */
+    @JvmOverloads
+    fun groupIdentify(groupType: String, groupName: String, groupProperties: Map<String,Any>, options: EventOptions? = null): Amplitude {
+        return groupIdentify(groupType, groupName, converPropertiesToIdentify(groupProperties), options);
     }
 
     /**
@@ -297,6 +324,14 @@ open class Amplitude internal constructor(
         this.timeline.applyClosure {
             (it as? EventPlugin)?.flush()
         }
+    }
+
+    private fun converPropertiesToIdentify(userProperties: Map<String, Any>) : Identify {
+        val identify = Identify()
+        userProperties.forEach { property ->
+            identify.setUserProperty(property.key, property.value)
+        }
+        return identify;
     }
 }
 
