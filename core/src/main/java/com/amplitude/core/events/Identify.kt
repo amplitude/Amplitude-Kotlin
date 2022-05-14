@@ -90,6 +90,11 @@ class Identify() {
         return this
     }
 
+    fun set(property: String, value: Any): Identify {
+        setUserProperty(IdentifyOperation.SET, property, value)
+        return this
+    }
+
     fun setOnce(property: String, value: Boolean): Identify {
         setUserProperty(IdentifyOperation.SET_ONCE, property, value)
         return this
@@ -539,10 +544,6 @@ class Identify() {
         properties.clear()
         properties.put(IdentifyOperation.CLEAR_ALL.operationType, UNSET_VALUE)
         return this
-    }
-
-    fun setUserProperty(property: String, value: Any) {
-        setUserProperty(IdentifyOperation.SET, property, value)
     }
 
     private fun setUserProperty(operation: IdentifyOperation, property: String, value: Any) {

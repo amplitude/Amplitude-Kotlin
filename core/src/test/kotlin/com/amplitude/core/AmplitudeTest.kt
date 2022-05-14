@@ -98,9 +98,9 @@ internal class AmplitudeTest {
             amplitude.add(mockPlugin)
             amplitude.setUserId("user_id")
             amplitude.setDeviceId("device_id")
-            val userProperties = mutableMapOf<String, Any>();
-            userProperties.put("foo", "bar");
-            userProperties.put("boolean", true)
+            val userProperties = mutableMapOf<String, Any>()
+            userProperties["foo"] = "bar"
+            userProperties["boolean"] = true
             amplitude.identify(userProperties)
             val identifyEvent = slot<IdentifyEvent>()
             verify { mockPlugin.identify(capture(identifyEvent)) }
@@ -193,9 +193,9 @@ internal class AmplitudeTest {
             amplitude.add(mockPlugin)
             amplitude.setUserId("user_id")
             amplitude.setDeviceId("device_id")
-            val groupProperties = mutableMapOf<String, Any>();
-            groupProperties.put("foo", "bar")
-            groupProperties.put("boolean", true)
+            val groupProperties = mutableMapOf<String, Any>()
+            groupProperties["foo"] = "bar"
+            groupProperties["boolean"] = true
             amplitude.groupIdentify("test event", "group name", groupProperties)
             val groupIdentify = slot<GroupIdentifyEvent>()
             verify { mockPlugin.groupIdentify(capture(groupIdentify)) }

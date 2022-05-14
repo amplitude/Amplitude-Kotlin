@@ -127,7 +127,7 @@ open class Amplitude internal constructor(
      */
     @JvmOverloads
     fun identify(userProperties: Map<String, Any>, options: EventOptions? = null): Amplitude {
-        return identify(converPropertiesToIdentify(userProperties), options)
+        return identify(convertPropertiesToIdentify(userProperties), options)
     }
 
     /**
@@ -185,8 +185,8 @@ open class Amplitude internal constructor(
      * @return the Amplitude instance
      */
     @JvmOverloads
-    fun groupIdentify(groupType: String, groupName: String, groupProperties: Map<String,Any>, options: EventOptions? = null): Amplitude {
-        return groupIdentify(groupType, groupName, converPropertiesToIdentify(groupProperties), options);
+    fun groupIdentify(groupType: String, groupName: String, groupProperties: Map<String, Any>, options: EventOptions? = null): Amplitude {
+        return groupIdentify(groupType, groupName, convertPropertiesToIdentify(groupProperties), options)
     }
 
     /**
@@ -326,12 +326,12 @@ open class Amplitude internal constructor(
         }
     }
 
-    private fun converPropertiesToIdentify(userProperties: Map<String, Any>) : Identify {
+    private fun convertPropertiesToIdentify(userProperties: Map<String, Any>): Identify {
         val identify = Identify()
         userProperties.forEach { property ->
-            identify.setUserProperty(property.key, property.value)
+            identify.set(property.key, property.value)
         }
-        return identify;
+        return identify
     }
 }
 
