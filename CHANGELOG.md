@@ -1,3 +1,10 @@
+# [0.1.0-beta.5](https://github.com/amplitude/Amplitude-Kotlin/compare/0.1.0-beta.4...0.1.0-beta.5) (2022-05-14)
+
+
+### Features
+
+* expose more api for support ([#33](https://github.com/amplitude/Amplitude-Kotlin/issues/33)) ([312fd85](https://github.com/amplitude/Amplitude-Kotlin/commit/312fd855527b88e702a322f50127dd257e0ba67a))
+
 # [0.1.0-beta.4](https://github.com/amplitude/Amplitude-Kotlin/compare/0.1.0-beta.3...0.1.0-beta.4) (2022-05-12)
 
 
