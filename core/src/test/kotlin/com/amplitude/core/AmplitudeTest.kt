@@ -91,6 +91,28 @@ internal class AmplitudeTest {
                 assertEquals(expectedUserProperties, it.userProperties)
             }
         }
+
+        @Test
+        fun `test identify with userProperties`() {
+            val mockPlugin = spyk(StubPlugin())
+            amplitude.add(mockPlugin)
+            amplitude.setUserId("user_id")
+            amplitude.setDeviceId("device_id")
+            val userProperties = mutableMapOf<String, Any>()
+            userProperties["foo"] = "bar"
+            userProperties["boolean"] = true
+            amplitude.identify(userProperties)
+            val identifyEvent = slot<IdentifyEvent>()
+            verify { mockPlugin.identify(capture(identifyEvent)) }
+            val expectedUserProperties = mutableMapOf<String, Any>()
+            expectedUserProperties[IdentifyOperation.SET.operationType] = mapOf(Pair("foo", "bar"), Pair("boolean", true))
+            identifyEvent.captured.let {
+                assertEquals("user_id", it.userId)
+                assertEquals("device_id", it.deviceId)
+                assertEquals("${Constants.SDK_LIBRARY}/${Constants.SDK_VERSION}", it.library)
+                assertEquals(expectedUserProperties, it.userProperties)
+            }
+        }
     }
 
     @Nested
@@ -162,6 +184,26 @@ internal class AmplitudeTest {
                 assertEquals("${Constants.SDK_LIBRARY}/${Constants.SDK_VERSION}", it.library)
                 assertEquals("CA", it.region)
                 assertEquals(mapOf(Pair(IdentifyOperation.SET.operationType, mapOf(Pair("foo", "bar")))), it.groupProperties)
+            }
+        }
+
+        @Test
+        fun `test groupIdentify with groupProperties`() {
+            val mockPlugin = spyk(StubPlugin())
+            amplitude.add(mockPlugin)
+            amplitude.setUserId("user_id")
+            amplitude.setDeviceId("device_id")
+            val groupProperties = mutableMapOf<String, Any>()
+            groupProperties["foo"] = "bar"
+            groupProperties["boolean"] = true
+            amplitude.groupIdentify("test event", "group name", groupProperties)
+            val groupIdentify = slot<GroupIdentifyEvent>()
+            verify { mockPlugin.groupIdentify(capture(groupIdentify)) }
+            groupIdentify.captured.let {
+                assertEquals("user_id", it.userId)
+                assertEquals("device_id", it.deviceId)
+                assertEquals("${Constants.SDK_LIBRARY}/${Constants.SDK_VERSION}", it.library)
+                assertEquals(mapOf(Pair(IdentifyOperation.SET.operationType, mapOf(Pair("foo", "bar"), Pair("boolean", true)))), it.groupProperties)
             }
         }
     }
