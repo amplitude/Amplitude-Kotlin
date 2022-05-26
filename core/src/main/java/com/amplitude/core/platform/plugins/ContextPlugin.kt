@@ -35,6 +35,11 @@ class ContextPlugin : Plugin {
                 event.partnerId = it
             }
         }
+        event.plan ?: let {
+            amplitude.configuration.plan ?. let {
+                event.plan = it
+            }
+        }
     }
 
     override fun execute(event: BaseEvent): BaseEvent? {
