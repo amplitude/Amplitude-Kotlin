@@ -20,7 +20,7 @@ class MainActivity : AppCompatActivity() {
             .set("custom-properties", "sample")
         val options = EventOptions()
         options.plan = Plan(branch = "test")
-        amplitude.identify(identify, options)
+        amplitude.identify(identify)
 
         // set groups fro this user
         val groupType = "test-group-type"
@@ -41,6 +41,6 @@ class MainActivity : AppCompatActivity() {
         amplitude.revenue(revenue)
 
         // track event with event properties
-        amplitude.track("test event properties", mutableMapOf("test" to "test event property value"))
+        amplitude.track("test event properties", mapOf("test" to "test event property value"), options)
     }
 }

@@ -1,6 +1,6 @@
 package com.amplitude.core.events
 
-class Revenue {
+open class Revenue {
     /**
      * The Product ID field.
      */

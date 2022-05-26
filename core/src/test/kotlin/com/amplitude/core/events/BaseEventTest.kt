@@ -15,11 +15,14 @@ class BaseEventTest {
         event.eventType = "test"
         event.country = "US"
         val eventOptions = EventOptions()
+        val plan = Plan(branch = "test")
         eventOptions.userId = "user_id"
         eventOptions.country = "DE"
+        eventOptions.plan = plan
         event.mergeEventOptions(eventOptions)
         assertEquals(event.userId, "user_id")
         assertEquals(event.country, "US")
+        assertEquals(event.plan, plan)
     }
 
     @Test

@@ -1,6 +1,7 @@
 package com.amplitude.core
 
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.events.Plan
 import com.amplitude.core.utilities.ConsoleLoggerProvider
 import com.amplitude.core.utilities.InMemoryStorageProvider
 
@@ -20,7 +21,8 @@ open class Configuration @JvmOverloads constructor(
     val flushMaxRetries: Int = FLUSH_MAX_RETRIES,
     var useBatch: Boolean = false,
     var serverZone: ServerZone = ServerZone.US,
-    var serverUrl: String? = null
+    var serverUrl: String? = null,
+    val plan: Plan? = null
 ) {
 
     companion object {
