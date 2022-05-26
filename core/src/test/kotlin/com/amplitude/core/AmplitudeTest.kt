@@ -6,6 +6,7 @@ import com.amplitude.core.events.GroupIdentifyEvent
 import com.amplitude.core.events.Identify
 import com.amplitude.core.events.IdentifyEvent
 import com.amplitude.core.events.IdentifyOperation
+import com.amplitude.core.events.Plan
 import com.amplitude.core.events.Revenue
 import com.amplitude.core.events.RevenueEvent
 import com.amplitude.core.platform.Plugin
@@ -36,7 +37,8 @@ internal class AmplitudeTest {
     fun setup() {
         mockHTTPClient(createSuccessResponse())
         val testApiKey = "test-123"
-        amplitude = testAmplitude(Configuration(testApiKey))
+        val plan = Plan("test-branch", "test")
+        amplitude = testAmplitude(Configuration(testApiKey, plan = plan))
     }
 
     @Nested
@@ -59,6 +61,7 @@ internal class AmplitudeTest {
                 assertEquals("${Constants.SDK_LIBRARY}/${Constants.SDK_VERSION}", it.library)
                 assertEquals(mapOf(Pair("foo", "bar")), it.eventProperties)
                 assertEquals("CA", it.region)
+                assertEquals("test", it.plan?.source)
             }
         }
     }
@@ -294,8 +297,8 @@ internal class AmplitudeTest {
             val event = BaseEvent()
             event.eventType = "test event"
             var callbackCalled = false
-            amplitude.track(event) { event, status, message ->
-                assertEquals("test event", event.eventType)
+            amplitude.track(event) { e, status, message ->
+                assertEquals("test event", e.eventType)
                 assertEquals(200, status)
                 assertEquals("Event sent success.", message)
                 callbackCalled = true

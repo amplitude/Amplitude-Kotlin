@@ -11,6 +11,7 @@ import com.amplitude.core.utilities.FileStorage
 import com.amplitude.id.FileIdentityStorageProvider
 import com.amplitude.id.IdentityConfiguration
 import com.amplitude.id.IdentityContainer
+import com.amplitude.id.IdentityUpdateType
 import kotlinx.coroutines.launch
 
 open class Amplitude(
@@ -34,7 +35,11 @@ open class Amplitude(
                 storageDirectory = storageDirectory
             )
         )
-        idContainer.identityManager.addIdentityListener(AnalyticsIdentityListener(store))
+        val listener = AnalyticsIdentityListener(store)
+        idContainer.identityManager.addIdentityListener(listener)
+        if (idContainer.identityManager.isInitialized()) {
+            listener.onIdentityChanged(idContainer.identityManager.getIdentity(), IdentityUpdateType.Initialized)
+        }
         amplitudeScope.launch(amplitudeDispatcher) {
             previousSessionId = storage.read(Storage.Constants.PREVIOUS_SESSION_ID) ?.let {
                 it.toLong()
@@ -49,9 +54,9 @@ open class Amplitude(
                 it.toLong()
             } ?: -1
             add(AndroidContextPlugin())
+            add(AndroidLifecyclePlugin())
         }
         add(AmplitudeDestination())
-        add(AndroidLifecyclePlugin())
     }
 
     fun onEnterForeground(timestamp: Long) {
@@ -159,4 +164,22 @@ open class Amplitude(
          */
         const val END_SESSION_EVENT = "session_end"
     }
+}
+/**
+ * constructor function to build amplitude in dsl format with config options
+ * Usage: Amplitude("123", context) {
+ *            this.flushQueueSize = 10
+ *        }
+ *
+ * NOTE: this method should only be used for Android application.
+ *
+ * @param apiKey Api Key
+ * @param context Android Context
+ * @param configs Configuration
+ * @return Amplitude Android Instance
+ */
+fun Amplitude(apiKey: String, context: Context, configs: Configuration.() -> Unit): com.amplitude.android.Amplitude {
+    val config = Configuration(apiKey, context)
+    configs.invoke(config)
+    return com.amplitude.android.Amplitude(config)
 }

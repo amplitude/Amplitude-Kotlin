@@ -145,6 +145,11 @@ class AndroidContextPlugin : Plugin {
                 event.partnerId = it
             }
         }
+        event.plan ?: let {
+            amplitude.configuration.plan ?. let {
+                event.plan = it
+            }
+        }
     }
 
     private fun getAndroidAmplitude(): com.amplitude.android.Amplitude {

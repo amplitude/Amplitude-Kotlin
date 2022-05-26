@@ -34,7 +34,9 @@ class PlanTest {
             .put(Plan.AMP_PLAN_VERSION, version)
             .put(Plan.AMP_PLAN_VERSION_ID, versionId)
         val plan = Plan.fromJSONObject(jsonObject)
-        val expectedPlan = Plan(branch, source, version, versionId)
-        assertEquals(expectedPlan, plan)
+        assertEquals(branch, plan.branch)
+        assertEquals(source, plan.source)
+        assertEquals(version, plan.version)
+        assertEquals(versionId, plan.versionId)
     }
 }

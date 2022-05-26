@@ -1,6 +1,7 @@
 package com.amplitude.android
 
 import android.content.Context
+import com.amplitude.android.events.Plan
 import com.amplitude.android.utilities.AndroidLoggerProvider
 import com.amplitude.android.utilities.AndroidStorageProvider
 import com.amplitude.core.Configuration
@@ -25,6 +26,7 @@ class Configuration @JvmOverloads constructor(
     useBatch: Boolean = false,
     serverZone: ServerZone = ServerZone.US,
     serverUrl: String? = null,
+    plan: Plan? = null,
     val useAdvertisingIdForDeviceId: Boolean = false,
     val useAppSetIdForDeviceId: Boolean = false,
     val newDeviceIdPerInstall: Boolean = false,
@@ -34,7 +36,7 @@ class Configuration @JvmOverloads constructor(
     val flushEventsOnClose: Boolean = true,
     val minTimeBetweenSessionsMillis: Long = MIN_TIME_BETWEEN_SESSIONS_MILLIS,
     val trackingSessionEvents: Boolean = true
-) : Configuration(apiKey, flushQueueSize, flushIntervalMillis, instanceName, optOut, storageProvider, loggerProvider, minIdLength, partnerId, callback, flushMaxRetries, useBatch, serverZone, serverUrl) {
+) : Configuration(apiKey, flushQueueSize, flushIntervalMillis, instanceName, optOut, storageProvider, loggerProvider, minIdLength, partnerId, callback, flushMaxRetries, useBatch, serverZone, serverUrl, plan) {
     companion object {
         const val MIN_TIME_BETWEEN_SESSIONS_MILLIS: Long = 5 * 60 * 1000
     }

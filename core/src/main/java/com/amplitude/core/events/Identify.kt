@@ -15,7 +15,7 @@ enum class IdentifyOperation(val operationType: String) {
     REMOVE("\$remove")
 }
 
-class Identify() {
+open class Identify() {
 
     private val propertySet: MutableSet<String> = mutableSetOf()
     val properties = mutableMapOf<String, Any?>()
