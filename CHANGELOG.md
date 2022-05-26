@@ -1,3 +1,10 @@
+# [0.1.0-beta.6](https://github.com/amplitude/Amplitude-Kotlin/compare/0.1.0-beta.5...0.1.0-beta.6) (2022-05-26)
+
+
+### Features
+
+* add plan in configuration and export ([#34](https://github.com/amplitude/Amplitude-Kotlin/issues/34)) ([d84a84e](https://github.com/amplitude/Amplitude-Kotlin/commit/d84a84e3f2123249ea1d8e38f3121dd6a5b798c7))
+
 # [0.1.0-beta.5](https://github.com/amplitude/Amplitude-Kotlin/compare/0.1.0-beta.4...0.1.0-beta.5) (2022-05-14)
 
 
