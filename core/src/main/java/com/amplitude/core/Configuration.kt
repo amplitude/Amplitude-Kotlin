@@ -9,20 +9,20 @@ typealias EventCallBack = (BaseEvent, status: Int, message: String) -> Unit
 
 open class Configuration @JvmOverloads constructor(
     val apiKey: String,
-    var flushQueueSize: Int = FLUSH_QUEUE_SIZE,
-    var flushIntervalMillis: Int = FLUSH_INTERVAL_MILLIS,
-    var instanceName: String = DEFAULT_INSTANCE,
-    var optOut: Boolean = false,
-    val storageProvider: StorageProvider = InMemoryStorageProvider(),
-    val loggerProvider: LoggerProvider = ConsoleLoggerProvider(),
-    var minIdLength: Int? = null,
-    var partnerId: String? = null,
-    val callback: EventCallBack? = null,
-    val flushMaxRetries: Int = FLUSH_MAX_RETRIES,
-    var useBatch: Boolean = false,
-    var serverZone: ServerZone = ServerZone.US,
-    var serverUrl: String? = null,
-    val plan: Plan? = null
+    open var flushQueueSize: Int = FLUSH_QUEUE_SIZE,
+    open var flushIntervalMillis: Int = FLUSH_INTERVAL_MILLIS,
+    open var instanceName: String = DEFAULT_INSTANCE,
+    open var optOut: Boolean = false,
+    open val storageProvider: StorageProvider = InMemoryStorageProvider(),
+    open val loggerProvider: LoggerProvider = ConsoleLoggerProvider(),
+    open var minIdLength: Int? = null,
+    open var partnerId: String? = null,
+    open var callback: EventCallBack? = null,
+    open var flushMaxRetries: Int = FLUSH_MAX_RETRIES,
+    open var useBatch: Boolean = false,
+    open var serverZone: ServerZone = ServerZone.US,
+    open var serverUrl: String? = null,
+    open var plan: Plan? = null
 ) {
 
     companion object {

@@ -16,7 +16,7 @@ open class EventOptions : EventOptions()
 open class Identify : Identify()
 open class Revenue : Revenue()
 open class RevenueEvent : RevenueEvent()
-open class Plan(
+open class Plan @JvmOverloads constructor(
     branch: String? = null,
     source: String? = null,
     version: String? = null,
