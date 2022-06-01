@@ -1,7 +1,6 @@
 package com.amplitude.android
 
 import android.content.Context
-import com.amplitude.core.events.Plan
 import com.amplitude.android.utilities.AndroidLoggerProvider
 import com.amplitude.android.utilities.AndroidStorageProvider
 import com.amplitude.core.Configuration
@@ -9,6 +8,7 @@ import com.amplitude.core.EventCallBack
 import com.amplitude.core.LoggerProvider
 import com.amplitude.core.ServerZone
 import com.amplitude.core.StorageProvider
+import com.amplitude.core.events.Plan
 
 class Configuration @JvmOverloads constructor(
     override val apiKey: String,
