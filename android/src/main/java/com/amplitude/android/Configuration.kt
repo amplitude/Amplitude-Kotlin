@@ -11,7 +11,7 @@ import com.amplitude.core.StorageProvider
 import com.amplitude.core.events.Plan
 
 class Configuration @JvmOverloads constructor(
-    override val apiKey: String,
+    apiKey: String,
     val context: Context,
     override var flushQueueSize: Int = FLUSH_QUEUE_SIZE,
     override var flushIntervalMillis: Int = FLUSH_INTERVAL_MILLIS,
@@ -38,6 +38,6 @@ class Configuration @JvmOverloads constructor(
     val trackingSessionEvents: Boolean = true
 ) : Configuration(apiKey, flushQueueSize, flushIntervalMillis, instanceName, optOut, storageProvider, loggerProvider, minIdLength, partnerId, callback, flushMaxRetries, useBatch, serverZone, serverUrl, plan) {
     companion object {
-        const val MIN_TIME_BETWEEN_SESSIONS_MILLIS: Long = 5 * 60 * 1000
+        const val MIN_TIME_BETWEEN_SESSIONS_MILLIS: Long = 300000
     }
 }

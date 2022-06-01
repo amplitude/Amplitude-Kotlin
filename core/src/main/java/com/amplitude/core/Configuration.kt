@@ -8,7 +8,7 @@ import com.amplitude.core.utilities.InMemoryStorageProvider
 typealias EventCallBack = (BaseEvent, status: Int, message: String) -> Unit
 
 open class Configuration @JvmOverloads constructor(
-    open val apiKey: String,
+    val apiKey: String,
     open var flushQueueSize: Int = FLUSH_QUEUE_SIZE,
     open var flushIntervalMillis: Int = FLUSH_INTERVAL_MILLIS,
     open var instanceName: String = DEFAULT_INSTANCE,
