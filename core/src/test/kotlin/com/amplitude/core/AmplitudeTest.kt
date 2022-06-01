@@ -64,6 +64,30 @@ internal class AmplitudeTest {
                 assertEquals("test", it.plan?.source)
             }
         }
+
+        @Test
+        fun `test track with event object and event options`() {
+            val mockPlugin = spyk(StubPlugin())
+            amplitude.add(mockPlugin)
+            amplitude.setUserId("user_id")
+            amplitude.setDeviceId("device_id")
+            val eventOptions = EventOptions()
+            eventOptions.city = "SF"
+            val event = BaseEvent()
+            event.eventType = "test event"
+            event.region = "CA"
+            amplitude.track(event, eventOptions)
+            val track = slot<BaseEvent>()
+            verify { mockPlugin.track(capture(track)) }
+            track.captured.let {
+                assertEquals("user_id", it.userId)
+                assertEquals("device_id", it.deviceId)
+                assertEquals("${Constants.SDK_LIBRARY}/${Constants.SDK_VERSION}", it.library)
+                assertEquals("CA", it.region)
+                assertEquals("SF", it.city)
+                assertEquals("test", it.plan?.source)
+            }
+        }
     }
 
     @Nested

@@ -6,11 +6,14 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.amplitude.android.Amplitude;
-import com.amplitude.android.Configuration;
+import com.amplitude.android.AmplitudeKt;
+import com.amplitude.android.events.Plan;
 import com.amplitude.core.events.BaseEvent;
 import com.amplitude.core.platform.Plugin;
 
 import java.util.HashMap;
+
+import kotlin.Unit;
 
 public class MainApplication extends Application {
     private static Amplitude amplitude;
@@ -19,8 +22,13 @@ public class MainApplication extends Application {
     public void onCreate() {
         super.onCreate();
 
+        Plan plan = new Plan("test branch", "test source", "test version", "test version id");
+
         // init instance
-        amplitude = new Amplitude(new Configuration(BuildConfig.AMPLITUDE_API_KEY, getApplicationContext()));
+        amplitude = AmplitudeKt.Amplitude(BuildConfig.AMPLITUDE_API_KEY, getApplicationContext(), configuration -> {
+            configuration.setPlan(plan);
+            return Unit.INSTANCE;
+        });
 
         // add sample plugin
         amplitude.add(new SamplePlugin());
