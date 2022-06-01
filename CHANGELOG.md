@@ -1,3 +1,11 @@
+# [0.1.0-beta.7](https://github.com/amplitude/Amplitude-Kotlin/compare/0.1.0-beta.6...0.1.0-beta.7) (2022-06-01)
+
+
+### Features
+
+* add configuration java support ([#35](https://github.com/amplitude/Amplitude-Kotlin/issues/35)) ([a4e0801](https://github.com/amplitude/Amplitude-Kotlin/commit/a4e0801e5d83eb04c0772ab5d37e6c15495786f6))
+* enable to pass the event options for all track call ([#36](https://github.com/amplitude/Amplitude-Kotlin/issues/36)) ([8dd1ab6](https://github.com/amplitude/Amplitude-Kotlin/commit/8dd1ab6eaf2542913cf15fe645197e296116f6c8))
+
 # [0.1.0-beta.6](https://github.com/amplitude/Amplitude-Kotlin/compare/0.1.0-beta.5...0.1.0-beta.6) (2022-05-26)
 
 
