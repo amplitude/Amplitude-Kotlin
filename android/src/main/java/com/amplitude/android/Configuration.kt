@@ -1,7 +1,7 @@
 package com.amplitude.android
 
 import android.content.Context
-import com.amplitude.android.events.Plan
+import com.amplitude.core.events.Plan
 import com.amplitude.android.utilities.AndroidLoggerProvider
 import com.amplitude.android.utilities.AndroidStorageProvider
 import com.amplitude.core.Configuration
@@ -11,22 +11,22 @@ import com.amplitude.core.ServerZone
 import com.amplitude.core.StorageProvider
 
 class Configuration @JvmOverloads constructor(
-    apiKey: String,
+    override val apiKey: String,
     val context: Context,
-    flushQueueSize: Int = FLUSH_QUEUE_SIZE,
-    flushIntervalMillis: Int = FLUSH_INTERVAL_MILLIS,
-    instanceName: String = DEFAULT_INSTANCE,
-    optOut: Boolean = false,
-    storageProvider: StorageProvider = AndroidStorageProvider(),
-    loggerProvider: LoggerProvider = AndroidLoggerProvider(),
-    minIdLength: Int? = null,
-    partnerId: String? = null,
-    callback: EventCallBack? = null,
-    flushMaxRetries: Int = FLUSH_MAX_RETRIES,
-    useBatch: Boolean = false,
-    serverZone: ServerZone = ServerZone.US,
-    serverUrl: String? = null,
-    plan: Plan? = null,
+    override var flushQueueSize: Int = FLUSH_QUEUE_SIZE,
+    override var flushIntervalMillis: Int = FLUSH_INTERVAL_MILLIS,
+    override var instanceName: String = DEFAULT_INSTANCE,
+    override var optOut: Boolean = false,
+    override var storageProvider: StorageProvider = AndroidStorageProvider(),
+    override var loggerProvider: LoggerProvider = AndroidLoggerProvider(),
+    override var minIdLength: Int? = null,
+    override var partnerId: String? = null,
+    override var callback: EventCallBack? = null,
+    override var flushMaxRetries: Int = FLUSH_MAX_RETRIES,
+    override var useBatch: Boolean = false,
+    override var serverZone: ServerZone = ServerZone.US,
+    override var serverUrl: String? = null,
+    override var plan: Plan? = null,
     val useAdvertisingIdForDeviceId: Boolean = false,
     val useAppSetIdForDeviceId: Boolean = false,
     val newDeviceIdPerInstall: Boolean = false,
