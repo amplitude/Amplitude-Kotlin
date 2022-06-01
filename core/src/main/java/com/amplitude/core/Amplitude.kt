@@ -86,10 +86,14 @@ open class Amplitude internal constructor(
      *
      * @param event the event
      * @param callback the optional event callback
+     * @param options optional event options
      * @return the Amplitude instance
      */
     @JvmOverloads
-    fun track(event: BaseEvent, callback: EventCallBack? = null): Amplitude {
+    fun track(event: BaseEvent, options: EventOptions? = null, callback: EventCallBack? = null): Amplitude {
+        options ?. let {
+            event.mergeEventOptions(it)
+        }
         callback ?. let {
             event.callback = it
         }
