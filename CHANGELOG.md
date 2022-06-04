@@ -1,3 +1,10 @@
+# [0.1.0-beta.8](https://github.com/amplitude/Amplitude-Kotlin/compare/0.1.0-beta.7...0.1.0-beta.8) (2022-06-04)
+
+
+### Features
+
+* set the client userId and deviceId in identify call ([#37](https://github.com/amplitude/Amplitude-Kotlin/issues/37)) ([2c8b3f1](https://github.com/amplitude/Amplitude-Kotlin/commit/2c8b3f1160f8503d827ca7367ada9da57836e968))
+
 # [0.1.0-beta.7](https://github.com/amplitude/Amplitude-Kotlin/compare/0.1.0-beta.6...0.1.0-beta.7) (2022-06-01)
 
 
