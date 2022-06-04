@@ -130,7 +130,7 @@ open class Amplitude internal constructor(
      * @return the Amplitude instance
      */
     @JvmOverloads
-    fun identify(userProperties: Map<String, Any>, options: EventOptions? = null): Amplitude {
+    fun identify(userProperties: Map<String, Any?>?, options: EventOptions? = null): Amplitude {
         return identify(convertPropertiesToIdentify(userProperties), options)
     }
 
@@ -146,9 +146,13 @@ open class Amplitude internal constructor(
     fun identify(identify: Identify, options: EventOptions? = null): Amplitude {
         val event = IdentifyEvent()
         event.userProperties = identify.properties
-        options ?. let {
-            event.mergeEventOptions(it)
+
+        options ?. let { eventOptions ->
+            event.mergeEventOptions(eventOptions)
+            eventOptions.userId ?.let { this.setUserId(it) }
+            eventOptions.deviceId ?.let { this.setDeviceId(it) }
         }
+
         process(event)
         return this
     }
@@ -189,7 +193,7 @@ open class Amplitude internal constructor(
      * @return the Amplitude instance
      */
     @JvmOverloads
-    fun groupIdentify(groupType: String, groupName: String, groupProperties: Map<String, Any>, options: EventOptions? = null): Amplitude {
+    fun groupIdentify(groupType: String, groupName: String, groupProperties: Map<String, Any?>?, options: EventOptions? = null): Amplitude {
         return groupIdentify(groupType, groupName, convertPropertiesToIdentify(groupProperties), options)
     }
 
@@ -330,10 +334,10 @@ open class Amplitude internal constructor(
         }
     }
 
-    private fun convertPropertiesToIdentify(userProperties: Map<String, Any>): Identify {
+    private fun convertPropertiesToIdentify(userProperties: Map<String, Any?>?): Identify {
         val identify = Identify()
-        userProperties.forEach { property ->
-            identify.set(property.key, property.value)
+        userProperties?.forEach { property ->
+            property.value?.let { identify.set(property.key, it) }
         }
         return identify
     }
