@@ -1,3 +1,10 @@
+# [0.1.0-beta.9](https://github.com/amplitude/Amplitude-Kotlin/compare/0.1.0-beta.8...0.1.0-beta.9) (2022-06-13)
+
+
+### Features
+
+* make configuration open ([#38](https://github.com/amplitude/Amplitude-Kotlin/issues/38)) ([d0dfb15](https://github.com/amplitude/Amplitude-Kotlin/commit/d0dfb15219cda646b1733f7afef6f81ea8548ce9))
+
 # [0.1.0-beta.8](https://github.com/amplitude/Amplitude-Kotlin/compare/0.1.0-beta.7...0.1.0-beta.8) (2022-06-04)
 
 
