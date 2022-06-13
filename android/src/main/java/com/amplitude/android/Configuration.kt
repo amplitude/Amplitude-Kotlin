@@ -10,7 +10,7 @@ import com.amplitude.core.ServerZone
 import com.amplitude.core.StorageProvider
 import com.amplitude.core.events.Plan
 
-class Configuration @JvmOverloads constructor(
+open class Configuration @JvmOverloads constructor(
     apiKey: String,
     val context: Context,
     override var flushQueueSize: Int = FLUSH_QUEUE_SIZE,
