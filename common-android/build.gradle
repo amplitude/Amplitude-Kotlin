@@ -4,6 +4,17 @@ plugins {
     id 'de.mannodermaus.android-junit5'
 }
 
+ext {
+    PUBLISH_NAME = 'Amplitude Android Kotlin Common Code'
+    PUBLISH_DESCRIPTION = 'Amplitude Kotlin client-side common code for Android'
+    PUBLISH_GROUP_ID = 'com.amplitude'
+    PUBLISH_VERSION = '0.1.0'
+    PUBLISH_ARTIFACT_ID = 'common-android'
+}
+
+apply from: "${rootDir}/gradle/publish-module.gradle"
+version = PUBLISH_VERSION
+
 android {
     compileSdk 31
 
@@ -39,9 +50,6 @@ android {
 
 dependencies {
     api project(":common")
-    implementation 'androidx.core:core-ktx:1.7.0'
-    implementation 'androidx.appcompat:appcompat:1.4.1'
-    implementation 'com.google.android.material:material:1.5.0'
 
     testImplementation 'com.google.android.gms:play-services-base:18.0.1'
     testImplementation 'com.google.android.gms:play-services-ads-identifier:18.0.1'
