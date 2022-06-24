@@ -3,6 +3,7 @@ package com.amplitude.android
 import android.content.Context
 import com.amplitude.android.plugins.AndroidContextPlugin
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
+import com.amplitude.android.plugins.RemnantEventsMigrationPlugin
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Storage
 import com.amplitude.core.platform.plugins.AmplitudeDestination
@@ -55,6 +56,7 @@ open class Amplitude(
             } ?: -1
             add(AndroidContextPlugin())
             add(AndroidLifecyclePlugin())
+            add(RemnantEventsMigrationPlugin())
         }
         add(AmplitudeDestination())
     }
