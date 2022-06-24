@@ -1,6 +1,7 @@
 package com.amplitude.android.sample
 
 import android.os.Bundle
+import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import com.amplitude.core.events.EventOptions
 import com.amplitude.core.events.Identify
@@ -13,6 +14,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        val sendEventButton: Button = findViewById(R.id.button)
 
         // set user properties
         val identify = Identify()
@@ -41,6 +44,8 @@ class MainActivity : AppCompatActivity() {
         amplitude.revenue(revenue)
 
         // track event with event properties
-        amplitude.track("test event properties", mapOf("test" to "test event property value"), options)
+        sendEventButton.setOnClickListener {
+            amplitude.track("test event properties", mapOf("test" to "test event property value"), options)
+        }
     }
 }
