@@ -16,6 +16,10 @@ import org.json.JSONObject
 import java.io.File
 import java.util.*
 
+/**
+ * Store the database related constants.
+ * Align with com/amplitude/api/DatabaseHelper.java in previous SDK.
+ */
 object DatabaseConstants {
     const val DATABASE_NAME = "com.amplitude.api"
     const val DATABASE_VERSION = 3
@@ -24,22 +28,24 @@ object DatabaseConstants {
     const val EVENT_FIELD = "event"
 }
 
+/**
+ * The SDK doesn't need to write/read from local sqlite database.
+ * This storage class is used for migrating events only.
+ */
 class DatabaseStorage(context: Context) : Storage, SQLiteOpenHelper(
     context,
     DatabaseConstants.DATABASE_NAME,
     null,
     DatabaseConstants.DATABASE_VERSION
 ) {
-    companion object {
-        val TAG: String = DatabaseStorage::class.java.name
-    }
-
     private var file: File? = context.getDatabasePath(DatabaseConstants.DATABASE_NAME)
 
     override fun onCreate(db: SQLiteDatabase) {
+        throw NotImplementedError()
     }
 
     override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
+        throw NotImplementedError()
     }
 
     private fun queryDb(
@@ -82,7 +88,7 @@ class DatabaseStorage(context: Context) : Storage, SQLiteOpenHelper(
             close()
             file?.delete()
         } catch (e: Exception) {
-            LogcatLogger.logger.error(String.format("deletion failed with error: %s", e))
+            LogcatLogger.logger.error("deletion failed: ${e.message}")
         }
     }
 
@@ -102,6 +108,7 @@ class DatabaseStorage(context: Context) : Storage, SQLiteOpenHelper(
         throw NotImplementedError()
     }
 
+    @Synchronized
     override fun readEventsContent(): List<Any> {
         val events: MutableList<JSONObject> = LinkedList()
         var cursor: Cursor? = null
@@ -130,20 +137,12 @@ class DatabaseStorage(context: Context) : Storage, SQLiteOpenHelper(
             }
         } catch (e: SQLiteException) {
             LogcatLogger.logger.error(
-                String.format(
-                    "getEvents from %s failed with error: %s",
-                    DatabaseConstants.EVENT_TABLE_NAME,
-                    e
-                )
+                "read events from ${DatabaseConstants.EVENT_TABLE_NAME} failed: ${e.message}"
             )
             delete()
         } catch (e: StackOverflowError) {
             LogcatLogger.logger.error(
-                String.format(
-                    "getEvents from %s failed with error: %s",
-                    DatabaseConstants.EVENT_TABLE_NAME,
-                    e
-                )
+                "read events from ${DatabaseConstants.EVENT_TABLE_NAME} failed: ${e.message}"
             )
             delete()
         } catch (e: IllegalStateException) {  // put before Runtime since IllegalState extends
@@ -155,6 +154,29 @@ class DatabaseStorage(context: Context) : Storage, SQLiteOpenHelper(
             close()
         }
         return events
+    }
+
+    @Synchronized
+    fun removeEvents(maxId: Long) {
+        try {
+            val db = writableDatabase
+            db.delete(
+                DatabaseConstants.EVENT_TABLE_NAME,
+                DatabaseConstants.ID_FIELD + " <= " + maxId, null
+            )
+        } catch (e: SQLiteException) {
+            LogcatLogger.logger.error(
+                "remove events from ${DatabaseConstants.EVENT_TABLE_NAME} failed: ${e.message}"
+            )
+            delete()
+        } catch (e: StackOverflowError) {
+            LogcatLogger.logger.error(
+                "remove events from ${DatabaseConstants.EVENT_TABLE_NAME} failed: ${e.message}"
+            )
+            delete()
+        } finally {
+            close()
+        }
     }
 
     override fun getEventsString(content: Any): String {

@@ -13,6 +13,14 @@ import com.amplitude.core.utilities.*
 import org.json.JSONArray
 import java.math.BigDecimal
 
+/**
+ * When switching the SDK from previous version to this version, remnant events might remain unsent in sqlite.
+ * This plugin:
+ *      1. reads the events from sqlite table
+ *      2. convert events to BaseEvent
+ *      3. track events with this SDK native method
+ *      4. delete events from sqlite table
+ */
 class RemnantEventsMigrationPlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Before
     override lateinit var amplitude: Amplitude
@@ -21,18 +29,26 @@ class RemnantEventsMigrationPlugin : Plugin {
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
         val configuration = amplitude.configuration as Configuration
-        contextProvider = AndroidContextProvider(configuration.context, configuration.locationListening)
+        contextProvider =
+            AndroidContextProvider(configuration.context, configuration.locationListening)
 
         val databaseStorage = DatabaseStorageProvider().getStorage(amplitude)
+        @Suppress("UNCHECKED_CAST")
         val remnantEvents = databaseStorage.readEventsContent() as List<JSONObject>
-        for (event in remnantEvents) {
-            LogcatLogger.logger.error(event.toString())
-            amplitude.track(event.toBaseEvent())
+        var maxMigratedEventId: Long = 0
+        try {
+            for (event in remnantEvents) {
+                val baseEvent = event.toBaseEvent()
+                amplitude.track(baseEvent)
+                maxMigratedEventId = baseEvent.eventId ?: 0
+            }
+        } catch (e: Exception) {
+            LogcatLogger.logger.error(
+                "events migration failed: ${e.message}"
+            )
+        } finally {
+            databaseStorage.removeEvents(maxMigratedEventId)
         }
-    }
-
-    override fun execute(event: BaseEvent): BaseEvent? {
-        return event
     }
 }
 
@@ -44,10 +60,13 @@ internal fun JSONObject.toBaseEvent(): BaseEvent {
     event.userId = this.optionalString("user_id", null)
     event.deviceId = this.optionalString("device_id", null)
     event.timestamp = if (this.has("timestamp")) this.getLong("timestamp") else null // name changed
-    event.eventProperties = this.optionalJSONObject("event_properties", null)?.let { it.toMapObj().toMutableMap() }
-    event.userProperties = this.optionalJSONObject("user_properties", null)?.let { it.toMapObj().toMutableMap() }
-    event.groups = this.optionalJSONObject("groups", null)?.let { it.toMapObj().toMutableMap() }
-    event.groupProperties = this.optionalJSONObject("group_properties", null)?.let { it.toMapObj().toMutableMap() }
+    event.eventProperties =
+        this.optionalJSONObject("event_properties", null)?.toMapObj()?.toMutableMap()
+    event.userProperties =
+        this.optionalJSONObject("user_properties", null)?.toMapObj()?.toMutableMap()
+    event.groups = this.optionalJSONObject("groups", null)?.toMapObj()?.toMutableMap()
+    event.groupProperties =
+        this.optionalJSONObject("group_properties", null)?.toMapObj()?.toMutableMap()
     event.appVersion = this.optionalString("app_version", null)
     event.platform = this.optionalString("platform", null)
     event.osName = this.optionalString("os_name", null)
@@ -76,7 +95,7 @@ internal fun JSONObject.toBaseEvent(): BaseEvent {
     event.appSetId = this.optString("android_app_set_id", null)
     event.eventId = if (this.has("event_id")) this.getLong("event_id") else null
     event.sessionId = this.getLong("session_id")
-    event.insertId = this.optionalString("insert_id", null)
+    event.insertId = this.optionalString("uuid", null) // name change
     event.library = if (this.has("library")) this.getString("library") else null
     event.partnerId = this.optionalString("partner_id", null)
     event.plan = if (this.has("plan")) Plan.fromJSONObject(this.getJSONObject("plan")) else null
