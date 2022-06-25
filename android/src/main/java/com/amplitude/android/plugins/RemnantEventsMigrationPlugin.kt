@@ -5,12 +5,13 @@ import com.amplitude.android.utilities.DatabaseStorageProvider
 import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.common.android.LogcatLogger
 import com.amplitude.core.Amplitude
+import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.Plan
 import com.amplitude.core.platform.Plugin
-import org.json.JSONObject
-import com.amplitude.core.events.BaseEvent
-import com.amplitude.core.utilities.*
+import com.amplitude.core.utilities.optionalJSONObject
+import com.amplitude.core.utilities.optionalString
 import org.json.JSONArray
+import org.json.JSONObject
 import java.math.BigDecimal
 
 /**
@@ -33,6 +34,7 @@ class RemnantEventsMigrationPlugin : Plugin {
             AndroidContextProvider(configuration.context, configuration.locationListening)
 
         val databaseStorage = DatabaseStorageProvider().getStorage(amplitude)
+
         @Suppress("UNCHECKED_CAST")
         val remnantEvents = databaseStorage.readEventsContent() as List<JSONObject>
         var maxMigratedEventId: Long = 0
@@ -92,7 +94,7 @@ internal fun JSONObject.toBaseEvent(): BaseEvent {
     event.idfv = this.optionalString("idfv", null)
     event.adid = this.optionalString("adid", null)
     event.androidId = this.optionalString("android_id", null)
-    event.appSetId = this.optString("android_app_set_id", null)
+    event.appSetId = this.optionalString("android_app_set_id", null)
     event.eventId = if (this.has("event_id")) this.getLong("event_id") else null
     event.sessionId = this.getLong("session_id")
     event.insertId = this.optionalString("uuid", null) // name change

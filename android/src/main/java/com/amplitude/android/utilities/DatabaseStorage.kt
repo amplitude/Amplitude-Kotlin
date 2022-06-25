@@ -6,7 +6,10 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteException
 import android.database.sqlite.SQLiteOpenHelper
 import com.amplitude.common.android.LogcatLogger
-import com.amplitude.core.*
+import com.amplitude.core.Amplitude
+import com.amplitude.core.Configuration
+import com.amplitude.core.Storage
+import com.amplitude.core.StorageProvider
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline
 import com.amplitude.core.utilities.ResponseHandler
@@ -14,7 +17,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import org.json.JSONObject
 import java.io.File
-import java.util.*
+import java.util.LinkedList
 
 /**
  * Store the database related constants.
@@ -73,10 +76,7 @@ class DatabaseStorage(context: Context) : Storage, SQLiteOpenHelper(
 
     private fun convertIfCursorWindowException(e: java.lang.RuntimeException) {
         val message = e.message
-        if (!message.isNullOrEmpty() && (message.startsWith("Cursor window allocation of") || message.startsWith(
-                "Could not allocate CursorWindow"
-            ))
-        ) {
+        if (!message.isNullOrEmpty() && (message.startsWith("Cursor window allocation of") || message.startsWith("Could not allocate CursorWindow"))) {
             throw CursorWindowAllocationException(message)
         } else {
             throw e
@@ -145,7 +145,7 @@ class DatabaseStorage(context: Context) : Storage, SQLiteOpenHelper(
                 "read events from ${DatabaseConstants.EVENT_TABLE_NAME} failed: ${e.message}"
             )
             delete()
-        } catch (e: IllegalStateException) {  // put before Runtime since IllegalState extends
+        } catch (e: IllegalStateException) { // put before Runtime since IllegalState extends
             handleIfCursorRowTooLargeException(e)
         } catch (e: RuntimeException) {
             convertIfCursorWindowException(e)
