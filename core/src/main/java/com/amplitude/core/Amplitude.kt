@@ -230,8 +230,10 @@ open class Amplitude internal constructor(
      */
     @JvmOverloads
     fun setGroup(groupType: String, groupName: String, options: EventOptions? = null): Amplitude {
-        val identify = Identify().set(groupType, groupName)
-        identify(identify, options)
+        val event = IdentifyEvent().apply {
+            groups = mutableMapOf(groupType to groupName)
+        }
+        track(event, options)
         return this
     }
 
@@ -245,8 +247,10 @@ open class Amplitude internal constructor(
      */
     @JvmOverloads
     fun setGroup(groupType: String, groupName: Array<String>, options: EventOptions? = null): Amplitude {
-        val identify = Identify().set(groupType, groupName)
-        identify(identify, options)
+        val event = IdentifyEvent().apply {
+            groups = mutableMapOf(groupType to groupName)
+        }
+        track(event, options)
         return this
     }
 
