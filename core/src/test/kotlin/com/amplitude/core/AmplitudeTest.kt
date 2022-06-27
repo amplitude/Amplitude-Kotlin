@@ -155,14 +155,13 @@ internal class AmplitudeTest {
             amplitude.setGroup("test", "groupName", eventOptions)
             val identifyEvent = slot<IdentifyEvent>()
             verify { mockPlugin.identify(capture(identifyEvent)) }
-            val expectedUserProperties = mutableMapOf<String, Any>()
-            expectedUserProperties[IdentifyOperation.SET.operationType] = mapOf(Pair("test", "groupName"))
+            val expectedGroups = mutableMapOf("test" to "groupName")
             identifyEvent.captured.let {
                 assertEquals("user_id", it.userId)
                 assertEquals("device_id", it.deviceId)
                 assertEquals("${Constants.SDK_LIBRARY}/${Constants.SDK_VERSION}", it.library)
                 assertEquals("CA", it.region)
-                assertEquals(expectedUserProperties, it.userProperties)
+                assertEquals(expectedGroups, it.groups)
             }
         }
 
@@ -178,14 +177,13 @@ internal class AmplitudeTest {
             amplitude.setGroup("test", groups, eventOptions)
             val identifyEvent = slot<IdentifyEvent>()
             verify { mockPlugin.identify(capture(identifyEvent)) }
-            val expectedUserProperties = mutableMapOf<String, Any>()
-            expectedUserProperties[IdentifyOperation.SET.operationType] = mapOf(Pair("test", groups))
+            val expectedGroups = mutableMapOf("test" to groups)
             identifyEvent.captured.let {
                 assertEquals("user_id", it.userId)
                 assertEquals("device_id", it.deviceId)
                 assertEquals("${Constants.SDK_LIBRARY}/${Constants.SDK_VERSION}", it.library)
                 assertEquals("CA", it.region)
-                assertEquals(expectedUserProperties, it.userProperties)
+                assertEquals(expectedGroups, it.groups)
             }
         }
     }
