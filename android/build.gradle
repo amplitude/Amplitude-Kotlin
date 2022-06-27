@@ -55,7 +55,7 @@ dependencies {
     embed project(':common')
     embed project(':common-jvm')
     embed project(':common-android')
-    embed project(':core')
+    api project(':core')
     embed project(':event-bridge')
     embed project(':id')
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.2'
@@ -63,7 +63,7 @@ dependencies {
 
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.5'
 
-    testImplementation 'io.mockk:mockk:1.10.6'
+    testImplementation 'io.mockk:mockk:1.12.4'
     testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.3.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
@@ -76,4 +76,8 @@ dependencies {
 
 tasks.dokkaHtmlPartial.configure {
     failOnWarning.set(true)
+}
+
+tasks.withType(Test) {
+    useJUnitPlatform()
 }

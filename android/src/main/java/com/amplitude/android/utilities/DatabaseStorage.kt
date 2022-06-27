@@ -199,8 +199,16 @@ class CursorWindowAllocationException(description: String?) :
     java.lang.RuntimeException(description)
 
 class DatabaseStorageProvider : StorageProvider {
+    object Singleton {
+        lateinit var instance: DatabaseStorage
+        fun isInstanceInitialized() = ::instance.isInitialized
+    }
+
     override fun getStorage(amplitude: Amplitude): DatabaseStorage {
-        val configuration = amplitude.configuration as com.amplitude.android.Configuration
-        return DatabaseStorage(configuration.context)
+        if (!Singleton.isInstanceInitialized()) {
+            val configuration = amplitude.configuration as com.amplitude.android.Configuration
+            Singleton.instance = DatabaseStorage(configuration.context)
+        }
+        return Singleton.instance
     }
 }
