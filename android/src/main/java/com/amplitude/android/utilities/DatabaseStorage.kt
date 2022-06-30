@@ -7,14 +7,6 @@ import android.database.sqlite.SQLiteException
 import android.database.sqlite.SQLiteOpenHelper
 import com.amplitude.common.android.LogcatLogger
 import com.amplitude.core.Amplitude
-import com.amplitude.core.Configuration
-import com.amplitude.core.Storage
-import com.amplitude.core.StorageProvider
-import com.amplitude.core.events.BaseEvent
-import com.amplitude.core.platform.EventPipeline
-import com.amplitude.core.utilities.ResponseHandler
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.CoroutineScope
 import org.json.JSONObject
 import java.io.File
 import java.util.LinkedList
@@ -35,7 +27,7 @@ object DatabaseConstants {
  * The SDK doesn't need to write/read from local sqlite database.
  * This storage class is used for migrating events only.
  */
-class DatabaseStorage(context: Context) : Storage, SQLiteOpenHelper(
+class DatabaseStorage(context: Context) : SQLiteOpenHelper(
     context,
     DatabaseConstants.DATABASE_NAME,
     null,
@@ -92,24 +84,8 @@ class DatabaseStorage(context: Context) : Storage, SQLiteOpenHelper(
         }
     }
 
-    override suspend fun writeEvent(event: BaseEvent) {
-        throw NotImplementedError()
-    }
-
-    override suspend fun write(key: Storage.Constants, value: String) {
-        throw NotImplementedError()
-    }
-
-    override suspend fun rollover() {
-        throw NotImplementedError()
-    }
-
-    override fun read(key: Storage.Constants): String? {
-        throw NotImplementedError()
-    }
-
     @Synchronized
-    override fun readEventsContent(): List<Any> {
+    fun readEventsContent(): List<Any> {
         val events: MutableList<JSONObject> = LinkedList()
         var cursor: Cursor? = null
         try {
@@ -178,33 +154,18 @@ class DatabaseStorage(context: Context) : Storage, SQLiteOpenHelper(
             close()
         }
     }
-
-    override fun getEventsString(content: Any): String {
-        throw NotImplementedError()
-    }
-
-    override fun getResponseHandler(
-        eventPipeline: EventPipeline,
-        configuration: Configuration,
-        scope: CoroutineScope,
-        dispatcher: CoroutineDispatcher,
-        events: Any,
-        eventsString: String
-    ): ResponseHandler {
-        throw NotImplementedError()
-    }
 }
 
 class CursorWindowAllocationException(description: String?) :
     java.lang.RuntimeException(description)
 
-class DatabaseStorageProvider : StorageProvider {
+class DatabaseStorageProvider {
     object Singleton {
         lateinit var instance: DatabaseStorage
         fun isInstanceInitialized() = ::instance.isInitialized
     }
 
-    override fun getStorage(amplitude: Amplitude): DatabaseStorage {
+    fun getStorage(amplitude: Amplitude): DatabaseStorage {
         if (!Singleton.isInstanceInitialized()) {
             val configuration = amplitude.configuration as com.amplitude.android.Configuration
             Singleton.instance = DatabaseStorage(configuration.context)

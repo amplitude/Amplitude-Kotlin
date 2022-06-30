@@ -5,15 +5,11 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import com.amplitude.android.Configuration
 import com.amplitude.core.Amplitude
-import com.amplitude.core.Storage
-import com.amplitude.core.platform.EventPipeline
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkConstructor
 import io.mockk.spyk
 import io.mockk.verify
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.CoroutineScope
 import org.json.JSONObject
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
@@ -42,34 +38,6 @@ class DatabaseStorageTest {
     fun databaseStorage_onUpgrade_throwsNotImplementedError() {
         Assertions.assertThrows(NotImplementedError::class.java) {
             databaseStorage?.onUpgrade(db, 1, 2)
-        }
-    }
-
-    @Test
-    fun databaseStorage_read_throwsNotImplementedError() {
-        Assertions.assertThrows(NotImplementedError::class.java) {
-            databaseStorage?.read(Storage.Constants.Events)
-        }
-    }
-
-    @Test
-    fun databaseStorage_getEventsString_throwsNotImplementedError() {
-        Assertions.assertThrows(NotImplementedError::class.java) {
-            databaseStorage?.getEventsString("any")
-        }
-    }
-
-    @Test
-    fun databaseStorage_getResponseHandler_throwsNotImplementedError() {
-        Assertions.assertThrows(NotImplementedError::class.java) {
-            databaseStorage?.getResponseHandler(
-                mockk<EventPipeline>(),
-                mockk<com.amplitude.core.Configuration>(),
-                mockk<CoroutineScope>(),
-                mockk<CoroutineDispatcher>(),
-                mockk(),
-                "event"
-            )
         }
     }
 
