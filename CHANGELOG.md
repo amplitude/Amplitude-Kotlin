@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.0.0...v1.0.1) (2022-07-21)
+
+
+### Bug Fixes
+
+* formatter on AndroidStorage.kt ([#46](https://github.com/amplitude/Amplitude-Kotlin/issues/46)) ([2b8a4a6](https://github.com/amplitude/Amplitude-Kotlin/commit/2b8a4a6c97c2477a0ae160d82eb5eb7a34820e26))
+
 # 1.0.0 (2022-06-28)
 
 
