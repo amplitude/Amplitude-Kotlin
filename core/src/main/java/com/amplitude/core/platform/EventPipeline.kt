@@ -10,6 +10,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.FileNotFoundException
 import java.lang.Exception
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -103,18 +104,28 @@ class EventPipeline(
 
             val eventsData = storage.readEventsContent()
             for (events in eventsData) {
-                val eventsString = storage.getEventsString(events)
-                if (eventsString.isEmpty()) continue
-
                 try {
+                    val eventsString = storage.getEventsString(events)
+                    if (eventsString.isEmpty()) continue
                     val connection = httpClient.upload()
                     connection.outputStream?.let {
                         connection.setEvents(eventsString)
                         // Upload the payloads.
                         connection.close()
                     }
-                    val responseHandler = storage.getResponseHandler(this@EventPipeline, amplitude.configuration, scope, amplitude.retryDispatcher, events, eventsString)
+                    val responseHandler = storage.getResponseHandler(
+                        this@EventPipeline,
+                        amplitude.configuration,
+                        scope,
+                        amplitude.retryDispatcher,
+                        events,
+                        eventsString
+                    )
                     responseHandler.handle(connection.response)
+                } catch (e: FileNotFoundException) {
+                    e.message?.let {
+                        amplitude.logger.warn("Event storage file not found: $it")
+                    }
                 } catch (e: Exception) {
                     e.message?.let {
                         amplitude.logger.error("Error when upload event: $it")
