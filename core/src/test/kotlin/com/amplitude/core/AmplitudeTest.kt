@@ -20,6 +20,7 @@ import io.mockk.spyk
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.BeforeEach
@@ -327,6 +328,29 @@ internal class AmplitudeTest {
             }
             amplitude.flush()
             assertTrue(callbackCalled)
+        }
+    }
+
+    @Nested
+    inner class TestReset {
+        @Test
+        fun `test reset`() {
+            val mockPlugin = spyk(StubPlugin())
+            amplitude.add(mockPlugin)
+
+            amplitude.setUserId("user_id")
+            amplitude.setDeviceId("device_id")
+            amplitude.reset()
+            amplitude.track("test event")
+
+            val track = slot<BaseEvent>()
+            verify { mockPlugin.track(capture(track)) }
+
+            track.captured.let {
+                assertEquals(null, it.userId)
+                assertNotEquals("device_id", it.deviceId)
+                assertEquals("test event", it.eventType)
+            }
         }
     }
 }

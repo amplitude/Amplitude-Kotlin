@@ -27,6 +27,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
+import java.util.UUID
 import java.util.concurrent.Executors
 
 /**
@@ -180,6 +181,18 @@ open class Amplitude internal constructor(
         amplitudeScope.launch(amplitudeDispatcher) {
             idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
         }
+        return this
+    }
+
+    /**
+     * Reset identity:
+     *  - reset userId to "null"
+     *  - reset deviceId to random UUID
+     * @return the Amplitude instance
+     */
+    open fun reset(): Amplitude {
+        this.setUserId(null)
+        this.setDeviceId(UUID.randomUUID().toString() + "R")
         return this
     }
 
