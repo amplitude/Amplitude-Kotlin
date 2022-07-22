@@ -9,6 +9,9 @@ import com.amplitude.id.IdentityConfiguration
 import com.amplitude.id.IdentityContainer
 import io.mockk.mockk
 import io.mockk.mockkStatic
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
@@ -37,18 +40,23 @@ class AmplitudeTest {
 
     @Test
     fun amplitude_reset_wipesUserIdDeviceId() {
-        amplitude?.setUserId("test user")
-        amplitude?.setDeviceId("test device")
-        println("=======================")
-        println(amplitude?.store?.userId)
-        println(amplitude?.store?.deviceId)
-//        Assertions.assertEquals("test user", amplitude?.store?.userId)
-//        Assertions.assertEquals("test device", amplitude?.store?.deviceId)
+        runBlocking {
+            val job = launch {
+                amplitude?.setUserId("test user")
+                amplitude?.setDeviceId("test device")
+            }
+            job.join()
+        }
+        Assertions.assertEquals("test user", amplitude?.store?.userId)
+        Assertions.assertEquals("test device", amplitude?.store?.deviceId)
 
-        amplitude?.reset()
-        println(amplitude?.store?.userId)
-        println(amplitude?.store?.deviceId)
-//        Assertions.assertNull(amplitude?.store?.userId)
-//        Assertions.assertNotEquals("test device", amplitude?.store?.deviceId)
+        runBlocking {
+            val job = launch {
+                amplitude?.reset()
+            }
+            job.join()
+        }
+        Assertions.assertNull(amplitude?.store?.userId)
+        Assertions.assertNotEquals("test device", amplitude?.store?.deviceId)
     }
 }
