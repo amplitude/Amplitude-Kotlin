@@ -40,15 +40,12 @@ class AmplitudeTest {
     fun amplitude_reset_wipesUserIdDeviceId() {
         amplitude?.setUserId("test user")
         amplitude?.setDeviceId("test device")
-        println("=======================")
-        println(amplitude?.store?.userId)
-        println(amplitude?.store?.deviceId)
-//        Assertions.assertEquals("test user", amplitude?.store?.userId)
-//        Assertions.assertEquals("test device", amplitude?.store?.deviceId)
+        Thread.sleep(1_000)
+        Assertions.assertEquals("test user", amplitude?.store?.userId)
+        Assertions.assertEquals("test device", amplitude?.store?.deviceId)
 
         amplitude?.reset()
-        println(amplitude?.store?.userId)
-        println(amplitude?.store?.deviceId)
+        Thread.sleep(1_000)
         Assertions.assertNull(amplitude?.store?.userId)
         Assertions.assertNotEquals("test device", amplitude?.store?.deviceId)
     }
