@@ -30,7 +30,7 @@ class AndroidContextPlugin : Plugin {
         return event
     }
 
-    private fun initializeDeviceId(configuration: Configuration) {
+    fun initializeDeviceId(configuration: Configuration) {
         val deviceId = amplitude.store.deviceId
         if (deviceId != null && validDeviceId(deviceId) && !deviceId.endsWith("S")) {
             return

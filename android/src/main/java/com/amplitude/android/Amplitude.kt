@@ -24,6 +24,7 @@ open class Amplitude(
     internal var lastEventId: Long = 0
     var lastEventTime: Long = -1
     private var previousSessionId: Long = -1
+    private lateinit var androidContextPlugin: AndroidContextPlugin
 
     override fun build() {
         val storageDirectory = (configuration as Configuration).context.getDir("${FileStorage.STORAGE_PREFIX}-${configuration.instanceName}", Context.MODE_PRIVATE)
@@ -53,10 +54,26 @@ open class Amplitude(
             lastEventTime = storage.read(Storage.Constants.LAST_EVENT_TIME) ?. let {
                 it.toLong()
             } ?: -1
-            add(AndroidContextPlugin())
+            androidContextPlugin = AndroidContextPlugin()
+            add(androidContextPlugin)
             add(AndroidLifecyclePlugin())
         }
         add(AmplitudeDestination())
+    }
+
+    /**
+     * Reset identity:
+     *  - reset userId to "null"
+     *  - reset deviceId via AndroidContextPlugin
+     * @return the Amplitude instance
+     */
+    override fun reset(): Amplitude {
+        this.setUserId(null)
+        amplitudeScope.launch(amplitudeDispatcher) {
+            idContainer.identityManager.editIdentity().setDeviceId(null).commit()
+            androidContextPlugin.initializeDeviceId(configuration as Configuration)
+        }
+        return this
     }
 
     fun onEnterForeground(timestamp: Long) {
