@@ -36,13 +36,10 @@ class EventsFileManager(
      * stores the event
      */
     suspend fun storeEvent(event: String) = mutex.withLock {
-        var newFile = false
         var file = currentFile()
         if (!file.exists()) {
             // create it
             file.createNewFile()
-            start(file)
-            newFile = true
         }
 
         // check if file is at capacity
@@ -51,12 +48,12 @@ class EventsFileManager(
             // update index
             file = currentFile()
             file.createNewFile()
-            start(file)
-            newFile = true
         }
 
         var contents = ""
-        if (!newFile) {
+        if (file.length() == 0L) {
+            start(file)
+        } else if (file.length() > 1) {
             contents += ","
         }
         contents += event
