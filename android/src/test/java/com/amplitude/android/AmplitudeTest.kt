@@ -47,6 +47,10 @@ class AmplitudeTest {
             }
             job.join()
         }
+        println("=====================")
+        println(amplitude?.store?.userId)
+        println(amplitude?.store?.deviceId)
+        println("=====================")
         Assertions.assertEquals("test user", amplitude?.store?.userId)
         Assertions.assertEquals("test device", amplitude?.store?.deviceId)
 
@@ -56,6 +60,10 @@ class AmplitudeTest {
             }
             job.join()
         }
+        println("=====================")
+        println(amplitude?.store?.userId)
+        println(amplitude?.store?.deviceId)
+        println("=====================")
         Assertions.assertNull(amplitude?.store?.userId)
         Assertions.assertNotEquals("test device", amplitude?.store?.deviceId)
     }

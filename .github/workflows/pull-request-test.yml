@@ -15,6 +15,6 @@ jobs:
       - name: Build
         run: ./gradlew build
       - name: Unit Test
-        run: ./gradlew testDebugUnitTest
+        run: ./gradlew test --info
       - name: Lint
         run: ./gradlew ktlintCheck
