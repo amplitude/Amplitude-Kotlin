@@ -8,7 +8,7 @@ ext {
     PUBLISH_NAME = 'Amplitude Android Kotlin SDK'
     PUBLISH_DESCRIPTION = 'Amplitude Kotlin client-side SDK for Android'
     PUBLISH_GROUP_ID = 'com.amplitude'
-    PUBLISH_VERSION = '1.0.1'
+    PUBLISH_VERSION = '1.1.0'
     PUBLISH_ARTIFACT_ID = 'analytics-android'
 }
 
