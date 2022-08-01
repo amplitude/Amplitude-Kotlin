@@ -9,8 +9,9 @@ import com.amplitude.id.IdentityConfiguration
 import com.amplitude.id.IdentityContainer
 import io.mockk.mockk
 import io.mockk.mockkStatic
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -39,14 +40,16 @@ class AmplitudeTest {
     }
 
     @Test
-    fun amplitude_reset_wipesUserIdDeviceId() {
-        runBlocking {
-            val job = launch {
-                amplitude?.setUserId("test user")
-                amplitude?.setDeviceId("test device")
-            }
-            job.join()
-        }
+    fun amplitude_reset_wipesUserIdDeviceId() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+
+        val amplitudeDispatcherField = com.amplitude.core.Amplitude::class.java.getDeclaredField("amplitudeDispatcher")
+        amplitudeDispatcherField.isAccessible = true
+        amplitudeDispatcherField.set(amplitude, dispatcher)
+
+        amplitude?.setUserId("test user")
+        amplitude?.setDeviceId("test device")
+        advanceUntilIdle()
         println("=====================")
         println(amplitude?.store?.userId)
         println(amplitude?.store?.deviceId)
@@ -54,12 +57,8 @@ class AmplitudeTest {
         Assertions.assertEquals("test user", amplitude?.store?.userId)
         Assertions.assertEquals("test device", amplitude?.store?.deviceId)
 
-        runBlocking {
-            val job = launch {
-                amplitude?.reset()
-            }
-            job.join()
-        }
+        amplitude?.reset()
+        advanceUntilIdle()
         println("=====================")
         println(amplitude?.store?.userId)
         println(amplitude?.store?.deviceId)
