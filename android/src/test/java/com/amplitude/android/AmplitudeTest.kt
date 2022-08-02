@@ -9,6 +9,10 @@ import com.amplitude.id.IdentityConfiguration
 import com.amplitude.id.IdentityContainer
 import io.mockk.mockk
 import io.mockk.mockkStatic
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
@@ -36,26 +40,22 @@ class AmplitudeTest {
     }
 
     @Test
-    fun amplitude_reset_wipesUserIdDeviceId() {
-        // Comment out this unstable test for now
-        // TODO: revisit this test for make it stable
-//        runBlocking {
-//            val job = launch {
-//                amplitude?.setUserId("test user")
-//                amplitude?.setDeviceId("test device")
-//            }
-//            job.join()
-//        }
-//        Assertions.assertEquals("test user", amplitude?.store?.userId)
-//        Assertions.assertEquals("test device", amplitude?.store?.deviceId)
-//
-//        runBlocking {
-//            val job = launch {
-//                amplitude?.reset()
-//            }
-//            job.join()
-//        }
-//        Assertions.assertNull(amplitude?.store?.userId)
-//        Assertions.assertNotEquals("test device", amplitude?.store?.deviceId)
+    fun amplitude_reset_wipesUserIdDeviceId() = runTest {
+        val dispatcher = StandardTestDispatcher(testScheduler)
+        // inject the amplitudeDispatcher field with reflection, as the field is val (read-only)
+        val amplitudeDispatcherField = com.amplitude.core.Amplitude::class.java.getDeclaredField("amplitudeDispatcher")
+        amplitudeDispatcherField.isAccessible = true
+        amplitudeDispatcherField.set(amplitude, dispatcher)
+
+        amplitude?.setUserId("test user")
+        amplitude?.setDeviceId("test device")
+        advanceUntilIdle()
+        Assertions.assertEquals("test user", amplitude?.store?.userId)
+        Assertions.assertEquals("test device", amplitude?.store?.deviceId)
+
+        amplitude?.reset()
+        advanceUntilIdle()
+        Assertions.assertNull(amplitude?.store?.userId)
+        Assertions.assertNotEquals("test device", amplitude?.store?.deviceId)
     }
 }
