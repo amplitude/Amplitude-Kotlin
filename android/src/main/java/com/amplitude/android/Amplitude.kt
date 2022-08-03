@@ -27,21 +27,21 @@ open class Amplitude(
     private lateinit var androidContextPlugin: AndroidContextPlugin
 
     override fun build() {
+        idContainer = IdentityContainer.getInstance(
+            IdentityConfiguration(
+                instanceName = configuration.instanceName,
+                apiKey = configuration.apiKey,
+                identityStorageProvider = FileIdentityStorageProvider()
+            )
+        )
+        val listener = AnalyticsIdentityListener(store)
+        idContainer.identityManager.addIdentityListener(listener)
+        if (idContainer.identityManager.isInitialized()) {
+            listener.onIdentityChanged(idContainer.identityManager.getIdentity(), IdentityUpdateType.Initialized)
+        }
         amplitudeScope.launch(amplitudeDispatcher) {
             val storageDirectory = (configuration as Configuration).context.getDir("${FileStorage.STORAGE_PREFIX}-${configuration.instanceName}", Context.MODE_PRIVATE)
-            idContainer = IdentityContainer.getInstance(
-                IdentityConfiguration(
-                    instanceName = configuration.instanceName,
-                    apiKey = configuration.apiKey,
-                    identityStorageProvider = FileIdentityStorageProvider(),
-                    storageDirectory = storageDirectory
-                )
-            )
-            val listener = AnalyticsIdentityListener(store)
-            idContainer.identityManager.addIdentityListener(listener)
-            if (idContainer.identityManager.isInitialized()) {
-                listener.onIdentityChanged(idContainer.identityManager.getIdentity(), IdentityUpdateType.Initialized)
-            }
+            idContainer.configuration.storageDirectory = storageDirectory
             previousSessionId = storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLong() ?: -1
             if (previousSessionId >= 0) {
                 sessionId = previousSessionId
