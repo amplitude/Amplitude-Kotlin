@@ -27,33 +27,27 @@ open class Amplitude(
     private lateinit var androidContextPlugin: AndroidContextPlugin
 
     override fun build() {
-        val storageDirectory = (configuration as Configuration).context.getDir("${FileStorage.STORAGE_PREFIX}-${configuration.instanceName}", Context.MODE_PRIVATE)
-        idContainer = IdentityContainer.getInstance(
-            IdentityConfiguration(
-                instanceName = configuration.instanceName,
-                apiKey = configuration.apiKey,
-                identityStorageProvider = FileIdentityStorageProvider(),
-                storageDirectory = storageDirectory
-            )
-        )
-        val listener = AnalyticsIdentityListener(store)
-        idContainer.identityManager.addIdentityListener(listener)
-        if (idContainer.identityManager.isInitialized()) {
-            listener.onIdentityChanged(idContainer.identityManager.getIdentity(), IdentityUpdateType.Initialized)
-        }
         amplitudeScope.launch(amplitudeDispatcher) {
-            previousSessionId = storage.read(Storage.Constants.PREVIOUS_SESSION_ID) ?.let {
-                it.toLong()
-            } ?: -1
+            val storageDirectory = (configuration as Configuration).context.getDir("${FileStorage.STORAGE_PREFIX}-${configuration.instanceName}", Context.MODE_PRIVATE)
+            idContainer = IdentityContainer.getInstance(
+                IdentityConfiguration(
+                    instanceName = configuration.instanceName,
+                    apiKey = configuration.apiKey,
+                    identityStorageProvider = FileIdentityStorageProvider(),
+                    storageDirectory = storageDirectory
+                )
+            )
+            val listener = AnalyticsIdentityListener(store)
+            idContainer.identityManager.addIdentityListener(listener)
+            if (idContainer.identityManager.isInitialized()) {
+                listener.onIdentityChanged(idContainer.identityManager.getIdentity(), IdentityUpdateType.Initialized)
+            }
+            previousSessionId = storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLong() ?: -1
             if (previousSessionId >= 0) {
                 sessionId = previousSessionId
             }
-            lastEventId = storage.read(Storage.Constants.LAST_EVENT_ID) ?. let {
-                it.toLong()
-            } ?: 0
-            lastEventTime = storage.read(Storage.Constants.LAST_EVENT_TIME) ?. let {
-                it.toLong()
-            } ?: -1
+            lastEventId = storage.read(Storage.Constants.LAST_EVENT_ID)?.toLong() ?: 0
+            lastEventTime = storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLong() ?: -1
             androidContextPlugin = AndroidContextPlugin()
             add(androidContextPlugin)
             add(AndroidLifecyclePlugin())
