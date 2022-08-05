@@ -15,7 +15,9 @@ class PropertiesFile(directory: File, key: String, prefix: String) : KeyValueSto
      */
     fun load() {
         if (propertiesFile.exists()) {
-            underlyingProperties.load(FileInputStream(propertiesFile))
+            FileInputStream(propertiesFile).use {
+                underlyingProperties.load(it)
+            }
         } else {
             propertiesFile.parentFile.mkdirs()
             propertiesFile.createNewFile()
@@ -23,7 +25,9 @@ class PropertiesFile(directory: File, key: String, prefix: String) : KeyValueSto
     }
 
     private fun save() {
-        underlyingProperties.store(FileOutputStream(propertiesFile), null)
+        FileOutputStream(propertiesFile).use {
+            underlyingProperties.store(it, null)
+        }
     }
 
     override fun getLong(key: String, defaultVal: Long): Long =
