@@ -30,13 +30,6 @@ open class Amplitude(
     lateinit var isBuilt: Deferred<Boolean>
 
     override fun build() {
-        idContainer = IdentityContainer.getInstance(
-            IdentityConfiguration(
-                instanceName = configuration.instanceName,
-                apiKey = configuration.apiKey,
-                identityStorageProvider = FileIdentityStorageProvider()
-            )
-        )
         isBuilt = amplitudeScope.async(amplitudeDispatcher) {
             val storageDirectory = (configuration as Configuration).context.getDir("${FileStorage.STORAGE_PREFIX}-${configuration.instanceName}", Context.MODE_PRIVATE)
             idContainer = IdentityContainer.getInstance(
