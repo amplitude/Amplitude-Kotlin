@@ -42,6 +42,7 @@ open class Amplitude(
         amplitudeScope.launch(amplitudeDispatcher) {
             val storageDirectory = (configuration as Configuration).context.getDir("${FileStorage.STORAGE_PREFIX}-${configuration.instanceName}", Context.MODE_PRIVATE)
             idContainer.configuration.storageDirectory = storageDirectory
+            idContainer.initStorage()
             previousSessionId = storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLong() ?: -1
             if (previousSessionId >= 0) {
                 sessionId = previousSessionId

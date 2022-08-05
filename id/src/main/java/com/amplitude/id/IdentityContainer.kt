@@ -7,7 +7,7 @@ package com.amplitude.id
  * @property configuration IdentityConfiguration for instance
  */
 class IdentityContainer private constructor(val configuration: IdentityConfiguration) {
-    val identityManager: IdentityManager
+    lateinit var identityManager: IdentityManager
 
     companion object {
 
@@ -24,7 +24,7 @@ class IdentityContainer private constructor(val configuration: IdentityConfigura
         }
     }
 
-    init {
+    fun initStorage() {
         val identityStorage = configuration.identityStorageProvider.getIdentityStorage(configuration)
         identityManager = IdentityManagerImpl(identityStorage)
     }
