@@ -28,7 +28,8 @@ class AmplitudeTest {
             "testInstance",
             identityStorageProvider = IMIdentityStorageProvider()
         )
-        IdentityContainer.getInstance(configuration)
+        val idContainer = IdentityContainer.getInstance(configuration)
+        idContainer.initStorage()
         amplitude = Amplitude(
             Configuration(
                 apiKey = "api-key",
