@@ -12,6 +12,8 @@ import com.amplitude.id.FileIdentityStorageProvider
 import com.amplitude.id.IdentityConfiguration
 import com.amplitude.id.IdentityContainer
 import com.amplitude.id.IdentityUpdateType
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 
 open class Amplitude(
@@ -25,6 +27,7 @@ open class Amplitude(
     var lastEventTime: Long = -1
     private var previousSessionId: Long = -1
     private lateinit var androidContextPlugin: AndroidContextPlugin
+    lateinit var isBuilt: Deferred<Boolean>
 
     override fun build() {
         idContainer = IdentityContainer.getInstance(
@@ -34,10 +37,16 @@ open class Amplitude(
                 identityStorageProvider = FileIdentityStorageProvider()
             )
         )
-        amplitudeScope.launch(amplitudeDispatcher) {
+        isBuilt = amplitudeScope.async(amplitudeDispatcher) {
             val storageDirectory = (configuration as Configuration).context.getDir("${FileStorage.STORAGE_PREFIX}-${configuration.instanceName}", Context.MODE_PRIVATE)
-            idContainer.configuration.storageDirectory = storageDirectory
-            idContainer.initStorage()
+            idContainer = IdentityContainer.getInstance(
+                IdentityConfiguration(
+                    instanceName = configuration.instanceName,
+                    apiKey = configuration.apiKey,
+                    identityStorageProvider = FileIdentityStorageProvider(),
+                    storageDirectory = storageDirectory
+                )
+            )
             val listener = AnalyticsIdentityListener(store)
             idContainer.identityManager.addIdentityListener(listener)
             if (idContainer.identityManager.isInitialized()) {
@@ -52,6 +61,7 @@ open class Amplitude(
             androidContextPlugin = AndroidContextPlugin()
             add(androidContextPlugin)
             add(AndroidLifecyclePlugin())
+            true
         }
         add(AmplitudeDestination())
     }

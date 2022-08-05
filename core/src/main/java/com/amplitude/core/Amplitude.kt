@@ -64,7 +64,6 @@ open class Amplitude internal constructor(
 
     open fun build() {
         idContainer = IdentityContainer.getInstance(IdentityConfiguration(instanceName = configuration.instanceName, apiKey = configuration.apiKey, identityStorageProvider = IMIdentityStorageProvider()))
-        idContainer.initStorage()
         val listener = AnalyticsIdentityListener(store)
         idContainer.identityManager.addIdentityListener(listener)
         if (idContainer.identityManager.isInitialized()) {
