@@ -47,15 +47,17 @@ class AmplitudeTest {
         amplitudeDispatcherField.isAccessible = true
         amplitudeDispatcherField.set(amplitude, dispatcher)
 
-        amplitude?.setUserId("test user")
-        amplitude?.setDeviceId("test device")
-        advanceUntilIdle()
-        Assertions.assertEquals("test user", amplitude?.store?.userId)
-        Assertions.assertEquals("test device", amplitude?.store?.deviceId)
+        if (amplitude?.isBuilt!!.await()) {
+            amplitude?.setUserId("test user")
+            amplitude?.setDeviceId("test device")
+            advanceUntilIdle()
+            Assertions.assertEquals("test user", amplitude?.store?.userId)
+            Assertions.assertEquals("test device", amplitude?.store?.deviceId)
 
-        amplitude?.reset()
-        advanceUntilIdle()
-        Assertions.assertNull(amplitude?.store?.userId)
-        Assertions.assertNotEquals("test device", amplitude?.store?.deviceId)
+            amplitude?.reset()
+            advanceUntilIdle()
+            Assertions.assertNull(amplitude?.store?.userId)
+            Assertions.assertNotEquals("test device", amplitude?.store?.deviceId)
+        }
     }
 }
