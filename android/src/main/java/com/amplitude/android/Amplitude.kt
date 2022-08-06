@@ -12,7 +12,6 @@ import com.amplitude.id.FileIdentityStorageProvider
 import com.amplitude.id.IdentityConfiguration
 import com.amplitude.id.IdentityContainer
 import com.amplitude.id.IdentityUpdateType
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 
@@ -27,7 +26,6 @@ open class Amplitude(
     var lastEventTime: Long = -1
     private var previousSessionId: Long = -1
     private lateinit var androidContextPlugin: AndroidContextPlugin
-    lateinit var isBuilt: Deferred<Boolean>
 
     override fun build() {
         val client = this

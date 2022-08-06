@@ -24,8 +24,10 @@ import com.amplitude.id.IdentityContainer
 import com.amplitude.id.IdentityUpdateType
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import java.util.UUID
 import java.util.concurrent.Executors
@@ -48,6 +50,7 @@ open class Amplitude internal constructor(
     lateinit var storage: Storage
     val logger: Logger
     protected lateinit var idContainer: IdentityContainer
+    lateinit var isBuilt: Deferred<Boolean>
 
     init {
         require(configuration.isValid()) { "invalid configuration" }
@@ -73,7 +76,8 @@ open class Amplitude internal constructor(
         add(ContextPlugin())
         add(AmplitudeDestination())
 
-        amplitudeScope.launch(amplitudeDispatcher) {
+        isBuilt = amplitudeScope.async(amplitudeDispatcher) {
+            true
         }
     }
 
@@ -166,7 +170,9 @@ open class Amplitude internal constructor(
      */
     fun setUserId(userId: String?): Amplitude {
         amplitudeScope.launch(amplitudeDispatcher) {
-            idContainer.identityManager.editIdentity().setUserId(userId).commit()
+            if (isBuilt.await()) {
+                idContainer.identityManager.editIdentity().setUserId(userId).commit()
+            }
         }
         return this
     }
