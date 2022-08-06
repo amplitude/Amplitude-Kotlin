@@ -1,3 +1,11 @@
+## [1.1.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.1.0...v1.1.1) (2022-08-06)
+
+
+### Bug Fixes
+
+* Amplitude.build() is not main thread safe on Android ([#55](https://github.com/amplitude/Amplitude-Kotlin/issues/55)) ([42ad931](https://github.com/amplitude/Amplitude-Kotlin/commit/42ad9314eb7a1fe1be5334b256fefc9fa120518c))
+* fix not call close in strict mode ([#56](https://github.com/amplitude/Amplitude-Kotlin/issues/56)) ([20bf7ef](https://github.com/amplitude/Amplitude-Kotlin/commit/20bf7efeff8dfb5223e73b655a022f6e12a912c8))
+
 # [1.1.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.0.1...v1.1.0) (2022-07-29)
 
 
