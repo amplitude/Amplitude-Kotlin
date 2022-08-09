@@ -8,7 +8,7 @@ ext {
     PUBLISH_NAME = 'Amplitude Android Kotlin SDK'
     PUBLISH_DESCRIPTION = 'Amplitude Kotlin client-side SDK for Android'
     PUBLISH_GROUP_ID = 'com.amplitude'
-    PUBLISH_VERSION = '1.0.0'
+    PUBLISH_VERSION = '1.1.1'
     PUBLISH_ARTIFACT_ID = 'analytics-android'
 }
 
@@ -64,7 +64,8 @@ dependencies {
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.5'
 
     testImplementation 'io.mockk:mockk:1.10.6'
-    testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.3.2'
+    testImplementation project(':core')
+    testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.6.4'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.7.2'
@@ -76,4 +77,11 @@ dependencies {
 
 tasks.dokkaHtmlPartial.configure {
     failOnWarning.set(true)
+}
+
+tasks.withType(Test) {
+    useJUnitPlatform()
+    testLogging {
+        showStandardStreams = true
+    }
 }

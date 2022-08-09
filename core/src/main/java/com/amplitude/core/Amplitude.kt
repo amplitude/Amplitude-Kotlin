@@ -24,9 +24,12 @@ import com.amplitude.id.IdentityContainer
 import com.amplitude.id.IdentityUpdateType
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import java.util.UUID
 import java.util.concurrent.Executors
 
 /**
@@ -44,14 +47,14 @@ open class Amplitude internal constructor(
     val retryDispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
 ) {
     internal val timeline: Timeline
-    val storage: Storage
+    lateinit var storage: Storage
     val logger: Logger
     protected lateinit var idContainer: IdentityContainer
+    lateinit var isBuilt: Deferred<Boolean>
 
     init {
         require(configuration.isValid()) { "invalid configuration" }
         timeline = Timeline().also { it.amplitude = this }
-        storage = configuration.storageProvider.getStorage(this)
         logger = configuration.loggerProvider.getLogger(this)
         build()
     }
@@ -62,6 +65,7 @@ open class Amplitude internal constructor(
     constructor(configuration: Configuration) : this(configuration, State())
 
     open fun build() {
+        storage = configuration.storageProvider.getStorage(this)
         idContainer = IdentityContainer.getInstance(IdentityConfiguration(instanceName = configuration.instanceName, apiKey = configuration.apiKey, identityStorageProvider = IMIdentityStorageProvider()))
         val listener = AnalyticsIdentityListener(store)
         idContainer.identityManager.addIdentityListener(listener)
@@ -72,7 +76,8 @@ open class Amplitude internal constructor(
         add(ContextPlugin())
         add(AmplitudeDestination())
 
-        amplitudeScope.launch(amplitudeDispatcher) {
+        isBuilt = amplitudeScope.async(amplitudeDispatcher) {
+            true
         }
     }
 
@@ -165,7 +170,9 @@ open class Amplitude internal constructor(
      */
     fun setUserId(userId: String?): Amplitude {
         amplitudeScope.launch(amplitudeDispatcher) {
-            idContainer.identityManager.editIdentity().setUserId(userId).commit()
+            if (isBuilt.await()) {
+                idContainer.identityManager.editIdentity().setUserId(userId).commit()
+            }
         }
         return this
     }
@@ -180,6 +187,18 @@ open class Amplitude internal constructor(
         amplitudeScope.launch(amplitudeDispatcher) {
             idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
         }
+        return this
+    }
+
+    /**
+     * Reset identity:
+     *  - reset userId to "null"
+     *  - reset deviceId to random UUID
+     * @return the Amplitude instance
+     */
+    open fun reset(): Amplitude {
+        this.setUserId(null)
+        this.setDeviceId(UUID.randomUUID().toString() + "R")
         return this
     }
 

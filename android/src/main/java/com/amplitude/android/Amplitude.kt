@@ -12,6 +12,7 @@ import com.amplitude.id.FileIdentityStorageProvider
 import com.amplitude.id.IdentityConfiguration
 import com.amplitude.id.IdentityContainer
 import com.amplitude.id.IdentityUpdateType
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 
 open class Amplitude(
@@ -24,39 +25,53 @@ open class Amplitude(
     internal var lastEventId: Long = 0
     var lastEventTime: Long = -1
     private var previousSessionId: Long = -1
+    private lateinit var androidContextPlugin: AndroidContextPlugin
 
     override fun build() {
-        val storageDirectory = (configuration as Configuration).context.getDir("${FileStorage.STORAGE_PREFIX}-${configuration.instanceName}", Context.MODE_PRIVATE)
-        idContainer = IdentityContainer.getInstance(
-            IdentityConfiguration(
-                instanceName = configuration.instanceName,
-                apiKey = configuration.apiKey,
-                identityStorageProvider = FileIdentityStorageProvider(),
-                storageDirectory = storageDirectory
+        val client = this
+        isBuilt = amplitudeScope.async(amplitudeDispatcher) {
+            storage = configuration.storageProvider.getStorage(client)
+            val storageDirectory = (configuration as Configuration).context.getDir("${FileStorage.STORAGE_PREFIX}-${configuration.instanceName}", Context.MODE_PRIVATE)
+            idContainer = IdentityContainer.getInstance(
+                IdentityConfiguration(
+                    instanceName = configuration.instanceName,
+                    apiKey = configuration.apiKey,
+                    identityStorageProvider = FileIdentityStorageProvider(),
+                    storageDirectory = storageDirectory
+                )
             )
-        )
-        val listener = AnalyticsIdentityListener(store)
-        idContainer.identityManager.addIdentityListener(listener)
-        if (idContainer.identityManager.isInitialized()) {
-            listener.onIdentityChanged(idContainer.identityManager.getIdentity(), IdentityUpdateType.Initialized)
-        }
-        amplitudeScope.launch(amplitudeDispatcher) {
-            previousSessionId = storage.read(Storage.Constants.PREVIOUS_SESSION_ID) ?.let {
-                it.toLong()
-            } ?: -1
+            val listener = AnalyticsIdentityListener(store)
+            idContainer.identityManager.addIdentityListener(listener)
+            if (idContainer.identityManager.isInitialized()) {
+                listener.onIdentityChanged(idContainer.identityManager.getIdentity(), IdentityUpdateType.Initialized)
+            }
+            previousSessionId = storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLong() ?: -1
             if (previousSessionId >= 0) {
                 sessionId = previousSessionId
             }
-            lastEventId = storage.read(Storage.Constants.LAST_EVENT_ID) ?. let {
-                it.toLong()
-            } ?: 0
-            lastEventTime = storage.read(Storage.Constants.LAST_EVENT_TIME) ?. let {
-                it.toLong()
-            } ?: -1
-            add(AndroidContextPlugin())
+            lastEventId = storage.read(Storage.Constants.LAST_EVENT_ID)?.toLong() ?: 0
+            lastEventTime = storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLong() ?: -1
+            androidContextPlugin = AndroidContextPlugin()
+            add(androidContextPlugin)
             add(AndroidLifecyclePlugin())
+            true
         }
         add(AmplitudeDestination())
+    }
+
+    /**
+     * Reset identity:
+     *  - reset userId to "null"
+     *  - reset deviceId via AndroidContextPlugin
+     * @return the Amplitude instance
+     */
+    override fun reset(): Amplitude {
+        this.setUserId(null)
+        amplitudeScope.launch(amplitudeDispatcher) {
+            idContainer.identityManager.editIdentity().setDeviceId(null).commit()
+            androidContextPlugin.initializeDeviceId(configuration as Configuration)
+        }
+        return this
     }
 
     fun onEnterForeground(timestamp: Long) {

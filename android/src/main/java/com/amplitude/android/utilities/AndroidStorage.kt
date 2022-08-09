@@ -39,7 +39,7 @@ class AndroidStorage(
     override suspend fun writeEvent(event: BaseEvent) {
         eventsFile.storeEvent(JSONUtil.eventToString(event))
         event.callback?.let { callback ->
-            event.insertId?. let {
+            event.insertId?.let {
                 eventCallbacksMap.put(it, callback)
             }
         }

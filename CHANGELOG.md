@@ -1,3 +1,31 @@
+## [1.1.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.1.0...v1.1.1) (2022-08-06)
+
+
+### Bug Fixes
+
+* Amplitude.build() is not main thread safe on Android ([#55](https://github.com/amplitude/Amplitude-Kotlin/issues/55)) ([42ad931](https://github.com/amplitude/Amplitude-Kotlin/commit/42ad9314eb7a1fe1be5334b256fefc9fa120518c))
+* fix not call close in strict mode ([#56](https://github.com/amplitude/Amplitude-Kotlin/issues/56)) ([20bf7ef](https://github.com/amplitude/Amplitude-Kotlin/commit/20bf7efeff8dfb5223e73b655a022f6e12a912c8))
+
+# [1.1.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.0.1...v1.1.0) (2022-07-29)
+
+
+### Bug Fixes
+
+* authorize for release action ([#47](https://github.com/amplitude/Amplitude-Kotlin/issues/47)) ([5c44d34](https://github.com/amplitude/Amplitude-Kotlin/commit/5c44d345d6bcc3ed8a3594e75e73bc6e4f82a5ad))
+* invalid json array string for android file storage ([#50](https://github.com/amplitude/Amplitude-Kotlin/issues/50)) ([593050a](https://github.com/amplitude/Amplitude-Kotlin/commit/593050a4c5c92e7173efb08725379639af87f9f7))
+
+
+### Features
+
+* add reset method to reset userId and deviceId ([#48](https://github.com/amplitude/Amplitude-Kotlin/issues/48)) ([837895a](https://github.com/amplitude/Amplitude-Kotlin/commit/837895a98100d9a150192d6512b8bbc6f11825f6))
+
+## [1.0.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.0.0...v1.0.1) (2022-07-21)
+
+
+### Bug Fixes
+
+* formatter on AndroidStorage.kt ([#46](https://github.com/amplitude/Amplitude-Kotlin/issues/46)) ([2b8a4a6](https://github.com/amplitude/Amplitude-Kotlin/commit/2b8a4a6c97c2477a0ae160d82eb5eb7a34820e26))
+
 # 1.0.0 (2022-06-28)
 
 
