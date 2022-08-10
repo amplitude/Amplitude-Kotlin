@@ -40,6 +40,7 @@ object JSONUtil {
         eventJSON.addValue("location_lat", event.locationLat)
         eventJSON.addValue("location_lng", event.locationLng)
         eventJSON.addValue("ip", event.ip)
+        eventJSON.addValue("version_name", event.versionName)
         eventJSON.addValue("idfa", event.idfa)
         eventJSON.addValue("idfv", event.idfv)
         eventJSON.addValue("adid", event.adid)
