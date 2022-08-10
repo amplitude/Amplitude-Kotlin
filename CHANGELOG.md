@@ -1,3 +1,10 @@
+## [1.1.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.1.1...v1.1.2) (2022-08-10)
+
+
+### Bug Fixes
+
+* add version_name to event json body ([#60](https://github.com/amplitude/Amplitude-Kotlin/issues/60)) ([0ff8d67](https://github.com/amplitude/Amplitude-Kotlin/commit/0ff8d67eafd019a8c75c763c201a7bc47a028b27))
+
 ## [1.1.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.1.0...v1.1.1) (2022-08-06)
 
 
