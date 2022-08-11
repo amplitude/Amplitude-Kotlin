@@ -17,7 +17,6 @@ class EventsFileManager(
 ) {
     init {
         createDirectory(directory)
-        registerShutdownHook()
     }
 
     private val fileIndexKey = "amplitude.events.file.index.$apiKey"
@@ -26,8 +25,8 @@ class EventsFileManager(
         const val MAX_FILE_SIZE = 975_000 // 975KB
         val writeMutex = Mutex()
         val readMutex = Mutex()
-        val filePathSet = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
-        var curFile: File? = null
+        val filePathSet: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
+        val curFile: MutableMap<String, File> = ConcurrentHashMap<String, File>()
     }
 
     /**
@@ -125,7 +124,9 @@ class EventsFileManager(
     }
 
     suspend fun getEventString(filePath: String): String = readMutex.withLock {
+        // Block one time of file reads if another task has read the content of this file
         if (filePathSet.contains(filePath)) {
+            filePathSet.remove(filePath)
             return ""
         }
         filePathSet.add(filePath)
@@ -149,7 +150,8 @@ class EventsFileManager(
 
     // return the current tmp file
     private fun currentFile(): File {
-        curFile = curFile ?: run {
+        val file = curFile[apiKey] ?: run {
+            // check leftover tmp file
             val fileList = directory.listFiles { _, name ->
                 name.contains(apiKey) && name.endsWith(".tmp")
             } ?: emptyArray()
@@ -157,7 +159,8 @@ class EventsFileManager(
             fileList.getOrNull(0)
         }
         val index = kvs.getLong(fileIndexKey, 0)
-        return curFile ?: File(directory, "$apiKey-$index.tmp")
+        curFile[apiKey] = file ?: File(directory, "$apiKey-$index.tmp")
+        return curFile[apiKey]!!
     }
 
     // write to underlying file
@@ -178,15 +181,6 @@ class EventsFileManager(
     }
 
     private fun reset() {
-        curFile = null
-    }
-
-    private fun registerShutdownHook() {
-        // close the stream if the app shuts down
-        Runtime.getRuntime().addShutdownHook(object : Thread() {
-            override fun run() {
-                finish(curFile)
-            }
-        })
+        curFile.remove(apiKey)
     }
 }
