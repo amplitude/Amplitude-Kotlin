@@ -7,6 +7,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.json.JSONArray
+import org.json.JSONException
 
 class FileResponseHandler(
     private val storage: EventsFileStorage,
@@ -19,7 +20,14 @@ class FileResponseHandler(
 ) : ResponseHandler {
 
     override fun handleSuccessResponse(successResponse: SuccessResponse) {
-        val events = JSONArray(eventsString).toEvents()
+        val events: List<BaseEvent>
+        try {
+            events = JSONArray(eventsString).toEvents()
+        } catch (e: JSONException) {
+            storage.removeFile(eventFilePath)
+            removeCallbackByInsertId(eventsString)
+            throw e
+        }
         triggerEventsCallback(events, HttpStatus.SUCCESS.code, "Event sent success.")
         scope.launch(dispatcher) {
             storage.removeFile(eventFilePath)
@@ -27,7 +35,14 @@ class FileResponseHandler(
     }
 
     override fun handleBadRequestResponse(badRequestResponse: BadRequestResponse) {
-        val events = JSONArray(eventsString).toEvents()
+        val events: List<BaseEvent>
+        try {
+            events = JSONArray(eventsString).toEvents()
+        } catch (e: JSONException) {
+            storage.removeFile(eventFilePath)
+            removeCallbackByInsertId(eventsString)
+            throw e
+        }
         if (events.size == 1) {
             triggerEventsCallback(events, HttpStatus.BAD_REQUEST.code, badRequestResponse.error)
             storage.removeFile(eventFilePath)
@@ -53,7 +68,14 @@ class FileResponseHandler(
     }
 
     override fun handlePayloadTooLargeResponse(payloadTooLargeResponse: PayloadTooLargeResponse) {
-        val rawEvents = JSONArray(eventsString)
+        val rawEvents: JSONArray
+        try {
+            rawEvents = JSONArray(eventsString)
+        } catch (e: JSONException) {
+            storage.removeFile(eventFilePath)
+            removeCallbackByInsertId(eventsString)
+            throw e
+        }
         if (rawEvents.length() == 1) {
             val events = rawEvents.toEvents()
             triggerEventsCallback(events, HttpStatus.PAYLOAD_TOO_LARGE.code, payloadTooLargeResponse.error)
@@ -91,6 +113,13 @@ class FileResponseHandler(
                     storage.removeEventCallback(insertId)
                 }
             }
+        }
+    }
+
+    private fun removeCallbackByInsertId(eventsString: String) {
+        val regx = """"insert_id":"(.{36})",""".toRegex()
+        regx.findAll(eventsString).forEach {
+            storage.removeEventCallback(it.groupValues[1])
         }
     }
 }
