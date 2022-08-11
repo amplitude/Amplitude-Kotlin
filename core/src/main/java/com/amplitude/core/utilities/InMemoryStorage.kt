@@ -48,7 +48,7 @@ class InMemoryStorage(
         return listOf(eventsToSend)
     }
 
-    override fun getEventsString(content: Any): String {
+    override suspend fun getEventsString(content: Any): String {
         // content is list of BaseEvent
         return JSONUtil.eventsToString(content as List<BaseEvent>)
     }

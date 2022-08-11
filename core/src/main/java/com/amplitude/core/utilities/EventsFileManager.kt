@@ -7,6 +7,8 @@ import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
 import java.io.File
 import java.io.FileOutputStream
+import java.util.Collections
+import java.util.concurrent.ConcurrentHashMap
 
 class EventsFileManager(
     private val directory: File,
@@ -20,14 +22,12 @@ class EventsFileManager(
 
     private val fileIndexKey = "amplitude.events.file.index.$apiKey"
 
-    private var os: FileOutputStream? = null
-
-    private var curFile: File? = null
-
-    private val mutex = Mutex()
-
     companion object {
         const val MAX_FILE_SIZE = 975_000 // 975KB
+        val writeMutex = Mutex()
+        val readMutex = Mutex()
+        val filePathSet = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
+        var curFile: File? = null
     }
 
     /**
@@ -35,7 +35,7 @@ class EventsFileManager(
      * opens a new file, if current file is full or uncreated
      * stores the event
      */
-    suspend fun storeEvent(event: String) = mutex.withLock {
+    suspend fun storeEvent(event: String) = writeMutex.withLock {
         var file = currentFile()
         if (!file.exists()) {
             // create it
@@ -43,11 +43,14 @@ class EventsFileManager(
         }
 
         // check if file is at capacity
-        if (file.length() > MAX_FILE_SIZE) {
-            finish()
+        while (file.length() > MAX_FILE_SIZE) {
+            finish(file)
             // update index
             file = currentFile()
-            file.createNewFile()
+            if (!file.exists()) {
+                // create it
+                file.createNewFile()
+            }
         }
 
         var contents = ""
@@ -69,7 +72,7 @@ class EventsFileManager(
      * Returns a comma-separated list of file paths that are not yet uploaded
      */
     fun read(): List<String> {
-        // we need to filter out .temp file, since its operating on the writing thread
+        // we need to filter out .temp file, since it's operating on the writing thread
         val fileList = directory.listFiles { _, name ->
             name.contains(apiKey) && !name.endsWith(".tmp")
         } ?: emptyArray()
@@ -82,6 +85,7 @@ class EventsFileManager(
      * deletes the file at filePath
      */
     fun remove(filePath: String): Boolean {
+        filePathSet.remove(filePath)
         return File(filePath).delete()
     }
 
@@ -95,8 +99,11 @@ class EventsFileManager(
      * closes current file, and increase the index
      * so next write go to a new file
      */
-    suspend fun rollover() = mutex.withLock {
-        finish()
+    suspend fun rollover() = writeMutex.withLock {
+        val file = currentFile()
+        if (file.exists() && file.length() > 0) {
+            finish(file)
+        }
     }
 
     /**
@@ -117,17 +124,25 @@ class EventsFileManager(
         this.remove(filePath)
     }
 
-    private fun finish() {
-        val file = currentFile()
-        if (!file.exists()) {
-            // if tmp file doesnt exist then we dont need to do anything
+    suspend fun getEventString(filePath: String): String = readMutex.withLock {
+        if (filePathSet.contains(filePath)) {
+            return ""
+        }
+        filePathSet.add(filePath)
+        File(filePath).bufferedReader().use {
+            return it.readText()
+        }
+    }
+
+    private fun finish(file: File?) {
+        if (file == null || !file.exists() || file.length() == 0L) {
+            // if tmp file doesn't exist or empty then we don't need to do anything
             return
         }
         // close events array and batch object
         val contents = """]"""
         writeToFile(contents.toByteArray(), file)
         file.renameTo(File(directory, file.nameWithoutExtension))
-        os?.close()
         incrementFileIndex()
         reset()
     }
@@ -135,35 +150,34 @@ class EventsFileManager(
     // return the current tmp file
     private fun currentFile(): File {
         curFile = curFile ?: run {
-            val index = kvs.getLong(fileIndexKey, 0)
-            File(directory, "$apiKey-$index.tmp")
-        }
+            val fileList = directory.listFiles { _, name ->
+                name.contains(apiKey) && name.endsWith(".tmp")
+            } ?: emptyArray()
 
-        return curFile!!
+            fileList.getOrNull(0)
+        }
+        val index = kvs.getLong(fileIndexKey, 0)
+        return curFile ?: File(directory, "$apiKey-$index.tmp")
     }
 
     // write to underlying file
     private fun writeToFile(content: ByteArray, file: File) {
-        os = os ?: FileOutputStream(file, true)
-        os?.run {
-            write(content)
-            flush()
+        FileOutputStream(file, true).use {
+            it.write(content)
+            it.flush()
         }
     }
 
     private fun writeToFile(content: String, file: File) {
         file.createNewFile()
-        val fileOS = FileOutputStream(file, true)
-        fileOS.run {
-            write(content.toByteArray())
-            flush()
+        FileOutputStream(file).use {
+            it.write(content.toByteArray())
+            it.flush()
         }
         file.renameTo(File(directory, file.nameWithoutExtension))
-        fileOS.close()
     }
 
     private fun reset() {
-        os = null
         curFile = null
     }
 
@@ -171,7 +185,7 @@ class EventsFileManager(
         // close the stream if the app shuts down
         Runtime.getRuntime().addShutdownHook(object : Thread() {
             override fun run() {
-                os?.close()
+                finish(curFile)
             }
         })
     }

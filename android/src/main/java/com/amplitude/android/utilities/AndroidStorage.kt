@@ -17,7 +17,6 @@ import com.amplitude.core.utilities.ResponseHandler
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import org.json.JSONArray
-import java.io.BufferedReader
 import java.io.File
 
 class AndroidStorage(
@@ -61,11 +60,8 @@ class AndroidStorage(
         return eventsFile.read()
     }
 
-    override fun getEventsString(content: Any): String {
-        val bufferedReader: BufferedReader = File(content as String).bufferedReader()
-        bufferedReader.use {
-            return it.readText()
-        }
+    override suspend fun getEventsString(content: Any): String {
+        return eventsFile.getEventString(content as String)
     }
 
     override fun getResponseHandler(
@@ -93,7 +89,7 @@ class AndroidStorage(
 
     override fun getEventCallback(insertId: String): EventCallBack? {
         if (eventCallbacksMap.contains(insertId)) {
-            return eventCallbacksMap.get(insertId)
+            return eventCallbacksMap[insertId]
         }
         return null
     }
