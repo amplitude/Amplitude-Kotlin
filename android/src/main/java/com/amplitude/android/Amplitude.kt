@@ -142,7 +142,7 @@ open class Amplitude(
         // start new session
         setSessionId(timestamp)
         refreshSessionTime(timestamp)
-        if ((configuration as Configuration).trackingSessionEvents) {
+        if (configuration.trackingSessionEvents) {
             sendSessionEvent(START_SESSION_EVENT)
         }
     }
