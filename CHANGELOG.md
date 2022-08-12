@@ -1,3 +1,10 @@
+## [1.1.3](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.1.2...v1.1.3) (2022-08-12)
+
+
+### Bug Fixes
+
+* Unterminated arrays caused by multi client instances with same name and api key ([#61](https://github.com/amplitude/Amplitude-Kotlin/issues/61)) ([48d5be2](https://github.com/amplitude/Amplitude-Kotlin/commit/48d5be24507cc9c895dfaa5ea61f7ee09015dadc))
+
 ## [1.1.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.1.1...v1.1.2) (2022-08-10)
 
 
