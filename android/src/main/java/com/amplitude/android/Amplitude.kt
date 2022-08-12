@@ -68,6 +68,7 @@ open class Amplitude(
     override fun reset(): Amplitude {
         this.setUserId(null)
         amplitudeScope.launch(amplitudeDispatcher) {
+            isBuilt.await()
             idContainer.identityManager.editIdentity().setDeviceId(null).commit()
             androidContextPlugin.initializeDeviceId(configuration as Configuration)
         }
@@ -76,13 +77,15 @@ open class Amplitude(
 
     fun onEnterForeground(timestamp: Long) {
         amplitudeScope.launch(amplitudeDispatcher) {
+            isBuilt.await()
             startNewSessionIfNeeded(timestamp)
             inForeground = true
         }
     }
 
-    fun onExitForeground(timestamp: Long) {
+    fun onExitForeground() {
         amplitudeScope.launch(amplitudeDispatcher) {
+            isBuilt.await()
             inForeground = false
             if ((configuration as Configuration).flushEventsOnClose) {
                 flush()
@@ -125,6 +128,7 @@ open class Amplitude(
         sessionId = timestamp
         previousSessionId = timestamp
         amplitudeScope.launch(amplitudeDispatcher) {
+            isBuilt.await()
             storage.write(Storage.Constants.PREVIOUS_SESSION_ID, timestamp.toString())
         }
     }
@@ -138,7 +142,7 @@ open class Amplitude(
         // start new session
         setSessionId(timestamp)
         refreshSessionTime(timestamp)
-        if ((configuration as Configuration).trackingSessionEvents) {
+        if (configuration.trackingSessionEvents) {
             sendSessionEvent(START_SESSION_EVENT)
         }
     }
@@ -156,6 +160,7 @@ open class Amplitude(
         }
         lastEventTime = timestamp
         amplitudeScope.launch(amplitudeDispatcher) {
+            isBuilt.await()
             storage.write(Storage.Constants.LAST_EVENT_TIME, timestamp.toString())
         }
     }

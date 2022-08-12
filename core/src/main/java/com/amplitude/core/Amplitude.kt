@@ -185,6 +185,7 @@ open class Amplitude internal constructor(
      */
     fun setDeviceId(deviceId: String): Amplitude {
         amplitudeScope.launch(amplitudeDispatcher) {
+            isBuilt.await()
             idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
         }
         return this
@@ -317,6 +318,7 @@ open class Amplitude internal constructor(
             logger.info("Skip event for opt out config.")
         }
         amplitudeScope.launch(amplitudeDispatcher) {
+            isBuilt.await()
             timeline.process(event)
         }
     }

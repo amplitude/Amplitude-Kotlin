@@ -59,7 +59,7 @@ class FileStorage(
         return eventsFile.read()
     }
 
-    override fun getEventsString(content: Any): String {
+    override suspend fun getEventsString(content: Any): String {
         // content is filePath String
         val bufferedReader: BufferedReader = File(content as String).bufferedReader()
         bufferedReader.use {
