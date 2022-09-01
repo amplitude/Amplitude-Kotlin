@@ -12,10 +12,10 @@ open class Plan @JvmOverloads constructor(
 ) {
 
     /**
-     * Get JSONObject of current tacking plan
+     * Get JSONObject of current tracking plan
      * @return JSONObject including plan information
      */
-    internal fun toJSONObject(): JSONObject? {
+    internal fun toJSONObject(): JSONObject {
         val plan = JSONObject()
         try {
             if (!branch.isNullOrEmpty()) {

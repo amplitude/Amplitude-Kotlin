@@ -5,6 +5,7 @@ import com.amplitude.core.events.EventOptions
 import com.amplitude.core.events.GroupIdentifyEvent
 import com.amplitude.core.events.Identify
 import com.amplitude.core.events.IdentifyEvent
+import com.amplitude.core.events.IngestionMetadata
 import com.amplitude.core.events.Plan
 import com.amplitude.core.events.Revenue
 import com.amplitude.core.events.RevenueEvent
@@ -22,3 +23,7 @@ open class Plan @JvmOverloads constructor(
     version: String? = null,
     versionId: String? = null
 ) : Plan(branch, source, version, versionId)
+open class IngestionMetadata @JvmOverloads constructor(
+    sourceName: String? = null,
+    sourceVersion: String? = null,
+) : IngestionMetadata(sourceName, sourceVersion)

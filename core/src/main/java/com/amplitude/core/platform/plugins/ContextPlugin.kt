@@ -40,6 +40,11 @@ class ContextPlugin : Plugin {
                 event.plan = it
             }
         }
+        event.ingestionMetadata ?: let {
+            amplitude.configuration.ingestionMetadata ?. let {
+                event.ingestionMetadata = it
+            }
+        }
     }
 
     override fun execute(event: BaseEvent): BaseEvent? {

@@ -150,6 +150,11 @@ class AndroidContextPlugin : Plugin {
                 event.plan = it
             }
         }
+        event.ingestionMetadata ?: let {
+            amplitude.configuration.ingestionMetadata ?. let {
+                event.ingestionMetadata = it
+            }
+        }
     }
 
     private fun getAndroidAmplitude(): com.amplitude.android.Amplitude {

@@ -33,6 +33,7 @@ open class EventOptions {
     var library: String? = null
     var ip: String? = null
     var plan: Plan? = null
+    var ingestionMetadata: IngestionMetadata? = null
     var revenue: Double? = null
     var price: Double? = null
     var quantity: Int? = null

@@ -1,6 +1,7 @@
 package com.amplitude.core
 
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.events.IngestionMetadata
 import com.amplitude.core.events.Plan
 import com.amplitude.core.utilities.ConsoleLoggerProvider
 import com.amplitude.core.utilities.InMemoryStorageProvider
@@ -22,7 +23,8 @@ open class Configuration @JvmOverloads constructor(
     open var useBatch: Boolean = false,
     open var serverZone: ServerZone = ServerZone.US,
     open var serverUrl: String? = null,
-    open var plan: Plan? = null
+    open var plan: Plan? = null,
+    open var ingestionMetadata: IngestionMetadata? = null
 ) {
 
     companion object {
