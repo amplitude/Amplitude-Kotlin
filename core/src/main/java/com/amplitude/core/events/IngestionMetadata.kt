@@ -17,10 +17,10 @@ open class IngestionMetadata @JvmOverloads constructor(
         val jsonObject = JSONObject()
         try {
             if (!sourceName.isNullOrEmpty()) {
-                jsonObject.put(INGESTION_METADATA_SOURCE_NAME, sourceName)
+                jsonObject.put(AMP_INGESTION_METADATA_SOURCE_NAME, sourceName)
             }
             if (!sourceVersion.isNullOrEmpty()) {
-                jsonObject.put(INGESTION_METADATA_SOURCE_VERSION, sourceVersion)
+                jsonObject.put(AMP_INGESTION_METADATA_SOURCE_VERSION, sourceVersion)
             }
         } catch (e: JSONException) {
             ConsoleLogger.logger.error("JSON Serialization of ingestion metadata object failed")
@@ -28,13 +28,20 @@ open class IngestionMetadata @JvmOverloads constructor(
         return jsonObject
     }
 
+    /**
+     * Get a cloned IngestionMetadata object, to isolate the potentially value changes
+     */
+    fun clone(): IngestionMetadata {
+        return IngestionMetadata(sourceName, sourceVersion)
+    }
+
     companion object {
-        const val INGESTION_METADATA_SOURCE_NAME = "source_name"
-        const val INGESTION_METADATA_SOURCE_VERSION = "source_version"
+        const val AMP_INGESTION_METADATA_SOURCE_NAME = "source_name"
+        const val AMP_INGESTION_METADATA_SOURCE_VERSION = "source_version"
 
         internal fun fromJSONObject(jsonObject: JSONObject): IngestionMetadata {
-            val branch = jsonObject.optString(INGESTION_METADATA_SOURCE_NAME, null)
-            val source = jsonObject.optString(INGESTION_METADATA_SOURCE_VERSION, null)
+            val branch = jsonObject.optString(AMP_INGESTION_METADATA_SOURCE_NAME, null)
+            val source = jsonObject.optString(AMP_INGESTION_METADATA_SOURCE_VERSION, null)
             return IngestionMetadata(branch, source)
         }
     }

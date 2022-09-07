@@ -37,12 +37,12 @@ class ContextPlugin : Plugin {
         }
         event.plan ?: let {
             amplitude.configuration.plan ?. let {
-                event.plan = it
+                event.plan = it.clone()
             }
         }
         event.ingestionMetadata ?: let {
             amplitude.configuration.ingestionMetadata ?. let {
-                event.ingestionMetadata = it
+                event.ingestionMetadata = it.clone()
             }
         }
     }

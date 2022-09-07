@@ -36,6 +36,13 @@ open class Plan @JvmOverloads constructor(
         return plan
     }
 
+    /**
+     * Get a cloned Plan object, to isolate the potentially value changes
+     */
+    fun clone(): Plan {
+        return Plan(branch, source, version, versionId)
+    }
+
     companion object {
         const val AMP_PLAN_BRANCH = "branch"
         const val AMP_PLAN_SOURCE = "source"
