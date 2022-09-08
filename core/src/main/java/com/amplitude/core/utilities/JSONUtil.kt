@@ -2,6 +2,7 @@ package com.amplitude.core.utilities
 
 import com.amplitude.core.Constants
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.events.IngestionMetadata
 import com.amplitude.core.events.Plan
 import org.json.JSONArray
 import org.json.JSONException
@@ -53,6 +54,9 @@ object JSONUtil {
         eventJSON.addValue("android_app_set_id", event.appSetId)
         event.plan?. let {
             eventJSON.put("plan", it.toJSONObject())
+        }
+        event.ingestionMetadata?. let {
+            eventJSON.put("ingestion_metadata", it.toJSONObject())
         }
         return eventJSON
     }
@@ -199,6 +203,7 @@ internal fun JSONObject.toBaseEvent(): BaseEvent {
     event.library = if (this.has("library")) this.getString("library") else null
     event.partnerId = this.optionalString("partner_id", null)
     event.plan = if (this.has("plan")) Plan.fromJSONObject(this.getJSONObject("plan")) else null
+    event.ingestionMetadata = if (this.has("ingestion_metadata")) IngestionMetadata.fromJSONObject(this.getJSONObject("ingestion_metadata")) else null
     return event
 }
 

@@ -6,6 +6,7 @@ import com.amplitude.core.events.GroupIdentifyEvent
 import com.amplitude.core.events.Identify
 import com.amplitude.core.events.IdentifyEvent
 import com.amplitude.core.events.IdentifyOperation
+import com.amplitude.core.events.IngestionMetadata
 import com.amplitude.core.events.Plan
 import com.amplitude.core.events.Revenue
 import com.amplitude.core.events.RevenueEvent
@@ -39,7 +40,8 @@ internal class AmplitudeTest {
         mockHTTPClient(createSuccessResponse())
         val testApiKey = "test-123"
         val plan = Plan("test-branch", "test")
-        amplitude = testAmplitude(Configuration(testApiKey, plan = plan))
+        val ingestionMetadata = IngestionMetadata("ampli", "2.0.0")
+        amplitude = testAmplitude(Configuration(testApiKey, plan = plan, ingestionMetadata = ingestionMetadata))
     }
 
     @Nested
@@ -63,6 +65,7 @@ internal class AmplitudeTest {
                 assertEquals(mapOf(Pair("foo", "bar")), it.eventProperties)
                 assertEquals("CA", it.region)
                 assertEquals("test", it.plan?.source)
+                assertEquals("ampli", it.ingestionMetadata?.sourceName)
             }
         }
 
@@ -87,6 +90,7 @@ internal class AmplitudeTest {
                 assertEquals("CA", it.region)
                 assertEquals("SF", it.city)
                 assertEquals("test", it.plan?.source)
+                assertEquals("ampli", it.ingestionMetadata?.sourceName)
             }
         }
     }

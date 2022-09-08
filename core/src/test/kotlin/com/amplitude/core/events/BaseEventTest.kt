@@ -16,13 +16,16 @@ class BaseEventTest {
         event.country = "US"
         val eventOptions = EventOptions()
         val plan = Plan(branch = "test")
+        val ingestionMetadata = IngestionMetadata(sourceName = "ampli")
         eventOptions.userId = "user_id"
         eventOptions.country = "DE"
         eventOptions.plan = plan
+        eventOptions.ingestionMetadata = ingestionMetadata
         event.mergeEventOptions(eventOptions)
         assertEquals(event.userId, "user_id")
         assertEquals(event.country, "US")
         assertEquals(event.plan, plan)
+        assertEquals(event.ingestionMetadata, ingestionMetadata)
     }
 
     @Test
