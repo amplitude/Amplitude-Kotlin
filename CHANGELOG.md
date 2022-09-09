@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.2.0...v1.2.1) (2022-09-09)
+
+
+### Bug Fixes
+
+* fix app set id null issue ([#67](https://github.com/amplitude/Amplitude-Kotlin/issues/67)) ([0cdc238](https://github.com/amplitude/Amplitude-Kotlin/commit/0cdc23824a891981779a6d3081aa3ac091972164))
+
 # [1.2.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.1.3...v1.2.0) (2022-09-09)
 
 
