@@ -37,15 +37,15 @@ class AndroidContextPlugin : Plugin {
         }
         if (!configuration.newDeviceIdPerInstall && configuration.useAdvertisingIdForDeviceId && !contextProvider.isLimitAdTrackingEnabled()) {
             val advertisingId = contextProvider.advertisingId
-            if (validDeviceId(advertisingId)) {
+            if (advertisingId != null && validDeviceId(advertisingId)) {
                 amplitude.setDeviceId(advertisingId)
                 return
             }
         }
         if (configuration.useAppSetIdForDeviceId) {
             val appSetId = contextProvider.appSetId
-            if (validDeviceId(appSetId)) {
-                amplitude.setDeviceId("{$appSetId}S")
+            if (appSetId != null && validDeviceId(appSetId)) {
+                amplitude.setDeviceId("${appSetId}S")
                 return
             }
         }
