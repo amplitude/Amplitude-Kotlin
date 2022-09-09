@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.1.3...v1.2.0) (2022-09-09)
+
+
+### Features
+
+* add ingestion_metadata field ([#63](https://github.com/amplitude/Amplitude-Kotlin/issues/63)) ([354ec7b](https://github.com/amplitude/Amplitude-Kotlin/commit/354ec7bd35acd50d337ae424d324c8fb27106bdf))
+
 ## [1.1.3](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.1.2...v1.1.3) (2022-08-12)
 
 
