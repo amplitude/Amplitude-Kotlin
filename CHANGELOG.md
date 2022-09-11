@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.2.1...v1.3.0) (2022-09-11)
+
+
+### Features
+
+* allow android configuration values to be updated ([#68](https://github.com/amplitude/Amplitude-Kotlin/issues/68)) ([f2497df](https://github.com/amplitude/Amplitude-Kotlin/commit/f2497dfb79db594caa772f57ccf395d710de3f0c))
+
 ## [1.2.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.2.0...v1.2.1) (2022-09-09)
 
 
