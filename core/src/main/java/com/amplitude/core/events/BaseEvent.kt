@@ -11,10 +11,6 @@ open class BaseEvent : EventOptions() {
     var groupProperties: MutableMap<String, Any?>? = null
 
     fun mergeEventOptions(options: EventOptions) {
-        if (options.extra?.get("ingestionMetadata") != null) {
-            println("has ingestion metadata ")
-            options.ingestionMetadata = options.extra?.get("ingestionMetadata") as IngestionMetadata?
-        }
         userId ?: let { userId = options.userId }
         deviceId ?: let { deviceId = options.deviceId }
         timestamp ?: let { timestamp = options.timestamp }
@@ -50,7 +46,7 @@ open class BaseEvent : EventOptions() {
         quantity ?: let { quantity = options.quantity }
         productId ?: let { productId = options.productId }
         revenueType ?: let { revenueType = options.revenueType }
-        extra ?: let { extra = options.extra?.filterKeys { it !== "ingestionMetadata" } } // convert map to ingestionmetadata
+        extra ?: let { extra = options.extra }
         callback ?: let { callback = options.callback }
         partnerId ?: let { partnerId = options.partnerId }
     }
