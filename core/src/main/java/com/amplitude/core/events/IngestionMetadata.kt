@@ -39,7 +39,7 @@ open class IngestionMetadata @JvmOverloads constructor(
         const val AMP_INGESTION_METADATA_SOURCE_NAME = "source_name"
         const val AMP_INGESTION_METADATA_SOURCE_VERSION = "source_version"
 
-        internal fun fromJSONObject(jsonObject: JSONObject): IngestionMetadata {
+        fun fromJSONObject(jsonObject: JSONObject): IngestionMetadata {
             val branch = jsonObject.optString(AMP_INGESTION_METADATA_SOURCE_NAME, null)
             val source = jsonObject.optString(AMP_INGESTION_METADATA_SOURCE_VERSION, null)
             return IngestionMetadata(branch, source)
