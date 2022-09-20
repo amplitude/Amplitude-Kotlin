@@ -316,6 +316,7 @@ open class Amplitude internal constructor(
     private fun process(event: BaseEvent) {
         if (configuration.optOut) {
             logger.info("Skip event for opt out config.")
+            return
         }
         amplitudeScope.launch(amplitudeDispatcher) {
             isBuilt.await()
