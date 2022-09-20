@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.3.0...v1.3.1) (2022-09-20)
+
+
+### Bug Fixes
+
+* fix optOut ([#74](https://github.com/amplitude/Amplitude-Kotlin/issues/74)) ([e476e4c](https://github.com/amplitude/Amplitude-Kotlin/commit/e476e4cad568c587ee9d8766bb71073a32e49335))
+
 # [1.3.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.2.1...v1.3.0) (2022-09-11)
 
 
