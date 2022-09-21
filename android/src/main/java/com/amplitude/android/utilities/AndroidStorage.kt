@@ -8,7 +8,6 @@ import com.amplitude.core.EventCallBack
 import com.amplitude.core.Storage
 import com.amplitude.core.StorageProvider
 import com.amplitude.core.events.BaseEvent
-import com.amplitude.core.events.IngestionMetadata
 import com.amplitude.core.platform.EventPipeline
 import com.amplitude.core.utilities.EventsFileManager
 import com.amplitude.core.utilities.EventsFileStorage
