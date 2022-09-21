@@ -7,6 +7,7 @@ import com.amplitude.core.events.IdentifyEvent
 import com.amplitude.core.events.RevenueEvent
 import com.amplitude.core.platform.DestinationPlugin
 import com.amplitude.core.platform.EventPipeline
+import org.json.JSONObject
 
 class AmplitudeDestination : DestinationPlugin() {
     private lateinit var pipeline: EventPipeline
@@ -38,7 +39,16 @@ class AmplitudeDestination : DestinationPlugin() {
     private fun enqueue(payload: BaseEvent?) {
         payload?.let {
             if (it.isValid()) {
-                pipeline.put(it)
+                val amplitudeExtra = it.extra?.get("amplitude")
+                if (amplitudeExtra != null) {
+                    try {
+                        it.ingestionMetadata = IngestionMetadata.fromJSONObject(
+                            (amplitudeExtra as Map<String, Any>).get("ingestionMetadata") as JSONObject
+                        )
+                    } finally {
+                        pipeline.put(it)
+                    }
+                }
             } else {
                 amplitude.logger.warn("Event is invalid for missing information like userId and deviceId. Dropping event: ${it.eventType}")
             }
