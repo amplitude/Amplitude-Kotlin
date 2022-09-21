@@ -44,5 +44,11 @@ open class IngestionMetadata @JvmOverloads constructor(
             val source = jsonObject.optString(AMP_INGESTION_METADATA_SOURCE_VERSION, null)
             return IngestionMetadata(branch, source)
         }
+
+        fun fromMap(map: Map<String, String>): IngestionMetadata {
+            val branch = map.get(AMP_INGESTION_METADATA_SOURCE_NAME) ?: null
+            val source = map.get(AMP_INGESTION_METADATA_SOURCE_VERSION) ?: null
+            return IngestionMetadata(branch, source)
+        }
     }
 }

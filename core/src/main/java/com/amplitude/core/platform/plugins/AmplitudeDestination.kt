@@ -7,7 +7,6 @@ import com.amplitude.core.events.IdentifyEvent
 import com.amplitude.core.events.RevenueEvent
 import com.amplitude.core.platform.DestinationPlugin
 import com.amplitude.core.platform.EventPipeline
-import org.json.JSONObject
 
 class AmplitudeDestination : DestinationPlugin() {
     private lateinit var pipeline: EventPipeline
@@ -42,9 +41,8 @@ class AmplitudeDestination : DestinationPlugin() {
                 val amplitudeExtra = it.extra?.get("amplitude")
                 if (amplitudeExtra != null) {
                     try {
-                        it.ingestionMetadata = IngestionMetadata.fromJSONObject(
-                            (amplitudeExtra as Map<String, Any>).get("ingestionMetadata") as JSONObject
-                        )
+                        val ingestionMetadataMap = (amplitudeExtra as Map<String, Any>).get("ingestionMetadata") as Map<String, String>
+                        it.ingestionMetadata = IngestionMetadata.fromMap(ingestionMetadataMap)
                     } finally {
                         pipeline.put(it)
                     }
