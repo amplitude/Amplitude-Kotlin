@@ -18,7 +18,6 @@ import com.amplitude.core.utilities.ResponseHandler
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import org.json.JSONArray
-import org.json.JSONObject
 import java.io.File
 
 class AndroidStorage(
@@ -39,12 +38,6 @@ class AndroidStorage(
 
     override suspend fun writeEvent(event: BaseEvent) {
         eventsFile.storeEvent(JSONUtil.eventToString(event))
-        val amplitudeExtra = event.extra?.get("amplitude")
-        if (amplitudeExtra != null) {
-            try {
-                event.ingestionMetadata = IngestionMetadata.fromJSONObject((amplitudeExtra as Map<String, Any>).get("ingestionMetadata") as JSONObject)
-            } finally { }
-        }
         event.callback?.let { callback ->
             event.insertId?.let {
                 eventCallbacksMap.put(it, callback)
