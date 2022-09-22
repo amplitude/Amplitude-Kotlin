@@ -35,6 +35,10 @@ class ContextPlugin : Plugin {
                 event.partnerId = it
             }
         }
+        event.ip ?: let {
+            // get the ip in server side if there is no event level ip
+            event.ip = "\$remote"
+        }
         event.plan ?: let {
             amplitude.configuration.plan ?. let {
                 event.plan = it.clone()
