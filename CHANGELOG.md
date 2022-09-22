@@ -1,3 +1,10 @@
+## [1.3.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.3.1...v1.3.2) (2022-09-22)
+
+
+### Bug Fixes
+
+* enable the remote ip ([#75](https://github.com/amplitude/Amplitude-Kotlin/issues/75)) ([232620c](https://github.com/amplitude/Amplitude-Kotlin/commit/232620cf75e4ece7718678ce6a4dd7553ad859b3))
+
 ## [1.3.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.3.0...v1.3.1) (2022-09-20)
 
 
