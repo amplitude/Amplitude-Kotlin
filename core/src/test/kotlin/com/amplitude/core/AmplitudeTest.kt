@@ -279,7 +279,7 @@ internal class AmplitudeTest {
             amplitude.add(middleware)
             amplitude.timeline.plugins[Plugin.Type.Enrichment]?.plugins?.let {
                 assertEquals(
-                    1,
+                    2,
                     it.size
                 )
             } ?: fail()
@@ -295,7 +295,7 @@ internal class AmplitudeTest {
             amplitude.remove(middleware)
             amplitude.timeline.plugins[Plugin.Type.Enrichment]?.plugins?.let {
                 assertEquals(
-                    0, // SegmentLog is the other added at startup
+                    1, // SegmentLog is the other added at startup
                     it.size
                 )
             } ?: fail()
