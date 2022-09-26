@@ -14,6 +14,7 @@ import com.amplitude.core.platform.Plugin
 import com.amplitude.core.platform.Timeline
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.ContextPlugin
+import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
 import com.amplitude.core.utilities.AnalyticsEventReceiver
 import com.amplitude.core.utilities.AnalyticsIdentityListener
 import com.amplitude.eventbridge.EventBridgeContainer
@@ -74,6 +75,7 @@ open class Amplitude internal constructor(
         }
         EventBridgeContainer.getInstance(configuration.instanceName).eventBridge.setEventReceiver(EventChannel.EVENT, AnalyticsEventReceiver(this))
         add(ContextPlugin())
+        add(GetAmpliExtrasPlugin())
         add(AmplitudeDestination())
 
         isBuilt = amplitudeScope.async(amplitudeDispatcher) {
