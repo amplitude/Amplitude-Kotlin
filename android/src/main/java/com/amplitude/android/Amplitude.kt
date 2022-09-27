@@ -6,6 +6,7 @@ import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Storage
 import com.amplitude.core.platform.plugins.AmplitudeDestination
+import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
 import com.amplitude.core.utilities.AnalyticsIdentityListener
 import com.amplitude.core.utilities.FileStorage
 import com.amplitude.id.FileIdentityStorageProvider
@@ -53,6 +54,7 @@ open class Amplitude(
             lastEventTime = storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLong() ?: -1
             androidContextPlugin = AndroidContextPlugin()
             add(androidContextPlugin)
+            add(GetAmpliExtrasPlugin())
             add(AndroidLifecyclePlugin())
             true
         }
