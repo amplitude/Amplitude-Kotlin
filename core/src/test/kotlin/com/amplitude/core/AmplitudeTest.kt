@@ -65,6 +65,7 @@ internal class AmplitudeTest {
                 assertEquals(mapOf(Pair("foo", "bar")), it.eventProperties)
                 assertEquals("CA", it.region)
                 assertEquals("test", it.plan?.source)
+                assertEquals("\$remote", it.ip)
                 assertEquals("ampli", it.ingestionMetadata?.sourceName)
             }
         }
@@ -80,6 +81,7 @@ internal class AmplitudeTest {
             val event = BaseEvent()
             event.eventType = "test event"
             event.region = "CA"
+            event.ip = "127.0.0.1"
             amplitude.track(event, eventOptions)
             val track = slot<BaseEvent>()
             verify { mockPlugin.track(capture(track)) }
@@ -91,6 +93,7 @@ internal class AmplitudeTest {
                 assertEquals("SF", it.city)
                 assertEquals("test", it.plan?.source)
                 assertEquals("ampli", it.ingestionMetadata?.sourceName)
+                assertEquals("127.0.0.1", it.ip)
             }
         }
     }
