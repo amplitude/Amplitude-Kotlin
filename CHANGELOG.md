@@ -1,3 +1,10 @@
+## [1.4.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.0...v1.4.1) (2022-09-27)
+
+
+### Bug Fixes
+
+* fix the ip address not catch issue ([#78](https://github.com/amplitude/Amplitude-Kotlin/issues/78)) ([bf8e2a1](https://github.com/amplitude/Amplitude-Kotlin/commit/bf8e2a17a070e41fbea1bd9511b49e6ce0155aef))
+
 # [1.4.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.3.2...v1.4.0) (2022-09-27)
 
 
