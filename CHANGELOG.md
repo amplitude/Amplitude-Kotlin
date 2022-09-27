@@ -1,3 +1,15 @@
+# [1.4.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.3.2...v1.4.0) (2022-09-27)
+
+
+### Bug Fixes
+
+* add GetIngestionMetadataPlugin in android.Amplitude ([#77](https://github.com/amplitude/Amplitude-Kotlin/issues/77)) ([0c6d6cb](https://github.com/amplitude/Amplitude-Kotlin/commit/0c6d6cb7b125e2856b241ddf8141a0069c723abc))
+
+
+### Features
+
+* add ampli extra plugin for attaching ingestion metadata information ([#76](https://github.com/amplitude/Amplitude-Kotlin/issues/76)) ([a8aa604](https://github.com/amplitude/Amplitude-Kotlin/commit/a8aa604a7e894df44f8c36d81a270e43adfb3e69))
+
 ## [1.3.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.3.1...v1.3.2) (2022-09-22)
 
 
