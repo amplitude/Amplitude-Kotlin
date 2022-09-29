@@ -1,3 +1,10 @@
+## [1.4.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.1...v1.4.2) (2022-09-29)
+
+
+### Bug Fixes
+
+* fix other location info not auto populate ([#79](https://github.com/amplitude/Amplitude-Kotlin/issues/79)) ([5810c9d](https://github.com/amplitude/Amplitude-Kotlin/commit/5810c9d795fe840c254ce050e41d82ed3b9b62af))
+
 ## [1.4.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.0...v1.4.1) (2022-09-27)
 
 
