@@ -115,7 +115,13 @@ class AndroidContextPlugin : Plugin {
         if (trackingOptions.shouldTrackCarrier()) {
             event.carrier = contextProvider.carrier
         }
-        if (trackingOptions.shouldTrackCountry() && event.ip !== null) {
+        if (trackingOptions.shouldTrackIpAddress()) {
+            event.ip ?: let {
+                // get the ip in server side if there is no event level ip
+                event.ip = "\$remote"
+            }
+        }
+        if (trackingOptions.shouldTrackCountry() && event.ip !== "\$remote") {
             event.country = contextProvider.country
         }
         if (trackingOptions.shouldTrackLanguage()) {
@@ -143,12 +149,6 @@ class AndroidContextPlugin : Plugin {
         event.partnerId ?: let {
             amplitude.configuration.partnerId ?. let {
                 event.partnerId = it
-            }
-        }
-        if (trackingOptions.shouldTrackIpAddress()) {
-            event.ip ?: let {
-                // get the ip in server side if there is no event level ip
-                event.ip = "\$remote"
             }
         }
         event.plan ?: let {
