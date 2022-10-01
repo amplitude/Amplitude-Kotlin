@@ -2,7 +2,6 @@ package com.amplitude.android
 
 import android.app.Application
 import android.content.Context
-import android.util.Log
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.core.events.BaseEvent
@@ -20,8 +19,6 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import java.lang.reflect.Field
-import java.lang.reflect.Modifier
 
 
 open class StubPlugin : EventPlugin {
