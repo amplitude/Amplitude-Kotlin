@@ -11,7 +11,10 @@ import com.amplitude.core.utilities.InMemoryStorageProvider
 import com.amplitude.id.IMIdentityStorageProvider
 import com.amplitude.id.IdentityConfiguration
 import com.amplitude.id.IdentityContainer
-import io.mockk.*
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.mockkConstructor
+import io.mockk.mockkStatic
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -19,7 +22,6 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-
 
 open class StubPlugin : EventPlugin {
     override val type: Plugin.Type = Plugin.Type.Before
