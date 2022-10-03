@@ -1,3 +1,10 @@
+## [1.4.3](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.2...v1.4.3) (2022-10-03)
+
+
+### Bug Fixes
+
+* DXOC-200 lateinit var not initialized ([#81](https://github.com/amplitude/Amplitude-Kotlin/issues/81)) ([546e026](https://github.com/amplitude/Amplitude-Kotlin/commit/546e02640f515cd50e1e84d696f22d0b91c3d233))
+
 ## [1.4.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.1...v1.4.2) (2022-09-29)
 
 
