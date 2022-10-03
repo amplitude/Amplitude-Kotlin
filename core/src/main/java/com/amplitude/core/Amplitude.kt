@@ -51,13 +51,13 @@ open class Amplitude internal constructor(
     lateinit var storage: Storage
     val logger: Logger
     protected lateinit var idContainer: IdentityContainer
-    lateinit var isBuilt: Deferred<Boolean>
+    val isBuilt: Deferred<Boolean>
 
     init {
         require(configuration.isValid()) { "invalid configuration" }
         timeline = Timeline().also { it.amplitude = this }
         logger = configuration.loggerProvider.getLogger(this)
-        build()
+        isBuilt = build()
     }
 
     /**
@@ -65,7 +65,7 @@ open class Amplitude internal constructor(
      */
     constructor(configuration: Configuration) : this(configuration, State())
 
-    open fun build() {
+    open fun build(): Deferred<Boolean> {
         storage = configuration.storageProvider.getStorage(this)
         idContainer = IdentityContainer.getInstance(IdentityConfiguration(instanceName = configuration.instanceName, apiKey = configuration.apiKey, identityStorageProvider = IMIdentityStorageProvider()))
         val listener = AnalyticsIdentityListener(store)
@@ -78,7 +78,7 @@ open class Amplitude internal constructor(
         add(GetAmpliExtrasPlugin())
         add(AmplitudeDestination())
 
-        isBuilt = amplitudeScope.async(amplitudeDispatcher) {
+        return amplitudeScope.async(amplitudeDispatcher) {
             true
         }
     }
