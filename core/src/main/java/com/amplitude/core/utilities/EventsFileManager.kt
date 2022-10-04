@@ -6,6 +6,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
 import java.io.File
+import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
@@ -165,10 +166,12 @@ class EventsFileManager(
 
     // write to underlying file
     private fun writeToFile(content: ByteArray, file: File) {
-        FileOutputStream(file, true).use {
-            it.write(content)
-            it.flush()
-        }
+        try {
+            FileOutputStream(file, true).use {
+                it.write(content)
+                it.flush()
+            }
+        } catch (e: FileNotFoundException) {}
     }
 
     private fun writeToFile(content: String, file: File) {
