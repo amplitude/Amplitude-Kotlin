@@ -32,7 +32,7 @@ open class Configuration @JvmOverloads constructor(
     var useAdvertisingIdForDeviceId: Boolean = false,
     var useAppSetIdForDeviceId: Boolean = false,
     var newDeviceIdPerInstall: Boolean = false,
-    val trackingOptions: TrackingOptions = TrackingOptions(),
+    var trackingOptions: TrackingOptions = TrackingOptions(),
     var enableCoppaControl: Boolean = false,
     var locationListening: Boolean = true,
     var flushEventsOnClose: Boolean = true,
