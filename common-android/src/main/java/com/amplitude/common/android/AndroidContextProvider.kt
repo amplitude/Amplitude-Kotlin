@@ -1,7 +1,6 @@
 package com.amplitude.common.android
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
@@ -354,8 +353,17 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
             if (!isLocationListening) {
                 return null
             }
-            if (!(ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ||
-                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION))) {
+            if (!(
+                ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    ) === PackageManager.PERMISSION_GRANTED ||
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACCESS_FINE_LOCATION
+                    ) === PackageManager.PERMISSION_GRANTED
+                )
+            ) {
                 return null
             }
             val locationManager = context
