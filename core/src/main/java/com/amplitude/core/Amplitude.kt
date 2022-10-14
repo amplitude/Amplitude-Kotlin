@@ -320,11 +320,14 @@ open class Amplitude internal constructor(
             logger.info("Skip event for opt out config.")
             return
         }
+        processEvent(event)
         amplitudeScope.launch(amplitudeDispatcher) {
             isBuilt.await()
             timeline.process(event)
         }
     }
+
+    protected open fun processEvent(event: BaseEvent) {}
 
     /**
      * Add a plugin.

@@ -5,6 +5,8 @@ import com.amplitude.android.plugins.AndroidContextPlugin
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Storage
+import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.events.EventOptions
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
 import com.amplitude.core.utilities.AnalyticsIdentityListener
@@ -79,6 +81,33 @@ open class Amplitude(
         return this
     }
 
+    override fun processEvent(event: BaseEvent) {
+        val eventTimestamp = event.timestamp ?: System.currentTimeMillis()
+        event.timestamp = eventTimestamp
+        if (lastEventTime < eventTimestamp) {
+            lastEventTime = eventTimestamp
+        }
+
+        if (!(event.eventType == START_SESSION_EVENT || event.eventType == END_SESSION_EVENT)) {
+            if (!inForeground) {
+                startNewSessionIfNeeded(eventTimestamp)
+            } else {
+                refreshSessionTime(eventTimestamp)
+            }
+        }
+
+        if (event.sessionId < 0) {
+            event.sessionId = sessionId
+        }
+
+        val newEventId = lastEventId + 1
+        event.eventId = newEventId
+        lastEventId = newEventId
+        amplitudeScope.launch(amplitudeDispatcher) {
+            storage.write(Storage.Constants.LAST_EVENT_ID, newEventId.toString())
+        }
+    }
+
     fun onEnterForeground(timestamp: Long) {
         amplitudeScope.launch(amplitudeDispatcher) {
             isBuilt.await()
@@ -140,7 +169,9 @@ open class Amplitude(
     private fun startNewSession(timestamp: Long) {
         // end previous session
         if ((configuration as Configuration).trackingSessionEvents) {
-            sendSessionEvent(END_SESSION_EVENT)
+            val options = EventOptions()
+            options.timestamp = if (lastEventTime > 0) lastEventTime + 1 else null
+            sendSessionEvent(END_SESSION_EVENT, options)
         }
 
         // start new session
@@ -151,11 +182,11 @@ open class Amplitude(
         }
     }
 
-    private fun sendSessionEvent(sessionEvent: String) {
+    private fun sendSessionEvent(sessionEvent: String, options: EventOptions? = null) {
         if (!inSession()) {
             return
         }
-        track(sessionEvent)
+        track(sessionEvent, null, options)
     }
 
     fun refreshSessionTime(timestamp: Long) {
