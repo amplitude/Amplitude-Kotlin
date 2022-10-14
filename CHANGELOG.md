@@ -1,3 +1,12 @@
+## [1.4.4](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.3...v1.4.4) (2022-10-14)
+
+
+### Bug Fixes
+
+* clean up permission ([#85](https://github.com/amplitude/Amplitude-Kotlin/issues/85)) ([0402c91](https://github.com/amplitude/Amplitude-Kotlin/commit/0402c913620ba528431f953a2a4db0f97ef1129d))
+* make all variable in configuration mutable ([#84](https://github.com/amplitude/Amplitude-Kotlin/issues/84)) ([917796c](https://github.com/amplitude/Amplitude-Kotlin/commit/917796c558b286f6c44ed2accddca9056bf59086))
+* make trackingOptions able to overwrite in configuration ([#83](https://github.com/amplitude/Amplitude-Kotlin/issues/83)) ([281f0de](https://github.com/amplitude/Amplitude-Kotlin/commit/281f0deb779961027caa65e752d4211533aeacd8))
+
 ## [1.4.3](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.2...v1.4.3) (2022-10-03)
 
 
