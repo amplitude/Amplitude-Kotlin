@@ -1,5 +1,6 @@
 package com.amplitude.common.android
 
+import android.Manifest
 import android.content.Context
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
@@ -10,6 +11,7 @@ import android.location.LocationManager
 import android.os.Build
 import android.provider.Settings.Secure
 import android.telephony.TelephonyManager
+import androidx.core.content.ContextCompat
 import com.amplitude.common.ContextProvider
 import java.io.IOException
 import java.lang.Exception
@@ -351,7 +353,17 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
             if (!isLocationListening) {
                 return null
             }
-            if (!Utils.checkLocationPermissionAllowed(context)) {
+            if (!(
+                ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    ) === PackageManager.PERMISSION_GRANTED ||
+                    ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.ACCESS_FINE_LOCATION
+                    ) === PackageManager.PERMISSION_GRANTED
+                )
+            ) {
                 return null
             }
             val locationManager = context
