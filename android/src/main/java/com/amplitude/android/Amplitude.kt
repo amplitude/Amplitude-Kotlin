@@ -84,9 +84,6 @@ open class Amplitude(
     override fun processEvent(event: BaseEvent) {
         val eventTimestamp = event.timestamp ?: System.currentTimeMillis()
         event.timestamp = eventTimestamp
-        if (lastEventTime < eventTimestamp) {
-            lastEventTime = eventTimestamp
-        }
 
         if (!(event.eventType == START_SESSION_EVENT || event.eventType == END_SESSION_EVENT)) {
             if (!inForeground) {
@@ -100,11 +97,13 @@ open class Amplitude(
             event.sessionId = sessionId
         }
 
-        val newEventId = lastEventId + 1
-        event.eventId = newEventId
-        lastEventId = newEventId
-        amplitudeScope.launch(amplitudeDispatcher) {
-            storage.write(Storage.Constants.LAST_EVENT_ID, newEventId.toString())
+        event.eventId ?: let {
+            val newEventId = lastEventId + 1
+            event.eventId = newEventId
+            lastEventId = newEventId
+            amplitudeScope.launch(amplitudeDispatcher) {
+                storage.write(Storage.Constants.LAST_EVENT_ID, newEventId.toString())
+            }
         }
     }
 
