@@ -99,7 +99,13 @@ class EventPipeline(
         uploadChannel.consumeEach {
 
             withContext(amplitude.storageIODispatcher) {
-                storage.rollover()
+                try {
+                    storage.rollover()
+                } catch (e: FileNotFoundException) {
+                    e.message?.let {
+                        amplitude.logger.warn("Event storage file not found: $it")
+                    }
+                }
             }
 
             val eventsData = storage.readEventsContent()
