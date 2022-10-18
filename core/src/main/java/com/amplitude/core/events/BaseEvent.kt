@@ -49,6 +49,9 @@ open class BaseEvent : EventOptions() {
         extra ?: let { extra = options.extra }
         callback ?: let { callback = options.callback }
         partnerId ?: let { partnerId = options.partnerId }
+        if (sessionId < 0) {
+            sessionId = options.sessionId
+        }
     }
 
     /**

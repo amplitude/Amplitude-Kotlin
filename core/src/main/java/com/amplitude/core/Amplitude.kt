@@ -315,15 +315,30 @@ open class Amplitude internal constructor(
         return this
     }
 
-    private fun process(event: BaseEvent) {
+    protected fun process(event: BaseEvent) {
         if (configuration.optOut) {
             logger.info("Skip event for opt out config.")
             return
         }
+
+        val sessionEvents = processEvent(event)
+        sessionEvents ?. let {
+            it.forEach { e ->
+                amplitudeScope.launch(amplitudeDispatcher) {
+                    isBuilt.await()
+                    timeline.process(e)
+                }
+            }
+        }
+
         amplitudeScope.launch(amplitudeDispatcher) {
             isBuilt.await()
             timeline.process(event)
         }
+    }
+
+    protected open fun processEvent(event: BaseEvent): Iterable<BaseEvent>? {
+        return null
     }
 
     /**
