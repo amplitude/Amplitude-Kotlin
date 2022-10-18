@@ -6,7 +6,6 @@ import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Storage
 import com.amplitude.core.events.BaseEvent
-import com.amplitude.core.events.EventOptions
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
 import com.amplitude.core.utilities.AnalyticsIdentityListener
@@ -81,13 +80,14 @@ open class Amplitude(
         return this
     }
 
-    override fun processEvent(event: BaseEvent) {
+    override fun processEvent(event: BaseEvent): Iterable<BaseEvent>? {
         val eventTimestamp = event.timestamp ?: System.currentTimeMillis()
         event.timestamp = eventTimestamp
+        var sessionEvents: Iterable<BaseEvent>? = null
 
         if (!(event.eventType == START_SESSION_EVENT || event.eventType == END_SESSION_EVENT)) {
             if (!inForeground) {
-                startNewSessionIfNeeded(eventTimestamp)
+                sessionEvents = startNewSessionIfNeeded(eventTimestamp)
             } else {
                 refreshSessionTime(eventTimestamp)
             }
@@ -97,20 +97,39 @@ open class Amplitude(
             event.sessionId = sessionId
         }
 
+        val savedLastEventId = lastEventId
+
+        sessionEvents ?. let {
+            it.forEach { e ->
+                e.eventId ?: let {
+                    val newEventId = lastEventId + 1
+                    e.eventId = newEventId
+                    lastEventId = newEventId
+                }
+            }
+        }
+
         event.eventId ?: let {
             val newEventId = lastEventId + 1
             event.eventId = newEventId
             lastEventId = newEventId
+        }
+
+        if (lastEventId > savedLastEventId) {
             amplitudeScope.launch(amplitudeDispatcher) {
-                storage.write(Storage.Constants.LAST_EVENT_ID, newEventId.toString())
+                storage.write(Storage.Constants.LAST_EVENT_ID, lastEventId.toString())
             }
         }
+
+        return sessionEvents
     }
 
     fun onEnterForeground(timestamp: Long) {
         amplitudeScope.launch(amplitudeDispatcher) {
             isBuilt.await()
-            startNewSessionIfNeeded(timestamp)
+            startNewSessionIfNeeded(timestamp) ?. let {
+                it.forEach { event -> process(event) }
+            }
             inForeground = true
         }
     }
@@ -127,33 +146,30 @@ open class Amplitude(
         }
     }
 
-    fun startNewSessionIfNeeded(timestamp: Long): Boolean {
+    fun startNewSessionIfNeeded(timestamp: Long): Iterable<BaseEvent>? {
         if (inSession()) {
 
             if (isWithinMinTimeBetweenSessions(timestamp)) {
                 refreshSessionTime(timestamp)
-                return false
+                return null
             }
 
-            startNewSession(timestamp)
-            return true
+            return startNewSession(timestamp)
         }
 
         // no current session - check for previous session
         if (isWithinMinTimeBetweenSessions(timestamp)) {
             if (previousSessionId == -1L) {
-                startNewSession(timestamp)
-                return true
+                return startNewSession(timestamp)
             }
 
             // extend previous session
             setSessionId(previousSessionId)
             refreshSessionTime(timestamp)
-            return false
+            return null
         }
 
-        startNewSession(timestamp)
-        return true
+        return startNewSession(timestamp)
     }
 
     private fun setSessionId(timestamp: Long) {
@@ -165,27 +181,30 @@ open class Amplitude(
         }
     }
 
-    private fun startNewSession(timestamp: Long) {
+    private fun startNewSession(timestamp: Long): Iterable<BaseEvent> {
+        val sessionEvents = mutableListOf<BaseEvent>()
+
         // end previous session
-        if ((configuration as Configuration).trackingSessionEvents) {
-            val options = EventOptions()
-            options.timestamp = if (lastEventTime > 0) lastEventTime + 1 else null
-            sendSessionEvent(END_SESSION_EVENT, options)
+        if ((configuration as Configuration).trackingSessionEvents && inSession()) {
+            val sessionEndEvent = BaseEvent()
+            sessionEndEvent.eventType = END_SESSION_EVENT
+            sessionEndEvent.timestamp = if (lastEventTime > 0) lastEventTime else null
+            sessionEndEvent.sessionId = sessionId
+            sessionEvents.add(sessionEndEvent)
         }
 
         // start new session
         setSessionId(timestamp)
         refreshSessionTime(timestamp)
         if (configuration.trackingSessionEvents) {
-            sendSessionEvent(START_SESSION_EVENT)
+            val sessionStartEvent = BaseEvent()
+            sessionStartEvent.eventType = START_SESSION_EVENT
+            sessionStartEvent.timestamp = timestamp
+            sessionStartEvent.sessionId = sessionId
+            sessionEvents.add(sessionStartEvent)
         }
-    }
 
-    private fun sendSessionEvent(sessionEvent: String, options: EventOptions? = null) {
-        if (!inSession()) {
-            return
-        }
-        track(sessionEvent, null, options)
+        return sessionEvents
     }
 
     fun refreshSessionTime(timestamp: Long) {

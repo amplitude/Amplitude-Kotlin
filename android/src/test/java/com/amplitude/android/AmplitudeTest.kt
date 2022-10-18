@@ -59,15 +59,7 @@ class AmplitudeTest {
             identityStorageProvider = IMIdentityStorageProvider()
         )
         IdentityContainer.getInstance(configuration)
-        amplitude = Amplitude(
-            Configuration(
-                apiKey = "api-key",
-                context = context!!,
-                instanceName = "testInstance",
-                storageProvider = InMemoryStorageProvider(),
-                trackingSessionEvents = false
-            )
-        )
+        amplitude = Amplitude(createConfiguration())
     }
 
     private fun setDispatcher(testScheduler: TestCoroutineScheduler) {
@@ -76,6 +68,22 @@ class AmplitudeTest {
         val amplitudeDispatcherField = com.amplitude.core.Amplitude::class.java.getDeclaredField("amplitudeDispatcher")
         amplitudeDispatcherField.isAccessible = true
         amplitudeDispatcherField.set(amplitude, dispatcher)
+    }
+
+    private fun createConfiguration(minTimeBetweenSessionsMillis: Long? = null): Configuration {
+        val configuration = Configuration(
+            apiKey = "api-key",
+            context = context!!,
+            instanceName = "testInstance",
+            storageProvider = InMemoryStorageProvider(),
+            trackingSessionEvents = minTimeBetweenSessionsMillis != null,
+        )
+
+        if (minTimeBetweenSessionsMillis != null) {
+            configuration.minTimeBetweenSessionsMillis = minTimeBetweenSessionsMillis
+        }
+
+        return configuration
     }
 
     @Test
@@ -132,6 +140,87 @@ class AmplitudeTest {
             track.captured.let {
                 Assertions.assertEquals("127.0.0.1", it.ip)
                 Assertions.assertEquals("US", it.country)
+            }
+        }
+    }
+
+    @Test
+    fun amplitude_tracking_session() = runTest {
+        setDispatcher(testScheduler)
+
+        amplitude = Amplitude(createConfiguration(100))
+
+        val mockedPlugin = spyk(StubPlugin())
+        amplitude?.add(mockedPlugin)
+
+        if (amplitude?.isBuilt!!.await()) {
+            val event1 = BaseEvent()
+            event1.eventType = "test event 1"
+            event1.timestamp = 1000
+            amplitude!!.track(event1)
+
+            val event2 = BaseEvent()
+            event2.eventType = "test event 2"
+            event2.timestamp = 1050
+            amplitude!!.track(event2)
+
+            val event3 = BaseEvent()
+            event3.eventType = "test event 3"
+            event3.timestamp = 1200
+            amplitude!!.track(event3)
+
+            val event4 = BaseEvent()
+            event4.eventType = "test event 4"
+            event4.timestamp = 1350
+            amplitude!!.track(event4)
+
+            advanceUntilIdle()
+
+            val tracks = mutableListOf<BaseEvent>()
+
+            verify {
+                mockedPlugin.track(capture(tracks))
+            }
+
+            tracks.sortBy { event -> event.eventId }
+
+            Assertions.assertEquals(9, tracks.count())
+
+            tracks[0].let {
+                Assertions.assertEquals("session_start", it.eventType)
+                Assertions.assertEquals(1000L, it.timestamp)
+            }
+            tracks[1].let {
+                Assertions.assertEquals("test event 1", it.eventType)
+                Assertions.assertEquals(1000L, it.timestamp)
+            }
+            tracks[2].let {
+                Assertions.assertEquals("test event 2", it.eventType)
+                Assertions.assertEquals(1050L, it.timestamp)
+            }
+            tracks[3].let {
+                Assertions.assertEquals("session_end", it.eventType)
+                Assertions.assertEquals(1050L, it.timestamp)
+            }
+            tracks[4].let {
+                Assertions.assertEquals("session_start", it.eventType)
+                Assertions.assertEquals(1200L, it.timestamp)
+            }
+            tracks[5].let {
+                Assertions.assertEquals("test event 3", it.eventType)
+                Assertions.assertEquals(1200L, it.timestamp)
+            }
+            tracks[6].let {
+                Assertions.assertEquals("session_end", it.eventType)
+                Assertions.assertEquals(1200L, it.timestamp)
+            }
+            tracks[7].let {
+                Assertions.assertEquals("session_start", it.eventType)
+                Assertions.assertEquals(1350L, it.timestamp)
+            }
+            tracks[8].let {
+                Assertions.assertEquals("test event 4", it.eventType)
+                Assertions.assertEquals(1350L, it.timestamp)
             }
         }
     }
