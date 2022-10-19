@@ -1,3 +1,10 @@
+## [1.4.5](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.4...v1.4.5) (2022-10-19)
+
+
+### Bug Fixes
+
+* move session-specific logic from ContextPlugin to avoid race conditions ([#86](https://github.com/amplitude/Amplitude-Kotlin/issues/86)) ([311c230](https://github.com/amplitude/Amplitude-Kotlin/commit/311c23053a9dcc2ce0b697aecf0588f189a116ca))
+
 ## [1.4.4](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.3...v1.4.4) (2022-10-14)
 
 
