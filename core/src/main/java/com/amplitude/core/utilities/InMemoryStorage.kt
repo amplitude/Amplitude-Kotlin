@@ -32,10 +32,7 @@ class InMemoryStorage(
     }
 
     override fun read(key: Storage.Constants): String? {
-        if (!valuesMap.contains(key.rawVal)) {
-            return null
-        }
-        return valuesMap.get(key.rawVal)
+        return valuesMap[key.rawVal]
     }
 
     override fun readEventsContent(): List<Any> {

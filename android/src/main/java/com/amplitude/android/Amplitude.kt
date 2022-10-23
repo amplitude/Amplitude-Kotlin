@@ -23,17 +23,22 @@ open class Amplitude(
 ) : Amplitude(configuration) {
 
     internal var inForeground = false
-    var sessionId: Long = -1
+    var sessionId: Long
         private set
-    internal var lastEventId: Long = 0
-    var lastEventTime: Long = -1
-    private var previousSessionId: Long = -1
+    internal var lastEventId: Long
+    var lastEventTime: Long
     private lateinit var androidContextPlugin: AndroidContextPlugin
 
+    init {
+        storage = configuration.storageProvider.getStorage(this)
+
+        this.sessionId = storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLong() ?: -1
+        this.lastEventId = storage.read(Storage.Constants.LAST_EVENT_ID)?.toLong() ?: 0
+        this.lastEventTime = storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLong() ?: -1
+    }
+
     override fun build(): Deferred<Boolean> {
-        val client = this
         val built = amplitudeScope.async(amplitudeDispatcher) {
-            storage = configuration.storageProvider.getStorage(client)
             val storageDirectory = (configuration as Configuration).context.getDir("${FileStorage.STORAGE_PREFIX}-${configuration.instanceName}", Context.MODE_PRIVATE)
             idContainer = IdentityContainer.getInstance(
                 IdentityConfiguration(
@@ -48,12 +53,6 @@ open class Amplitude(
             if (idContainer.identityManager.isInitialized()) {
                 listener.onIdentityChanged(idContainer.identityManager.getIdentity(), IdentityUpdateType.Initialized)
             }
-            previousSessionId = storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLong() ?: -1
-            if (previousSessionId >= 0) {
-                sessionId = previousSessionId
-            }
-            lastEventId = storage.read(Storage.Constants.LAST_EVENT_ID)?.toLong() ?: 0
-            lastEventTime = storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLong() ?: -1
             androidContextPlugin = AndroidContextPlugin()
             add(androidContextPlugin)
             add(GetAmpliExtrasPlugin())
@@ -125,24 +124,19 @@ open class Amplitude(
     }
 
     fun onEnterForeground(timestamp: Long) {
-        amplitudeScope.launch(amplitudeDispatcher) {
-            isBuilt.await()
-            startNewSessionIfNeeded(timestamp) ?. let {
-                it.forEach { event -> process(event) }
-            }
-            inForeground = true
+        startNewSessionIfNeeded(timestamp) ?. let {
+            it.forEach { event -> process(event) }
         }
+        inForeground = true
     }
 
     fun onExitForeground() {
+        inForeground = false
         amplitudeScope.launch(amplitudeDispatcher) {
             isBuilt.await()
-            inForeground = false
             if ((configuration as Configuration).flushEventsOnClose) {
                 flush()
             }
-            storage.write(Storage.Constants.PREVIOUS_SESSION_ID, sessionId.toString())
-            storage.write(Storage.Constants.LAST_EVENT_TIME, lastEventTime.toString())
         }
     }
 
@@ -157,27 +151,13 @@ open class Amplitude(
             return startNewSession(timestamp)
         }
 
-        // no current session - check for previous session
-        if (isWithinMinTimeBetweenSessions(timestamp)) {
-            if (previousSessionId == -1L) {
-                return startNewSession(timestamp)
-            }
-
-            // extend previous session
-            setSessionId(previousSessionId)
-            refreshSessionTime(timestamp)
-            return null
-        }
-
         return startNewSession(timestamp)
     }
 
     private fun setSessionId(timestamp: Long) {
         sessionId = timestamp
-        previousSessionId = timestamp
         amplitudeScope.launch(amplitudeDispatcher) {
-            isBuilt.await()
-            storage.write(Storage.Constants.PREVIOUS_SESSION_ID, timestamp.toString())
+            storage.write(Storage.Constants.PREVIOUS_SESSION_ID, sessionId.toString())
         }
     }
 
@@ -213,8 +193,7 @@ open class Amplitude(
         }
         lastEventTime = timestamp
         amplitudeScope.launch(amplitudeDispatcher) {
-            isBuilt.await()
-            storage.write(Storage.Constants.LAST_EVENT_TIME, timestamp.toString())
+            storage.write(Storage.Constants.LAST_EVENT_TIME, lastEventTime.toString())
         }
     }
 
