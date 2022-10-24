@@ -1,3 +1,10 @@
+## [1.4.6](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.5...v1.4.6) (2022-10-24)
+
+
+### Bug Fixes
+
+* restore previous session data on app opening ([#87](https://github.com/amplitude/Amplitude-Kotlin/issues/87)) ([e4f9874](https://github.com/amplitude/Amplitude-Kotlin/commit/e4f9874f60fe82ea1edbf9c8d76335c7def2581d))
+
 ## [1.4.5](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.4...v1.4.5) (2022-10-19)
 
 
