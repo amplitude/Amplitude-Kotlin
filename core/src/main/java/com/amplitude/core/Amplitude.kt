@@ -321,8 +321,8 @@ open class Amplitude internal constructor(
             return
         }
 
-        val sessionEvents = processEvent(event)
-        sessionEvents ?. let {
+        val beforeEvents = processEvent(event)
+        beforeEvents ?. let {
             it.forEach { e ->
                 amplitudeScope.launch(amplitudeDispatcher) {
                     isBuilt.await()
