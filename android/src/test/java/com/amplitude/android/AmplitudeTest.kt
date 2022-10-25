@@ -119,6 +119,8 @@ class AmplitudeTest {
             event.eventType = "test event"
             amplitude?.track(event)
             advanceUntilIdle()
+            Thread.sleep(100)
+
             val track = slot<BaseEvent>()
             verify { mockedPlugin.track(capture(track)) }
             track.captured.let {
@@ -140,6 +142,8 @@ class AmplitudeTest {
             event.ip = "127.0.0.1"
             amplitude?.track(event)
             advanceUntilIdle()
+            Thread.sleep(100)
+
             val track = slot<BaseEvent>()
             verify { mockedPlugin.track(capture(track)) }
             track.captured.let {
@@ -158,7 +162,7 @@ class AmplitudeTest {
         val mockedPlugin = spyk(StubPlugin())
         amplitude.add(mockedPlugin)
 
-        amplitude.isBuilt!!.await()
+        amplitude.isBuilt.await()
 
         val event1 = BaseEvent()
         event1.eventType = "test event 1"
@@ -317,45 +321,54 @@ class AmplitudeTest {
 
         val amplitude1 = Amplitude(createConfiguration(100, InstanceStorageProvider(storage)))
         amplitude1.isBuilt.await()
+        val timeline1 = amplitude1.timeline as Timeline
 
         amplitude1.onEnterForeground(1000)
+        advanceUntilIdle()
+        Thread.sleep(100)
 
-        Assertions.assertEquals(1000L, amplitude1.sessionId)
-        Assertions.assertEquals(1L, amplitude1.lastEventId)
-        Assertions.assertEquals(1000L, amplitude1.lastEventTime)
+        Assertions.assertEquals(1000L, timeline1.sessionId)
+        Assertions.assertEquals(1L, timeline1.lastEventId)
+        Assertions.assertEquals(1000L, timeline1.lastEventTime)
 
         val event1 = BaseEvent()
         event1.eventType = "test event 1"
         event1.timestamp = 1200
         amplitude1.track(event1)
-
-        Assertions.assertEquals(1000L, amplitude1.sessionId)
-        Assertions.assertEquals(2L, amplitude1.lastEventId)
-        Assertions.assertEquals(1200L, amplitude1.lastEventTime)
-
         advanceUntilIdle()
+        Thread.sleep(100)
+
+        Assertions.assertEquals(1000L, timeline1.sessionId)
+        Assertions.assertEquals(2L, timeline1.lastEventId)
+        Assertions.assertEquals(1200L, timeline1.lastEventTime)
 
         val amplitude2 = Amplitude(createConfiguration(100, InstanceStorageProvider(storage)))
         amplitude2.isBuilt.await()
-
-        Assertions.assertEquals(1000L, amplitude2.sessionId)
-        Assertions.assertEquals(2L, amplitude2.lastEventId)
-        Assertions.assertEquals(1200L, amplitude2.lastEventTime)
-
+        val timeline2 = amplitude2.timeline as Timeline
         advanceUntilIdle()
+        Thread.sleep(100)
+
+        Assertions.assertEquals(1000L, timeline2.sessionId)
+        Assertions.assertEquals(2L, timeline2.lastEventId)
+        Assertions.assertEquals(1200L, timeline2.lastEventTime)
 
         val amplitude3 = Amplitude(createConfiguration(100, InstanceStorageProvider(storage)))
         amplitude3.isBuilt.await()
+        val timeline3 = amplitude3.timeline as Timeline
+        advanceUntilIdle()
+        Thread.sleep(100)
 
-        Assertions.assertEquals(1000L, amplitude3.sessionId)
-        Assertions.assertEquals(2L, amplitude3.lastEventId)
-        Assertions.assertEquals(1200L, amplitude3.lastEventTime)
+        Assertions.assertEquals(1000L, timeline3.sessionId)
+        Assertions.assertEquals(2L, timeline3.lastEventId)
+        Assertions.assertEquals(1200L, timeline3.lastEventTime)
 
         amplitude3.onEnterForeground(1400)
+        advanceUntilIdle()
+        Thread.sleep(100)
 
-        Assertions.assertEquals(1400L, amplitude3.sessionId)
-        Assertions.assertEquals(4L, amplitude3.lastEventId)
-        Assertions.assertEquals(1400L, amplitude3.lastEventTime)
+        Assertions.assertEquals(1400L, timeline3.sessionId)
+        Assertions.assertEquals(4L, timeline3.lastEventId)
+        Assertions.assertEquals(1400L, timeline3.lastEventTime)
     }
 }
 

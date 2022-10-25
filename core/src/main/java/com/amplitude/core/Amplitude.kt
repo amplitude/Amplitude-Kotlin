@@ -44,10 +44,10 @@ open class Amplitude internal constructor(
     val amplitudeScope: CoroutineScope = CoroutineScope(SupervisorJob()),
     val amplitudeDispatcher: CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher(),
     val networkIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
-    val storageIODispatcher: CoroutineDispatcher = Executors.newFixedThreadPool(2).asCoroutineDispatcher(),
+    val storageIODispatcher: CoroutineDispatcher = Executors.newFixedThreadPool(3).asCoroutineDispatcher(),
     val retryDispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
 ) {
-    internal val timeline: Timeline
+    val timeline: Timeline
     lateinit var storage: Storage
     val logger: Logger
     protected lateinit var idContainer: IdentityContainer
@@ -55,7 +55,7 @@ open class Amplitude internal constructor(
 
     init {
         require(configuration.isValid()) { "invalid configuration" }
-        timeline = Timeline().also { it.amplitude = this }
+        timeline = this.createTimeline()
         logger = configuration.loggerProvider.getLogger(this)
         isBuilt = build()
     }
@@ -64,6 +64,10 @@ open class Amplitude internal constructor(
      * Public Constructor.
      */
     constructor(configuration: Configuration) : this(configuration, State())
+
+    open fun createTimeline(): Timeline {
+        return Timeline().also { it.amplitude = this }
+    }
 
     open fun build(): Deferred<Boolean> {
         storage = configuration.storageProvider.getStorage(this)
@@ -315,30 +319,17 @@ open class Amplitude internal constructor(
         return this
     }
 
-    protected fun process(event: BaseEvent) {
+    private fun process(event: BaseEvent) {
         if (configuration.optOut) {
             logger.info("Skip event for opt out config.")
             return
         }
 
-        val beforeEvents = processEvent(event)
-        beforeEvents ?. let {
-            it.forEach { e ->
-                amplitudeScope.launch(amplitudeDispatcher) {
-                    isBuilt.await()
-                    timeline.process(e)
-                }
-            }
+        if (event.timestamp == null) {
+            event.timestamp = System.currentTimeMillis()
         }
 
-        amplitudeScope.launch(amplitudeDispatcher) {
-            isBuilt.await()
-            timeline.process(event)
-        }
-    }
-
-    protected open fun processEvent(event: BaseEvent): Iterable<BaseEvent>? {
-        return null
+        timeline.process(event)
     }
 
     /**
