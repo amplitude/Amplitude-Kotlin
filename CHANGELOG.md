@@ -1,3 +1,10 @@
+## [1.4.8](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.7...v1.4.8) (2022-10-28)
+
+
+### Bug Fixes
+
+* start build() lazily ([#90](https://github.com/amplitude/Amplitude-Kotlin/issues/90)) ([d829ba7](https://github.com/amplitude/Amplitude-Kotlin/commit/d829ba7a5dc6ae2524402c4f50581b817f14323a))
+
 ## [1.4.7](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.6...v1.4.7) (2022-10-28)
 
 
