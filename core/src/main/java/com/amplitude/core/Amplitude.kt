@@ -58,6 +58,7 @@ open class Amplitude internal constructor(
         timeline = this.createTimeline()
         logger = configuration.loggerProvider.getLogger(this)
         isBuilt = build()
+        isBuilt.start()
     }
 
     /**
