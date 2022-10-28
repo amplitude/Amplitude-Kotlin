@@ -1,3 +1,10 @@
+## [1.4.7](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.6...v1.4.7) (2022-10-28)
+
+
+### Bug Fixes
+
+* move session-specific logic to Timeline ([#89](https://github.com/amplitude/Amplitude-Kotlin/issues/89)) ([b353b8c](https://github.com/amplitude/Amplitude-Kotlin/commit/b353b8c47db387768fbfb71b26af86cdcc7dbac6))
+
 ## [1.4.6](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.5...v1.4.6) (2022-10-24)
 
 
