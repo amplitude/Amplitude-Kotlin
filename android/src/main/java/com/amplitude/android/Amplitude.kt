@@ -4,7 +4,6 @@ import android.content.Context
 import com.amplitude.android.plugins.AndroidContextPlugin
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.core.Amplitude
-import com.amplitude.core.Storage
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
@@ -23,22 +22,23 @@ open class Amplitude(
 ) : Amplitude(configuration) {
 
     internal var inForeground = false
-    var sessionId: Long
-        private set
-    internal var lastEventId: Long
-    var lastEventTime: Long
     private lateinit var androidContextPlugin: AndroidContextPlugin
 
     init {
-        storage = configuration.storageProvider.getStorage(this)
+        (timeline as Timeline).start()
+        registerShutdownHook()
+    }
 
-        this.sessionId = storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLong() ?: -1
-        this.lastEventId = storage.read(Storage.Constants.LAST_EVENT_ID)?.toLong() ?: 0
-        this.lastEventTime = storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLong() ?: -1
+    override fun createTimeline(): Timeline {
+        return Timeline().also { it.amplitude = this }
     }
 
     override fun build(): Deferred<Boolean> {
+        val client = this
+
         val built = amplitudeScope.async(amplitudeDispatcher) {
+            storage = configuration.storageProvider.getStorage(client)
+
             val storageDirectory = (configuration as Configuration).context.getDir("${FileStorage.STORAGE_PREFIX}-${configuration.instanceName}", Context.MODE_PRIVATE)
             idContainer = IdentityContainer.getInstance(
                 IdentityConfiguration(
@@ -79,59 +79,19 @@ open class Amplitude(
         return this
     }
 
-    override fun processEvent(event: BaseEvent): Iterable<BaseEvent>? {
-        val eventTimestamp = event.timestamp ?: System.currentTimeMillis()
-        event.timestamp = eventTimestamp
-        var sessionEvents: Iterable<BaseEvent>? = null
-
-        if (!(event.eventType == START_SESSION_EVENT || event.eventType == END_SESSION_EVENT)) {
-            if (!inForeground) {
-                sessionEvents = startNewSessionIfNeeded(eventTimestamp)
-            } else {
-                refreshSessionTime(eventTimestamp)
-            }
-        }
-
-        if (event.sessionId < 0) {
-            event.sessionId = sessionId
-        }
-
-        val savedLastEventId = lastEventId
-
-        sessionEvents ?. let {
-            it.forEach { e ->
-                e.eventId ?: let {
-                    val newEventId = lastEventId + 1
-                    e.eventId = newEventId
-                    lastEventId = newEventId
-                }
-            }
-        }
-
-        event.eventId ?: let {
-            val newEventId = lastEventId + 1
-            event.eventId = newEventId
-            lastEventId = newEventId
-        }
-
-        if (lastEventId > savedLastEventId) {
-            amplitudeScope.launch(amplitudeDispatcher) {
-                storage.write(Storage.Constants.LAST_EVENT_ID, lastEventId.toString())
-            }
-        }
-
-        return sessionEvents
-    }
-
     fun onEnterForeground(timestamp: Long) {
-        startNewSessionIfNeeded(timestamp) ?. let {
-            it.forEach { event -> process(event) }
-        }
         inForeground = true
+
+        val dummySessionStartEvent = BaseEvent()
+        dummySessionStartEvent.eventType = START_SESSION_EVENT
+        dummySessionStartEvent.timestamp = timestamp
+        dummySessionStartEvent.sessionId = -1
+        timeline.process(dummySessionStartEvent)
     }
 
     fun onExitForeground() {
         inForeground = false
+
         amplitudeScope.launch(amplitudeDispatcher) {
             isBuilt.await()
             if ((configuration as Configuration).flushEventsOnClose) {
@@ -140,70 +100,12 @@ open class Amplitude(
         }
     }
 
-    fun startNewSessionIfNeeded(timestamp: Long): Iterable<BaseEvent>? {
-        if (inSession()) {
-
-            if (isWithinMinTimeBetweenSessions(timestamp)) {
-                refreshSessionTime(timestamp)
-                return null
+    private fun registerShutdownHook() {
+        Runtime.getRuntime().addShutdownHook(object : Thread() {
+            override fun run() {
+                (this@Amplitude.timeline as Timeline).stop()
             }
-
-            return startNewSession(timestamp)
-        }
-
-        return startNewSession(timestamp)
-    }
-
-    private fun setSessionId(timestamp: Long) {
-        sessionId = timestamp
-        amplitudeScope.launch(amplitudeDispatcher) {
-            storage.write(Storage.Constants.PREVIOUS_SESSION_ID, sessionId.toString())
-        }
-    }
-
-    private fun startNewSession(timestamp: Long): Iterable<BaseEvent> {
-        val sessionEvents = mutableListOf<BaseEvent>()
-
-        // end previous session
-        if ((configuration as Configuration).trackingSessionEvents && inSession()) {
-            val sessionEndEvent = BaseEvent()
-            sessionEndEvent.eventType = END_SESSION_EVENT
-            sessionEndEvent.timestamp = if (lastEventTime > 0) lastEventTime else null
-            sessionEndEvent.sessionId = sessionId
-            sessionEvents.add(sessionEndEvent)
-        }
-
-        // start new session
-        setSessionId(timestamp)
-        refreshSessionTime(timestamp)
-        if (configuration.trackingSessionEvents) {
-            val sessionStartEvent = BaseEvent()
-            sessionStartEvent.eventType = START_SESSION_EVENT
-            sessionStartEvent.timestamp = timestamp
-            sessionStartEvent.sessionId = sessionId
-            sessionEvents.add(sessionStartEvent)
-        }
-
-        return sessionEvents
-    }
-
-    fun refreshSessionTime(timestamp: Long) {
-        if (!inSession()) {
-            return
-        }
-        lastEventTime = timestamp
-        amplitudeScope.launch(amplitudeDispatcher) {
-            storage.write(Storage.Constants.LAST_EVENT_TIME, lastEventTime.toString())
-        }
-    }
-
-    private fun isWithinMinTimeBetweenSessions(timestamp: Long): Boolean {
-        val sessionLimit: Long = (configuration as Configuration).minTimeBetweenSessionsMillis
-        return timestamp - lastEventTime < sessionLimit
-    }
-
-    private fun inSession(): Boolean {
-        return sessionId >= 0
+        })
     }
 
     companion object {
