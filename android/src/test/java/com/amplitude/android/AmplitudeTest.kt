@@ -2,6 +2,8 @@ package com.amplitude.android
 
 import android.app.Application
 import android.content.Context
+import com.amplitude.analytics.connector.AnalyticsConnector
+import com.amplitude.analytics.connector.AnalyticsEvent
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.core.Storage
@@ -59,7 +61,7 @@ class AmplitudeTest {
         every { anyConstructed<AndroidContextProvider>().appSetId } returns ""
 
         val configuration = IdentityConfiguration(
-            "testInstance",
+            instanceName,
             identityStorageProvider = IMIdentityStorageProvider()
         )
         IdentityContainer.getInstance(configuration)
@@ -369,6 +371,59 @@ class AmplitudeTest {
         Assertions.assertEquals(1400L, timeline3.sessionId)
         Assertions.assertEquals(4L, timeline3.lastEventId)
         Assertions.assertEquals(1400L, timeline3.lastEventTime)
+    }
+
+    @Test
+    fun test_analytics_connector() = runTest {
+        setDispatcher(testScheduler)
+        val mockedPlugin = spyk(StubPlugin())
+        amplitude?.add(mockedPlugin)
+
+        if (amplitude?.isBuilt!!.await()) {
+
+            val connector = AnalyticsConnector.getInstance(instanceName)
+            val connectorUserId = "connector user id"
+            val connectorDeviceId = "connector device id"
+            var connectorIdentitySet = false
+            connector.identityStore.addIdentityListener {
+                if (connectorIdentitySet) {
+                    Assertions.assertEquals(connectorUserId, connector.identityStore.getIdentity().userId)
+                    Assertions.assertEquals(connectorDeviceId, connector.identityStore.getIdentity().deviceId)
+                }
+            }
+            amplitude?.setUserId(connectorUserId)
+            amplitude?.setDeviceId(connectorDeviceId)
+            advanceUntilIdle()
+            connectorIdentitySet = true
+
+            connector.eventBridge.logEvent(
+                AnalyticsEvent(
+                    eventType = "\$exposure",
+                    eventProperties = mapOf(
+                        "flag_key" to "test_flag",
+                        "variant" to "test_variant"
+                    ),
+                    userProperties = mapOf(
+                        "\$set" to mapOf(
+                            "connect_status" to "connected"
+                        )
+                    )
+                )
+            )
+
+            val track = slot<BaseEvent>()
+            verify { mockedPlugin.track(capture(track)) }
+            track.captured.let {
+                Assertions.assertEquals("\$exposure", it.eventType)
+                Assertions.assertEquals("test_flag", it.eventProperties?.get("flag_key"))
+                Assertions.assertEquals("test_variant", it.eventProperties?.get("variant"))
+                Assertions.assertEquals(mapOf("connect_status" to "connected"), it.userProperties?.get("\$set"))
+            }
+        }
+    }
+
+    companion object {
+        const val instanceName = "testInstance"
     }
 }
 

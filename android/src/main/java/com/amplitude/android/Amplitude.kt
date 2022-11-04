@@ -1,6 +1,8 @@
 package com.amplitude.android
 
 import android.content.Context
+import com.amplitude.android.plugins.AnalyticsConnectorIdentityPlugin
+import com.amplitude.android.plugins.AnalyticsConnectorPlugin
 import com.amplitude.android.plugins.AndroidContextPlugin
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.core.Amplitude
@@ -58,6 +60,9 @@ open class Amplitude(
             add(androidContextPlugin)
             add(GetAmpliExtrasPlugin())
             add(AndroidLifecyclePlugin())
+            add(AnalyticsConnectorIdentityPlugin())
+            add(AnalyticsConnectorPlugin())
+            println("Build Complete!!!!")
             true
         }
         add(AmplitudeDestination())
