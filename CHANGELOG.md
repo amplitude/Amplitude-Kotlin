@@ -1,3 +1,10 @@
+# [1.5.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.8...v1.5.0) (2022-11-04)
+
+
+### Features
+
+* support integration with experiment android ([#92](https://github.com/amplitude/Amplitude-Kotlin/issues/92)) ([2ada09b](https://github.com/amplitude/Amplitude-Kotlin/commit/2ada09b6a7e77103391a92690d55b8fe604843da))
+
 ## [1.4.8](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.7...v1.4.8) (2022-10-28)
 
 
