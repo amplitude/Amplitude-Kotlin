@@ -4,6 +4,7 @@ $dokka.location:////PointingToDeclaration/kotlin-jvm-app/[root]/index.html
 $dokka.location://main/#/PointingToDeclaration/kotlin-jvm-app/[root]/main.html
 module:android
 com.amplitude.android
+com.amplitude.android.events
 com.amplitude.android.plugins
 com.amplitude.android.utilities
 module:common
