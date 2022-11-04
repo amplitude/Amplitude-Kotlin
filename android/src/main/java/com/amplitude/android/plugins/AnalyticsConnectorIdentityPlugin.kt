@@ -19,12 +19,10 @@ internal class AnalyticsConnectorIdentityPlugin : ObservePlugin() {
     }
 
     override fun onUserIdChanged(userId: String?) {
-        println("Plugin onUserId $userId")
         connector.identityStore.editIdentity().setUserId(userId).commit()
     }
 
     override fun onDeviceIdChanged(deviceId: String?) {
-        println("Plugin onDeviceId $deviceId")
         connector.identityStore.editIdentity().setDeviceId(deviceId).commit()
     }
 }

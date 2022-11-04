@@ -62,7 +62,6 @@ open class Amplitude(
             add(AndroidLifecyclePlugin())
             add(AnalyticsConnectorIdentityPlugin())
             add(AnalyticsConnectorPlugin())
-            println("Build Complete!!!!")
             true
         }
         add(AmplitudeDestination())
