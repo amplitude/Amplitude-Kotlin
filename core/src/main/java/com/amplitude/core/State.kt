@@ -21,7 +21,8 @@ class State {
 
     val plugins: MutableList<ObservePlugin> = mutableListOf()
 
-    fun add(plugin: ObservePlugin) = synchronized(plugins) {
+    fun add(plugin: ObservePlugin, amplitude: Amplitude) = synchronized(plugins) {
+        plugin.setup(amplitude)
         plugins.add(plugin)
     }
 

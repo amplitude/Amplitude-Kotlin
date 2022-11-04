@@ -2,6 +2,8 @@ package com.amplitude.android
 
 import android.app.Application
 import android.content.Context
+import com.amplitude.analytics.connector.AnalyticsConnector
+import com.amplitude.analytics.connector.Identity
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.core.Storage
@@ -59,7 +61,7 @@ class AmplitudeTest {
         every { anyConstructed<AndroidContextProvider>().appSetId } returns ""
 
         val configuration = IdentityConfiguration(
-            "testInstance",
+            instanceName,
             identityStorageProvider = IMIdentityStorageProvider()
         )
         IdentityContainer.getInstance(configuration)
@@ -369,6 +371,38 @@ class AmplitudeTest {
         Assertions.assertEquals(1400L, timeline3.sessionId)
         Assertions.assertEquals(4L, timeline3.lastEventId)
         Assertions.assertEquals(1400L, timeline3.lastEventTime)
+    }
+
+    @Test
+    fun test_analytics_connector() = runTest {
+        setDispatcher(testScheduler)
+        val mockedPlugin = spyk(StubPlugin())
+        amplitude?.add(mockedPlugin)
+
+        if (amplitude?.isBuilt!!.await()) {
+
+            val connector = AnalyticsConnector.getInstance(instanceName)
+            val connectorUserId = "connector user id"
+            val connectorDeviceId = "connector device id"
+            var connectorIdentitySet = false
+            val identityListener = { _: Identity ->
+                if (connectorIdentitySet) {
+                    Assertions.assertEquals(connectorUserId, connector.identityStore.getIdentity().userId)
+                    Assertions.assertEquals(connectorDeviceId, connector.identityStore.getIdentity().deviceId)
+                    connectorIdentitySet = false
+                }
+            }
+            connector.identityStore.addIdentityListener(identityListener)
+            amplitude?.setUserId(connectorUserId)
+            amplitude?.setDeviceId(connectorDeviceId)
+            advanceUntilIdle()
+            connectorIdentitySet = true
+            connector.identityStore.removeIdentityListener(identityListener)
+        }
+    }
+
+    companion object {
+        const val instanceName = "testInstance"
     }
 }
 

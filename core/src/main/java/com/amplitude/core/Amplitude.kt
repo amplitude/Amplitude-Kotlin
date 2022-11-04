@@ -342,7 +342,7 @@ open class Amplitude internal constructor(
     fun add(plugin: Plugin): Amplitude {
         when (plugin) {
             is ObservePlugin -> {
-                this.store.add(plugin)
+                this.store.add(plugin, this)
             }
             else -> {
                 this.timeline.add(plugin)
