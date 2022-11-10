@@ -48,7 +48,8 @@ open class Amplitude(
                     instanceName = configuration.instanceName,
                     apiKey = configuration.apiKey,
                     identityStorageProvider = FileIdentityStorageProvider(),
-                    storageDirectory = storageDirectory
+                    storageDirectory = storageDirectory,
+                    logger = configuration.loggerProvider.getLogger(client)
                 )
             )
             val listener = AnalyticsIdentityListener(store)

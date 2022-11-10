@@ -7,28 +7,49 @@ import io.mockk.verify
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import java.io.InputStream
 import java.util.Properties
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class PropertiesFileTest {
-    private lateinit var logger: Logger
-    private lateinit var properties: Properties
+    @TempDir
+    @JvmField
+    var tempFolder: File? = null
+
+    private lateinit var mockedLogger: Logger
+    private lateinit var mockedProperties: Properties
 
     @BeforeEach
     fun setUp() {
-        logger = mockk<Logger>(relaxed = true)
-        properties = mockk<Properties>(relaxed = true)
+        mockedLogger = mockk<Logger>(relaxed = true)
+        mockedProperties = mockk<Properties>(relaxed = true)
     }
 
     @Test
     fun `test loading properties file with exception`() {
-        val propertiesFile = PropertiesFile(File("/tmp"), "key", "prefix", logger)
-        propertiesFile.underlyingProperties = properties
+        val tempFile = File(tempFolder, "prefix-key.properties")
+        tempFile.createNewFile()
 
-        every { properties.load(any<InputStream>()) } throws IllegalArgumentException()
+        val propertiesFile = PropertiesFile(tempFolder!!, "key", "prefix", mockedLogger)
+        propertiesFile.underlyingProperties = mockedProperties
+        every { mockedProperties.load(any<InputStream>()) } throws IllegalArgumentException()
+
         propertiesFile.load()
-        verify(exactly = 1) { logger.error(any()) }
+        verify(exactly = 1) { mockedLogger.error(any()) }
+    }
+
+    @Test
+    fun `test loading properties file successfully`() {
+        val tempFile = File(tempFolder, "prefix-key.properties")
+        tempFile.createNewFile()
+
+        val propertiesFile = PropertiesFile(tempFolder!!, "key", "prefix", mockedLogger)
+        propertiesFile.underlyingProperties = mockedProperties
+        every { mockedProperties.load(any<InputStream>()) } returns Unit
+
+        propertiesFile.load()
+        verify(exactly = 0) { mockedLogger.error(any()) }
     }
 }
