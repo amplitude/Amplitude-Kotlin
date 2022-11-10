@@ -19,7 +19,7 @@ class FileIdentityStorage(val configuration: IdentityConfiguration) : IdentitySt
         val instanceName = configuration.instanceName
         val storageDirectory = configuration.storageDirectory ?: File("/tmp/$STORAGE_PREFIX/$instanceName")
         createDirectory(storageDirectory)
-        propertiesFile = PropertiesFile(storageDirectory, instanceName, STORAGE_PREFIX)
+        propertiesFile = PropertiesFile(storageDirectory, instanceName, STORAGE_PREFIX, configuration.logger)
         propertiesFile.load()
         safetyCheck()
     }

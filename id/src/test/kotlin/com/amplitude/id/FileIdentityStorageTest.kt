@@ -1,11 +1,19 @@
 package com.amplitude.id
 
+import com.amplitude.common.Logger
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class FileIdentityStorageTest {
+    val logger = object : Logger {
+        override var logMode: Logger.LogMode = Logger.LogMode.INFO
+        override fun debug(message: String) {}
+        override fun error(message: String) {}
+        override fun info(message: String) {}
+        override fun warn(message: String) {}
+    }
 
     @Test
     fun `test FileIdentityStorage create and save success`() {
@@ -21,7 +29,8 @@ class FileIdentityStorageTest {
         val identityConfiguration = IdentityConfiguration(
             instanceName = "testInstance",
             identityStorageProvider = identityStorageProvider,
-            apiKey = "test-api-key"
+            apiKey = "test-api-key",
+            logger = logger
         )
         val fileIdentityStorage = identityStorageProvider.getIdentityStorage(identityConfiguration)
         val savedIdentity = fileIdentityStorage.load()
@@ -37,7 +46,8 @@ class FileIdentityStorageTest {
             instanceName = "testInstance",
             identityStorageProvider = identityStorageProvider,
             apiKey = "test-different-api-key",
-            experimentApiKey = "test-experiment-api-key"
+            experimentApiKey = "test-experiment-api-key",
+            logger = logger
         )
         val fileIdentityStorage = identityStorageProvider.getIdentityStorage(identityConfiguration)
         val savedIdentity = fileIdentityStorage.load()
@@ -50,7 +60,8 @@ class FileIdentityStorageTest {
         val identityConfiguration = IdentityConfiguration(
             instanceName = "testInstance",
             identityStorageProvider = identityStorageProvider,
-            apiKey = "test-api-key"
+            apiKey = "test-api-key",
+            logger = logger
         )
         val fileIdentityStorage = identityStorageProvider.getIdentityStorage(identityConfiguration)
         fileIdentityStorage.saveUserId("user_id")

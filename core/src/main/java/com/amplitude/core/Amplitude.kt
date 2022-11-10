@@ -72,7 +72,14 @@ open class Amplitude internal constructor(
 
     open fun build(): Deferred<Boolean> {
         storage = configuration.storageProvider.getStorage(this)
-        idContainer = IdentityContainer.getInstance(IdentityConfiguration(instanceName = configuration.instanceName, apiKey = configuration.apiKey, identityStorageProvider = IMIdentityStorageProvider()))
+        idContainer = IdentityContainer.getInstance(
+            IdentityConfiguration(
+                instanceName = configuration.instanceName,
+                apiKey = configuration.apiKey,
+                identityStorageProvider = IMIdentityStorageProvider(),
+                logger = configuration.loggerProvider.getLogger(this)
+            )
+        )
         val listener = AnalyticsIdentityListener(store)
         idContainer.identityManager.addIdentityListener(listener)
         if (idContainer.identityManager.isInitialized()) {
