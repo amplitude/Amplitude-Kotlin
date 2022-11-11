@@ -1,3 +1,10 @@
+## [1.5.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.5.0...v1.5.1) (2022-11-11)
+
+
+### Bug Fixes
+
+* add error handling and logging for file load crash issue ([#95](https://github.com/amplitude/Amplitude-Kotlin/issues/95)) ([640bc8e](https://github.com/amplitude/Amplitude-Kotlin/commit/640bc8e35210e3d9270064aaaa786c6307f66b9e))
+
 # [1.5.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.8...v1.5.0) (2022-11-04)
 
 
