@@ -25,7 +25,7 @@ class FileStorage(
     private val storageDirectory = File("/tmp/amplitude-kotlin/$apiKey")
     private val storageDirectoryEvents = File(storageDirectory, "events")
 
-    internal val propertiesFile = PropertiesFile(storageDirectory, apiKey, STORAGE_PREFIX)
+    internal val propertiesFile = PropertiesFile(storageDirectory, apiKey, STORAGE_PREFIX, null)
     internal val eventsFile = EventsFileManager(storageDirectoryEvents, apiKey, propertiesFile)
     val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
 

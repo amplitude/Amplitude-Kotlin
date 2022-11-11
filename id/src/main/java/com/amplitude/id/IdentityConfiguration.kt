@@ -1,5 +1,6 @@
 package com.amplitude.id
 
+import com.amplitude.common.Logger
 import java.io.File
 
 /**
@@ -10,5 +11,6 @@ data class IdentityConfiguration(
     val apiKey: String? = null,
     val experimentApiKey: String? = null,
     val identityStorageProvider: IdentityStorageProvider,
-    val storageDirectory: File? = null
+    val storageDirectory: File? = null,
+    val logger: Logger? = null
 )

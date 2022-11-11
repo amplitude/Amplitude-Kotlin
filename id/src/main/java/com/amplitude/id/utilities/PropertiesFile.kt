@@ -1,27 +1,34 @@
 package com.amplitude.id.utilities
 
+import com.amplitude.common.Logger
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.util.Properties
 
-class PropertiesFile(directory: File, key: String, prefix: String) : KeyValueStore {
-    private val underlyingProperties: Properties = Properties()
+class PropertiesFile(directory: File, key: String, prefix: String, logger: Logger?) : KeyValueStore {
+    internal var underlyingProperties: Properties = Properties()
     private val propertiesFileName = "$prefix-$key.properties"
     private val propertiesFile = File(directory, propertiesFileName)
+    private val logger = logger
 
     /**
      * Check if underlying file exists, and load properties if true
      */
     fun load() {
         if (propertiesFile.exists()) {
-            FileInputStream(propertiesFile).use {
-                underlyingProperties.load(it)
+            try {
+                FileInputStream(propertiesFile).use {
+                    underlyingProperties.load(it)
+                }
+                return
+            } catch (e: IllegalArgumentException) {
+                propertiesFile.delete()
+                logger?.error("Failed to load property file with path ${propertiesFile.absolutePath}, error stacktrace: ${e.stackTraceToString()}")
             }
-        } else {
-            propertiesFile.parentFile.mkdirs()
-            propertiesFile.createNewFile()
         }
+        propertiesFile.parentFile.mkdirs()
+        propertiesFile.createNewFile()
     }
 
     private fun save() {
