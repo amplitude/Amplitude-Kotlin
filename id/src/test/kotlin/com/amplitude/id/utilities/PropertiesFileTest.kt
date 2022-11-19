@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
+import java.io.FileOutputStream
 import java.io.InputStream
 import java.util.Properties
 
@@ -37,6 +38,19 @@ class PropertiesFileTest {
         every { mockedProperties.load(any<InputStream>()) } throws IllegalArgumentException()
 
         propertiesFile.load()
+        verify(exactly = 1) { mockedLogger.error(any()) }
+    }
+
+    @Test
+    fun `test saving properties file with exception`() {
+        val tempFile = File(tempFolder, "prefix-key.properties")
+        tempFile.createNewFile()
+
+        val propertiesFile = PropertiesFile(tempFolder!!, "key", "prefix", mockedLogger)
+        propertiesFile.underlyingProperties = mockedProperties
+        every { mockedProperties.store(any<FileOutputStream>(), null) } throws IndexOutOfBoundsException()
+
+        propertiesFile.putLong("test", 1L)
         verify(exactly = 1) { mockedLogger.error(any()) }
     }
 

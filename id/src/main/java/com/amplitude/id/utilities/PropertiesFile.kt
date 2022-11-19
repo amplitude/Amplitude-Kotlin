@@ -32,8 +32,12 @@ class PropertiesFile(directory: File, key: String, prefix: String, logger: Logge
     }
 
     private fun save() {
-        FileOutputStream(propertiesFile).use {
-            underlyingProperties.store(it, null)
+        try {
+            FileOutputStream(propertiesFile).use {
+                underlyingProperties.store(it, null)
+            }
+        } catch (e: IndexOutOfBoundsException) {
+            logger?.error("Failed to save property file with path ${propertiesFile.absolutePath}, error stacktrace: ${e.stackTraceToString()}")
         }
     }
 
