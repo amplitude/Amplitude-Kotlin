@@ -35,7 +35,7 @@ class PropertiesFileTest {
 
         val propertiesFile = PropertiesFile(tempFolder!!, "key", "prefix", mockedLogger)
         propertiesFile.underlyingProperties = mockedProperties
-        every { mockedProperties.load(any<InputStream>()) } throws IllegalArgumentException()
+        every { mockedProperties.load(any<InputStream>()) } throws Exception()
 
         propertiesFile.load()
         verify(exactly = 1) { mockedLogger.error(any()) }
@@ -48,7 +48,7 @@ class PropertiesFileTest {
 
         val propertiesFile = PropertiesFile(tempFolder!!, "key", "prefix", mockedLogger)
         propertiesFile.underlyingProperties = mockedProperties
-        every { mockedProperties.store(any<FileOutputStream>(), null) } throws IndexOutOfBoundsException()
+        every { mockedProperties.store(any<FileOutputStream>(), null) } throws Exception()
 
         propertiesFile.putLong("test", 1L)
         verify(exactly = 1) { mockedLogger.error(any()) }
