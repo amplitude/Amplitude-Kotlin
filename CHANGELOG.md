@@ -1,3 +1,10 @@
+## [1.5.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.5.1...v1.5.2) (2022-11-19)
+
+
+### Bug Fixes
+
+* Add Index out of bound exception handling for PropertiesFile.save() ([#96](https://github.com/amplitude/Amplitude-Kotlin/issues/96)) ([c6578bf](https://github.com/amplitude/Amplitude-Kotlin/commit/c6578bfdfc9ee782fe01106cf607e19c979ed810))
+
 ## [1.5.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.5.0...v1.5.1) (2022-11-11)
 
 
