@@ -1,3 +1,10 @@
+# [1.6.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.5.2...v1.6.0) (2023-01-19)
+
+
+### Features
+
+* add log.debug to send event and handle response ([#100](https://github.com/amplitude/Amplitude-Kotlin/issues/100)) ([23c485a](https://github.com/amplitude/Amplitude-Kotlin/commit/23c485ac633263511f2a81299af1ca1d9ef12e71))
+
 ## [1.5.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.5.1...v1.5.2) (2022-11-19)
 
 
