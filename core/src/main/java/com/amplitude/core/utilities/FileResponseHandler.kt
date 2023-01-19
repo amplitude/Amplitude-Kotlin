@@ -1,5 +1,6 @@
 package com.amplitude.core.utilities
 
+import com.amplitude.common.Logger
 import com.amplitude.core.Configuration
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline
@@ -16,10 +17,12 @@ class FileResponseHandler(
     private val scope: CoroutineScope,
     private val dispatcher: CoroutineDispatcher,
     private val eventFilePath: String,
-    private val eventsString: String
+    private val eventsString: String,
+    private val logger: Logger?
 ) : ResponseHandler {
 
     override fun handleSuccessResponse(successResponse: SuccessResponse) {
+        logger?.debug("Handle response, status: ${successResponse.status}")
         val events: List<BaseEvent>
         try {
             events = JSONArray(eventsString).toEvents()
@@ -35,6 +38,7 @@ class FileResponseHandler(
     }
 
     override fun handleBadRequestResponse(badRequestResponse: BadRequestResponse) {
+        logger?.debug("Handle response, status: ${badRequestResponse.status}, error: ${badRequestResponse.error}")
         val events: List<BaseEvent>
         try {
             events = JSONArray(eventsString).toEvents()
@@ -68,6 +72,7 @@ class FileResponseHandler(
     }
 
     override fun handlePayloadTooLargeResponse(payloadTooLargeResponse: PayloadTooLargeResponse) {
+        logger?.debug("Handle response, status: ${payloadTooLargeResponse.status}, error: ${payloadTooLargeResponse.error}")
         val rawEvents: JSONArray
         try {
             rawEvents = JSONArray(eventsString)
@@ -91,14 +96,17 @@ class FileResponseHandler(
     }
 
     override fun handleTooManyRequestsResponse(tooManyRequestsResponse: TooManyRequestsResponse) {
+        logger?.debug("Handle response, status: ${tooManyRequestsResponse.status}, error: ${tooManyRequestsResponse.error}")
         // wait for next time to pick it up
     }
 
     override fun handleTimeoutResponse(timeoutResponse: TimeoutResponse) {
+        logger?.debug("Handle response, status: ${timeoutResponse.status}")
         // wait for next time to try again
     }
 
     override fun handleFailedResponse(failedResponse: FailedResponse) {
+        logger?.debug("Handle response, status: ${failedResponse.status}, error: ${failedResponse.error}")
         // wait for next time to try again
     }
 

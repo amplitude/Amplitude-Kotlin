@@ -1,5 +1,6 @@
 package com.amplitude.core.utilities
 
+import com.amplitude.common.Logger
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Configuration
 import com.amplitude.core.EventCallBack
@@ -15,7 +16,8 @@ import java.io.BufferedReader
 import java.io.File
 
 class FileStorage(
-    private val apiKey: String
+    private val apiKey: String,
+    private val logger: Logger
 ) : Storage, EventsFileStorage {
 
     companion object {
@@ -82,7 +84,8 @@ class FileStorage(
             scope,
             dispatcher,
             events as String,
-            eventsString
+            eventsString,
+            logger
         )
     }
 
@@ -105,7 +108,10 @@ class FileStorage(
 
 class FileStorageProvider : StorageProvider {
     override fun getStorage(amplitude: Amplitude): Storage {
-        return FileStorage(amplitude.configuration.apiKey)
+        return FileStorage(
+            amplitude.configuration.apiKey,
+            amplitude.configuration.loggerProvider.getLogger(amplitude)
+        )
     }
 }
 

@@ -337,6 +337,7 @@ open class Amplitude internal constructor(
             event.timestamp = System.currentTimeMillis()
         }
 
+        logger.debug("Logged event with type: ${event.eventType}")
         timeline.process(event)
     }
 

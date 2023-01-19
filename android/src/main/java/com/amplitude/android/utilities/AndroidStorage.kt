@@ -2,6 +2,7 @@ package com.amplitude.android.utilities
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.amplitude.common.Logger
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Configuration
 import com.amplitude.core.EventCallBack
@@ -21,7 +22,8 @@ import java.io.File
 
 class AndroidStorage(
     context: Context,
-    apiKey: String
+    apiKey: String,
+    private val logger: Logger
 ) : Storage, EventsFileStorage {
 
     companion object {
@@ -79,7 +81,8 @@ class AndroidStorage(
             scope,
             dispatcher,
             events as String,
-            eventsString
+            eventsString,
+            logger
         )
     }
 
@@ -103,6 +106,10 @@ class AndroidStorage(
 class AndroidStorageProvider : StorageProvider {
     override fun getStorage(amplitude: Amplitude): Storage {
         val configuration = amplitude.configuration as com.amplitude.android.Configuration
-        return AndroidStorage(configuration.context, configuration.apiKey)
+        return AndroidStorage(
+            configuration.context,
+            configuration.apiKey,
+            configuration.loggerProvider.getLogger(amplitude)
+        )
     }
 }
