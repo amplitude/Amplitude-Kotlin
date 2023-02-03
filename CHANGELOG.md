@@ -1,3 +1,10 @@
+## [1.6.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.6.0...v1.6.1) (2023-02-03)
+
+
+### Bug Fixes
+
+* catch filenotfound exception when rollover before upload ([#103](https://github.com/amplitude/Amplitude-Kotlin/issues/103)) ([80bc1f5](https://github.com/amplitude/Amplitude-Kotlin/commit/80bc1f59e1866f4a429aa84574075ac13fa67c8f))
+
 # [1.6.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.5.2...v1.6.0) (2023-01-19)
 
 
