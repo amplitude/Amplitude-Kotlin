@@ -313,6 +313,8 @@ class AmplitudeTest {
             Assertions.assertEquals(2200L, it.timestamp)
             Assertions.assertEquals(2000L, it.sessionId)
         }
+
+        Assertions.assertEquals(2000L, amplitude.sessionId)
     }
 
     @Test
@@ -332,6 +334,7 @@ class AmplitudeTest {
         Assertions.assertEquals(1000L, timeline1.sessionId)
         Assertions.assertEquals(1L, timeline1.lastEventId)
         Assertions.assertEquals(1000L, timeline1.lastEventTime)
+        Assertions.assertEquals(1000L, amplitude1.sessionId)
 
         val event1 = BaseEvent()
         event1.eventType = "test event 1"
@@ -343,6 +346,7 @@ class AmplitudeTest {
         Assertions.assertEquals(1000L, timeline1.sessionId)
         Assertions.assertEquals(2L, timeline1.lastEventId)
         Assertions.assertEquals(1200L, timeline1.lastEventTime)
+        Assertions.assertEquals(1000L, amplitude1.sessionId)
 
         val amplitude2 = Amplitude(createConfiguration(100, InstanceStorageProvider(storage)))
         amplitude2.isBuilt.await()
@@ -353,6 +357,7 @@ class AmplitudeTest {
         Assertions.assertEquals(1000L, timeline2.sessionId)
         Assertions.assertEquals(2L, timeline2.lastEventId)
         Assertions.assertEquals(1200L, timeline2.lastEventTime)
+        Assertions.assertEquals(1000L, amplitude2.sessionId)
 
         val amplitude3 = Amplitude(createConfiguration(100, InstanceStorageProvider(storage)))
         amplitude3.isBuilt.await()
@@ -363,6 +368,7 @@ class AmplitudeTest {
         Assertions.assertEquals(1000L, timeline3.sessionId)
         Assertions.assertEquals(2L, timeline3.lastEventId)
         Assertions.assertEquals(1200L, timeline3.lastEventTime)
+        Assertions.assertEquals(1000L, amplitude3.sessionId)
 
         amplitude3.onEnterForeground(1400)
         advanceUntilIdle()
@@ -371,6 +377,7 @@ class AmplitudeTest {
         Assertions.assertEquals(1400L, timeline3.sessionId)
         Assertions.assertEquals(4L, timeline3.lastEventId)
         Assertions.assertEquals(1400L, timeline3.lastEventTime)
+        Assertions.assertEquals(1400L, amplitude3.sessionId)
     }
 
     @Test

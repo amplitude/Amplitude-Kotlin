@@ -5,11 +5,17 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Timeline
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicLong
 
 class Timeline : Timeline() {
     private val eventMessageChannel: Channel<EventQueueMessage> = Channel(Channel.UNLIMITED)
-    var sessionId: Long = -1
-        private set
+
+    private val _sessionId = AtomicLong(-1)
+    val sessionId: Long
+        get() {
+            return _sessionId.get()
+        }
+
     internal var lastEventId: Long = 0
     var lastEventTime: Long = -1
 
@@ -17,7 +23,7 @@ class Timeline : Timeline() {
         amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
             amplitude.isBuilt.await()
 
-            sessionId = amplitude.storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLong() ?: -1
+            _sessionId.set(amplitude.storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLong() ?: -1)
             lastEventId = amplitude.storage.read(Storage.Constants.LAST_EVENT_ID)?.toLong() ?: 0
             lastEventTime = amplitude.storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLong() ?: -1
 
@@ -111,7 +117,7 @@ class Timeline : Timeline() {
     }
 
     private suspend fun setSessionId(timestamp: Long) {
-        sessionId = timestamp
+        _sessionId.set(timestamp)
         amplitude.storage.write(Storage.Constants.PREVIOUS_SESSION_ID, sessionId.toString())
     }
 

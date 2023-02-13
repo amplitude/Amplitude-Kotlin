@@ -27,6 +27,11 @@ open class Amplitude(
     internal var inForeground = false
     private lateinit var androidContextPlugin: AndroidContextPlugin
 
+    val sessionId: Long
+        get() {
+            return (timeline as Timeline).sessionId
+        }
+
     init {
         (timeline as Timeline).start()
         registerShutdownHook()
