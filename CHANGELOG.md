@@ -1,3 +1,10 @@
+## [1.6.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.6.1...v1.6.2) (2023-02-14)
+
+
+### Bug Fixes
+
+* return 'sessionId' property to Amplitude class ([#106](https://github.com/amplitude/Amplitude-Kotlin/issues/106)) ([7a938a1](https://github.com/amplitude/Amplitude-Kotlin/commit/7a938a1acb0ec0d07f1eab3cf27c4f7e9b751bf8))
+
 ## [1.6.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.6.0...v1.6.1) (2023-02-03)
 
 
