@@ -8,6 +8,7 @@ import com.amplitude.core.events.RevenueEvent
 import com.amplitude.core.platform.DestinationPlugin
 import com.amplitude.core.platform.EventPipeline
 import com.amplitude.core.platform.intercept.IdentifyInterceptor
+import kotlinx.coroutines.launch
 
 class AmplitudeDestination : DestinationPlugin() {
     private lateinit var pipeline: EventPipeline
@@ -34,8 +35,10 @@ class AmplitudeDestination : DestinationPlugin() {
     }
 
     override fun flush() {
-        identifyInterceptor.transferInterceptedIdentify()
-        pipeline.flush()
+       amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
+            identifyInterceptor.transferInterceptedIdentify()
+            pipeline.flush()
+        }
     }
 
     private fun enqueue(payload: BaseEvent?) {
@@ -44,9 +47,11 @@ class AmplitudeDestination : DestinationPlugin() {
                 amplitude.logger.warn("Event is invalid for missing information like userId and deviceId. Dropping event: ${event.eventType}")
                 return
             }
-            val interceptedEvent = identifyInterceptor.intercept(event)
-            interceptedEvent?.let {
-               enqueuePipeline(it)
+            amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
+                val interceptedEvent = identifyInterceptor.intercept(event)
+                interceptedEvent?.let {
+                    enqueuePipeline(it)
+                }
             }
         }
     }
@@ -57,12 +62,21 @@ class AmplitudeDestination : DestinationPlugin() {
 
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
+        val plugin = this
 
         with(amplitude) {
             pipeline = EventPipeline(
                 amplitude
             )
             pipeline.start()
+            identifyInterceptor = IdentifyInterceptor(
+                configuration.identifyInterceptStorageProvider.getStorage(amplitude),
+                amplitudeScope,
+                storageIODispatcher,
+                logger,
+                configuration,
+                plugin
+            )
         }
         add(IdentityEventSender())
     }

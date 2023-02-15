@@ -7,29 +7,25 @@ import com.amplitude.core.Storage
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.IdentifyOperation
 import com.amplitude.core.platform.plugins.AmplitudeDestination
-import com.amplitude.core.utilities.toBaseEvent
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import org.json.JSONArray
-import org.json.JSONException
-import org.json.JSONObject
 
-class IdentifyInterceptor (
+class IdentifyInterceptor(
     private val storage: Storage,
     private val scope: CoroutineScope,
     private val dispatcher: CoroutineDispatcher,
     private val logger: Logger,
     private val configuration: Configuration,
     private val plugin: AmplitudeDestination
-    ) {
+) {
 
     private var transferScheduled = false
 
-    private val storageHandler: IdentifyInterceptStorageHandler? = IdentifyInterceptStorageHandler.getIdentifyInterceptStorageHandler(storage)
+    private val storageHandler: IdentifyInterceptStorageHandler? = IdentifyInterceptStorageHandler.getIdentifyInterceptStorageHandler(storage, logger, scope, dispatcher)
 
-    fun intercept(event: BaseEvent) : BaseEvent? {
+    suspend fun intercept(event: BaseEvent): BaseEvent? {
         if (storageHandler == null) {
             // no-op to prevent custom storage errors
             return event
@@ -40,7 +36,7 @@ class IdentifyInterceptor (
                     isSetOnly(event) -> {
                         // intercept and  save user properties
                         saveIdentifyProperties(event)
-                        transferInterceptedIdentify()
+                        scheduleTransfer()
                         null
                     }
                     isClearAll(event) -> {
@@ -65,49 +61,27 @@ class IdentifyInterceptor (
         }
     }
 
-    private fun fetchAndMergeToNormalEvent(event: BaseEvent): BaseEvent {
-        return storageHandler!!.fetchAndMergeToNormalEvent()
+    private suspend fun fetchAndMergeToNormalEvent(event: BaseEvent): BaseEvent {
+        return storageHandler!!.fetchAndMergeToNormalEvent(event)
     }
 
-    private fun fetchAndMergeToIdentifyEvent(event: BaseEvent): BaseEvent {
-        return storageHandler!!.fetchAndMergeToIdentifyEvent()
+    private suspend fun fetchAndMergeToIdentifyEvent(event: BaseEvent): BaseEvent {
+        return storageHandler!!.fetchAndMergeToIdentifyEvent(event)
     }
 
     private fun clearIdentifyIntercepts() {
-        TODO("Not yet implemented")
+        storageHandler!!.clearIdentifyIntercepts()
     }
 
-    fun transferInterceptedIdentify() {
-        val event = storageHandler!!.getTransferIdentifyEvent()
+    suspend fun transferInterceptedIdentify() {
+        val event = getTransferIdentifyEvent()
         event?.let {
             plugin.enqueuePipeline(event)
         }
     }
 
-    suspend fun getTransferIdentifyEvent() : BaseEvent? {
-        val eventsData = storage.readEventsContent()
-        var identifyEvent: JSONObject? = null
-        for (events in eventsData) {
-            try {
-                val eventsString = storage.getEventsString(events)
-                if (eventsString.isEmpty()) continue
-                val eventsJSONArray = JSONArray(eventsString)
-                val identifys = eventsJSONArray.toList()
-                if (identifyEvent == null) {
-                    identifyEvent = identifys[0] as JSONObject
-                }
-                val identifyEventUserProperties = identifyEvent.getJSONObject("user_properties")
-                    .getJSONObject(IdentifyOperation.SET.operationType)
-                val userProperties =
-                    mergeIdentifyInterceptList(identifys.subList(1, identifys.size))
-                mergeUserProperties(identifyEventUserProperties, userProperties)
-                identifyEvent.getJSONObject("user_properties")
-                    .put(IdentifyOperation.SET.operationType, identifyEventUserProperties)
-            } catch (e: JSONException) {
-                logger.warn("Identify Merge error: " + e.message);
-            }
-        }
-        return identifyEvent?.toBaseEvent()
+    private suspend fun getTransferIdentifyEvent(): BaseEvent? {
+        return storageHandler!!.getTransferIdentifyEvent()
     }
 
     private fun scheduleTransfer() = scope.launch(dispatcher) {
@@ -129,29 +103,6 @@ class IdentifyInterceptor (
         }
     }
 
-    @Throws(JSONException::class)
-    fun mergeIdentifyInterceptList(identifys: MutableList<Any>): JSONObject {
-        val userProperties = JSONObject()
-        for (identify in identifys) {
-            val setUserProperties = (identify as JSONObject).getJSONObject("user_properties")
-                .getJSONObject(IdentifyOperation.SET.operationType)
-            mergeUserProperties(userProperties, setUserProperties)
-        }
-        return userProperties
-    }
-
-    @Throws(JSONException::class)
-    fun mergeUserProperties(
-        userProperties: JSONObject,
-        userPropertiesToMerge: JSONObject
-    ) {
-        val keys: Iterator<*> = userPropertiesToMerge.keys()
-        while (keys.hasNext()) {
-            val key = keys.next() as String
-            userProperties.put(key, userPropertiesToMerge[key])
-        }
-    }
-
     private fun isClearAll(event: BaseEvent): Boolean {
         return isActionOnly(event, IdentifyOperation.CLEAR_ALL)
     }
@@ -161,10 +112,9 @@ class IdentifyInterceptor (
     }
 
     private fun isActionOnly(event: BaseEvent, action: IdentifyOperation): Boolean {
-        event.userProperties?.let{
+        event.userProperties?.let {
             return it.size == 1 && it.contains(action.operationType)
         }
         return false
     }
 }
-

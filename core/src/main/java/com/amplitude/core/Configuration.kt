@@ -26,7 +26,7 @@ open class Configuration @JvmOverloads constructor(
     open var plan: Plan? = null,
     open var ingestionMetadata: IngestionMetadata? = null,
     open var identifyBatchIntervalMillis: Long = IDENTIFY_BATCH_INVERVAL_MILLIS,
-    open var identifyInterceptStorageProvide: StorageProvider = InMemoryStorageProvider()
+    open var identifyInterceptStorageProvider: StorageProvider = InMemoryStorageProvider()
 ) {
 
     companion object {
