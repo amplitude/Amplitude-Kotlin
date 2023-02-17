@@ -7,6 +7,7 @@ import com.amplitude.core.Storage
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.IdentifyOperation
 import com.amplitude.core.platform.plugins.AmplitudeDestination
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -21,7 +22,12 @@ class IdentifyInterceptor(
     private val plugin: AmplitudeDestination
 ) {
 
-    private var transferScheduled = false
+    private var transferScheduled = AtomicBoolean(false)
+
+    private var userId: String? = null
+    private var deviceId: String? = null
+    private val identifySet = AtomicBoolean(false)
+
 
     private val storageHandler: IdentifyInterceptStorageHandler? = IdentifyInterceptStorageHandler.getIdentifyInterceptStorageHandler(storage, logger, scope, dispatcher)
 
@@ -30,10 +36,13 @@ class IdentifyInterceptor(
             // no-op to prevent custom storage errors
             return event
         }
+        if (isIdentityUpdated(event)) {
+            transferInterceptedIdentify()
+        }
         when (event.eventType) {
             Constants.IDENTIFY_EVENT -> {
                 return when {
-                    isSetOnly(event) -> {
+                    isSetOnly(event) && !isSetGroups(event) -> {
                         // intercept and  save user properties
                         saveIdentifyProperties(event)
                         scheduleTransfer()
@@ -85,11 +94,11 @@ class IdentifyInterceptor(
     }
 
     private fun scheduleTransfer() = scope.launch(dispatcher) {
-        while (!transferScheduled) {
-            transferScheduled = true
+        while (!transferScheduled.get()) {
+            transferScheduled.getAndSet(true)
             delay(configuration.identifyBatchIntervalMillis)
             transferInterceptedIdentify()
-            transferScheduled = false
+            transferScheduled.getAndSet(false)
         }
     }
 
@@ -116,5 +125,36 @@ class IdentifyInterceptor(
             return it.size == 1 && it.contains(action.operationType)
         }
         return false
+    }
+
+    private fun isSetGroups(event: BaseEvent) : Boolean {
+        return event.groups != null && event.groups!!.isNotEmpty()
+    }
+
+    private fun isIdentityUpdated(event: BaseEvent): Boolean {
+        if (!identifySet.getAndSet(true)) {
+            userId = event.userId
+            deviceId = event.deviceId
+            return true
+        }
+        var isUpdated = false
+        if (isIdUpdated(userId, event.userId)) {
+            userId = event.userId
+            isUpdated = true
+        }
+        if (isIdUpdated(deviceId, event.deviceId)) {
+            deviceId = event.deviceId
+            isUpdated = true
+        }
+        return isUpdated
+    }
+
+    private fun isIdUpdated(id: String?, updateId: String?): Boolean {
+        if (id == null && updateId == null) {
+            return false
+        }
+        return if (id == null || updateId == null) {
+            true
+        } else id != updateId
     }
 }
