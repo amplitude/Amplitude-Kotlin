@@ -84,6 +84,7 @@ class AmplitudeTest {
             storageProvider = storageProvider,
             trackingSessionEvents = minTimeBetweenSessionsMillis != null,
             loggerProvider = ConsoleLoggerProvider(),
+            identifyInterceptStorageProvider = storageProvider
         )
 
         if (minTimeBetweenSessionsMillis != null) {
@@ -407,7 +408,7 @@ class AmplitudeTest {
 }
 
 class InstanceStorageProvider(private val instance: Storage) : StorageProvider {
-    override fun getStorage(amplitude: com.amplitude.core.Amplitude): Storage {
+    override fun getStorage(amplitude: com.amplitude.core.Amplitude, preifx: String?): Storage {
         return instance
     }
 }

@@ -17,17 +17,18 @@ import java.io.File
 
 class FileStorage(
     private val apiKey: String,
-    private val logger: Logger
+    private val logger: Logger,
+    private val prefix: String?
 ) : Storage, EventsFileStorage {
 
     companion object {
         const val STORAGE_PREFIX = "amplitude-kotlin"
     }
 
-    private val storageDirectory = File("/tmp/amplitude-kotlin/$apiKey")
+    private val storageDirectory = File("/tmp/${getPrefix()}/$apiKey")
     private val storageDirectoryEvents = File(storageDirectory, "events")
 
-    internal val propertiesFile = PropertiesFile(storageDirectory, apiKey, STORAGE_PREFIX, null)
+    internal val propertiesFile = PropertiesFile(storageDirectory, apiKey, getPrefix(), null)
     internal val eventsFile = EventsFileManager(storageDirectoryEvents, apiKey, propertiesFile)
     val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
 
@@ -104,13 +105,18 @@ class FileStorage(
     override fun splitEventFile(filePath: String, events: JSONArray) {
         eventsFile.splitFile(filePath, events)
     }
+
+    private fun getPrefix(): String {
+        return prefix ?: STORAGE_PREFIX
+    }
 }
 
 class FileStorageProvider : StorageProvider {
-    override fun getStorage(amplitude: Amplitude): Storage {
+    override fun getStorage(amplitude: Amplitude, prefix: String?): Storage {
         return FileStorage(
             amplitude.configuration.apiKey,
-            amplitude.configuration.loggerProvider.getLogger(amplitude)
+            amplitude.configuration.loggerProvider.getLogger(amplitude),
+            prefix
         )
     }
 }

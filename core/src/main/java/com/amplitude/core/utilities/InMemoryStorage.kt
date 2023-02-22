@@ -60,10 +60,16 @@ class InMemoryStorage(
     ): ResponseHandler {
         return InMemoryResponseHandler(eventPipeline, configuration, scope, dispatcher, events as List<BaseEvent>)
     }
+
+    fun removeEvents() {
+        synchronized(eventsListLock) {
+            eventsBuffer.clear()
+        }
+    }
 }
 
 class InMemoryStorageProvider : StorageProvider {
-    override fun getStorage(amplitude: Amplitude): Storage {
+    override fun getStorage(amplitude: Amplitude, prefix: String?): Storage {
         return InMemoryStorage(amplitude)
     }
 }

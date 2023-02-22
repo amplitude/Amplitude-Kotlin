@@ -1,7 +1,6 @@
 package com.amplitude.core.platform.intercept
 
 import com.amplitude.core.events.BaseEvent
-import com.amplitude.core.events.IdentifyEvent
 import com.amplitude.core.events.IdentifyOperation
 import com.amplitude.core.utilities.InMemoryStorage
 
@@ -52,5 +51,6 @@ class IdentifyInterceptInMemoryStorageHandler(
 
     override fun clearIdentifyIntercepts() {
         // no-op for in memory storage
+        storage.removeEvents()
     }
 }

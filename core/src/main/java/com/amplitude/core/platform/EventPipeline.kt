@@ -150,7 +150,7 @@ class EventPipeline(
     }
 
     private fun schedule() = scope.launch(amplitude.storageIODispatcher) {
-        while (isActive && running && !scheduled) {
+        if (isActive && running && !scheduled) {
             scheduled = true
             delay(getFlushIntervalInMillis())
             flush()

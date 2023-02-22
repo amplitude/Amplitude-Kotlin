@@ -57,7 +57,9 @@ class IdentifyInterceptFileStorageHandler(
         for (eventPath in eventsData) {
             try {
                 val eventsString = storage.getEventsString(eventPath)
-                if (eventsString.isEmpty()) continue
+                if (eventsString.isEmpty()) {
+                    continue
+                }
                 val events = JSONArray(eventsString).toEvents()
                 val listUserProperties = IdentifyInterceptorUtil.mergeIdentifyList(events)
                 userProperties.putAll(listUserProperties)

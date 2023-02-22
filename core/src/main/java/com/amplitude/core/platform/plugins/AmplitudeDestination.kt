@@ -35,7 +35,7 @@ class AmplitudeDestination : DestinationPlugin() {
     }
 
     override fun flush() {
-       amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
+        amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
             identifyInterceptor.transferInterceptedIdentify()
             pipeline.flush()
         }
@@ -70,7 +70,7 @@ class AmplitudeDestination : DestinationPlugin() {
             )
             pipeline.start()
             identifyInterceptor = IdentifyInterceptor(
-                configuration.identifyInterceptStorageProvider.getStorage(amplitude),
+                configuration.identifyInterceptStorageProvider.getStorage(amplitude, "amplitude-identify-intercept"),
                 amplitudeScope,
                 storageIODispatcher,
                 logger,

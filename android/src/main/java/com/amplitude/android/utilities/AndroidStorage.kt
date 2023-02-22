@@ -23,7 +23,8 @@ import java.io.File
 class AndroidStorage(
     context: Context,
     apiKey: String,
-    private val logger: Logger
+    private val logger: Logger,
+    private val prefix: String?
 ) : Storage, EventsFileStorage {
 
     companion object {
@@ -31,8 +32,8 @@ class AndroidStorage(
     }
 
     private val sharedPreferences: SharedPreferences =
-        context.getSharedPreferences("$STORAGE_PREFIX-$apiKey", Context.MODE_PRIVATE)
-    private val storageDirectory: File = context.getDir("amplitude-disk-queue", Context.MODE_PRIVATE)
+        context.getSharedPreferences("${getPrefix()}-$apiKey", Context.MODE_PRIVATE)
+    private val storageDirectory: File = context.getDir(getDir(), Context.MODE_PRIVATE)
     private val eventsFile =
         EventsFileManager(storageDirectory, apiKey, AndroidKVS(sharedPreferences))
     private val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
@@ -101,15 +102,27 @@ class AndroidStorage(
     override fun splitEventFile(filePath: String, events: JSONArray) {
         eventsFile.splitFile(filePath, events)
     }
+
+    private fun getPrefix(): String {
+        return prefix ?: STORAGE_PREFIX
+    }
+
+    private fun getDir(): String {
+        if (prefix != null) {
+            return "$prefix-disk-queue"
+        }
+        return "amplitude-disk-queue"
+    }
 }
 
 class AndroidStorageProvider : StorageProvider {
-    override fun getStorage(amplitude: Amplitude): Storage {
+    override fun getStorage(amplitude: Amplitude, prefix: String?): Storage {
         val configuration = amplitude.configuration as com.amplitude.android.Configuration
         return AndroidStorage(
             configuration.context,
             configuration.apiKey,
-            configuration.loggerProvider.getLogger(amplitude)
+            configuration.loggerProvider.getLogger(amplitude),
+            prefix
         )
     }
 }

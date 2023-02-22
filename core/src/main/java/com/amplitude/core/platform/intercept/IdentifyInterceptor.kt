@@ -7,11 +7,11 @@ import com.amplitude.core.Storage
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.IdentifyOperation
 import com.amplitude.core.platform.plugins.AmplitudeDestination
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicBoolean
 
 class IdentifyInterceptor(
     private val storage: Storage,
@@ -27,7 +27,6 @@ class IdentifyInterceptor(
     private var userId: String? = null
     private var deviceId: String? = null
     private val identifySet = AtomicBoolean(false)
-
 
     private val storageHandler: IdentifyInterceptStorageHandler? = IdentifyInterceptStorageHandler.getIdentifyInterceptStorageHandler(storage, logger, scope, dispatcher)
 
@@ -85,7 +84,7 @@ class IdentifyInterceptor(
     suspend fun transferInterceptedIdentify() {
         val event = getTransferIdentifyEvent()
         event?.let {
-            plugin.enqueuePipeline(event)
+            plugin.enqueuePipeline(it)
         }
     }
 
@@ -94,7 +93,7 @@ class IdentifyInterceptor(
     }
 
     private fun scheduleTransfer() = scope.launch(dispatcher) {
-        while (!transferScheduled.get()) {
+        if (!transferScheduled.get()) {
             transferScheduled.getAndSet(true)
             delay(configuration.identifyBatchIntervalMillis)
             transferInterceptedIdentify()
@@ -102,7 +101,7 @@ class IdentifyInterceptor(
         }
     }
 
-    private fun saveIdentifyProperties(event: BaseEvent) = scope.launch(dispatcher) {
+    private suspend fun saveIdentifyProperties(event: BaseEvent) {
         try {
             storage.writeEvent(event)
         } catch (e: Exception) {
@@ -127,7 +126,7 @@ class IdentifyInterceptor(
         return false
     }
 
-    private fun isSetGroups(event: BaseEvent) : Boolean {
+    private fun isSetGroups(event: BaseEvent): Boolean {
         return event.groups != null && event.groups!!.isNotEmpty()
     }
 
