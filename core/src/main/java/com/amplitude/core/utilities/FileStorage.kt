@@ -129,4 +129,10 @@ interface EventsFileStorage {
     fun removeEventCallback(insertId: String)
 
     fun splitEventFile(filePath: String, events: JSONArray)
+
+    fun readEventsContent(): List<Any>
+
+    suspend fun getEventsString(content: Any): String
+
+    suspend fun rollover()
 }

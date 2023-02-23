@@ -49,7 +49,7 @@ class IdentifyInterceptInMemoryStorageHandler(
         return event
     }
 
-    override fun clearIdentifyIntercepts() {
+    override suspend fun clearIdentifyIntercepts() {
         // no-op for in memory storage
         storage.removeEvents()
     }

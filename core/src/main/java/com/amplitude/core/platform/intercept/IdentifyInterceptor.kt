@@ -1,6 +1,7 @@
 package com.amplitude.core.platform.intercept
 
 import com.amplitude.common.Logger
+import com.amplitude.core.Amplitude
 import com.amplitude.core.Configuration
 import com.amplitude.core.Constants
 import com.amplitude.core.Storage
@@ -15,8 +16,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class IdentifyInterceptor(
     private val storage: Storage,
-    private val scope: CoroutineScope,
-    private val dispatcher: CoroutineDispatcher,
+    private val amplitude: Amplitude,
     private val logger: Logger,
     private val configuration: Configuration,
     private val plugin: AmplitudeDestination
@@ -28,7 +28,7 @@ class IdentifyInterceptor(
     private var deviceId: String? = null
     private val identifySet = AtomicBoolean(false)
 
-    private val storageHandler: IdentifyInterceptStorageHandler? = IdentifyInterceptStorageHandler.getIdentifyInterceptStorageHandler(storage, logger, scope, dispatcher)
+    private val storageHandler: IdentifyInterceptStorageHandler? = IdentifyInterceptStorageHandler.getIdentifyInterceptStorageHandler(storage, logger, amplitude)
 
     suspend fun intercept(event: BaseEvent): BaseEvent? {
         if (storageHandler == null) {
@@ -77,7 +77,7 @@ class IdentifyInterceptor(
         return storageHandler!!.fetchAndMergeToIdentifyEvent(event)
     }
 
-    private fun clearIdentifyIntercepts() {
+    private suspend fun clearIdentifyIntercepts() {
         storageHandler!!.clearIdentifyIntercepts()
     }
 
@@ -92,7 +92,7 @@ class IdentifyInterceptor(
         return storageHandler!!.getTransferIdentifyEvent()
     }
 
-    private fun scheduleTransfer() = scope.launch(dispatcher) {
+    private fun scheduleTransfer() = amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
         if (!transferScheduled.get()) {
             transferScheduled.getAndSet(true)
             delay(configuration.identifyBatchIntervalMillis)

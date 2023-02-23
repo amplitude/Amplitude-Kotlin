@@ -23,11 +23,12 @@ class EventsFileManager(
 
     companion object {
         const val MAX_FILE_SIZE = 975_000 // 975KB
-        val writeMutex = Mutex()
-        val readMutex = Mutex()
-        val filePathSet: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
-        val curFile: MutableMap<String, File> = ConcurrentHashMap<String, File>()
     }
+
+    val writeMutex = Mutex()
+    val readMutex = Mutex()
+    val filePathSet: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
+    val curFile: MutableMap<String, File> = ConcurrentHashMap<String, File>()
 
     /**
      * closes existing file, if at capacity

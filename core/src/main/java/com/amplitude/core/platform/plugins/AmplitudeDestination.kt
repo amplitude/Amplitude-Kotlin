@@ -71,8 +71,7 @@ class AmplitudeDestination : DestinationPlugin() {
             pipeline.start()
             identifyInterceptor = IdentifyInterceptor(
                 configuration.identifyInterceptStorageProvider.getStorage(amplitude, "amplitude-identify-intercept"),
-                amplitudeScope,
-                storageIODispatcher,
+                amplitude,
                 logger,
                 configuration,
                 plugin

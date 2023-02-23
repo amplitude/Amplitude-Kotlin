@@ -63,9 +63,9 @@ open class Amplitude(
             add(AndroidLifecyclePlugin())
             add(AnalyticsConnectorIdentityPlugin())
             add(AnalyticsConnectorPlugin())
+            add(AmplitudeDestination())
             true
         }
-        add(AmplitudeDestination())
         return built
     }
 
