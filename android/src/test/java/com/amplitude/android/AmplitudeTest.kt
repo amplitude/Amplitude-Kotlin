@@ -84,7 +84,7 @@ class AmplitudeTest {
             storageProvider = storageProvider,
             trackingSessionEvents = minTimeBetweenSessionsMillis != null,
             loggerProvider = ConsoleLoggerProvider(),
-            identifyInterceptStorageProvider = storageProvider
+            identifyInterceptStorageProvider = InMemoryStorageProvider()
         )
 
         if (minTimeBetweenSessionsMillis != null) {

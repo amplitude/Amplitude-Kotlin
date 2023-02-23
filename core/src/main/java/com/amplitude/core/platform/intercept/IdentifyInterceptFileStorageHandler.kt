@@ -61,35 +61,7 @@ class IdentifyInterceptFileStorageHandler(
     }
 
     override suspend fun fetchAndMergeToNormalEvent(event: BaseEvent): BaseEvent {
-        try {
-            storage.rollover()
-        } catch (e: FileNotFoundException) {
-            e.message?.let {
-                logger.warn("Event storage file not found: $it")
-            }
-            return event
-        }
-        val eventsData = storage.readEventsContent()
-        if (eventsData.isEmpty()) {
-            return event
-        }
-        val userProperties = mutableMapOf<String, Any?>()
-        for (eventPath in eventsData) {
-            try {
-                val eventsString = storage.getEventsString(eventPath)
-                if (eventsString.isEmpty()) {
-                    removeFile(eventPath as String)
-                    continue
-                }
-                val events = JSONArray(eventsString).toEvents()
-                val listUserProperties = IdentifyInterceptorUtil.mergeIdentifyList(events)
-                userProperties.putAll(listUserProperties)
-                removeFile(eventPath as String)
-            } catch (e: JSONException) {
-                logger.warn("Identify Merge error: " + e.message)
-                removeFile(eventPath as String)
-            }
-        }
+        val userProperties = fetchAndMergeToUserProperties()
         event.userProperties?.let {
             userProperties.putAll(it)
         }
@@ -98,35 +70,7 @@ class IdentifyInterceptFileStorageHandler(
     }
 
     override suspend fun fetchAndMergeToIdentifyEvent(event: BaseEvent): BaseEvent {
-        try {
-            storage.rollover()
-        } catch (e: FileNotFoundException) {
-            e.message?.let {
-                logger.warn("Event storage file not found: $it")
-            }
-            return event
-        }
-        val eventsData = storage.readEventsContent()
-        if (eventsData.isEmpty()) {
-            return event
-        }
-        val userProperties = mutableMapOf<String, Any?>()
-        for (eventPath in eventsData) {
-            try {
-                val eventsString = storage.getEventsString(eventPath)
-                if (eventsString.isEmpty()) {
-                    removeFile(eventPath as String)
-                    continue
-                }
-                val events = JSONArray(eventsString).toEvents()
-                val listUserProperties = IdentifyInterceptorUtil.mergeIdentifyList(events)
-                userProperties.putAll(listUserProperties)
-                removeFile(eventPath as String)
-            } catch (e: JSONException) {
-                logger.warn("Identify Merge error: " + e.message)
-                removeFile(eventPath as String)
-            }
-        }
+        val userProperties = fetchAndMergeToUserProperties()
         if (event.userProperties?.contains(IdentifyOperation.SET.operationType) == true) {
             userProperties.putAll(event.userProperties!![IdentifyOperation.SET.operationType] as MutableMap<String, Any?>)
         }
@@ -150,6 +94,40 @@ class IdentifyInterceptFileStorageHandler(
         for (eventPath in eventsData) {
             removeFile(eventPath as String)
         }
+    }
+
+    private suspend fun fetchAndMergeToUserProperties(): MutableMap<String, Any?> {
+        val userProperties = mutableMapOf<String, Any?>()
+        try {
+            storage.rollover()
+        } catch (e: FileNotFoundException) {
+            e.message?.let {
+                logger.warn("Event storage file not found: $it")
+            }
+            return userProperties
+        }
+        val eventsData = storage.readEventsContent()
+        if (eventsData.isEmpty()) {
+            return userProperties
+        }
+
+        for (eventPath in eventsData) {
+            try {
+                val eventsString = storage.getEventsString(eventPath)
+                if (eventsString.isEmpty()) {
+                    removeFile(eventPath as String)
+                    continue
+                }
+                val events = JSONArray(eventsString).toEvents()
+                val listUserProperties = IdentifyInterceptorUtil.mergeIdentifyList(events)
+                userProperties.putAll(listUserProperties)
+                removeFile(eventPath as String)
+            } catch (e: JSONException) {
+                logger.warn("Identify Merge error: " + e.message)
+                removeFile(eventPath as String)
+            }
+        }
+        return userProperties
     }
 
     private fun removeFile(file: String) {

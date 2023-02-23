@@ -12,6 +12,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 
+/**
+ * IdentifyInterceptor
+ * This is the internal class for handling identify events intercept and  optimize identify volumes.
+ */
 class IdentifyInterceptor(
     private val storage: Storage,
     private val amplitude: Amplitude,
@@ -28,6 +32,12 @@ class IdentifyInterceptor(
 
     private val storageHandler: IdentifyInterceptStorageHandler? = IdentifyInterceptStorageHandler.getIdentifyInterceptStorageHandler(storage, logger, amplitude)
 
+    /**
+     * Intercept the event if it is identify with set action.
+     *
+     * @param event full event data after plugins run
+     * @return event with potentially more information or null if intercepted
+     */
     suspend fun intercept(event: BaseEvent): BaseEvent? {
         if (storageHandler == null) {
             // no-op to prevent custom storage errors
