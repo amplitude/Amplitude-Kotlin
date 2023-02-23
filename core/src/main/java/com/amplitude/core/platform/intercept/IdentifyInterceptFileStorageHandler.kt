@@ -6,10 +6,10 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.IdentifyOperation
 import com.amplitude.core.utilities.EventsFileStorage
 import com.amplitude.core.utilities.toEvents
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONException
 import java.io.FileNotFoundException
-import kotlinx.coroutines.launch
 
 class IdentifyInterceptFileStorageHandler(
     private val storage: EventsFileStorage,

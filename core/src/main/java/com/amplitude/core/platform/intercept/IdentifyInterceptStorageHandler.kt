@@ -6,10 +6,7 @@ import com.amplitude.core.Storage
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.IdentifyOperation
 import com.amplitude.core.utilities.EventsFileStorage
-import com.amplitude.core.utilities.FileStorage
 import com.amplitude.core.utilities.InMemoryStorage
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.CoroutineScope
 
 interface IdentifyInterceptStorageHandler {
     suspend fun getTransferIdentifyEvent(): BaseEvent?

@@ -31,7 +31,9 @@ import java.util.concurrent.TimeUnit
 class IdentifyInterceptTest {
     private lateinit var server: MockWebServer
     private lateinit var amplitude: Amplitude
+    @ExperimentalCoroutinesApi
     private lateinit var testScope: TestScope
+    @ExperimentalCoroutinesApi
     private lateinit var testDispatcher: TestDispatcher
 
     @ExperimentalCoroutinesApi
