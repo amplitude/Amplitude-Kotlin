@@ -43,7 +43,7 @@ class IdentifyInterceptFileStorageHandler(
                 if (event == null) {
                     event = eventsList[0]
                     identifyEventUserProperties = event?.userProperties?.get(IdentifyOperation.SET.operationType) as MutableMap<String, Any?>
-                    events = eventsList.subList(0, eventsList.size)
+                    events = eventsList.subList(1, eventsList.size)
                 }
                 val userProperties = IdentifyInterceptorUtil.mergeIdentifyList(events)
                 identifyEventUserProperties?.putAll(userProperties)
