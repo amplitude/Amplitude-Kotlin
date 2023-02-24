@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.6.2...v1.7.0) (2023-02-24)
+
+
+### Features
+
+* add Identify volume reduction ([#107](https://github.com/amplitude/Amplitude-Kotlin/issues/107)) ([8c3c39c](https://github.com/amplitude/Amplitude-Kotlin/commit/8c3c39ce1f79485a0ce716bbf01de464a9afe9a8))
+
 ## [1.6.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.6.1...v1.6.2) (2023-02-14)
 
 
