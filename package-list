@@ -17,6 +17,7 @@ module:core
 com.amplitude.core
 com.amplitude.core.events
 com.amplitude.core.platform
+com.amplitude.core.platform.intercept
 com.amplitude.core.platform.plugins
 com.amplitude.core.utilities
 module:event-bridge
