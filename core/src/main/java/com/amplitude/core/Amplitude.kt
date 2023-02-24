@@ -44,7 +44,7 @@ open class Amplitude internal constructor(
     val amplitudeScope: CoroutineScope = CoroutineScope(SupervisorJob()),
     val amplitudeDispatcher: CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher(),
     val networkIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
-    val storageIODispatcher: CoroutineDispatcher = Executors.newFixedThreadPool(3).asCoroutineDispatcher(),
+    val storageIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
     val retryDispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
 ) {
     val timeline: Timeline
@@ -264,8 +264,10 @@ open class Amplitude internal constructor(
      */
     @JvmOverloads
     fun setGroup(groupType: String, groupName: String, options: EventOptions? = null): Amplitude {
+        val identify = Identify().set(groupType, groupName)
         val event = IdentifyEvent().apply {
             groups = mutableMapOf(groupType to groupName)
+            userProperties = identify.properties
         }
         track(event, options)
         return this
@@ -281,8 +283,10 @@ open class Amplitude internal constructor(
      */
     @JvmOverloads
     fun setGroup(groupType: String, groupName: Array<String>, options: EventOptions? = null): Amplitude {
+        val identify = Identify().set(groupType, groupName)
         val event = IdentifyEvent().apply {
             groups = mutableMapOf(groupType to groupName)
+            userProperties = identify.properties
         }
         track(event, options)
         return this

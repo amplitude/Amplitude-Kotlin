@@ -161,7 +161,7 @@ internal fun JSONArray.toIntArray(): IntArray {
     return intArray
 }
 
-internal fun JSONObject.toBaseEvent(): BaseEvent {
+fun JSONObject.toBaseEvent(): BaseEvent {
     val event = BaseEvent()
     event.eventType = this.getString("event_type")
     event.userId = this.optionalString("user_id", null)
@@ -207,7 +207,7 @@ internal fun JSONObject.toBaseEvent(): BaseEvent {
     return event
 }
 
-internal fun JSONArray.toEvents(): List<BaseEvent> {
+fun JSONArray.toEvents(): List<BaseEvent> {
     val events = mutableListOf<BaseEvent>()
     (0 until this.length()).forEach {
         events.add((this.getJSONObject(it)).toBaseEvent())

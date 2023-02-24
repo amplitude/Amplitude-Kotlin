@@ -32,5 +32,5 @@ interface Storage {
 }
 
 interface StorageProvider {
-    fun getStorage(amplitude: Amplitude): Storage
+    fun getStorage(amplitude: Amplitude, prefix: String? = null): Storage
 }

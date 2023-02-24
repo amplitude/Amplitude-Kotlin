@@ -37,8 +37,10 @@ open class Configuration @JvmOverloads constructor(
     var locationListening: Boolean = true,
     var flushEventsOnClose: Boolean = true,
     var minTimeBetweenSessionsMillis: Long = MIN_TIME_BETWEEN_SESSIONS_MILLIS,
-    var trackingSessionEvents: Boolean = true
-) : Configuration(apiKey, flushQueueSize, flushIntervalMillis, instanceName, optOut, storageProvider, loggerProvider, minIdLength, partnerId, callback, flushMaxRetries, useBatch, serverZone, serverUrl, plan, ingestionMetadata) {
+    var trackingSessionEvents: Boolean = true,
+    override var identifyBatchIntervalMillis: Long = IDENTIFY_BATCH_INVERVAL_MILLIS,
+    override var identifyInterceptStorageProvider: StorageProvider = AndroidStorageProvider()
+) : Configuration(apiKey, flushQueueSize, flushIntervalMillis, instanceName, optOut, storageProvider, loggerProvider, minIdLength, partnerId, callback, flushMaxRetries, useBatch, serverZone, serverUrl, plan, ingestionMetadata, identifyBatchIntervalMillis, identifyInterceptStorageProvider) {
     companion object {
         const val MIN_TIME_BETWEEN_SESSIONS_MILLIS: Long = 300000
     }
