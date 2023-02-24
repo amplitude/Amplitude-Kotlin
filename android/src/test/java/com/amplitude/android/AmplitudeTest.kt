@@ -408,7 +408,7 @@ class AmplitudeTest {
 }
 
 class InstanceStorageProvider(private val instance: Storage) : StorageProvider {
-    override fun getStorage(amplitude: com.amplitude.core.Amplitude, preifx: String?): Storage {
+    override fun getStorage(amplitude: com.amplitude.core.Amplitude, prefix: String?): Storage {
         return instance
     }
 }

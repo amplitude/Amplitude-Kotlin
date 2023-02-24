@@ -45,7 +45,7 @@ class IdentifyInterceptorTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         mockContextProvider()
 
-        val apiKey = "1cc2c1978ebab0f6451112a8f5df4f4e"
+        val apiKey = "test-api-key"
         amplitude = Amplitude(apiKey, context) {
             this.serverUrl = server.url("/").toString()
             this.trackingSessionEvents = false
