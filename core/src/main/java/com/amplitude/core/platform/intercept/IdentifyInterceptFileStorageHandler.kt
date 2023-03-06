@@ -8,7 +8,6 @@ import com.amplitude.core.utilities.EventsFileStorage
 import com.amplitude.core.utilities.toEvents
 import kotlinx.coroutines.launch
 import org.json.JSONArray
-import org.json.JSONException
 import java.io.FileNotFoundException
 
 class IdentifyInterceptFileStorageHandler(
