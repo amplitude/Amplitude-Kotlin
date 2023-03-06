@@ -1,3 +1,10 @@
+## [1.7.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.7.0...v1.7.1) (2023-03-06)
+
+
+### Bug Fixes
+
+* catch and prevent index out bound exception ([#108](https://github.com/amplitude/Amplitude-Kotlin/issues/108)) ([7a4eb11](https://github.com/amplitude/Amplitude-Kotlin/commit/7a4eb11e8f7a6e5b55b3c2eafc5e61d5cae6e3c5))
+
 # [1.7.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.6.2...v1.7.0) (2023-02-24)
 
 
