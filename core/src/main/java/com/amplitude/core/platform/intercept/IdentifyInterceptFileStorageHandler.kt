@@ -39,6 +39,10 @@ class IdentifyInterceptFileStorageHandler(
                     continue
                 }
                 val eventsList = JSONArray(eventsString).toEvents()
+                if (eventsList.isEmpty()) {
+                    removeFile(eventPath as String)
+                    continue
+                }
                 var events = eventsList
                 if (event == null) {
                     event = eventsList[0]
@@ -48,7 +52,7 @@ class IdentifyInterceptFileStorageHandler(
                 val userProperties = IdentifyInterceptorUtil.mergeIdentifyList(events)
                 identifyEventUserProperties?.putAll(userProperties)
                 removeFile(eventPath as String)
-            } catch (e: JSONException) {
+            } catch (e: Exception) {
                 logger.warn("Identify Merge error: " + e.message)
                 removeFile(eventPath as String)
             }
@@ -122,7 +126,7 @@ class IdentifyInterceptFileStorageHandler(
                 val listUserProperties = IdentifyInterceptorUtil.mergeIdentifyList(events)
                 userProperties.putAll(listUserProperties)
                 removeFile(eventPath as String)
-            } catch (e: JSONException) {
+            } catch (e: Exception) {
                 logger.warn("Identify Merge error: " + e.message)
                 removeFile(eventPath as String)
             }
