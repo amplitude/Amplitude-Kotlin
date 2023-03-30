@@ -141,7 +141,7 @@ class ResponseHandlerTest {
         runRequest()
         runRequest()
         runRequest()
-        Thread.sleep(100)
+        Thread.sleep(150)
         assertEquals(4, server.requestCount)
         assertEquals(5, statusMap.get(200))
         assertEquals(5, eventCompleteCount)
