@@ -149,7 +149,7 @@ class EventPipeline(
     }
 
     private fun getFlushCount(): Int {
-        val count = amplitude.configuration.flushQueueSize / flushSizeDivider.get()
+        val count = flushQueueSize / flushSizeDivider.get()
         return count.takeUnless { it == 0 } ?: 1
     }
 
