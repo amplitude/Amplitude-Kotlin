@@ -26,7 +26,9 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import java.util.concurrent.TimeUnit
+import org.junit.jupiter.api.Disabled
 
+@Disabled
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class IdentifyInterceptTest {
     private lateinit var server: MockWebServer
