@@ -129,33 +129,33 @@ class FailedResponse(response: JSONObject) : Response {
 }
 
 interface ResponseHandler {
-    fun handle(response: Response) {
+    fun handle(response: Response, events: Any, eventsString: String) {
         when (response) {
             is SuccessResponse -> {
-                handleSuccessResponse(response)
+                handleSuccessResponse(response, events, eventsString)
             }
             is BadRequestResponse -> {
-                handleBadRequestResponse(response)
+                handleBadRequestResponse(response, events, eventsString)
             }
             is PayloadTooLargeResponse -> {
-                handlePayloadTooLargeResponse(response)
+                handlePayloadTooLargeResponse(response, events, eventsString)
             }
             is TooManyRequestsResponse -> {
-                handleTooManyRequestsResponse(response)
+                handleTooManyRequestsResponse(response, events, eventsString)
             }
             is TimeoutResponse -> {
-                handleTimeoutResponse(response)
+                handleTimeoutResponse(response, events, eventsString)
             }
             else -> {
-                handleFailedResponse(response as FailedResponse)
+                handleFailedResponse(response as FailedResponse, events, eventsString)
             }
         }
     }
 
-    fun handleSuccessResponse(successResponse: SuccessResponse)
-    fun handleBadRequestResponse(badRequestResponse: BadRequestResponse)
-    fun handlePayloadTooLargeResponse(payloadTooLargeResponse: PayloadTooLargeResponse)
-    fun handleTooManyRequestsResponse(tooManyRequestsResponse: TooManyRequestsResponse)
-    fun handleTimeoutResponse(timeoutResponse: TimeoutResponse)
-    fun handleFailedResponse(failedResponse: FailedResponse)
+    fun handleSuccessResponse(successResponse: SuccessResponse, events: Any, eventsString: String)
+    fun handleBadRequestResponse(badRequestResponse: BadRequestResponse, events: Any, eventsString: String)
+    fun handlePayloadTooLargeResponse(payloadTooLargeResponse: PayloadTooLargeResponse, events: Any, eventsString: String)
+    fun handleTooManyRequestsResponse(tooManyRequestsResponse: TooManyRequestsResponse, events: Any, eventsString: String)
+    fun handleTimeoutResponse(timeoutResponse: TimeoutResponse, events: Any, eventsString: String)
+    fun handleFailedResponse(failedResponse: FailedResponse, events: Any, eventsString: String)
 }

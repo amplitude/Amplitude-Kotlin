@@ -12,19 +12,19 @@ internal class InMemoryResponseHandler(
     val eventPipeline: EventPipeline,
     val configuration: Configuration,
     val scope: CoroutineScope,
-    val dispatcher: CoroutineDispatcher,
-    val events: List<BaseEvent>
+    val dispatcher: CoroutineDispatcher
 ) : ResponseHandler {
 
     companion object {
         const val BACK_OFF: Long = 30000
     }
 
-    override fun handleSuccessResponse(successResponse: SuccessResponse) {
-        triggerEventsCallback(events, HttpStatus.SUCCESS.code, "Event sent success.")
+    override fun handleSuccessResponse(successResponse: SuccessResponse, events: Any, eventsString: String) {
+        triggerEventsCallback(events as List<BaseEvent>, HttpStatus.SUCCESS.code, "Event sent success.")
     }
 
-    override fun handleBadRequestResponse(badRequestResponse: BadRequestResponse) {
+    override fun handleBadRequestResponse(badRequestResponse: BadRequestResponse, eventsRaw: Any, eventsString: String) {
+        val events = eventsRaw as List<BaseEvent>
         if (events.size == 1) {
             triggerEventsCallback(events, HttpStatus.BAD_REQUEST.code, badRequestResponse.error)
             return
@@ -45,7 +45,8 @@ internal class InMemoryResponseHandler(
         }
     }
 
-    override fun handlePayloadTooLargeResponse(payloadTooLargeResponse: PayloadTooLargeResponse) {
+    override fun handlePayloadTooLargeResponse(payloadTooLargeResponse: PayloadTooLargeResponse, eventsRaw: Any, eventsString: String) {
+        val events = eventsRaw as List<BaseEvent>
         if (events.size == 1) {
             triggerEventsCallback(events, HttpStatus.PAYLOAD_TOO_LARGE.code, payloadTooLargeResponse.error)
             return
@@ -56,7 +57,8 @@ internal class InMemoryResponseHandler(
         }
     }
 
-    override fun handleTooManyRequestsResponse(tooManyRequestsResponse: TooManyRequestsResponse) {
+    override fun handleTooManyRequestsResponse(tooManyRequestsResponse: TooManyRequestsResponse, eventsRaw: Any, eventsString: String) {
+        val events = eventsRaw as List<BaseEvent>
         val eventsToDrop = mutableListOf<BaseEvent>()
         val eventsToRetryNow = mutableListOf<BaseEvent>()
         val eventsToRetryLater = mutableListOf<BaseEvent>()
@@ -81,7 +83,8 @@ internal class InMemoryResponseHandler(
         }
     }
 
-    override fun handleTimeoutResponse(timeoutResponse: TimeoutResponse) {
+    override fun handleTimeoutResponse(timeoutResponse: TimeoutResponse, eventsRaw: Any, eventsString: String) {
+        val events = eventsRaw as List<BaseEvent>
         scope.launch(dispatcher) {
             delay(BACK_OFF)
             events.forEach {
@@ -90,7 +93,8 @@ internal class InMemoryResponseHandler(
         }
     }
 
-    override fun handleFailedResponse(failedResponse: FailedResponse) {
+    override fun handleFailedResponse(failedResponse: FailedResponse, eventsRaw: Any, eventsString: String) {
+        val events = eventsRaw as List<BaseEvent>
         val eventsToDrop = mutableListOf<BaseEvent>()
         val eventsToRetry = mutableListOf<BaseEvent>()
         events.forEach { event ->
