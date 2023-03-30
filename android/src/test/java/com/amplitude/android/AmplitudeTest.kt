@@ -24,6 +24,7 @@ import io.mockk.mockkStatic
 import io.mockk.slot
 import io.mockk.spyk
 import io.mockk.verify
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -37,6 +38,7 @@ open class StubPlugin : EventPlugin {
     override lateinit var amplitude: com.amplitude.core.Amplitude
 }
 
+@ExperimentalCoroutinesApi
 class AmplitudeTest {
     private var context: Context? = null
     private var amplitude: Amplitude? = null
