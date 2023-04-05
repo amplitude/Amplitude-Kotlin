@@ -44,7 +44,7 @@ object IdentifyInterceptorUtil {
         return userProperties
     }
 
-    fun filterNonNullValues(map:  MutableMap<String, Any?>) : MutableMap<String, Any?>{
+    fun filterNonNullValues(map: MutableMap<String, Any?>): MutableMap<String, Any?> {
         return map.filterValues { it != null }.toMutableMap()
     }
 }
