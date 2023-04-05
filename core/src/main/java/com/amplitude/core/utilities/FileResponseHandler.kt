@@ -6,12 +6,12 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONException
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
-import kotlinx.coroutines.delay
 
 class FileResponseHandler(
     private val storage: EventsFileStorage,
