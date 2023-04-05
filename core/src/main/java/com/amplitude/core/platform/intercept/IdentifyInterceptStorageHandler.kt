@@ -39,8 +39,12 @@ object IdentifyInterceptorUtil {
     fun mergeIdentifyList(events: List<BaseEvent>): MutableMap<String, Any?> {
         val userProperties = mutableMapOf<String, Any?>()
         events.forEach {
-            userProperties.putAll(it.userProperties!!.get(IdentifyOperation.SET.operationType) as MutableMap<String, Any?>)
+            userProperties.putAll(filterNonNullValues(it.userProperties!!.get(IdentifyOperation.SET.operationType) as MutableMap<String, Any?>))
         }
         return userProperties
+    }
+
+    fun filterNonNullValues(map:  MutableMap<String, Any?>) : MutableMap<String, Any?>{
+        return map.filterValues { it != null }.toMutableMap()
     }
 }
