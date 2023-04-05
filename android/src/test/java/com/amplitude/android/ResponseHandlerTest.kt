@@ -66,11 +66,13 @@ class ResponseHandlerTest {
         amplitude.track("test event 1", options = options)
         amplitude.track("test event 2", options = options)
         val request = runRequest()
+        // verify request
         assertNotNull(request)
         val events = getEventsFromRequest(request!!)
         assertEquals(2, events.size)
         assertEquals(1, server.requestCount)
         Thread.sleep(100)
+        // verify events covered with correct response
         assertEquals(2, statusMap.get(200))
         assertEquals(2, eventCompleteCount)
     }
@@ -92,6 +94,7 @@ class ResponseHandlerTest {
             runRequest()
         }
         Thread.sleep(100)
+        // verify the total request count when reaching max retries
         assertEquals(6, server.requestCount)
     }
 
@@ -107,11 +110,13 @@ class ResponseHandlerTest {
         }
         amplitude.track("test event 1", options = options)
         val request = runRequest()
+        // verify we send only one request
         assertNotNull(request)
         val events = getEventsFromRequest(request!!)
         assertEquals(1, events.size)
         assertEquals(1, server.requestCount)
         Thread.sleep(100)
+        // verify we remove the large event
         assertEquals(413, statusCode)
         assertTrue(callFinished)
     }
@@ -134,6 +139,7 @@ class ResponseHandlerTest {
         amplitude.track("test event 3", options = options)
         amplitude.track("test event 4", options = options)
         val request = runRequest()
+        // verify the first request hit 413
         assertNotNull(request)
         val events = getEventsFromRequest(request!!)
         assertEquals(4, events.size)
@@ -142,6 +148,7 @@ class ResponseHandlerTest {
         runRequest()
         runRequest()
         Thread.sleep(150)
+        // verify we completed processing for the events after file split
         assertEquals(4, server.requestCount)
         assertEquals(5, statusMap.get(200))
         assertEquals(5, eventCompleteCount)
@@ -153,7 +160,7 @@ class ResponseHandlerTest {
         {
           "code": 400,
           "error": "Request missing required field",
-         "events_with_invalid_fields": {
+          "events_with_invalid_fields": {
             "time": [
               3
             ]
@@ -178,16 +185,19 @@ class ResponseHandlerTest {
         amplitude.track("test event 2", options = options)
         amplitude.track("test event 3", options = options)
         amplitude.track("test event 4", options = options)
+        // verify first request take 4 events hit 400
         val request = runRequest()
         assertNotNull(request)
         val events = getEventsFromRequest(request!!)
         assertEquals(4, events.size)
+        // verify second request take 2 events after removing 2 bad events
         val request2 = runRequest()
         assertNotNull(request2)
         val events2 = getEventsFromRequest(request2!!)
         assertEquals(2, events2.size)
         assertEquals(2, server.requestCount)
         Thread.sleep(10)
+        // verify the processed status
         assertEquals(2, statusMap.get(400))
         assertEquals(2, statusMap.get(200))
         assertEquals(4, eventCompleteCount)
@@ -211,6 +221,7 @@ class ResponseHandlerTest {
         runRequest()
         runRequest()
         Thread.sleep(100)
+        // verify retry events success
         assertEquals(3, server.requestCount)
         assertEquals(2, statusMap.get(200))
         assertEquals(2, eventCompleteCount)
@@ -234,6 +245,7 @@ class ResponseHandlerTest {
         runRequest()
         runRequest()
         Thread.sleep(100)
+        // verify retry events success
         assertEquals(3, server.requestCount)
         assertEquals(2, statusMap.get(200))
         assertEquals(2, eventCompleteCount)

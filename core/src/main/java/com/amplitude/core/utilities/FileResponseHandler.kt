@@ -11,6 +11,7 @@ import org.json.JSONArray
 import org.json.JSONException
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.delay
 
 class FileResponseHandler(
     private val storage: EventsFileStorage,
@@ -159,7 +160,7 @@ class FileResponseHandler(
     }
 
     private fun triggerBackOff(withSizeUpdate: Boolean = false) {
-        logger?.debug("back off to retry sending events later.")
+        logger?.debug("Back off to retry sending events later.")
         backoff.set(true)
         if (retries.incrementAndGet() <= configuration.flushMaxRetries) {
             currentFlushInterval *= 2
@@ -170,6 +171,11 @@ class FileResponseHandler(
             // stop scheduling new calls since max retries exceeded
             eventPipeline.exceededRetries = true
             logger?.debug("Max retries ${configuration.flushMaxRetries} exceeded, temporarily stop scheduling new events sending out.")
+            scope.launch(dispatcher) {
+                delay(currentFlushInterval * 2)
+                eventPipeline.exceededRetries = false
+                logger?.debug("Enable sending requests again.")
+            }
         }
     }
 
