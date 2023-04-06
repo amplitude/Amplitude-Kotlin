@@ -253,6 +253,29 @@ class IdentifyInterceptorTest {
         assertEquals("identify_user_id", events[1].userId)
     }
 
+    @Test
+    fun `test null user properties filtered out`() {
+        server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+        amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
+        amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
+        amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
+        amplitude.identify(Identify().set("key3", "key3-value2").set("key4", "key4-value2"))
+        val testEvent = BaseEvent()
+        testEvent.eventType = "test_event"
+        testEvent.userProperties = mutableMapOf("key1" to null, "key2" to null)
+        amplitude.flush()
+        val request: RecordedRequest? = runRequest()
+        assertNotNull(request)
+        val events = getEventsFromRequest(request!!)
+        assertEquals(1, events.size)
+        val expectedUserProperties = mapOf("key1" to "key1-value2", "key2" to "key2-value2", "key3" to "key3-value2", "key4" to "key4-value2")
+        assertEquals(Constants.IDENTIFY_EVENT, events[0].eventType)
+        assertEquals(
+            expectedUserProperties,
+            events[0].userProperties?.get(IdentifyOperation.SET.operationType)
+        )
+    }
+
     private fun getEventsFromRequest(request: RecordedRequest): List<BaseEvent> {
         val body = request.body.readUtf8()
         return JSONObject(body).getJSONArray("events").toEvents()

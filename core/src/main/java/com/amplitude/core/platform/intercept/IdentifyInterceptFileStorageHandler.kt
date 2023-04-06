@@ -4,6 +4,7 @@ import com.amplitude.common.Logger
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.IdentifyOperation
+import com.amplitude.core.platform.intercept.IdentifyInterceptorUtil.filterNonNullValues
 import com.amplitude.core.utilities.EventsFileStorage
 import com.amplitude.core.utilities.toEvents
 import kotlinx.coroutines.launch
@@ -45,7 +46,7 @@ class IdentifyInterceptFileStorageHandler(
                 var events = eventsList
                 if (event == null) {
                     event = eventsList[0]
-                    identifyEventUserProperties = event?.userProperties?.get(IdentifyOperation.SET.operationType) as MutableMap<String, Any?>
+                    identifyEventUserProperties = filterNonNullValues(event?.userProperties?.get(IdentifyOperation.SET.operationType) as MutableMap<String, Any?>)
                     events = eventsList.subList(1, eventsList.size)
                 }
                 val userProperties = IdentifyInterceptorUtil.mergeIdentifyList(events)
@@ -75,7 +76,7 @@ class IdentifyInterceptFileStorageHandler(
     override suspend fun fetchAndMergeToIdentifyEvent(event: BaseEvent): BaseEvent {
         val userProperties = fetchAndMergeToUserProperties()
         if (event.userProperties?.contains(IdentifyOperation.SET.operationType) == true) {
-            userProperties.putAll(event.userProperties!![IdentifyOperation.SET.operationType] as MutableMap<String, Any?>)
+            userProperties.putAll(filterNonNullValues(event.userProperties!![IdentifyOperation.SET.operationType] as MutableMap<String, Any?>))
         }
         event.userProperties?.put(IdentifyOperation.SET.operationType, userProperties)
         return event

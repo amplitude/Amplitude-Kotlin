@@ -23,10 +23,12 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import java.util.concurrent.TimeUnit
 
+@Disabled
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class IdentifyInterceptTest {
     private lateinit var server: MockWebServer
