@@ -1,3 +1,15 @@
+# [1.8.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.7.1...v1.8.0) (2023-04-10)
+
+
+### Bug Fixes
+
+* filter null values in identify intercept ([#116](https://github.com/amplitude/Amplitude-Kotlin/issues/116)) ([3689fc1](https://github.com/amplitude/Amplitude-Kotlin/commit/3689fc1088b9603c2918ff352fa8c2aa89bc63ea))
+
+
+### Features
+
+* update retry handling ([#113](https://github.com/amplitude/Amplitude-Kotlin/issues/113)) ([1020acd](https://github.com/amplitude/Amplitude-Kotlin/commit/1020acdbf080b5823088c0046f5eedcef86ded56))
+
 ## [1.7.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.7.0...v1.7.1) (2023-03-06)
 
 
