@@ -28,7 +28,7 @@ interface Storage {
 
     suspend fun getEventsString(content: Any): String
 
-    fun getResponseHandler(eventPipeline: EventPipeline, configuration: Configuration, scope: CoroutineScope, dispatcher: CoroutineDispatcher, events: Any, eventsString: String): ResponseHandler
+    fun getResponseHandler(eventPipeline: EventPipeline, configuration: Configuration, scope: CoroutineScope, dispatcher: CoroutineDispatcher): ResponseHandler
 }
 
 interface StorageProvider {

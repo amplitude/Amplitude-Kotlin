@@ -63,6 +63,10 @@ class AndroidStorage(
         return eventsFile.read()
     }
 
+    override fun releaseFile(filePath: String) {
+        eventsFile.release(filePath)
+    }
+
     override suspend fun getEventsString(content: Any): String {
         return eventsFile.getEventString(content as String)
     }
@@ -72,8 +76,6 @@ class AndroidStorage(
         configuration: Configuration,
         scope: CoroutineScope,
         dispatcher: CoroutineDispatcher,
-        events: Any,
-        eventsString: String
     ): ResponseHandler {
         return FileResponseHandler(
             this,
@@ -81,8 +83,6 @@ class AndroidStorage(
             configuration,
             scope,
             dispatcher,
-            events as String,
-            eventsString,
             logger
         )
     }

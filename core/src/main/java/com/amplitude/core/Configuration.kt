@@ -25,7 +25,7 @@ open class Configuration @JvmOverloads constructor(
     open var serverUrl: String? = null,
     open var plan: Plan? = null,
     open var ingestionMetadata: IngestionMetadata? = null,
-    open var identifyBatchIntervalMillis: Long = IDENTIFY_BATCH_INVERVAL_MILLIS,
+    open var identifyBatchIntervalMillis: Long = IDENTIFY_BATCH_INTERVAL_MILLIS,
     open var identifyInterceptStorageProvider: StorageProvider = InMemoryStorageProvider()
 ) {
 
@@ -34,7 +34,7 @@ open class Configuration @JvmOverloads constructor(
         const val FLUSH_INTERVAL_MILLIS = 30 * 1000 // 30s
         const val FLUSH_MAX_RETRIES = 5
         const val DEFAULT_INSTANCE = "\$default_instance"
-        const val IDENTIFY_BATCH_INVERVAL_MILLIS = 30 * 1000L // 30s
+        const val IDENTIFY_BATCH_INTERVAL_MILLIS = 30 * 1000L // 30s
     }
 
     fun isValid(): Boolean {

@@ -12,7 +12,6 @@ import com.amplitude.id.utilities.PropertiesFile
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import org.json.JSONArray
-import java.io.BufferedReader
 import java.io.File
 
 class FileStorage(
@@ -62,12 +61,13 @@ class FileStorage(
         return eventsFile.read()
     }
 
+    override fun releaseFile(filePath: String) {
+        eventsFile.release(filePath)
+    }
+
     override suspend fun getEventsString(content: Any): String {
         // content is filePath String
-        val bufferedReader: BufferedReader = File(content as String).bufferedReader()
-        bufferedReader.use {
-            return it.readText()
-        }
+        return eventsFile.getEventString(content as String)
     }
 
     override fun getResponseHandler(
@@ -75,8 +75,6 @@ class FileStorage(
         configuration: Configuration,
         scope: CoroutineScope,
         dispatcher: CoroutineDispatcher,
-        events: Any,
-        eventsString: String
     ): ResponseHandler {
         return FileResponseHandler(
             this,
@@ -84,8 +82,6 @@ class FileStorage(
             configuration,
             scope,
             dispatcher,
-            events as String,
-            eventsString,
             logger
         )
     }
@@ -131,6 +127,8 @@ interface EventsFileStorage {
     fun splitEventFile(filePath: String, events: JSONArray)
 
     fun readEventsContent(): List<Any>
+
+    fun releaseFile(filePath: String)
 
     suspend fun getEventsString(content: Any): String
 

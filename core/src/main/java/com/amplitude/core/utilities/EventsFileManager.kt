@@ -76,7 +76,9 @@ class EventsFileManager(
         val fileList = directory.listFiles { _, name ->
             name.contains(apiKey) && !name.endsWith(".tmp")
         } ?: emptyArray()
-        return fileList.map {
+        return fileList.sortedBy { it ->
+            getIndexFromFile(it)
+        }.map {
             it.absolutePath
         }
     }
@@ -136,6 +138,10 @@ class EventsFileManager(
         }
     }
 
+    fun release(filePath: String) {
+        filePathSet.remove(filePath)
+    }
+
     private fun finish(file: File?) {
         if (file == null || !file.exists() || file.length() == 0L) {
             // if tmp file doesn't exist or empty then we don't need to do anything
@@ -162,6 +168,14 @@ class EventsFileManager(
         val index = kvs.getLong(fileIndexKey, 0)
         curFile[apiKey] = file ?: File(directory, "$apiKey-$index.tmp")
         return curFile[apiKey]!!
+    }
+
+    private fun getIndexFromFile(file: File): Int {
+        val name = file.nameWithoutExtension.replace("$apiKey-", "")
+        if (name.contains("-")) {
+            return name.split("-").get(0).toInt()
+        }
+        return name.toInt()
     }
 
     // write to underlying file

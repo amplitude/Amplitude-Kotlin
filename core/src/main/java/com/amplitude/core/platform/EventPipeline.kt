@@ -3,6 +3,7 @@ package com.amplitude.core.platform
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.HttpClient
+import com.amplitude.core.utilities.ResponseHandler
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
 import kotlinx.coroutines.channels.consumeEach
@@ -29,6 +30,9 @@ class EventPipeline(
 
     private val scope get() = amplitude.amplitudeScope
 
+    var flushInterval = amplitude.configuration.flushIntervalMillis.toLong()
+    var flushQueueSize = amplitude.configuration.flushQueueSize
+
     var running: Boolean
         private set
 
@@ -37,9 +41,13 @@ class EventPipeline(
 
     var flushSizeDivider: AtomicInteger = AtomicInteger(1)
 
+    var exceededRetries = false
+
     companion object {
         internal const val UPLOAD_SIG = "#!upload"
     }
+
+    val responseHandler: ResponseHandler
 
     init {
         running = false
@@ -49,6 +57,13 @@ class EventPipeline(
         uploadChannel = Channel(UNLIMITED)
 
         registerShutdownHook()
+
+        responseHandler = storage.getResponseHandler(
+            this@EventPipeline,
+            amplitude.configuration,
+            scope,
+            amplitude.retryDispatcher,
+        )
     }
 
     fun put(event: BaseEvent) {
@@ -118,15 +133,8 @@ class EventPipeline(
                         // Upload the payloads.
                         connection.close()
                     }
-                    val responseHandler = storage.getResponseHandler(
-                        this@EventPipeline,
-                        amplitude.configuration,
-                        scope,
-                        amplitude.retryDispatcher,
-                        events,
-                        eventsString
-                    )
-                    responseHandler.handle(connection.response)
+
+                    responseHandler.handle(connection.response, events, eventsString)
                 } catch (e: FileNotFoundException) {
                     e.message?.let {
                         amplitude.logger.warn("Event storage file not found: $it")
@@ -141,16 +149,16 @@ class EventPipeline(
     }
 
     private fun getFlushCount(): Int {
-        val count = amplitude.configuration.flushQueueSize / flushSizeDivider.get()
+        val count = flushQueueSize / flushSizeDivider.get()
         return count.takeUnless { it == 0 } ?: 1
     }
 
     private fun getFlushIntervalInMillis(): Long {
-        return amplitude.configuration.flushIntervalMillis.toLong()
+        return flushInterval
     }
 
     private fun schedule() = scope.launch(amplitude.storageIODispatcher) {
-        if (isActive && running && !scheduled) {
+        if (isActive && running && !scheduled && !exceededRetries) {
             scheduled = true
             delay(getFlushIntervalInMillis())
             flush()
