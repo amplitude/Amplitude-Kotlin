@@ -93,6 +93,10 @@ open class Amplitude(
     fun onEnterForeground(timestamp: Long) {
         inForeground = true
 
+        if ((configuration as Configuration).optOut) {
+            return
+        }
+
         val dummySessionStartEvent = BaseEvent()
         dummySessionStartEvent.eventType = START_SESSION_EVENT
         dummySessionStartEvent.timestamp = timestamp
