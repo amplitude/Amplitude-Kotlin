@@ -4,7 +4,6 @@ import android.app.Application
 import android.content.Context
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.ConsoleLoggerProvider
-import com.amplitude.core.utilities.InMemoryStorageProvider
 import io.mockk.mockk
 import io.mockk.spyk
 import io.mockk.verify
@@ -60,7 +59,6 @@ class AmplitudeRobolectricTests {
             context = context!!,
             instanceName = "testInstance",
             loggerProvider = ConsoleLoggerProvider(),
-            identifyInterceptStorageProvider = InMemoryStorageProvider(),
             optOut = optOut ?: false,
             minTimeBetweenSessionsMillis = minTimeBetweenSessionsMillis
                 ?: Configuration.MIN_TIME_BETWEEN_SESSIONS_MILLIS,
