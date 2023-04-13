@@ -1,3 +1,10 @@
+## [1.8.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.8.0...v1.8.1) (2023-04-13)
+
+
+### Bug Fixes
+
+* fix log session event when optOut is true ([#117](https://github.com/amplitude/Amplitude-Kotlin/issues/117)) ([155b3f5](https://github.com/amplitude/Amplitude-Kotlin/commit/155b3f56ad12a693f1213833f73d15f35213636c))
+
 # [1.8.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.7.1...v1.8.0) (2023-04-10)
 
 
