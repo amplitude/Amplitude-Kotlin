@@ -2,8 +2,6 @@ package com.amplitude.android
 
 import android.app.Application
 import android.content.Context
-import androidx.test.core.app.ApplicationProvider
-import com.amplitude.core.StorageProvider
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.ConsoleLoggerProvider
 import com.amplitude.core.utilities.InMemoryStorageProvider
