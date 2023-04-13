@@ -3,13 +3,13 @@ package com.amplitude.android
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.amplitude.core.events.BaseEvent
+import io.mockk.spyk
+import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import io.mockk.spyk
-import io.mockk.verify
 
 @RunWith(RobolectricTestRunner::class)
 class AmplitudeOtherTest {
