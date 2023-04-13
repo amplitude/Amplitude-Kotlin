@@ -1,8 +1,13 @@
 package com.amplitude.android
 
+import android.app.Application
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.amplitude.core.StorageProvider
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.utilities.ConsoleLoggerProvider
+import com.amplitude.core.utilities.InMemoryStorageProvider
+import io.mockk.mockk
 import io.mockk.spyk
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -14,38 +19,53 @@ import org.robolectric.RobolectricTestRunner
 @RunWith(RobolectricTestRunner::class)
 class AmplitudeRobolectricTests {
     private lateinit var amplitude: Amplitude
+    private var context: Context? = null
 
     @ExperimentalCoroutinesApi
     @Before
     fun setup() {
-        val context = ApplicationProvider.getApplicationContext<Context>()
+        context = mockk<Application>(relaxed = true)
 
-        val apiKey = "test-api-key"
-        amplitude = Amplitude(apiKey, context) {
-            this.minTimeBetweenSessionsMillis = 100
-            this.optOut = true
-        }
+        amplitude = Amplitude(createConfiguration())
     }
 
     @Test
     fun `test optOut is true no event should be send`() {
         val mockedPluginTest = spyk(StubPlugin())
-        amplitude.add(mockedPluginTest)
+        val amplitudeInstance = Amplitude(createConfiguration(100, true))
+        amplitudeInstance.add(mockedPluginTest)
 
         val event1 = BaseEvent()
         event1.eventType = "test event 1"
         event1.timestamp = 1000
-        amplitude.track(event1)
+        amplitudeInstance.track(event1)
 
-        amplitude.onEnterForeground(1500)
+        amplitudeInstance.onEnterForeground(1500)
 
         val event2 = BaseEvent()
         event2.eventType = "test event 2"
         event2.timestamp = 1700
-        amplitude.track(event2)
+        amplitudeInstance.track(event2)
 
-        amplitude.onExitForeground()
+        amplitudeInstance.onExitForeground()
 
         verify(exactly = 0) { mockedPluginTest.track(any()) }
+    }
+
+    private fun createConfiguration(
+        minTimeBetweenSessionsMillis: Long? = null,
+        optOut: Boolean? = null,
+    ): Configuration {
+
+        return Configuration(
+            apiKey = "api-key",
+            context = context!!,
+            instanceName = "testInstance",
+            loggerProvider = ConsoleLoggerProvider(),
+            identifyInterceptStorageProvider = InMemoryStorageProvider(),
+            optOut = optOut ?: false,
+            minTimeBetweenSessionsMillis = minTimeBetweenSessionsMillis
+                ?: Configuration.MIN_TIME_BETWEEN_SESSIONS_MILLIS,
+        )
     }
 }
