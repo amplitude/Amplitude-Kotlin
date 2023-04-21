@@ -61,14 +61,9 @@ class IdentifyInterceptor(
                         event
                     }
                     else -> {
-                        if (isSetGroups(event)) {
-                            // Fetch and merge event
-                            fetchAndMergeToIdentifyEvent(event)
-                        } else {
-                            // send out transfer event
-                            transferInterceptedIdentify()
-                            return event
-                        }
+                        // send out transfer event
+                        transferInterceptedIdentify()
+                        return event
                     }
                 }
             }

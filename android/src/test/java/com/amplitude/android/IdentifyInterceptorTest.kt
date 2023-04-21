@@ -210,19 +210,27 @@ class IdentifyInterceptorTest {
         val request: RecordedRequest? = runRequest()
         assertNotNull(request)
         val events = getEventsFromRequest(request!!)
-        assertEquals(2, events.size)
-        val expectedUserProperties = mapOf("key1" to "key1-value2", "key2" to "key2-value2", "key3" to "key3-value2", "key4" to "key4-value2", "test-group-type" to "test-group-value")
+        assertEquals(3, events.size)
+        val expectedUserProperties = mapOf("key1" to "key1-value2", "key2" to "key2-value2", "key3" to "key3-value2", "key4" to "key4-value2")
         assertEquals(Constants.IDENTIFY_EVENT, events[0].eventType)
         assertEquals(
             expectedUserProperties,
             events[0].userProperties?.get(IdentifyOperation.SET.operationType)
         )
-        assertEquals(mapOf("test-group-type" to "test-group-value"), events[0].groups)
-        val expectedUserProperties2 = mapOf("key3" to "key3-value3", "key4" to "key4-value3")
+
+        val expectedUserProperties1 = mapOf("test-group-type" to "test-group-value")
         assertEquals(Constants.IDENTIFY_EVENT, events[1].eventType)
         assertEquals(
-            expectedUserProperties2,
+            expectedUserProperties1,
             events[1].userProperties?.get(IdentifyOperation.SET.operationType)
+        )
+        assertEquals(mapOf("test-group-type" to "test-group-value"), events[1].groups)
+
+        val expectedUserProperties2 = mapOf("key3" to "key3-value3", "key4" to "key4-value3")
+        assertEquals(Constants.IDENTIFY_EVENT, events[2].eventType)
+        assertEquals(
+            expectedUserProperties2,
+            events[2].userProperties?.get(IdentifyOperation.SET.operationType)
         )
     }
 
