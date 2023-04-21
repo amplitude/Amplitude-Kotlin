@@ -185,11 +185,12 @@ class IdentifyInterceptTest {
         val request: RecordedRequest? = runRequest()
         assertNotNull(request)
         val events = getEventsFromRequest(request!!)
-        assertEquals(1, events.size)
+        assertEquals(2, events.size)
         val expectedUserProperties = mapOf("key1" to "key1-value2", "key2" to "key2-value2", "key3" to "key3-value2", "key4" to "key4-value2")
         assertEquals(Constants.IDENTIFY_EVENT, events[0].eventType)
         assertEquals(expectedUserProperties, events[0].userProperties?.get(IdentifyOperation.SET.operationType))
-        assertEquals(mapOf("key5" to 2), events[0].userProperties?.get(IdentifyOperation.ADD.operationType))
+        assertEquals(Constants.IDENTIFY_EVENT, events[1].eventType)
+        assertEquals(mapOf("key5" to 2), events[1].userProperties?.get(IdentifyOperation.ADD.operationType))
     }
 
     @ExperimentalCoroutinesApi

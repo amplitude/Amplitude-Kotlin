@@ -61,8 +61,14 @@ class IdentifyInterceptor(
                         event
                     }
                     else -> {
-                        // Fetch and merge event
-                        fetchAndMergeToIdentifyEvent(event)
+                        if (isSetGroups(event)) {
+                            // Fetch and merge event
+                            fetchAndMergeToIdentifyEvent(event)
+                        } else {
+                            // send out transfer event
+                            transferInterceptedIdentify()
+                            return event
+                        }
                     }
                 }
             }
@@ -71,7 +77,7 @@ class IdentifyInterceptor(
                 return event
             }
             else -> {
-                // fetch, merge and attach user properties
+                // send out transfer event
                 transferInterceptedIdentify()
                 return event
             }
