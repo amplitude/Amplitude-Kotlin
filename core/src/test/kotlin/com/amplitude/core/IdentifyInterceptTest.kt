@@ -23,12 +23,10 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import java.util.concurrent.TimeUnit
 
-@Disabled
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class IdentifyInterceptTest {
     private lateinit var server: MockWebServer
@@ -102,10 +100,16 @@ class IdentifyInterceptTest {
         val request: RecordedRequest? = runRequest()
         assertNotNull(request)
         val events = getEventsFromRequest(request!!)
-        assertEquals(1, events.size)
-        val expectedUserProperties = mapOf("key1" to "key1-value3", "key2" to "key2-value3", "key3" to "key3-value2", "key4" to "key4-value2", "test_key" to "test_value")
-        assertEquals("test_event", events[0].eventType)
-        assertEquals(expectedUserProperties, events[0].userProperties)
+        assertEquals(2, events.size)
+        val expectedUserProperties1 = mapOf("key1" to "key1-value2", "key2" to "key2-value2", "key3" to "key3-value2", "key4" to "key4-value2")
+        assertEquals(Constants.IDENTIFY_EVENT, events[0].eventType)
+        assertEquals(
+            expectedUserProperties1,
+            events[0].userProperties?.get(IdentifyOperation.SET.operationType)
+        )
+        val expectedUserProperties2 = mapOf("key1" to "key1-value3", "key2" to "key2-value3", "test_key" to "test_value")
+        assertEquals("test_event", events[1].eventType)
+        assertEquals(expectedUserProperties2, events[1].userProperties)
     }
 
     @ExperimentalCoroutinesApi
@@ -127,13 +131,22 @@ class IdentifyInterceptTest {
         val request: RecordedRequest? = runRequest()
         assertNotNull(request)
         val events = getEventsFromRequest(request!!)
-        assertEquals(2, events.size)
-        val expectedUserProperties = mapOf("key1" to "key1-value3", "key2" to "key2-value3", "key3" to "key3-value2", "key4" to "key4-value2", "test_key" to "test_value")
-        assertEquals("test_event", events[0].eventType)
-        assertEquals(expectedUserProperties, events[0].userProperties)
-        val expectedUserProperties2 = mapOf("key1" to "key1-value4")
-        assertEquals(Constants.IDENTIFY_EVENT, events[1].eventType)
-        assertEquals(expectedUserProperties2, events[1].userProperties?.get(IdentifyOperation.SET.operationType))
+        assertEquals(3, events.size)
+        val expectedUserProperties1 = mapOf("key1" to "key1-value2", "key2" to "key2-value2", "key3" to "key3-value2", "key4" to "key4-value2")
+        assertEquals(Constants.IDENTIFY_EVENT, events[0].eventType)
+        assertEquals(
+            expectedUserProperties1,
+            events[0].userProperties?.get(IdentifyOperation.SET.operationType)
+        )
+        val expectedUserProperties2 = mapOf("key1" to "key1-value3", "key2" to "key2-value3", "test_key" to "test_value")
+        assertEquals("test_event", events[1].eventType)
+        assertEquals(expectedUserProperties2, events[1].userProperties)
+        val expectedUserProperties3 = mapOf("key1" to "key1-value4")
+        assertEquals(Constants.IDENTIFY_EVENT, events[2].eventType)
+        assertEquals(
+            expectedUserProperties3,
+            events[2].userProperties?.get(IdentifyOperation.SET.operationType)
+        )
     }
 
     @ExperimentalCoroutinesApi
@@ -172,11 +185,12 @@ class IdentifyInterceptTest {
         val request: RecordedRequest? = runRequest()
         assertNotNull(request)
         val events = getEventsFromRequest(request!!)
-        assertEquals(1, events.size)
+        assertEquals(2, events.size)
         val expectedUserProperties = mapOf("key1" to "key1-value2", "key2" to "key2-value2", "key3" to "key3-value2", "key4" to "key4-value2")
         assertEquals(Constants.IDENTIFY_EVENT, events[0].eventType)
         assertEquals(expectedUserProperties, events[0].userProperties?.get(IdentifyOperation.SET.operationType))
-        assertEquals(mapOf("key5" to 2), events[0].userProperties?.get(IdentifyOperation.ADD.operationType))
+        assertEquals(Constants.IDENTIFY_EVENT, events[1].eventType)
+        assertEquals(mapOf("key5" to 2), events[1].userProperties?.get(IdentifyOperation.ADD.operationType))
     }
 
     @ExperimentalCoroutinesApi
@@ -216,14 +230,19 @@ class IdentifyInterceptTest {
         val request: RecordedRequest? = runRequest()
         assertNotNull(request)
         val events = getEventsFromRequest(request!!)
-        assertEquals(2, events.size)
-        val expectedUserProperties = mapOf("key1" to "key1-value2", "key2" to "key2-value2", "key3" to "key3-value2", "key4" to "key4-value2", "test-group-type" to "test-group-value")
+        assertEquals(3, events.size)
+        val expectedUserProperties = mapOf("key1" to "key1-value2", "key2" to "key2-value2", "key3" to "key3-value2", "key4" to "key4-value2")
         assertEquals(Constants.IDENTIFY_EVENT, events[0].eventType)
         assertEquals(expectedUserProperties, events[0].userProperties?.get(IdentifyOperation.SET.operationType))
-        assertEquals(mapOf("test-group-type" to "test-group-value"), events[0].groups)
-        val expectedUserProperties2 = mapOf("key3" to "key3-value3", "key4" to "key4-value3")
+
+        val expectedUserProperties1 = mapOf("test-group-type" to "test-group-value")
         assertEquals(Constants.IDENTIFY_EVENT, events[1].eventType)
-        assertEquals(expectedUserProperties2, events[1].userProperties?.get(IdentifyOperation.SET.operationType))
+        assertEquals(expectedUserProperties1, events[1].userProperties?.get(IdentifyOperation.SET.operationType))
+        assertEquals(mapOf("test-group-type" to "test-group-value"), events[1].groups)
+
+        val expectedUserProperties2 = mapOf("key3" to "key3-value3", "key4" to "key4-value3")
+        assertEquals(Constants.IDENTIFY_EVENT, events[2].eventType)
+        assertEquals(expectedUserProperties2, events[2].userProperties?.get(IdentifyOperation.SET.operationType))
     }
 
     @ExperimentalCoroutinesApi
