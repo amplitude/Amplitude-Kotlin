@@ -1,3 +1,10 @@
+## [1.8.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.8.1...v1.8.2) (2023-04-24)
+
+
+### Bug Fixes
+
+* update identify transfer to merge identify only ([#118](https://github.com/amplitude/Amplitude-Kotlin/issues/118)) ([fbf11ef](https://github.com/amplitude/Amplitude-Kotlin/commit/fbf11efd0a7a40176e89232074c75da916c4d26c))
+
 ## [1.8.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.8.0...v1.8.1) (2023-04-13)
 
 
