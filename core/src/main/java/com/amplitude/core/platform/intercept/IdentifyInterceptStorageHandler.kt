@@ -11,10 +11,6 @@ import com.amplitude.core.utilities.InMemoryStorage
 interface IdentifyInterceptStorageHandler {
     suspend fun getTransferIdentifyEvent(): BaseEvent?
 
-    suspend fun fetchAndMergeToNormalEvent(event: BaseEvent): BaseEvent
-
-    suspend fun fetchAndMergeToIdentifyEvent(event: BaseEvent): BaseEvent
-
     suspend fun clearIdentifyIntercepts()
 
     companion object {

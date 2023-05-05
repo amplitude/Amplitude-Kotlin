@@ -79,14 +79,6 @@ class IdentifyInterceptor(
         }
     }
 
-    private suspend fun fetchAndMergeToNormalEvent(event: BaseEvent): BaseEvent {
-        return storageHandler!!.fetchAndMergeToNormalEvent(event)
-    }
-
-    private suspend fun fetchAndMergeToIdentifyEvent(event: BaseEvent): BaseEvent {
-        return storageHandler!!.fetchAndMergeToIdentifyEvent(event)
-    }
-
     private suspend fun clearIdentifyIntercepts() {
         storageHandler!!.clearIdentifyIntercepts()
     }

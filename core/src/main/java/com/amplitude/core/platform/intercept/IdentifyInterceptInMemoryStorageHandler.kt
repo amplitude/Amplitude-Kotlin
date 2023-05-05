@@ -22,34 +22,6 @@ class IdentifyInterceptInMemoryStorageHandler(
         return identifyEvent
     }
 
-    override suspend fun fetchAndMergeToNormalEvent(event: BaseEvent): BaseEvent {
-        val eventsData = storage.readEventsContent() as List<List<BaseEvent>>
-        if (eventsData.isEmpty() || eventsData[0].isEmpty()) {
-            return event
-        }
-        val events = eventsData[0]
-        val userProperties = IdentifyInterceptorUtil.mergeIdentifyList(events)
-        event.userProperties?.let {
-            userProperties.putAll(it)
-        }
-        event.userProperties = userProperties
-        return event
-    }
-
-    override suspend fun fetchAndMergeToIdentifyEvent(event: BaseEvent): BaseEvent {
-        val eventsData = storage.readEventsContent() as List<List<BaseEvent>>
-        if (eventsData.isEmpty() || eventsData[0].isEmpty()) {
-            return event
-        }
-        val events = eventsData[0]
-        val userProperties = IdentifyInterceptorUtil.mergeIdentifyList(events)
-        if (event.userProperties?.contains(IdentifyOperation.SET.operationType) == true) {
-            userProperties.putAll(filterNonNullValues(event.userProperties!!.get(IdentifyOperation.SET.operationType) as MutableMap<String, Any?>))
-        }
-        event.userProperties?.put(IdentifyOperation.SET.operationType, userProperties)
-        return event
-    }
-
     override suspend fun clearIdentifyIntercepts() {
         // no-op for in memory storage
         storage.removeEvents()
