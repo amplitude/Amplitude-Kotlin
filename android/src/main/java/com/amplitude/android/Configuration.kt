@@ -8,6 +8,7 @@ import com.amplitude.core.EventCallBack
 import com.amplitude.core.LoggerProvider
 import com.amplitude.core.ServerZone
 import com.amplitude.core.StorageProvider
+import com.amplitude.core.events.IngestionMetadata
 import com.amplitude.core.events.Plan
 
 open class Configuration @JvmOverloads constructor(
@@ -17,8 +18,8 @@ open class Configuration @JvmOverloads constructor(
     override var flushIntervalMillis: Int = FLUSH_INTERVAL_MILLIS,
     override var instanceName: String = DEFAULT_INSTANCE,
     override var optOut: Boolean = false,
-    override val storageProvider: StorageProvider = AndroidStorageProvider(),
-    override val loggerProvider: LoggerProvider = AndroidLoggerProvider(),
+    override var storageProvider: StorageProvider = AndroidStorageProvider(),
+    override var loggerProvider: LoggerProvider = AndroidLoggerProvider(),
     override var minIdLength: Int? = null,
     override var partnerId: String? = null,
     override var callback: EventCallBack? = null,
@@ -27,16 +28,19 @@ open class Configuration @JvmOverloads constructor(
     override var serverZone: ServerZone = ServerZone.US,
     override var serverUrl: String? = null,
     override var plan: Plan? = null,
-    val useAdvertisingIdForDeviceId: Boolean = false,
-    val useAppSetIdForDeviceId: Boolean = false,
-    val newDeviceIdPerInstall: Boolean = false,
-    val trackingOptions: TrackingOptions = TrackingOptions(),
-    val enableCoppaControl: Boolean = false,
-    val locationListening: Boolean = true,
-    val flushEventsOnClose: Boolean = true,
-    val minTimeBetweenSessionsMillis: Long = MIN_TIME_BETWEEN_SESSIONS_MILLIS,
-    val trackingSessionEvents: Boolean = true
-) : Configuration(apiKey, flushQueueSize, flushIntervalMillis, instanceName, optOut, storageProvider, loggerProvider, minIdLength, partnerId, callback, flushMaxRetries, useBatch, serverZone, serverUrl, plan) {
+    override var ingestionMetadata: IngestionMetadata? = null,
+    var useAdvertisingIdForDeviceId: Boolean = false,
+    var useAppSetIdForDeviceId: Boolean = false,
+    var newDeviceIdPerInstall: Boolean = false,
+    var trackingOptions: TrackingOptions = TrackingOptions(),
+    var enableCoppaControl: Boolean = false,
+    var locationListening: Boolean = true,
+    var flushEventsOnClose: Boolean = true,
+    var minTimeBetweenSessionsMillis: Long = MIN_TIME_BETWEEN_SESSIONS_MILLIS,
+    var trackingSessionEvents: Boolean = true,
+    override var identifyBatchIntervalMillis: Long = IDENTIFY_BATCH_INTERVAL_MILLIS,
+    override var identifyInterceptStorageProvider: StorageProvider = AndroidStorageProvider()
+) : Configuration(apiKey, flushQueueSize, flushIntervalMillis, instanceName, optOut, storageProvider, loggerProvider, minIdLength, partnerId, callback, flushMaxRetries, useBatch, serverZone, serverUrl, plan, ingestionMetadata, identifyBatchIntervalMillis, identifyInterceptStorageProvider) {
     companion object {
         const val MIN_TIME_BETWEEN_SESSIONS_MILLIS: Long = 300000
     }

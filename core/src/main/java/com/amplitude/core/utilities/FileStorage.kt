@@ -1,5 +1,6 @@
 package com.amplitude.core.utilities
 
+import com.amplitude.common.Logger
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Configuration
 import com.amplitude.core.EventCallBack
@@ -11,21 +12,22 @@ import com.amplitude.id.utilities.PropertiesFile
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import org.json.JSONArray
-import java.io.BufferedReader
 import java.io.File
 
 class FileStorage(
-    private val apiKey: String
+    private val apiKey: String,
+    private val logger: Logger,
+    private val prefix: String?
 ) : Storage, EventsFileStorage {
 
     companion object {
         const val STORAGE_PREFIX = "amplitude-kotlin"
     }
 
-    private val storageDirectory = File("/tmp/amplitude-kotlin/$apiKey")
+    private val storageDirectory = File("/tmp/${getPrefix()}/$apiKey")
     private val storageDirectoryEvents = File(storageDirectory, "events")
 
-    internal val propertiesFile = PropertiesFile(storageDirectory, apiKey, STORAGE_PREFIX)
+    internal val propertiesFile = PropertiesFile(storageDirectory, apiKey, getPrefix(), null)
     internal val eventsFile = EventsFileManager(storageDirectoryEvents, apiKey, propertiesFile)
     val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
 
@@ -59,12 +61,13 @@ class FileStorage(
         return eventsFile.read()
     }
 
-    override fun getEventsString(content: Any): String {
+    override fun releaseFile(filePath: String) {
+        eventsFile.release(filePath)
+    }
+
+    override suspend fun getEventsString(content: Any): String {
         // content is filePath String
-        val bufferedReader: BufferedReader = File(content as String).bufferedReader()
-        bufferedReader.use {
-            return it.readText()
-        }
+        return eventsFile.getEventString(content as String)
     }
 
     override fun getResponseHandler(
@@ -72,8 +75,6 @@ class FileStorage(
         configuration: Configuration,
         scope: CoroutineScope,
         dispatcher: CoroutineDispatcher,
-        events: Any,
-        eventsString: String
     ): ResponseHandler {
         return FileResponseHandler(
             this,
@@ -81,8 +82,7 @@ class FileStorage(
             configuration,
             scope,
             dispatcher,
-            events as String,
-            eventsString
+            logger
         )
     }
 
@@ -101,11 +101,19 @@ class FileStorage(
     override fun splitEventFile(filePath: String, events: JSONArray) {
         eventsFile.splitFile(filePath, events)
     }
+
+    private fun getPrefix(): String {
+        return prefix ?: STORAGE_PREFIX
+    }
 }
 
 class FileStorageProvider : StorageProvider {
-    override fun getStorage(amplitude: Amplitude): Storage {
-        return FileStorage(amplitude.configuration.apiKey)
+    override fun getStorage(amplitude: Amplitude, prefix: String?): Storage {
+        return FileStorage(
+            amplitude.configuration.apiKey,
+            amplitude.configuration.loggerProvider.getLogger(amplitude),
+            prefix
+        )
     }
 }
 
@@ -117,4 +125,12 @@ interface EventsFileStorage {
     fun removeEventCallback(insertId: String)
 
     fun splitEventFile(filePath: String, events: JSONArray)
+
+    fun readEventsContent(): List<Any>
+
+    fun releaseFile(filePath: String)
+
+    suspend fun getEventsString(content: Any): String
+
+    suspend fun rollover()
 }

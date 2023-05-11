@@ -3,7 +3,7 @@ package com.amplitude.core.platform
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 
-internal class Timeline {
+open class Timeline {
     internal val plugins: Map<Plugin.Type, Mediator> = mapOf(
         Plugin.Type.Before to Mediator(mutableListOf()),
         Plugin.Type.Enrichment to Mediator(mutableListOf()),
@@ -12,13 +12,11 @@ internal class Timeline {
     )
     lateinit var amplitude: Amplitude
 
-    fun process(incomingEvent: BaseEvent): BaseEvent? {
+    open fun process(incomingEvent: BaseEvent) {
         val beforeResult = applyPlugins(Plugin.Type.Before, incomingEvent)
         val enrichmentResult = applyPlugins(Plugin.Type.Enrichment, beforeResult)
 
         applyPlugins(Plugin.Type.Destination, enrichmentResult)
-
-        return enrichmentResult
     }
 
     fun add(plugin: Plugin) {
@@ -33,7 +31,7 @@ internal class Timeline {
         return result
     }
 
-    fun applyPlugins(mediator: Mediator?, event: BaseEvent?): BaseEvent? {
+    private fun applyPlugins(mediator: Mediator?, event: BaseEvent?): BaseEvent? {
         var result: BaseEvent? = event
         result?.let { e ->
             result = mediator?.execute(e)

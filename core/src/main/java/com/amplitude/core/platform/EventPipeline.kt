@@ -3,6 +3,7 @@ package com.amplitude.core.platform
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.HttpClient
+import com.amplitude.core.utilities.ResponseHandler
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
 import kotlinx.coroutines.channels.consumeEach
@@ -10,7 +11,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.lang.Exception
+import java.io.FileNotFoundException
 import java.util.concurrent.atomic.AtomicInteger
 
 class EventPipeline(
@@ -29,6 +30,9 @@ class EventPipeline(
 
     private val scope get() = amplitude.amplitudeScope
 
+    var flushInterval = amplitude.configuration.flushIntervalMillis.toLong()
+    var flushQueueSize = amplitude.configuration.flushQueueSize
+
     var running: Boolean
         private set
 
@@ -37,9 +41,13 @@ class EventPipeline(
 
     var flushSizeDivider: AtomicInteger = AtomicInteger(1)
 
+    var exceededRetries = false
+
     companion object {
         internal const val UPLOAD_SIG = "#!upload"
     }
+
+    val responseHandler: ResponseHandler
 
     init {
         running = false
@@ -49,6 +57,13 @@ class EventPipeline(
         uploadChannel = Channel(UNLIMITED)
 
         registerShutdownHook()
+
+        responseHandler = storage.getResponseHandler(
+            this@EventPipeline,
+            amplitude.configuration,
+            scope,
+            amplitude.retryDispatcher,
+        )
     }
 
     fun put(event: BaseEvent) {
@@ -98,23 +113,32 @@ class EventPipeline(
         uploadChannel.consumeEach {
 
             withContext(amplitude.storageIODispatcher) {
-                storage.rollover()
+                try {
+                    storage.rollover()
+                } catch (e: FileNotFoundException) {
+                    e.message?.let {
+                        amplitude.logger.warn("Event storage file not found: $it")
+                    }
+                }
             }
 
             val eventsData = storage.readEventsContent()
             for (events in eventsData) {
-                val eventsString = storage.getEventsString(events)
-                if (eventsString.isEmpty()) continue
-
                 try {
+                    val eventsString = storage.getEventsString(events)
+                    if (eventsString.isEmpty()) continue
                     val connection = httpClient.upload()
                     connection.outputStream?.let {
                         connection.setEvents(eventsString)
                         // Upload the payloads.
                         connection.close()
                     }
-                    val responseHandler = storage.getResponseHandler(this@EventPipeline, amplitude.configuration, scope, amplitude.retryDispatcher, events, eventsString)
-                    responseHandler.handle(connection.response)
+
+                    responseHandler.handle(connection.response, events, eventsString)
+                } catch (e: FileNotFoundException) {
+                    e.message?.let {
+                        amplitude.logger.warn("Event storage file not found: $it")
+                    }
                 } catch (e: Exception) {
                     e.message?.let {
                         amplitude.logger.error("Error when upload event: $it")
@@ -125,16 +149,16 @@ class EventPipeline(
     }
 
     private fun getFlushCount(): Int {
-        val count = amplitude.configuration.flushQueueSize / flushSizeDivider.get()
+        val count = flushQueueSize / flushSizeDivider.get()
         return count.takeUnless { it == 0 } ?: 1
     }
 
     private fun getFlushIntervalInMillis(): Long {
-        return amplitude.configuration.flushIntervalMillis.toLong()
+        return flushInterval
     }
 
     private fun schedule() = scope.launch(amplitude.storageIODispatcher) {
-        while (isActive && running && !scheduled) {
+        if (isActive && running && !scheduled && !exceededRetries) {
             scheduled = true
             delay(getFlushIntervalInMillis())
             flush()

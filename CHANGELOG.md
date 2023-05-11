@@ -1,3 +1,232 @@
+## [1.8.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.8.1...v1.8.2) (2023-04-24)
+
+
+### Bug Fixes
+
+* update identify transfer to merge identify only ([#118](https://github.com/amplitude/Amplitude-Kotlin/issues/118)) ([fbf11ef](https://github.com/amplitude/Amplitude-Kotlin/commit/fbf11efd0a7a40176e89232074c75da916c4d26c))
+
+## [1.8.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.8.0...v1.8.1) (2023-04-13)
+
+
+### Bug Fixes
+
+* fix log session event when optOut is true ([#117](https://github.com/amplitude/Amplitude-Kotlin/issues/117)) ([155b3f5](https://github.com/amplitude/Amplitude-Kotlin/commit/155b3f56ad12a693f1213833f73d15f35213636c))
+
+# [1.8.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.7.1...v1.8.0) (2023-04-10)
+
+
+### Bug Fixes
+
+* filter null values in identify intercept ([#116](https://github.com/amplitude/Amplitude-Kotlin/issues/116)) ([3689fc1](https://github.com/amplitude/Amplitude-Kotlin/commit/3689fc1088b9603c2918ff352fa8c2aa89bc63ea))
+
+
+### Features
+
+* update retry handling ([#113](https://github.com/amplitude/Amplitude-Kotlin/issues/113)) ([1020acd](https://github.com/amplitude/Amplitude-Kotlin/commit/1020acdbf080b5823088c0046f5eedcef86ded56))
+
+## [1.7.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.7.0...v1.7.1) (2023-03-06)
+
+
+### Bug Fixes
+
+* catch and prevent index out bound exception ([#108](https://github.com/amplitude/Amplitude-Kotlin/issues/108)) ([7a4eb11](https://github.com/amplitude/Amplitude-Kotlin/commit/7a4eb11e8f7a6e5b55b3c2eafc5e61d5cae6e3c5))
+
+# [1.7.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.6.2...v1.7.0) (2023-02-24)
+
+
+### Features
+
+* add Identify volume reduction ([#107](https://github.com/amplitude/Amplitude-Kotlin/issues/107)) ([8c3c39c](https://github.com/amplitude/Amplitude-Kotlin/commit/8c3c39ce1f79485a0ce716bbf01de464a9afe9a8))
+
+## [1.6.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.6.1...v1.6.2) (2023-02-14)
+
+
+### Bug Fixes
+
+* return 'sessionId' property to Amplitude class ([#106](https://github.com/amplitude/Amplitude-Kotlin/issues/106)) ([7a938a1](https://github.com/amplitude/Amplitude-Kotlin/commit/7a938a1acb0ec0d07f1eab3cf27c4f7e9b751bf8))
+
+## [1.6.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.6.0...v1.6.1) (2023-02-03)
+
+
+### Bug Fixes
+
+* catch filenotfound exception when rollover before upload ([#103](https://github.com/amplitude/Amplitude-Kotlin/issues/103)) ([80bc1f5](https://github.com/amplitude/Amplitude-Kotlin/commit/80bc1f59e1866f4a429aa84574075ac13fa67c8f))
+
+# [1.6.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.5.2...v1.6.0) (2023-01-19)
+
+
+### Features
+
+* add log.debug to send event and handle response ([#100](https://github.com/amplitude/Amplitude-Kotlin/issues/100)) ([23c485a](https://github.com/amplitude/Amplitude-Kotlin/commit/23c485ac633263511f2a81299af1ca1d9ef12e71))
+
+## [1.5.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.5.1...v1.5.2) (2022-11-19)
+
+
+### Bug Fixes
+
+* Add Index out of bound exception handling for PropertiesFile.save() ([#96](https://github.com/amplitude/Amplitude-Kotlin/issues/96)) ([c6578bf](https://github.com/amplitude/Amplitude-Kotlin/commit/c6578bfdfc9ee782fe01106cf607e19c979ed810))
+
+## [1.5.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.5.0...v1.5.1) (2022-11-11)
+
+
+### Bug Fixes
+
+* add error handling and logging for file load crash issue ([#95](https://github.com/amplitude/Amplitude-Kotlin/issues/95)) ([640bc8e](https://github.com/amplitude/Amplitude-Kotlin/commit/640bc8e35210e3d9270064aaaa786c6307f66b9e))
+
+# [1.5.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.8...v1.5.0) (2022-11-04)
+
+
+### Features
+
+* support integration with experiment android ([#92](https://github.com/amplitude/Amplitude-Kotlin/issues/92)) ([2ada09b](https://github.com/amplitude/Amplitude-Kotlin/commit/2ada09b6a7e77103391a92690d55b8fe604843da))
+
+## [1.4.8](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.7...v1.4.8) (2022-10-28)
+
+
+### Bug Fixes
+
+* start build() lazily ([#90](https://github.com/amplitude/Amplitude-Kotlin/issues/90)) ([d829ba7](https://github.com/amplitude/Amplitude-Kotlin/commit/d829ba7a5dc6ae2524402c4f50581b817f14323a))
+
+## [1.4.7](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.6...v1.4.7) (2022-10-28)
+
+
+### Bug Fixes
+
+* move session-specific logic to Timeline ([#89](https://github.com/amplitude/Amplitude-Kotlin/issues/89)) ([b353b8c](https://github.com/amplitude/Amplitude-Kotlin/commit/b353b8c47db387768fbfb71b26af86cdcc7dbac6))
+
+## [1.4.6](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.5...v1.4.6) (2022-10-24)
+
+
+### Bug Fixes
+
+* restore previous session data on app opening ([#87](https://github.com/amplitude/Amplitude-Kotlin/issues/87)) ([e4f9874](https://github.com/amplitude/Amplitude-Kotlin/commit/e4f9874f60fe82ea1edbf9c8d76335c7def2581d))
+
+## [1.4.5](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.4...v1.4.5) (2022-10-19)
+
+
+### Bug Fixes
+
+* move session-specific logic from ContextPlugin to avoid race conditions ([#86](https://github.com/amplitude/Amplitude-Kotlin/issues/86)) ([311c230](https://github.com/amplitude/Amplitude-Kotlin/commit/311c23053a9dcc2ce0b697aecf0588f189a116ca))
+
+## [1.4.4](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.3...v1.4.4) (2022-10-14)
+
+
+### Bug Fixes
+
+* clean up permission ([#85](https://github.com/amplitude/Amplitude-Kotlin/issues/85)) ([0402c91](https://github.com/amplitude/Amplitude-Kotlin/commit/0402c913620ba528431f953a2a4db0f97ef1129d))
+* make all variable in configuration mutable ([#84](https://github.com/amplitude/Amplitude-Kotlin/issues/84)) ([917796c](https://github.com/amplitude/Amplitude-Kotlin/commit/917796c558b286f6c44ed2accddca9056bf59086))
+* make trackingOptions able to overwrite in configuration ([#83](https://github.com/amplitude/Amplitude-Kotlin/issues/83)) ([281f0de](https://github.com/amplitude/Amplitude-Kotlin/commit/281f0deb779961027caa65e752d4211533aeacd8))
+
+## [1.4.3](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.2...v1.4.3) (2022-10-03)
+
+
+### Bug Fixes
+
+* DXOC-200 lateinit var not initialized ([#81](https://github.com/amplitude/Amplitude-Kotlin/issues/81)) ([546e026](https://github.com/amplitude/Amplitude-Kotlin/commit/546e02640f515cd50e1e84d696f22d0b91c3d233))
+
+## [1.4.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.1...v1.4.2) (2022-09-29)
+
+
+### Bug Fixes
+
+* fix other location info not auto populate ([#79](https://github.com/amplitude/Amplitude-Kotlin/issues/79)) ([5810c9d](https://github.com/amplitude/Amplitude-Kotlin/commit/5810c9d795fe840c254ce050e41d82ed3b9b62af))
+
+## [1.4.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.4.0...v1.4.1) (2022-09-27)
+
+
+### Bug Fixes
+
+* fix the ip address not catch issue ([#78](https://github.com/amplitude/Amplitude-Kotlin/issues/78)) ([bf8e2a1](https://github.com/amplitude/Amplitude-Kotlin/commit/bf8e2a17a070e41fbea1bd9511b49e6ce0155aef))
+
+# [1.4.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.3.2...v1.4.0) (2022-09-27)
+
+
+### Bug Fixes
+
+* add GetIngestionMetadataPlugin in android.Amplitude ([#77](https://github.com/amplitude/Amplitude-Kotlin/issues/77)) ([0c6d6cb](https://github.com/amplitude/Amplitude-Kotlin/commit/0c6d6cb7b125e2856b241ddf8141a0069c723abc))
+
+
+### Features
+
+* add ampli extra plugin for attaching ingestion metadata information ([#76](https://github.com/amplitude/Amplitude-Kotlin/issues/76)) ([a8aa604](https://github.com/amplitude/Amplitude-Kotlin/commit/a8aa604a7e894df44f8c36d81a270e43adfb3e69))
+
+## [1.3.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.3.1...v1.3.2) (2022-09-22)
+
+
+### Bug Fixes
+
+* enable the remote ip ([#75](https://github.com/amplitude/Amplitude-Kotlin/issues/75)) ([232620c](https://github.com/amplitude/Amplitude-Kotlin/commit/232620cf75e4ece7718678ce6a4dd7553ad859b3))
+
+## [1.3.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.3.0...v1.3.1) (2022-09-20)
+
+
+### Bug Fixes
+
+* fix optOut ([#74](https://github.com/amplitude/Amplitude-Kotlin/issues/74)) ([e476e4c](https://github.com/amplitude/Amplitude-Kotlin/commit/e476e4cad568c587ee9d8766bb71073a32e49335))
+
+# [1.3.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.2.1...v1.3.0) (2022-09-11)
+
+
+### Features
+
+* allow android configuration values to be updated ([#68](https://github.com/amplitude/Amplitude-Kotlin/issues/68)) ([f2497df](https://github.com/amplitude/Amplitude-Kotlin/commit/f2497dfb79db594caa772f57ccf395d710de3f0c))
+
+## [1.2.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.2.0...v1.2.1) (2022-09-09)
+
+
+### Bug Fixes
+
+* fix app set id null issue ([#67](https://github.com/amplitude/Amplitude-Kotlin/issues/67)) ([0cdc238](https://github.com/amplitude/Amplitude-Kotlin/commit/0cdc23824a891981779a6d3081aa3ac091972164))
+
+# [1.2.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.1.3...v1.2.0) (2022-09-09)
+
+
+### Features
+
+* add ingestion_metadata field ([#63](https://github.com/amplitude/Amplitude-Kotlin/issues/63)) ([354ec7b](https://github.com/amplitude/Amplitude-Kotlin/commit/354ec7bd35acd50d337ae424d324c8fb27106bdf))
+
+## [1.1.3](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.1.2...v1.1.3) (2022-08-12)
+
+
+### Bug Fixes
+
+* Unterminated arrays caused by multi client instances with same name and api key ([#61](https://github.com/amplitude/Amplitude-Kotlin/issues/61)) ([48d5be2](https://github.com/amplitude/Amplitude-Kotlin/commit/48d5be24507cc9c895dfaa5ea61f7ee09015dadc))
+
+## [1.1.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.1.1...v1.1.2) (2022-08-10)
+
+
+### Bug Fixes
+
+* add version_name to event json body ([#60](https://github.com/amplitude/Amplitude-Kotlin/issues/60)) ([0ff8d67](https://github.com/amplitude/Amplitude-Kotlin/commit/0ff8d67eafd019a8c75c763c201a7bc47a028b27))
+
+## [1.1.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.1.0...v1.1.1) (2022-08-06)
+
+
+### Bug Fixes
+
+* Amplitude.build() is not main thread safe on Android ([#55](https://github.com/amplitude/Amplitude-Kotlin/issues/55)) ([42ad931](https://github.com/amplitude/Amplitude-Kotlin/commit/42ad9314eb7a1fe1be5334b256fefc9fa120518c))
+* fix not call close in strict mode ([#56](https://github.com/amplitude/Amplitude-Kotlin/issues/56)) ([20bf7ef](https://github.com/amplitude/Amplitude-Kotlin/commit/20bf7efeff8dfb5223e73b655a022f6e12a912c8))
+
+# [1.1.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.0.1...v1.1.0) (2022-07-29)
+
+
+### Bug Fixes
+
+* authorize for release action ([#47](https://github.com/amplitude/Amplitude-Kotlin/issues/47)) ([5c44d34](https://github.com/amplitude/Amplitude-Kotlin/commit/5c44d345d6bcc3ed8a3594e75e73bc6e4f82a5ad))
+* invalid json array string for android file storage ([#50](https://github.com/amplitude/Amplitude-Kotlin/issues/50)) ([593050a](https://github.com/amplitude/Amplitude-Kotlin/commit/593050a4c5c92e7173efb08725379639af87f9f7))
+
+
+### Features
+
+* add reset method to reset userId and deviceId ([#48](https://github.com/amplitude/Amplitude-Kotlin/issues/48)) ([837895a](https://github.com/amplitude/Amplitude-Kotlin/commit/837895a98100d9a150192d6512b8bbc6f11825f6))
+
+## [1.0.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.0.0...v1.0.1) (2022-07-21)
+
+
+### Bug Fixes
+
+* formatter on AndroidStorage.kt ([#46](https://github.com/amplitude/Amplitude-Kotlin/issues/46)) ([2b8a4a6](https://github.com/amplitude/Amplitude-Kotlin/commit/2b8a4a6c97c2477a0ae160d82eb5eb7a34820e26))
+
 # 1.0.0 (2022-06-28)
 
 

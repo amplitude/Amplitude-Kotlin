@@ -2,6 +2,7 @@ package com.amplitude.android.utilities
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.amplitude.common.Logger
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Configuration
 import com.amplitude.core.EventCallBack
@@ -17,12 +18,13 @@ import com.amplitude.core.utilities.ResponseHandler
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import org.json.JSONArray
-import java.io.BufferedReader
 import java.io.File
 
 class AndroidStorage(
     context: Context,
-    apiKey: String
+    apiKey: String,
+    private val logger: Logger,
+    private val prefix: String?
 ) : Storage, EventsFileStorage {
 
     companion object {
@@ -30,8 +32,8 @@ class AndroidStorage(
     }
 
     private val sharedPreferences: SharedPreferences =
-        context.getSharedPreferences("$STORAGE_PREFIX-$apiKey", Context.MODE_PRIVATE)
-    private val storageDirectory: File = context.getDir("amplitude-disk-queue", Context.MODE_PRIVATE)
+        context.getSharedPreferences("${getPrefix()}-$apiKey", Context.MODE_PRIVATE)
+    private val storageDirectory: File = context.getDir(getDir(), Context.MODE_PRIVATE)
     private val eventsFile =
         EventsFileManager(storageDirectory, apiKey, AndroidKVS(sharedPreferences))
     private val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
@@ -39,7 +41,7 @@ class AndroidStorage(
     override suspend fun writeEvent(event: BaseEvent) {
         eventsFile.storeEvent(JSONUtil.eventToString(event))
         event.callback?.let { callback ->
-            event.insertId?. let {
+            event.insertId?.let {
                 eventCallbacksMap.put(it, callback)
             }
         }
@@ -61,11 +63,12 @@ class AndroidStorage(
         return eventsFile.read()
     }
 
-    override fun getEventsString(content: Any): String {
-        val bufferedReader: BufferedReader = File(content as String).bufferedReader()
-        bufferedReader.use {
-            return it.readText()
-        }
+    override fun releaseFile(filePath: String) {
+        eventsFile.release(filePath)
+    }
+
+    override suspend fun getEventsString(content: Any): String {
+        return eventsFile.getEventString(content as String)
     }
 
     override fun getResponseHandler(
@@ -73,8 +76,6 @@ class AndroidStorage(
         configuration: Configuration,
         scope: CoroutineScope,
         dispatcher: CoroutineDispatcher,
-        events: Any,
-        eventsString: String
     ): ResponseHandler {
         return FileResponseHandler(
             this,
@@ -82,8 +83,7 @@ class AndroidStorage(
             configuration,
             scope,
             dispatcher,
-            events as String,
-            eventsString
+            logger
         )
     }
 
@@ -92,10 +92,7 @@ class AndroidStorage(
     }
 
     override fun getEventCallback(insertId: String): EventCallBack? {
-        if (eventCallbacksMap.contains(insertId)) {
-            return eventCallbacksMap.get(insertId)
-        }
-        return null
+        return eventCallbacksMap[insertId]
     }
 
     override fun removeEventCallback(insertId: String) {
@@ -105,11 +102,27 @@ class AndroidStorage(
     override fun splitEventFile(filePath: String, events: JSONArray) {
         eventsFile.splitFile(filePath, events)
     }
+
+    private fun getPrefix(): String {
+        return prefix ?: STORAGE_PREFIX
+    }
+
+    private fun getDir(): String {
+        if (prefix != null) {
+            return "$prefix-disk-queue"
+        }
+        return "amplitude-disk-queue"
+    }
 }
 
 class AndroidStorageProvider : StorageProvider {
-    override fun getStorage(amplitude: Amplitude): Storage {
+    override fun getStorage(amplitude: Amplitude, prefix: String?): Storage {
         val configuration = amplitude.configuration as com.amplitude.android.Configuration
-        return AndroidStorage(configuration.context, configuration.apiKey)
+        return AndroidStorage(
+            configuration.context,
+            configuration.apiKey,
+            configuration.loggerProvider.getLogger(amplitude),
+            prefix
+        )
     }
 }

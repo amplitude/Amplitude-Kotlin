@@ -1,18 +1,24 @@
 package com.amplitude.android
 
 import android.content.Context
+import com.amplitude.android.plugins.AnalyticsConnectorIdentityPlugin
+import com.amplitude.android.plugins.AnalyticsConnectorPlugin
 import com.amplitude.android.plugins.AndroidContextPlugin
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.android.plugins.RemnantEventsMigrationPlugin
 import com.amplitude.core.Amplitude
-import com.amplitude.core.Storage
+import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.plugins.AmplitudeDestination
+import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
 import com.amplitude.core.utilities.AnalyticsIdentityListener
 import com.amplitude.core.utilities.FileStorage
 import com.amplitude.id.FileIdentityStorageProvider
 import com.amplitude.id.IdentityConfiguration
 import com.amplitude.id.IdentityContainer
 import com.amplitude.id.IdentityUpdateType
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 
 open class Amplitude(
@@ -20,140 +26,103 @@ open class Amplitude(
 ) : Amplitude(configuration) {
 
     internal var inForeground = false
-    var sessionId: Long = -1
-        private set
-    internal var lastEventId: Long = 0
-    var lastEventTime: Long = -1
-    private var previousSessionId: Long = -1
+    private lateinit var androidContextPlugin: AndroidContextPlugin
 
-    override fun build() {
-        val storageDirectory = (configuration as Configuration).context.getDir("${FileStorage.STORAGE_PREFIX}-${configuration.instanceName}", Context.MODE_PRIVATE)
-        idContainer = IdentityContainer.getInstance(
-            IdentityConfiguration(
-                instanceName = configuration.instanceName,
-                apiKey = configuration.apiKey,
-                identityStorageProvider = FileIdentityStorageProvider(),
-                storageDirectory = storageDirectory
+    val sessionId: Long
+        get() {
+            return (timeline as Timeline).sessionId
+        }
+
+    init {
+        (timeline as Timeline).start()
+        registerShutdownHook()
+    }
+
+    override fun createTimeline(): Timeline {
+        return Timeline().also { it.amplitude = this }
+    }
+
+    override fun build(): Deferred<Boolean> {
+        val client = this
+
+        val built = amplitudeScope.async(amplitudeDispatcher, CoroutineStart.LAZY) {
+            storage = configuration.storageProvider.getStorage(client)
+
+            val storageDirectory = (configuration as Configuration).context.getDir("${FileStorage.STORAGE_PREFIX}-${configuration.instanceName}", Context.MODE_PRIVATE)
+            idContainer = IdentityContainer.getInstance(
+                IdentityConfiguration(
+                    instanceName = configuration.instanceName,
+                    apiKey = configuration.apiKey,
+                    identityStorageProvider = FileIdentityStorageProvider(),
+                    storageDirectory = storageDirectory,
+                    logger = configuration.loggerProvider.getLogger(client)
+                )
             )
-        )
-        val listener = AnalyticsIdentityListener(store)
-        idContainer.identityManager.addIdentityListener(listener)
-        if (idContainer.identityManager.isInitialized()) {
-            listener.onIdentityChanged(idContainer.identityManager.getIdentity(), IdentityUpdateType.Initialized)
-        }
-        amplitudeScope.launch(amplitudeDispatcher) {
-            previousSessionId = storage.read(Storage.Constants.PREVIOUS_SESSION_ID) ?.let {
-                it.toLong()
-            } ?: -1
-            if (previousSessionId >= 0) {
-                sessionId = previousSessionId
+            val listener = AnalyticsIdentityListener(store)
+            idContainer.identityManager.addIdentityListener(listener)
+            if (idContainer.identityManager.isInitialized()) {
+                listener.onIdentityChanged(idContainer.identityManager.getIdentity(), IdentityUpdateType.Initialized)
             }
-            lastEventId = storage.read(Storage.Constants.LAST_EVENT_ID) ?. let {
-                it.toLong()
-            } ?: 0
-            lastEventTime = storage.read(Storage.Constants.LAST_EVENT_TIME) ?. let {
-                it.toLong()
-            } ?: -1
-            add(AndroidContextPlugin())
+            androidContextPlugin = AndroidContextPlugin()
+            add(androidContextPlugin)
+            add(GetAmpliExtrasPlugin())
             add(AndroidLifecyclePlugin())
+            add(AnalyticsConnectorIdentityPlugin())
+            add(AnalyticsConnectorPlugin())
+            add(AmplitudeDestination())
             add(RemnantEventsMigrationPlugin())
+            true
         }
-        add(AmplitudeDestination())
+        return built
+    }
+
+    /**
+     * Reset identity:
+     *  - reset userId to "null"
+     *  - reset deviceId via AndroidContextPlugin
+     * @return the Amplitude instance
+     */
+    override fun reset(): Amplitude {
+        this.setUserId(null)
+        amplitudeScope.launch(amplitudeDispatcher) {
+            isBuilt.await()
+            idContainer.identityManager.editIdentity().setDeviceId(null).commit()
+            androidContextPlugin.initializeDeviceId(configuration as Configuration)
+        }
+        return this
     }
 
     fun onEnterForeground(timestamp: Long) {
-        amplitudeScope.launch(amplitudeDispatcher) {
-            startNewSessionIfNeeded(timestamp)
-            inForeground = true
+        inForeground = true
+
+        if ((configuration as Configuration).optOut) {
+            return
         }
+
+        val dummySessionStartEvent = BaseEvent()
+        dummySessionStartEvent.eventType = START_SESSION_EVENT
+        dummySessionStartEvent.timestamp = timestamp
+        dummySessionStartEvent.sessionId = -1
+        timeline.process(dummySessionStartEvent)
     }
 
-    fun onExitForeground(timestamp: Long) {
+    fun onExitForeground() {
+        inForeground = false
+
         amplitudeScope.launch(amplitudeDispatcher) {
-            inForeground = false
+            isBuilt.await()
             if ((configuration as Configuration).flushEventsOnClose) {
                 flush()
             }
-            storage.write(Storage.Constants.PREVIOUS_SESSION_ID, sessionId.toString())
-            storage.write(Storage.Constants.LAST_EVENT_TIME, lastEventTime.toString())
         }
     }
 
-    fun startNewSessionIfNeeded(timestamp: Long): Boolean {
-        if (inSession()) {
-
-            if (isWithinMinTimeBetweenSessions(timestamp)) {
-                refreshSessionTime(timestamp)
-                return false
+    private fun registerShutdownHook() {
+        Runtime.getRuntime().addShutdownHook(object : Thread() {
+            override fun run() {
+                (this@Amplitude.timeline as Timeline).stop()
             }
-
-            startNewSession(timestamp)
-            return true
-        }
-
-        // no current session - check for previous session
-        if (isWithinMinTimeBetweenSessions(timestamp)) {
-            if (previousSessionId == -1L) {
-                startNewSession(timestamp)
-                return true
-            }
-
-            // extend previous session
-            setSessionId(previousSessionId)
-            refreshSessionTime(timestamp)
-            return false
-        }
-
-        startNewSession(timestamp)
-        return true
-    }
-
-    private fun setSessionId(timestamp: Long) {
-        sessionId = timestamp
-        previousSessionId = timestamp
-        amplitudeScope.launch(amplitudeDispatcher) {
-            storage.write(Storage.Constants.PREVIOUS_SESSION_ID, timestamp.toString())
-        }
-    }
-
-    private fun startNewSession(timestamp: Long) {
-        // end previous session
-        if ((configuration as Configuration).trackingSessionEvents) {
-            sendSessionEvent(END_SESSION_EVENT)
-        }
-
-        // start new session
-        setSessionId(timestamp)
-        refreshSessionTime(timestamp)
-        if ((configuration as Configuration).trackingSessionEvents) {
-            sendSessionEvent(START_SESSION_EVENT)
-        }
-    }
-
-    private fun sendSessionEvent(sessionEvent: String) {
-        if (!inSession()) {
-            return
-        }
-        track(sessionEvent)
-    }
-
-    fun refreshSessionTime(timestamp: Long) {
-        if (!inSession()) {
-            return
-        }
-        lastEventTime = timestamp
-        amplitudeScope.launch(amplitudeDispatcher) {
-            storage.write(Storage.Constants.LAST_EVENT_TIME, timestamp.toString())
-        }
-    }
-
-    private fun isWithinMinTimeBetweenSessions(timestamp: Long): Boolean {
-        val sessionLimit: Long = (configuration as Configuration).minTimeBetweenSessionsMillis
-        return timestamp - lastEventTime < sessionLimit
-    }
-
-    private fun inSession(): Boolean {
-        return sessionId >= 0
+        })
     }
 
     companion object {

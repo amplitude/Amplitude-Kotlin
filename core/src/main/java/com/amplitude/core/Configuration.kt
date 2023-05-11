@@ -1,6 +1,7 @@
 package com.amplitude.core
 
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.events.IngestionMetadata
 import com.amplitude.core.events.Plan
 import com.amplitude.core.utilities.ConsoleLoggerProvider
 import com.amplitude.core.utilities.InMemoryStorageProvider
@@ -22,7 +23,10 @@ open class Configuration @JvmOverloads constructor(
     open var useBatch: Boolean = false,
     open var serverZone: ServerZone = ServerZone.US,
     open var serverUrl: String? = null,
-    open var plan: Plan? = null
+    open var plan: Plan? = null,
+    open var ingestionMetadata: IngestionMetadata? = null,
+    open var identifyBatchIntervalMillis: Long = IDENTIFY_BATCH_INTERVAL_MILLIS,
+    open var identifyInterceptStorageProvider: StorageProvider = InMemoryStorageProvider()
 ) {
 
     companion object {
@@ -30,6 +34,7 @@ open class Configuration @JvmOverloads constructor(
         const val FLUSH_INTERVAL_MILLIS = 30 * 1000 // 30s
         const val FLUSH_MAX_RETRIES = 5
         const val DEFAULT_INSTANCE = "\$default_instance"
+        const val IDENTIFY_BATCH_INTERVAL_MILLIS = 30 * 1000L // 30s
     }
 
     fun isValid(): Boolean {

@@ -2,6 +2,7 @@ package com.amplitude.core.utilities
 
 import com.amplitude.core.Constants
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.events.IngestionMetadata
 import com.amplitude.core.events.Plan
 import org.json.JSONArray
 import org.json.JSONException
@@ -40,6 +41,7 @@ object JSONUtil {
         eventJSON.addValue("location_lat", event.locationLat)
         eventJSON.addValue("location_lng", event.locationLng)
         eventJSON.addValue("ip", event.ip)
+        eventJSON.addValue("version_name", event.versionName)
         eventJSON.addValue("idfa", event.idfa)
         eventJSON.addValue("idfv", event.idfv)
         eventJSON.addValue("adid", event.adid)
@@ -52,6 +54,9 @@ object JSONUtil {
         eventJSON.addValue("android_app_set_id", event.appSetId)
         event.plan?. let {
             eventJSON.put("plan", it.toJSONObject())
+        }
+        event.ingestionMetadata?. let {
+            eventJSON.put("ingestion_metadata", it.toJSONObject())
         }
         return eventJSON
     }
@@ -156,7 +161,7 @@ internal fun JSONArray.toIntArray(): IntArray {
     return intArray
 }
 
-internal fun JSONObject.toBaseEvent(): BaseEvent {
+fun JSONObject.toBaseEvent(): BaseEvent {
     val event = BaseEvent()
     event.eventType = this.getString("event_type")
     event.userId = this.optionalString("user_id", null)
@@ -198,10 +203,11 @@ internal fun JSONObject.toBaseEvent(): BaseEvent {
     event.library = if (this.has("library")) this.getString("library") else null
     event.partnerId = this.optionalString("partner_id", null)
     event.plan = if (this.has("plan")) Plan.fromJSONObject(this.getJSONObject("plan")) else null
+    event.ingestionMetadata = if (this.has("ingestion_metadata")) IngestionMetadata.fromJSONObject(this.getJSONObject("ingestion_metadata")) else null
     return event
 }
 
-internal fun JSONArray.toEvents(): List<BaseEvent> {
+fun JSONArray.toEvents(): List<BaseEvent> {
     val events = mutableListOf<BaseEvent>()
     (0 until this.length()).forEach {
         events.add((this.getJSONObject(it)).toBaseEvent())

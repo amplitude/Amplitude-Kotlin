@@ -6,6 +6,7 @@ import com.amplitude.core.events.GroupIdentifyEvent
 import com.amplitude.core.events.Identify
 import com.amplitude.core.events.IdentifyEvent
 import com.amplitude.core.events.IdentifyOperation
+import com.amplitude.core.events.IngestionMetadata
 import com.amplitude.core.events.Plan
 import com.amplitude.core.events.Revenue
 import com.amplitude.core.events.RevenueEvent
@@ -20,6 +21,7 @@ import io.mockk.spyk
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.BeforeEach
@@ -38,7 +40,8 @@ internal class AmplitudeTest {
         mockHTTPClient(createSuccessResponse())
         val testApiKey = "test-123"
         val plan = Plan("test-branch", "test")
-        amplitude = testAmplitude(Configuration(testApiKey, plan = plan))
+        val ingestionMetadata = IngestionMetadata("ampli", "2.0.0")
+        amplitude = testAmplitude(Configuration(testApiKey, plan = plan, ingestionMetadata = ingestionMetadata))
     }
 
     @Nested
@@ -62,6 +65,8 @@ internal class AmplitudeTest {
                 assertEquals(mapOf(Pair("foo", "bar")), it.eventProperties)
                 assertEquals("CA", it.region)
                 assertEquals("test", it.plan?.source)
+                assertEquals("\$remote", it.ip)
+                assertEquals("ampli", it.ingestionMetadata?.sourceName)
             }
         }
 
@@ -76,6 +81,7 @@ internal class AmplitudeTest {
             val event = BaseEvent()
             event.eventType = "test event"
             event.region = "CA"
+            event.ip = "127.0.0.1"
             amplitude.track(event, eventOptions)
             val track = slot<BaseEvent>()
             verify { mockPlugin.track(capture(track)) }
@@ -86,6 +92,8 @@ internal class AmplitudeTest {
                 assertEquals("CA", it.region)
                 assertEquals("SF", it.city)
                 assertEquals("test", it.plan?.source)
+                assertEquals("ampli", it.ingestionMetadata?.sourceName)
+                assertEquals("127.0.0.1", it.ip)
             }
         }
     }
@@ -274,7 +282,7 @@ internal class AmplitudeTest {
             amplitude.add(middleware)
             amplitude.timeline.plugins[Plugin.Type.Enrichment]?.plugins?.let {
                 assertEquals(
-                    1,
+                    2,
                     it.size
                 )
             } ?: fail()
@@ -290,7 +298,7 @@ internal class AmplitudeTest {
             amplitude.remove(middleware)
             amplitude.timeline.plugins[Plugin.Type.Enrichment]?.plugins?.let {
                 assertEquals(
-                    0, // SegmentLog is the other added at startup
+                    1, // SegmentLog is the other added at startup
                     it.size
                 )
             } ?: fail()
@@ -327,6 +335,29 @@ internal class AmplitudeTest {
             }
             amplitude.flush()
             assertTrue(callbackCalled)
+        }
+    }
+
+    @Nested
+    inner class TestReset {
+        @Test
+        fun `test reset`() {
+            val mockPlugin = spyk(StubPlugin())
+            amplitude.add(mockPlugin)
+
+            amplitude.setUserId("user_id")
+            amplitude.setDeviceId("device_id")
+            amplitude.reset()
+            amplitude.track("test event")
+
+            val track = slot<BaseEvent>()
+            verify { mockPlugin.track(capture(track)) }
+
+            track.captured.let {
+                assertEquals(null, it.userId)
+                assertNotEquals("device_id", it.deviceId)
+                assertEquals("test event", it.eventType)
+            }
         }
     }
 }

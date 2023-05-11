@@ -7,9 +7,12 @@ import com.amplitude.core.events.IdentifyEvent
 import com.amplitude.core.events.RevenueEvent
 import com.amplitude.core.platform.DestinationPlugin
 import com.amplitude.core.platform.EventPipeline
+import com.amplitude.core.platform.intercept.IdentifyInterceptor
+import kotlinx.coroutines.launch
 
 class AmplitudeDestination : DestinationPlugin() {
     private lateinit var pipeline: EventPipeline
+    private lateinit var identifyInterceptor: IdentifyInterceptor
 
     override fun track(payload: BaseEvent): BaseEvent? {
         enqueue(payload)
@@ -32,27 +35,47 @@ class AmplitudeDestination : DestinationPlugin() {
     }
 
     override fun flush() {
-        pipeline.flush()
+        amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
+            identifyInterceptor.transferInterceptedIdentify()
+            pipeline.flush()
+        }
     }
 
     private fun enqueue(payload: BaseEvent?) {
-        payload?.let {
-            if (it.isValid()) {
-                pipeline.put(it)
-            } else {
-                amplitude.logger.warn("Event is invalid for missing information like userId and deviceId. Dropping event: ${it.eventType}")
+        payload?.let { event ->
+            if (!event.isValid()) {
+                amplitude.logger.warn("Event is invalid for missing information like userId and deviceId. Dropping event: ${event.eventType}")
+                return
+            }
+            amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
+                val interceptedEvent = identifyInterceptor.intercept(event)
+                interceptedEvent?.let {
+                    enqueuePipeline(it)
+                }
             }
         }
     }
 
+    fun enqueuePipeline(event: BaseEvent) {
+        pipeline.put(event)
+    }
+
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
+        val plugin = this
 
         with(amplitude) {
             pipeline = EventPipeline(
                 amplitude
             )
             pipeline.start()
+            identifyInterceptor = IdentifyInterceptor(
+                configuration.identifyInterceptStorageProvider.getStorage(amplitude, "amplitude-identify-intercept"),
+                amplitude,
+                logger,
+                configuration,
+                plugin
+            )
         }
         add(IdentityEventSender())
     }

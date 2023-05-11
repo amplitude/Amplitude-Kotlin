@@ -14,6 +14,7 @@ import com.amplitude.core.platform.Plugin
 import com.amplitude.core.platform.Timeline
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.ContextPlugin
+import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
 import com.amplitude.core.utilities.AnalyticsEventReceiver
 import com.amplitude.core.utilities.AnalyticsIdentityListener
 import com.amplitude.eventbridge.EventBridgeContainer
@@ -24,9 +25,12 @@ import com.amplitude.id.IdentityContainer
 import com.amplitude.id.IdentityUpdateType
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import java.util.UUID
 import java.util.concurrent.Executors
 
 /**
@@ -40,20 +44,21 @@ open class Amplitude internal constructor(
     val amplitudeScope: CoroutineScope = CoroutineScope(SupervisorJob()),
     val amplitudeDispatcher: CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher(),
     val networkIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
-    val storageIODispatcher: CoroutineDispatcher = Executors.newFixedThreadPool(2).asCoroutineDispatcher(),
+    val storageIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
     val retryDispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
 ) {
-    internal val timeline: Timeline
-    val storage: Storage
+    val timeline: Timeline
+    lateinit var storage: Storage
     val logger: Logger
     protected lateinit var idContainer: IdentityContainer
+    val isBuilt: Deferred<Boolean>
 
     init {
         require(configuration.isValid()) { "invalid configuration" }
-        timeline = Timeline().also { it.amplitude = this }
-        storage = configuration.storageProvider.getStorage(this)
+        timeline = this.createTimeline()
         logger = configuration.loggerProvider.getLogger(this)
-        build()
+        isBuilt = build()
+        isBuilt.start()
     }
 
     /**
@@ -61,8 +66,20 @@ open class Amplitude internal constructor(
      */
     constructor(configuration: Configuration) : this(configuration, State())
 
-    open fun build() {
-        idContainer = IdentityContainer.getInstance(IdentityConfiguration(instanceName = configuration.instanceName, apiKey = configuration.apiKey, identityStorageProvider = IMIdentityStorageProvider()))
+    open fun createTimeline(): Timeline {
+        return Timeline().also { it.amplitude = this }
+    }
+
+    open fun build(): Deferred<Boolean> {
+        storage = configuration.storageProvider.getStorage(this)
+        idContainer = IdentityContainer.getInstance(
+            IdentityConfiguration(
+                instanceName = configuration.instanceName,
+                apiKey = configuration.apiKey,
+                identityStorageProvider = IMIdentityStorageProvider(),
+                logger = configuration.loggerProvider.getLogger(this)
+            )
+        )
         val listener = AnalyticsIdentityListener(store)
         idContainer.identityManager.addIdentityListener(listener)
         if (idContainer.identityManager.isInitialized()) {
@@ -70,9 +87,11 @@ open class Amplitude internal constructor(
         }
         EventBridgeContainer.getInstance(configuration.instanceName).eventBridge.setEventReceiver(EventChannel.EVENT, AnalyticsEventReceiver(this))
         add(ContextPlugin())
+        add(GetAmpliExtrasPlugin())
         add(AmplitudeDestination())
 
-        amplitudeScope.launch(amplitudeDispatcher) {
+        return amplitudeScope.async(amplitudeDispatcher) {
+            true
         }
     }
 
@@ -165,7 +184,9 @@ open class Amplitude internal constructor(
      */
     fun setUserId(userId: String?): Amplitude {
         amplitudeScope.launch(amplitudeDispatcher) {
-            idContainer.identityManager.editIdentity().setUserId(userId).commit()
+            if (isBuilt.await()) {
+                idContainer.identityManager.editIdentity().setUserId(userId).commit()
+            }
         }
         return this
     }
@@ -178,8 +199,21 @@ open class Amplitude internal constructor(
      */
     fun setDeviceId(deviceId: String): Amplitude {
         amplitudeScope.launch(amplitudeDispatcher) {
+            isBuilt.await()
             idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
         }
+        return this
+    }
+
+    /**
+     * Reset identity:
+     *  - reset userId to "null"
+     *  - reset deviceId to random UUID
+     * @return the Amplitude instance
+     */
+    open fun reset(): Amplitude {
+        this.setUserId(null)
+        this.setDeviceId(UUID.randomUUID().toString() + "R")
         return this
     }
 
@@ -230,8 +264,10 @@ open class Amplitude internal constructor(
      */
     @JvmOverloads
     fun setGroup(groupType: String, groupName: String, options: EventOptions? = null): Amplitude {
+        val identify = Identify().set(groupType, groupName)
         val event = IdentifyEvent().apply {
             groups = mutableMapOf(groupType to groupName)
+            userProperties = identify.properties
         }
         track(event, options)
         return this
@@ -247,8 +283,10 @@ open class Amplitude internal constructor(
      */
     @JvmOverloads
     fun setGroup(groupType: String, groupName: Array<String>, options: EventOptions? = null): Amplitude {
+        val identify = Identify().set(groupType, groupName)
         val event = IdentifyEvent().apply {
             groups = mutableMapOf(groupType to groupName)
+            userProperties = identify.properties
         }
         track(event, options)
         return this
@@ -296,10 +334,15 @@ open class Amplitude internal constructor(
     private fun process(event: BaseEvent) {
         if (configuration.optOut) {
             logger.info("Skip event for opt out config.")
+            return
         }
-        amplitudeScope.launch(amplitudeDispatcher) {
-            timeline.process(event)
+
+        if (event.timestamp == null) {
+            event.timestamp = System.currentTimeMillis()
         }
+
+        logger.debug("Logged event with type: ${event.eventType}")
+        timeline.process(event)
     }
 
     /**
@@ -311,7 +354,7 @@ open class Amplitude internal constructor(
     fun add(plugin: Plugin): Amplitude {
         when (plugin) {
             is ObservePlugin -> {
-                this.store.add(plugin)
+                this.store.add(plugin, this)
             }
             else -> {
                 this.timeline.add(plugin)

@@ -1,16 +1,12 @@
 package com.amplitude.android.plugins
 
-import com.amplitude.android.Amplitude.Companion.END_SESSION_EVENT
-import com.amplitude.android.Amplitude.Companion.START_SESSION_EVENT
 import com.amplitude.android.BuildConfig
 import com.amplitude.android.Configuration
 import com.amplitude.android.TrackingOptions
 import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.core.Amplitude
-import com.amplitude.core.Storage
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
-import kotlinx.coroutines.launch
 import java.util.UUID
 
 class AndroidContextPlugin : Plugin {
@@ -30,22 +26,22 @@ class AndroidContextPlugin : Plugin {
         return event
     }
 
-    private fun initializeDeviceId(configuration: Configuration) {
+    fun initializeDeviceId(configuration: Configuration) {
         val deviceId = amplitude.store.deviceId
         if (deviceId != null && validDeviceId(deviceId) && !deviceId.endsWith("S")) {
             return
         }
         if (!configuration.newDeviceIdPerInstall && configuration.useAdvertisingIdForDeviceId && !contextProvider.isLimitAdTrackingEnabled()) {
             val advertisingId = contextProvider.advertisingId
-            if (validDeviceId(advertisingId)) {
+            if (advertisingId != null && validDeviceId(advertisingId)) {
                 amplitude.setDeviceId(advertisingId)
                 return
             }
         }
         if (configuration.useAppSetIdForDeviceId) {
             val appSetId = contextProvider.appSetId
-            if (validDeviceId(appSetId)) {
-                amplitude.setDeviceId("{$appSetId}S")
+            if (appSetId != null && validDeviceId(appSetId)) {
+                amplitude.setDeviceId("${appSetId}S")
                 return
             }
         }
@@ -58,16 +54,6 @@ class AndroidContextPlugin : Plugin {
         event.timestamp ?: let {
             val eventTime = System.currentTimeMillis()
             event.timestamp = eventTime
-            getAndroidAmplitude().lastEventTime = eventTime
-        }
-        event.timestamp ?. let {
-            if (!(event.eventType == START_SESSION_EVENT || event.eventType == END_SESSION_EVENT)) {
-                if (!getAndroidAmplitude().inForeground) {
-                    getAndroidAmplitude().startNewSessionIfNeeded(it)
-                } else {
-                    getAndroidAmplitude().refreshSessionTime(it)
-                }
-            }
         }
         event.insertId ?: let {
             event.insertId = UUID.randomUUID().toString()
@@ -80,15 +66,6 @@ class AndroidContextPlugin : Plugin {
         }
         event.deviceId ?: let {
             event.deviceId = amplitude.store.deviceId
-        }
-        event.sessionId = getAndroidAmplitude().sessionId
-        event.eventId ?: let {
-            val newEventId = getAndroidAmplitude().lastEventId + 1
-            event.eventId = newEventId
-            getAndroidAmplitude().lastEventId = newEventId
-            amplitude.amplitudeScope.launch(amplitude.amplitudeDispatcher) {
-                amplitude.storage.write(Storage.Constants.LAST_EVENT_ID, newEventId.toString())
-            }
         }
         val trackingOptions = configuration.trackingOptions
         if (configuration.enableCoppaControl) {
@@ -115,7 +92,13 @@ class AndroidContextPlugin : Plugin {
         if (trackingOptions.shouldTrackCarrier()) {
             event.carrier = contextProvider.carrier
         }
-        if (trackingOptions.shouldTrackCountry()) {
+        if (trackingOptions.shouldTrackIpAddress()) {
+            event.ip ?: let {
+                // get the ip in server side if there is no event level ip
+                event.ip = "\$remote"
+            }
+        }
+        if (trackingOptions.shouldTrackCountry() && event.ip !== "\$remote") {
             event.country = contextProvider.country
         }
         if (trackingOptions.shouldTrackLanguage()) {
@@ -147,13 +130,14 @@ class AndroidContextPlugin : Plugin {
         }
         event.plan ?: let {
             amplitude.configuration.plan ?. let {
-                event.plan = it
+                event.plan = it.clone()
             }
         }
-    }
-
-    private fun getAndroidAmplitude(): com.amplitude.android.Amplitude {
-        return amplitude as com.amplitude.android.Amplitude
+        event.ingestionMetadata ?: let {
+            amplitude.configuration.ingestionMetadata ?. let {
+                event.ingestionMetadata = it.clone()
+            }
+        }
     }
 
     companion object {

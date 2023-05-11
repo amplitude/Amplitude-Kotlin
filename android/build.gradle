@@ -8,7 +8,7 @@ ext {
     PUBLISH_NAME = 'Amplitude Android Kotlin SDK'
     PUBLISH_DESCRIPTION = 'Amplitude Kotlin client-side SDK for Android'
     PUBLISH_GROUP_ID = 'com.amplitude'
-    PUBLISH_VERSION = '1.0.0'
+    PUBLISH_VERSION = '1.8.2'
     PUBLISH_ARTIFACT_ID = 'analytics-android'
 }
 
@@ -60,19 +60,26 @@ dependencies {
     embed project(':id')
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.2'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.5.2'
+    implementation 'com.amplitude:analytics-connector:1.0.0'
 
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.5'
 
-    testImplementation project(':core')
     testImplementation 'io.mockk:mockk:1.12.4'
-    testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.3.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.3'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
+    testImplementation project(':core')
+    testImplementation project(path: ':common-android')
+    testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.6.4'
+    testImplementation 'com.squareup.okhttp3:mockwebserver:4.10.0'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.7.2'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.2'
     testImplementation 'org.junit.jupiter:junit-jupiter-params:5.7.2'
+    testImplementation("junit:junit:4.13.2")
+    testRuntimeOnly("org.junit.vintage:junit-vintage-engine:5.7.2")
     testImplementation 'org.robolectric:robolectric:4.7.3'
     testImplementation 'androidx.test:core:1.4.0'
+    testImplementation 'androidx.test.ext:junit:1.1.3'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.3'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
+    testImplementation 'org.json:json:20211205'
 }
 
 tasks.dokkaHtmlPartial.configure {
@@ -81,4 +88,7 @@ tasks.dokkaHtmlPartial.configure {
 
 tasks.withType(Test) {
     useJUnitPlatform()
+    testLogging {
+        showStandardStreams = true
+    }
 }

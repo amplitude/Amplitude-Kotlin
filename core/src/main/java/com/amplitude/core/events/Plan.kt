@@ -12,10 +12,10 @@ open class Plan @JvmOverloads constructor(
 ) {
 
     /**
-     * Get JSONObject of current tacking plan
+     * Get JSONObject of current tracking plan
      * @return JSONObject including plan information
      */
-    internal fun toJSONObject(): JSONObject? {
+    internal fun toJSONObject(): JSONObject {
         val plan = JSONObject()
         try {
             if (!branch.isNullOrEmpty()) {
@@ -34,6 +34,13 @@ open class Plan @JvmOverloads constructor(
             ConsoleLogger.logger.error("JSON Serialization of tacking plan object failed")
         }
         return plan
+    }
+
+    /**
+     * Get a cloned Plan object, to isolate the potentially value changes
+     */
+    fun clone(): Plan {
+        return Plan(branch, source, version, versionId)
     }
 
     companion object {

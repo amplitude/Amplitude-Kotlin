@@ -12,27 +12,27 @@ internal class InMemoryResponseHandler(
     val eventPipeline: EventPipeline,
     val configuration: Configuration,
     val scope: CoroutineScope,
-    val dispatcher: CoroutineDispatcher,
-    val events: List<BaseEvent>
+    val dispatcher: CoroutineDispatcher
 ) : ResponseHandler {
 
     companion object {
         const val BACK_OFF: Long = 30000
     }
 
-    override fun handleSuccessResponse(successResponse: SuccessResponse) {
-        triggerEventsCallback(events, HttpStatus.SUCCESS.code, "Event sent success.")
+    override fun handleSuccessResponse(successResponse: SuccessResponse, events: Any, eventsString: String) {
+        triggerEventsCallback(events as List<BaseEvent>, HttpStatus.SUCCESS.code, "Event sent success.")
     }
 
-    override fun handleBadRequestResponse(badRequestResponse: BadRequestResponse) {
-        if (events.size == 1) {
-            triggerEventsCallback(events, HttpStatus.BAD_REQUEST.code, badRequestResponse.error)
+    override fun handleBadRequestResponse(badRequestResponse: BadRequestResponse, events: Any, eventsString: String) {
+        val eventsList = events as List<BaseEvent>
+        if (eventsList.size == 1) {
+            triggerEventsCallback(eventsList, HttpStatus.BAD_REQUEST.code, badRequestResponse.error)
             return
         }
         val droppedIndices = badRequestResponse.getEventIndicesToDrop()
         val eventsToDrop = mutableListOf<BaseEvent>()
         val eventsToRetry = mutableListOf<BaseEvent>()
-        events.forEachIndexed { index, event ->
+        eventsList.forEachIndexed { index, event ->
             if (droppedIndices.contains(index) || badRequestResponse.isEventSilenced(event)) {
                 eventsToDrop.add(event)
             } else {
@@ -45,22 +45,24 @@ internal class InMemoryResponseHandler(
         }
     }
 
-    override fun handlePayloadTooLargeResponse(payloadTooLargeResponse: PayloadTooLargeResponse) {
-        if (events.size == 1) {
-            triggerEventsCallback(events, HttpStatus.PAYLOAD_TOO_LARGE.code, payloadTooLargeResponse.error)
+    override fun handlePayloadTooLargeResponse(payloadTooLargeResponse: PayloadTooLargeResponse, events: Any, eventsString: String) {
+        val eventsList = events as List<BaseEvent>
+        if (eventsList.size == 1) {
+            triggerEventsCallback(eventsList, HttpStatus.PAYLOAD_TOO_LARGE.code, payloadTooLargeResponse.error)
             return
         }
         eventPipeline.flushSizeDivider.incrementAndGet()
-        events.forEach {
+        eventsList.forEach {
             eventPipeline.put(it)
         }
     }
 
-    override fun handleTooManyRequestsResponse(tooManyRequestsResponse: TooManyRequestsResponse) {
+    override fun handleTooManyRequestsResponse(tooManyRequestsResponse: TooManyRequestsResponse, events: Any, eventsString: String) {
+        val eventsList = events as List<BaseEvent>
         val eventsToDrop = mutableListOf<BaseEvent>()
         val eventsToRetryNow = mutableListOf<BaseEvent>()
         val eventsToRetryLater = mutableListOf<BaseEvent>()
-        events.forEachIndexed { index, event ->
+        eventsList.forEachIndexed { index, event ->
             if (tooManyRequestsResponse.isEventExceedDailyQuota(event)) {
                 eventsToDrop.add(event)
             } else if (tooManyRequestsResponse.throttledEvents.contains(index)) {
@@ -81,19 +83,21 @@ internal class InMemoryResponseHandler(
         }
     }
 
-    override fun handleTimeoutResponse(timeoutResponse: TimeoutResponse) {
+    override fun handleTimeoutResponse(timeoutResponse: TimeoutResponse, events: Any, eventsString: String) {
+        val eventsList = events as List<BaseEvent>
         scope.launch(dispatcher) {
             delay(BACK_OFF)
-            events.forEach {
+            eventsList.forEach {
                 eventPipeline.put(it)
             }
         }
     }
 
-    override fun handleFailedResponse(failedResponse: FailedResponse) {
+    override fun handleFailedResponse(failedResponse: FailedResponse, events: Any, eventsString: String) {
+        val eventsList = events as List<BaseEvent>
         val eventsToDrop = mutableListOf<BaseEvent>()
         val eventsToRetry = mutableListOf<BaseEvent>()
-        events.forEach { event ->
+        eventsList.forEach { event ->
             if (event.attempts >= configuration.flushMaxRetries) {
                 eventsToDrop.add(event)
             } else {

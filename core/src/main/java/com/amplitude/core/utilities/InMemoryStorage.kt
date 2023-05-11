@@ -32,10 +32,7 @@ class InMemoryStorage(
     }
 
     override fun read(key: Storage.Constants): String? {
-        if (!valuesMap.contains(key.rawVal)) {
-            return null
-        }
-        return valuesMap.get(key.rawVal)
+        return valuesMap[key.rawVal]
     }
 
     override fun readEventsContent(): List<Any> {
@@ -48,7 +45,7 @@ class InMemoryStorage(
         return listOf(eventsToSend)
     }
 
-    override fun getEventsString(content: Any): String {
+    override suspend fun getEventsString(content: Any): String {
         // content is list of BaseEvent
         return JSONUtil.eventsToString(content as List<BaseEvent>)
     }
@@ -57,16 +54,20 @@ class InMemoryStorage(
         eventPipeline: EventPipeline,
         configuration: Configuration,
         scope: CoroutineScope,
-        dispatcher: CoroutineDispatcher,
-        events: Any,
-        eventsString: String
+        dispatcher: CoroutineDispatcher
     ): ResponseHandler {
-        return InMemoryResponseHandler(eventPipeline, configuration, scope, dispatcher, events as List<BaseEvent>)
+        return InMemoryResponseHandler(eventPipeline, configuration, scope, dispatcher)
+    }
+
+    fun removeEvents() {
+        synchronized(eventsListLock) {
+            eventsBuffer.clear()
+        }
     }
 }
 
 class InMemoryStorageProvider : StorageProvider {
-    override fun getStorage(amplitude: Amplitude): Storage {
+    override fun getStorage(amplitude: Amplitude, prefix: String?): Storage {
         return InMemoryStorage(amplitude)
     }
 }

@@ -40,6 +40,7 @@ open class BaseEvent : EventOptions() {
         library ?: let { library = options.library }
         ip ?: let { ip = options.ip }
         plan ?: let { plan = options.plan }
+        ingestionMetadata ?: let { ingestionMetadata = options.ingestionMetadata }
         revenue ?: let { revenue = options.revenue }
         price ?: let { price = options.price }
         quantity ?: let { quantity = options.quantity }
@@ -48,6 +49,9 @@ open class BaseEvent : EventOptions() {
         extra ?: let { extra = options.extra }
         callback ?: let { callback = options.callback }
         partnerId ?: let { partnerId = options.partnerId }
+        if (sessionId < 0) {
+            sessionId = options.sessionId
+        }
     }
 
     /**
