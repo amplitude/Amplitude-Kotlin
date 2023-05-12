@@ -42,22 +42,27 @@ open class Amplitude(
         return Timeline().also { it.amplitude = this }
     }
 
+    override fun createIdentityContainer(): IdentityContainer {
+        val configuration = configuration as Configuration
+        val storageDirectory = configuration.context.getDir("${FileStorage.STORAGE_PREFIX}-${configuration.instanceName}", Context.MODE_PRIVATE)
+
+        return IdentityContainer.getInstance(
+            IdentityConfiguration(
+                instanceName = configuration.instanceName,
+                apiKey = configuration.apiKey,
+                identityStorageProvider = FileIdentityStorageProvider(),
+                storageDirectory = storageDirectory,
+                logger = configuration.loggerProvider.getLogger(this)
+            )
+        )
+    }
+
     override fun build(): Deferred<Boolean> {
         val client = this
 
         val built = amplitudeScope.async(amplitudeDispatcher, CoroutineStart.LAZY) {
             storage = configuration.storageProvider.getStorage(client)
 
-            val storageDirectory = (configuration as Configuration).context.getDir("${FileStorage.STORAGE_PREFIX}-${configuration.instanceName}", Context.MODE_PRIVATE)
-            idContainer = IdentityContainer.getInstance(
-                IdentityConfiguration(
-                    instanceName = configuration.instanceName,
-                    apiKey = configuration.apiKey,
-                    identityStorageProvider = FileIdentityStorageProvider(),
-                    storageDirectory = storageDirectory,
-                    logger = configuration.loggerProvider.getLogger(client)
-                )
-            )
             val listener = AnalyticsIdentityListener(store)
             idContainer.identityManager.addIdentityListener(listener)
             if (idContainer.identityManager.isInitialized()) {

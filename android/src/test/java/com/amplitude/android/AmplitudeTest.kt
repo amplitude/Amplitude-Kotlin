@@ -105,11 +105,15 @@ class AmplitudeTest {
             advanceUntilIdle()
             Assertions.assertEquals("test user", amplitude?.store?.userId)
             Assertions.assertEquals("test device", amplitude?.store?.deviceId)
+            Assertions.assertEquals("test user", amplitude?.getUserId())
+            Assertions.assertEquals("test device", amplitude?.getDeviceId())
 
             amplitude?.reset()
             advanceUntilIdle()
             Assertions.assertNull(amplitude?.store?.userId)
             Assertions.assertNotEquals("test device", amplitude?.store?.deviceId)
+            Assertions.assertNull(amplitude?.getUserId())
+            Assertions.assertNotEquals("test device", amplitude?.getDeviceId())
         }
     }
 

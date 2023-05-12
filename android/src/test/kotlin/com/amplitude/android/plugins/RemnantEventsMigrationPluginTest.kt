@@ -44,7 +44,7 @@ class RemnantEventsMigrationPluginTest {
             mockedJSONObject,
             mockedJSONObject
         )
-        every { anyConstructed<DatabaseStorage>().removeEvents(any()) } answers { nothing }
+        every { anyConstructed<DatabaseStorage>().removeEvent(any()) } answers { nothing }
 
         val remnantEventsMigrationPlugin = RemnantEventsMigrationPlugin()
         remnantEventsMigrationPlugin.setup(amplitude)

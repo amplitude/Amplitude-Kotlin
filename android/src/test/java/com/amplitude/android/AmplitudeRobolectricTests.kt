@@ -4,26 +4,39 @@ import android.app.Application
 import android.content.Context
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.ConsoleLoggerProvider
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.spyk
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.util.TempDirectory
+import java.io.File
+import kotlin.io.path.absolutePathString
 
 @RunWith(RobolectricTestRunner::class)
 class AmplitudeRobolectricTests {
     private lateinit var amplitude: Amplitude
     private var context: Context? = null
 
+    var tempDir = TempDirectory()
+
     @ExperimentalCoroutinesApi
     @Before
     fun setup() {
         context = mockk<Application>(relaxed = true)
+        every { context!!.getDir(any(), any()) } returns File(tempDir.create("data").absolutePathString())
 
         amplitude = Amplitude(createConfiguration())
+    }
+
+    @After
+    fun tearDown() {
+        tempDir.destroy()
     }
 
     @Test

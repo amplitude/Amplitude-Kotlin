@@ -3,8 +3,6 @@ package com.amplitude.android.utilities
 import android.content.Context
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
-import com.amplitude.android.Configuration
-import com.amplitude.core.Amplitude
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkConstructor
@@ -14,16 +12,24 @@ import org.json.JSONObject
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import java.io.File
+import java.nio.file.Path
+import kotlin.io.path.absolutePathString
 
 class DatabaseStorageTest {
     var context: Context? = null
     var databaseStorage: DatabaseStorage? = null
     var db: SQLiteDatabase? = null
 
+    @JvmField
+    @TempDir
+    var tempDir: Path? = null
+
     @BeforeEach
     fun setUp() {
         context = mockk(relaxed = true)
-        databaseStorage = DatabaseStorage(context!!)
+        databaseStorage = DatabaseStorage(context!!, "")
         db = mockk()
     }
 
@@ -43,17 +49,22 @@ class DatabaseStorageTest {
 
     @Test
     fun databaseStorage_readEventsContent_returnsEventsContent() {
+        val testFile = File(tempDir?.absolutePathString(), "test.data")
+        testFile.createNewFile()
+
+        every { context!!.getDatabasePath(any()) } returns testFile.absoluteFile
+
         val mockedCursor = mockk<Cursor>()
         every { mockedCursor.moveToNext() } returnsMany listOf(true, true, false)
         every { mockedCursor.getLong(0) } returnsMany listOf(1, 2)
-        every { mockedCursor.getString(1) } returnsMany listOf("json content 1", "json content 2")
+        every { mockedCursor.getString(1) } returnsMany listOf("{ \"json content\": 1 }", "{ \"json content\": 2 }")
         every { mockedCursor.close() } returns Unit
 
         mockkConstructor(JSONObject::class)
         every { anyConstructed<JSONObject>().put(any(), any<Long>()) } returns JSONObject()
         every { anyConstructed<JSONObject>().get("event_id") } returnsMany listOf(1, 2)
 
-        val mockedDatabaseStorage = spyk(DatabaseStorage(context!!), recordPrivateCalls = true)
+        val mockedDatabaseStorage = spyk(DatabaseStorage(context!!, ""), recordPrivateCalls = true)
         every {
             mockedDatabaseStorage["queryDb"](
                 any<SQLiteDatabase>(),
@@ -72,29 +83,17 @@ class DatabaseStorageTest {
 
         val events = mockedDatabaseStorage.readEventsContent()
         Assertions.assertEquals(events.size, 2)
-        Assertions.assertEquals((events[0] as JSONObject).get("event_id"), 1)
-        Assertions.assertEquals((events[1] as JSONObject).get("event_id"), 2)
+        Assertions.assertEquals((events[0]).get("event_id"), 1)
+        Assertions.assertEquals((events[1]).get("event_id"), 2)
     }
 
     @Test
-    fun databaseStorage_removeEvents_returnsEventsContent() {
-        val mockedDatabaseStorage = spyk(DatabaseStorage(context!!), recordPrivateCalls = true)
+    fun databaseStorage_removeEvent_returnsEventsContent() {
+        val mockedDatabaseStorage = spyk(DatabaseStorage(context!!, ""), recordPrivateCalls = true)
         every { mockedDatabaseStorage.close() } answers { nothing }
         every { mockedDatabaseStorage.writableDatabase } returns db
-        every { db!!.delete(any(), any(), null) } returns 2
-        mockedDatabaseStorage.removeEvents(2)
-        verify(exactly = 1) { db!!.delete(any(), any(), null) }
-    }
-}
-
-class DatabaseStorageProviderTest {
-    @Test
-    fun databaseStorageProvider_returnsSingletonInstance() {
-        val amplitude = mockk<Amplitude>(relaxed = true)
-        every { amplitude.configuration } returns mockk<Configuration>(relaxed = true)
-        val instance1 = DatabaseStorageProvider().getStorage(amplitude)
-        val instance2 = DatabaseStorageProvider().getStorage(amplitude)
-        // compare reference, not data
-        Assertions.assertTrue(instance1 === instance2)
+        every { db!!.delete(any(), any(), arrayOf("2")) } returns 2
+        mockedDatabaseStorage.removeEvent(2)
+        verify(exactly = 1) { db!!.delete(any(), any(), arrayOf("2")) }
     }
 }

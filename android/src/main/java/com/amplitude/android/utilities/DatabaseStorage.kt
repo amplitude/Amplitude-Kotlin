@@ -7,9 +7,11 @@ import android.database.sqlite.SQLiteException
 import android.database.sqlite.SQLiteOpenHelper
 import com.amplitude.common.android.LogcatLogger
 import com.amplitude.core.Amplitude
+import com.amplitude.core.Configuration
 import org.json.JSONObject
 import java.io.File
 import java.util.LinkedList
+import java.util.Locale
 
 /**
  * Store the database related constants.
@@ -27,13 +29,13 @@ object DatabaseConstants {
  * The SDK doesn't need to write/read from local sqlite database.
  * This storage class is used for migrating events only.
  */
-class DatabaseStorage(context: Context) : SQLiteOpenHelper(
+class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper(
     context,
-    DatabaseConstants.DATABASE_NAME,
+    databaseName,
     null,
     DatabaseConstants.DATABASE_VERSION
 ) {
-    private var file: File? = context.getDatabasePath(DatabaseConstants.DATABASE_NAME)
+    private var file: File = context.getDatabasePath(databaseName)
 
     override fun onCreate(db: SQLiteDatabase) {
         throw NotImplementedError()
@@ -78,14 +80,18 @@ class DatabaseStorage(context: Context) : SQLiteOpenHelper(
     private fun delete() {
         try {
             close()
-            file?.delete()
+            file.delete()
         } catch (e: Exception) {
             LogcatLogger.logger.error("deletion failed: ${e.message}")
         }
     }
 
     @Synchronized
-    fun readEventsContent(): List<Any> {
+    fun readEventsContent(): List<JSONObject> {
+        if (!file.exists()) {
+            return arrayListOf()
+        }
+
         val events: MutableList<JSONObject> = LinkedList()
         var cursor: Cursor? = null
         try {
@@ -133,12 +139,12 @@ class DatabaseStorage(context: Context) : SQLiteOpenHelper(
     }
 
     @Synchronized
-    fun removeEvents(maxId: Long) {
+    fun removeEvent(eventId: Long) {
         try {
             val db = writableDatabase
             db.delete(
                 DatabaseConstants.EVENT_TABLE_NAME,
-                DatabaseConstants.ID_FIELD + " <= " + maxId, null
+                "${DatabaseConstants.ID_FIELD} = ?", arrayOf(eventId.toString())
             )
         } catch (e: SQLiteException) {
             LogcatLogger.logger.error(
@@ -160,16 +166,15 @@ class CursorWindowAllocationException(description: String?) :
     java.lang.RuntimeException(description)
 
 class DatabaseStorageProvider {
-    object Singleton {
-        lateinit var instance: DatabaseStorage
-        fun isInstanceInitialized() = ::instance.isInitialized
+    fun getStorage(amplitude: Amplitude): DatabaseStorage {
+        val configuration = amplitude.configuration as com.amplitude.android.Configuration
+
+        return DatabaseStorage(configuration.context, getDatabaseName(configuration.instanceName))
     }
 
-    fun getStorage(amplitude: Amplitude): DatabaseStorage {
-        if (!Singleton.isInstanceInitialized()) {
-            val configuration = amplitude.configuration as com.amplitude.android.Configuration
-            Singleton.instance = DatabaseStorage(configuration.context)
-        }
-        return Singleton.instance
+    private fun getDatabaseName(instanceName: String?): String{
+        val normalizedInstanceName = instanceName?.lowercase(Locale.getDefault())
+        return if (normalizedInstanceName.isNullOrEmpty() || normalizedInstanceName == Configuration.DEFAULT_INSTANCE) DatabaseConstants.DATABASE_NAME
+            else "${DatabaseConstants.DATABASE_NAME}_$normalizedInstanceName"
     }
 }

@@ -50,13 +50,14 @@ open class Amplitude internal constructor(
     val timeline: Timeline
     lateinit var storage: Storage
     val logger: Logger
-    protected lateinit var idContainer: IdentityContainer
+    protected val idContainer: IdentityContainer
     val isBuilt: Deferred<Boolean>
 
     init {
         require(configuration.isValid()) { "invalid configuration" }
         timeline = this.createTimeline()
         logger = configuration.loggerProvider.getLogger(this)
+        idContainer = createIdentityContainer()
         isBuilt = build()
         isBuilt.start()
     }
@@ -70,16 +71,19 @@ open class Amplitude internal constructor(
         return Timeline().also { it.amplitude = this }
     }
 
-    open fun build(): Deferred<Boolean> {
-        storage = configuration.storageProvider.getStorage(this)
-        idContainer = IdentityContainer.getInstance(
+    open fun createIdentityContainer(): IdentityContainer {
+        return IdentityContainer.getInstance(
             IdentityConfiguration(
                 instanceName = configuration.instanceName,
                 apiKey = configuration.apiKey,
                 identityStorageProvider = IMIdentityStorageProvider(),
-                logger = configuration.loggerProvider.getLogger(this)
+                logger = logger
             )
         )
+    }
+
+    open fun build(): Deferred<Boolean> {
+        storage = configuration.storageProvider.getStorage(this)
         val listener = AnalyticsIdentityListener(store)
         idContainer.identityManager.addIdentityListener(listener)
         if (idContainer.identityManager.isInitialized()) {
@@ -192,6 +196,15 @@ open class Amplitude internal constructor(
     }
 
     /**
+     * Get the user id.
+     *
+     * @return User id.
+     */
+    fun getUserId(): String? {
+        return idContainer.identityManager.getIdentity().userId
+    }
+
+    /**
      * Sets a custom device id. <b>Note: only do this if you know what you are doing!</b>
      *
      * @param deviceId custom device id
@@ -203,6 +216,15 @@ open class Amplitude internal constructor(
             idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
         }
         return this
+    }
+
+    /**
+     * Get the device id.
+     *
+     * @return Device id.
+     */
+    fun getDeviceId(): String? {
+        return idContainer.identityManager.getIdentity().deviceId
     }
 
     /**

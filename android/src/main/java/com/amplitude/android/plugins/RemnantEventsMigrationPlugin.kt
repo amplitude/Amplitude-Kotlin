@@ -34,24 +34,21 @@ class RemnantEventsMigrationPlugin : Plugin {
             AndroidContextProvider(configuration.context, configuration.locationListening)
 
         val databaseStorage = DatabaseStorageProvider().getStorage(amplitude)
-        var maxMigratedEventId: Long = 0
         try {
-            @Suppress("UNCHECKED_CAST")
-            val remnantEvents = databaseStorage.readEventsContent() as List<JSONObject>
+            val remnantEvents = databaseStorage.readEventsContent()
 
             for (event in remnantEvents) {
                 val baseEvent = event.toBaseEvent()
                 amplitude.track(baseEvent)
-                maxMigratedEventId = baseEvent.eventId ?: 0
+                val eventId = baseEvent.eventId
+                if (eventId != null) {
+                    databaseStorage.removeEvent(eventId)
+                }
             }
         } catch (e: Exception) {
             LogcatLogger.logger.error(
                 "events migration failed: ${e.message}"
             )
-        } finally {
-            if (maxMigratedEventId > 0) {
-                databaseStorage.removeEvents(maxMigratedEventId)
-            }
         }
     }
 }
