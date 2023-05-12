@@ -5,7 +5,6 @@ import com.amplitude.android.plugins.AnalyticsConnectorIdentityPlugin
 import com.amplitude.android.plugins.AnalyticsConnectorPlugin
 import com.amplitude.android.plugins.AndroidContextPlugin
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
-import com.amplitude.android.plugins.RemnantEventsMigrationPlugin
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.plugins.AmplitudeDestination
@@ -75,7 +74,6 @@ open class Amplitude(
             add(AnalyticsConnectorIdentityPlugin())
             add(AnalyticsConnectorPlugin())
             add(AmplitudeDestination())
-            add(RemnantEventsMigrationPlugin())
             true
         }
         return built

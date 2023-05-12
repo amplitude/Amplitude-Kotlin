@@ -172,9 +172,8 @@ class DatabaseStorageProvider {
         return DatabaseStorage(configuration.context, getDatabaseName(configuration.instanceName))
     }
 
-    private fun getDatabaseName(instanceName: String?): String{
+    private fun getDatabaseName(instanceName: String?): String {
         val normalizedInstanceName = instanceName?.lowercase(Locale.getDefault())
-        return if (normalizedInstanceName.isNullOrEmpty() || normalizedInstanceName == Configuration.DEFAULT_INSTANCE) DatabaseConstants.DATABASE_NAME
-            else "${DatabaseConstants.DATABASE_NAME}_$normalizedInstanceName"
+        return if (normalizedInstanceName.isNullOrEmpty() || normalizedInstanceName == Configuration.DEFAULT_INSTANCE) DatabaseConstants.DATABASE_NAME else "${DatabaseConstants.DATABASE_NAME}_$normalizedInstanceName"
     }
 }
