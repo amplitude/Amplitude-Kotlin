@@ -23,7 +23,7 @@ import java.math.BigDecimal
  *      4. delete events from sqlite table
  */
 class RemnantEventsMigrationPlugin : Plugin {
-    override val type: Plugin.Type = Plugin.Type.Before
+    override val type: Plugin.Type = Plugin.Type.Utility
     override lateinit var amplitude: Amplitude
     private lateinit var contextProvider: AndroidContextProvider
 
@@ -56,6 +56,8 @@ class RemnantEventsMigrationPlugin : Plugin {
 // Copy from core/src/main/java/com/amplitude/core/utilities/JSON.kt with minor changes.
 // To avoid unexpected results if open this extension to wide permission.
 internal fun JSONObject.toBaseEvent(): BaseEvent {
+    val library = this.optionalJSONObject("library", null)
+
     val event = BaseEvent()
     event.eventType = this.getString("event_type")
     event.userId = this.optionalString("user_id", null)
@@ -97,7 +99,7 @@ internal fun JSONObject.toBaseEvent(): BaseEvent {
     event.eventId = if (this.has("event_id")) this.getLong("event_id") else null
     event.sessionId = this.getLong("session_id")
     event.insertId = this.optionalString("uuid", null) // name change
-    event.library = if (this.has("library")) this.getString("library") else null
+    event.library = if (library != null) "${library.getString("name")}/${library.getString("version")}" else null
     event.partnerId = this.optionalString("partner_id", null)
     event.plan = if (this.has("plan")) Plan.fromJSONObject(this.getJSONObject("plan")) else null
     return event

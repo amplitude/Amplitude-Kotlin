@@ -19,7 +19,7 @@ import java.util.Locale
  */
 object DatabaseConstants {
     const val DATABASE_NAME = "com.amplitude.api"
-    const val DATABASE_VERSION = 3
+    const val DATABASE_VERSION = 4
     const val EVENT_TABLE_NAME = "events"
     const val ID_FIELD = "id"
     const val EVENT_FIELD = "event"
