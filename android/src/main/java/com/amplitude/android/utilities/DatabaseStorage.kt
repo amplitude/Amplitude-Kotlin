@@ -20,9 +20,19 @@ import java.util.Locale
 object DatabaseConstants {
     const val DATABASE_NAME = "com.amplitude.api"
     const val DATABASE_VERSION = 4
+
     const val EVENT_TABLE_NAME = "events"
+    const val IDENTIFY_TABLE_NAME = "identifys"
+    const val IDENTIFY_INTERCEPTOR_TABLE_NAME = "identify_interceptor"
     const val ID_FIELD = "id"
     const val EVENT_FIELD = "event"
+
+    const val LONG_STORE_TABLE_NAME = "long_store"
+    const val STORE_TABLE_NAME = "store"
+    const val KEY_FIELD = "key"
+    const val VALUE_FIELD = "value"
+
+    const val ROW_ID_FIELD = "\$rowId"
 }
 
 /**
@@ -51,12 +61,9 @@ class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper
         columns: Array<String?>?,
         selection: String?,
         selectionArgs: Array<String?>?,
-        groupBy: String?,
-        having: String?,
         orderBy: String?,
-        limit: String?
     ): Cursor? {
-        return db.query(table, columns, selection, selectionArgs, groupBy, having, orderBy, limit)
+        return db.query(table, columns, selection, selectionArgs, null, null, orderBy, null)
     }
 
     private fun handleIfCursorRowTooLargeException(e: java.lang.IllegalStateException) {
@@ -88,6 +95,20 @@ class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper
 
     @Synchronized
     fun readEventsContent(): List<JSONObject> {
+        return readEventsFromTable(DatabaseConstants.EVENT_TABLE_NAME)
+    }
+
+    @Synchronized
+    fun readIdentifiesContent(): List<JSONObject> {
+        return readEventsFromTable(DatabaseConstants.IDENTIFY_TABLE_NAME)
+    }
+
+    @Synchronized
+    fun readInterceptedIdentifiesContent(): List<JSONObject> {
+        return readEventsFromTable(DatabaseConstants.IDENTIFY_INTERCEPTOR_TABLE_NAME)
+    }
+
+    private fun readEventsFromTable(table: String): List<JSONObject> {
         if (!file.exists()) {
             return arrayListOf()
         }
@@ -98,33 +119,30 @@ class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper
             val db = readableDatabase
             cursor = queryDb(
                 db,
-                DatabaseConstants.EVENT_TABLE_NAME,
+                table,
                 arrayOf(DatabaseConstants.ID_FIELD, DatabaseConstants.EVENT_FIELD),
                 null,
                 null,
-                null,
-                null,
                 DatabaseConstants.ID_FIELD + " ASC",
-                null
             )
             while (cursor!!.moveToNext()) {
-                val eventId = cursor.getLong(0)
+                val rowId = cursor.getLong(0)
                 val event = cursor.getString(1)
                 if (event.isNullOrEmpty()) {
                     continue
                 }
                 val obj = JSONObject(event)
-                obj.put("event_id", eventId)
+                obj.put(DatabaseConstants.ROW_ID_FIELD, rowId)
                 events.add(obj)
             }
         } catch (e: SQLiteException) {
             LogcatLogger.logger.error(
-                "read events from ${DatabaseConstants.EVENT_TABLE_NAME} failed: ${e.message}"
+                "read events from $table failed: ${e.message}"
             )
             delete()
         } catch (e: StackOverflowError) {
             LogcatLogger.logger.error(
-                "read events from ${DatabaseConstants.EVENT_TABLE_NAME} failed: ${e.message}"
+                "read events from $table failed: ${e.message}"
             )
             delete()
         } catch (e: IllegalStateException) { // put before Runtime since IllegalState extends
@@ -139,21 +157,124 @@ class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper
     }
 
     @Synchronized
-    fun removeEvent(eventId: Long) {
+    fun removeEvent(rowId: Long) {
+        removeEventFromTable(DatabaseConstants.EVENT_TABLE_NAME, rowId)
+    }
+
+    @Synchronized
+    fun removeIdentify(rowId: Long) {
+        removeEventFromTable(DatabaseConstants.IDENTIFY_TABLE_NAME, rowId)
+    }
+
+    @Synchronized
+    fun removeInterceptedIdentify(rowId: Long) {
+        removeEventFromTable(DatabaseConstants.IDENTIFY_INTERCEPTOR_TABLE_NAME, rowId)
+    }
+
+    private fun removeEventFromTable(table: String, rowId: Long) {
         try {
             val db = writableDatabase
             db.delete(
-                DatabaseConstants.EVENT_TABLE_NAME,
-                "${DatabaseConstants.ID_FIELD} = ?", arrayOf(eventId.toString())
+                table,
+                "${DatabaseConstants.ID_FIELD} = ?",
+                arrayOf(rowId.toString())
             )
         } catch (e: SQLiteException) {
             LogcatLogger.logger.error(
-                "remove events from ${DatabaseConstants.EVENT_TABLE_NAME} failed: ${e.message}"
+                "remove events from $table failed: ${e.message}"
             )
             delete()
         } catch (e: StackOverflowError) {
             LogcatLogger.logger.error(
-                "remove events from ${DatabaseConstants.EVENT_TABLE_NAME} failed: ${e.message}"
+                "remove events from $table failed: ${e.message}"
+            )
+            delete()
+        } finally {
+            close()
+        }
+    }
+
+    @Synchronized
+    fun getValue(key: String): String? {
+        return getValueFromTable(DatabaseConstants.STORE_TABLE_NAME, key) as String?
+    }
+
+    @Synchronized
+    fun getLongValue(key: String): Long? {
+        return getValueFromTable(DatabaseConstants.LONG_STORE_TABLE_NAME, key) as Long?
+    }
+
+    private fun getValueFromTable(table: String, key: String): Any? {
+        var value: Any? = null
+        var cursor: Cursor? = null
+        try {
+            val db = readableDatabase
+            cursor = queryDb(
+                db,
+                table,
+                arrayOf<String?>(
+                    DatabaseConstants.KEY_FIELD,
+                    DatabaseConstants.VALUE_FIELD
+                ),
+                DatabaseConstants.KEY_FIELD + " = ?",
+                arrayOf(key),
+                null,
+            )
+            if (cursor!!.moveToFirst()) {
+                value = if (table == DatabaseConstants.STORE_TABLE_NAME) cursor.getString(1) else cursor.getLong(1)
+            }
+        } catch (e: SQLiteException) {
+            LogcatLogger.logger.error(
+                "getValue from $table failed: ${e.message}"
+            )
+            // Hard to recover from SQLiteExceptions, just start fresh
+            delete()
+        } catch (e: StackOverflowError) {
+            LogcatLogger.logger.error(
+                "getValue from $table failed: ${e.message}"
+            )
+            // potential stack overflow error when getting database on custom Android versions
+            delete()
+        } catch (e: IllegalStateException) { // put before Runtime since IllegalState extends
+            // cursor window row too big exception
+            handleIfCursorRowTooLargeException(e)
+        } catch (e: RuntimeException) {
+            // cursor window allocation exception
+            convertIfCursorWindowException(e)
+        } finally {
+            cursor?.close()
+            close()
+        }
+        return value
+    }
+
+    @Synchronized
+    fun removeValue(key: String) {
+        removeValueFromTable(DatabaseConstants.STORE_TABLE_NAME, key)
+    }
+
+    @Synchronized
+    fun removeLongValue(key: String) {
+        removeValueFromTable(DatabaseConstants.LONG_STORE_TABLE_NAME, key)
+    }
+
+    @Synchronized
+    private fun removeValueFromTable(table: String, key: String) {
+        try {
+            val db = writableDatabase
+            db.delete(
+                table,
+                "${DatabaseConstants.KEY_FIELD} = ?",
+                arrayOf(key)
+            )
+        } catch (e: SQLiteException) {
+            LogcatLogger.logger.error(
+                "remove value from $table failed: ${e.message}"
+            )
+            delete()
+        } catch (e: StackOverflowError) {
+            LogcatLogger.logger.error(
+                "remove value from $table failed: ${e.message}"
             )
             delete()
         } finally {

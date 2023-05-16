@@ -49,8 +49,9 @@ open class Amplitude internal constructor(
 ) {
     val timeline: Timeline
     lateinit var storage: Storage
+    lateinit var identifyInterceptStorage: Storage
     val logger: Logger
-    protected val idContainer: IdentityContainer
+    val idContainer: IdentityContainer
     val isBuilt: Deferred<Boolean>
 
     init {
@@ -84,6 +85,8 @@ open class Amplitude internal constructor(
 
     open fun build(): Deferred<Boolean> {
         storage = configuration.storageProvider.getStorage(this)
+        identifyInterceptStorage = configuration.identifyInterceptStorageProvider.getStorage(this, "amplitude-identify-intercept")
+
         val listener = AnalyticsIdentityListener(store)
         idContainer.identityManager.addIdentityListener(listener)
         if (idContainer.identityManager.isInitialized()) {

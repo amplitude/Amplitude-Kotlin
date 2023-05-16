@@ -61,6 +61,7 @@ open class Amplitude(
 
         val built = amplitudeScope.async(amplitudeDispatcher, CoroutineStart.LAZY) {
             storage = configuration.storageProvider.getStorage(client)
+            identifyInterceptStorage = configuration.identifyInterceptStorageProvider.getStorage(client, "amplitude-identify-intercept")
 
             val listener = AnalyticsIdentityListener(store)
             idContainer.identityManager.addIdentityListener(listener)

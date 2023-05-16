@@ -5,6 +5,7 @@ import com.amplitude.core.platform.EventPipeline
 import com.amplitude.core.utilities.ResponseHandler
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import org.json.JSONObject
 
 interface Storage {
 
@@ -17,6 +18,8 @@ interface Storage {
     }
 
     suspend fun writeEvent(event: BaseEvent)
+
+    suspend fun writeEvent(event: JSONObject)
 
     suspend fun write(key: Constants, value: String)
 

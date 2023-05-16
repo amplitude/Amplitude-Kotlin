@@ -8,19 +8,26 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap
 
 class InMemoryStorage(
     val amplitude: Amplitude
 ) : Storage {
 
-    val eventsBuffer: MutableList<BaseEvent> = mutableListOf()
-    val eventsListLock = Any()
-    val valuesMap = ConcurrentHashMap<String, String>()
+    private val eventsBuffer: MutableList<BaseEvent> = mutableListOf()
+    private val eventsListLock = Any()
+    private val valuesMap = ConcurrentHashMap<String, String>()
 
     override suspend fun writeEvent(event: BaseEvent) {
         synchronized(eventsListLock) {
             eventsBuffer.add(event)
+        }
+    }
+
+    override suspend fun writeEvent(event: JSONObject) {
+        synchronized(eventsListLock) {
+            eventsBuffer.add(event.toBaseEvent())
         }
     }
 
@@ -38,7 +45,7 @@ class InMemoryStorage(
     override fun readEventsContent(): List<Any> {
         val eventsToSend: List<BaseEvent>
         synchronized(eventsListLock) {
-            eventsToSend = ArrayList(eventsBuffer)
+            eventsToSend = eventsBuffer.toList()
             eventsBuffer.clear()
         }
         // return List<List<BaseEvent>>

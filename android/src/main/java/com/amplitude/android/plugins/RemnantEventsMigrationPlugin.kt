@@ -1,49 +1,84 @@
 package com.amplitude.android.plugins
 
-import com.amplitude.android.Configuration
+import com.amplitude.android.utilities.DatabaseConstants
+import com.amplitude.android.utilities.DatabaseStorage
 import com.amplitude.android.utilities.DatabaseStorageProvider
-import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.common.android.LogcatLogger
 import com.amplitude.core.Amplitude
-import com.amplitude.core.events.BaseEvent
-import com.amplitude.core.events.Plan
+import com.amplitude.core.Storage
 import com.amplitude.core.platform.Plugin
 import com.amplitude.core.utilities.optionalJSONObject
-import com.amplitude.core.utilities.optionalString
-import org.json.JSONArray
+import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
-import java.math.BigDecimal
 
 /**
  * When switching the SDK from previous version to this version, remnant events might remain unsent in sqlite.
  * This plugin:
  *      1. reads the events from sqlite table
- *      2. convert events to BaseEvent
- *      3. track events with this SDK native method
+ *      2. convert events to JsonObjects
+ *      3. save events to current storage
  *      4. delete events from sqlite table
  */
+
+const val DEVICE_ID_KEY = "device_id"
+const val USER_ID_KEY = "user_id"
+
 class RemnantEventsMigrationPlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Utility
     override lateinit var amplitude: Amplitude
-    private lateinit var contextProvider: AndroidContextProvider
+    lateinit var databaseStorage: DatabaseStorage
 
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
-        val configuration = amplitude.configuration as Configuration
-        contextProvider =
-            AndroidContextProvider(configuration.context, configuration.locationListening)
 
-        val databaseStorage = DatabaseStorageProvider().getStorage(amplitude)
+        runBlocking {
+            amplitude.isBuilt.await()
+            databaseStorage = DatabaseStorageProvider().getStorage(amplitude)
+            moveDeviceAndUserId()
+            moveInterceptedIdentifies()
+            moveIdentifies()
+            moveEvents()
+        }
+    }
+
+    private fun moveDeviceAndUserId() {
+        try {
+            val deviceId = databaseStorage.getValue(DEVICE_ID_KEY)
+            val userId = databaseStorage.getValue(USER_ID_KEY)
+            if (deviceId == null && userId == null) {
+                return
+            }
+
+            val editor = amplitude.idContainer.identityManager.editIdentity()
+            if (deviceId != null) {
+                editor.setDeviceId(deviceId)
+            }
+            if (userId != null) {
+                editor.setUserId(userId)
+            }
+
+            editor.commit()
+
+            if (deviceId != null) {
+                databaseStorage.removeValue(DEVICE_ID_KEY)
+            }
+            if (userId != null) {
+                databaseStorage.removeValue(USER_ID_KEY)
+            }
+        } catch (e: Exception) {
+            LogcatLogger.logger.error(
+                "device/user id migration failed: ${e.message}"
+            )
+        }
+    }
+
+    private suspend fun moveEvents() {
         try {
             val remnantEvents = databaseStorage.readEventsContent()
 
             for (event in remnantEvents) {
-                val baseEvent = event.toBaseEvent()
-                amplitude.track(baseEvent)
-                val eventId = baseEvent.eventId
-                if (eventId != null) {
-                    databaseStorage.removeEvent(eventId)
-                }
+                val rowId = moveEvent(event, amplitude.storage)
+                databaseStorage.removeEvent(rowId)
             }
         } catch (e: Exception) {
             LogcatLogger.logger.error(
@@ -51,91 +86,63 @@ class RemnantEventsMigrationPlugin : Plugin {
             )
         }
     }
-}
 
-// Copy from core/src/main/java/com/amplitude/core/utilities/JSON.kt with minor changes.
-// To avoid unexpected results if open this extension to wide permission.
-internal fun JSONObject.toBaseEvent(): BaseEvent {
-    val library = this.optionalJSONObject("library", null)
+    private suspend fun moveIdentifies() {
+        try {
+            val remnantIdentifies = databaseStorage.readIdentifiesContent()
 
-    val event = BaseEvent()
-    event.eventType = this.getString("event_type")
-    event.userId = this.optionalString("user_id", null)
-    event.deviceId = this.optionalString("device_id", null)
-    event.timestamp = if (this.has("timestamp")) this.getLong("timestamp") else null // name changed
-    event.eventProperties =
-        this.optionalJSONObject("event_properties", null)?.toMapObj()?.toMutableMap()
-    event.userProperties =
-        this.optionalJSONObject("user_properties", null)?.toMapObj()?.toMutableMap()
-    event.groups = this.optionalJSONObject("groups", null)?.toMapObj()?.toMutableMap()
-    event.groupProperties =
-        this.optionalJSONObject("group_properties", null)?.toMapObj()?.toMutableMap()
-    event.appVersion = this.optionalString("app_version", null)
-    event.platform = this.optionalString("platform", null)
-    event.osName = this.optionalString("os_name", null)
-    event.osVersion = this.optionalString("os_version", null)
-    event.deviceBrand = this.optionalString("device_brand", null)
-    event.deviceManufacturer = this.optionalString("device_manufacturer", null)
-    event.deviceModel = this.optionalString("device_model", null)
-    event.carrier = this.optionalString("carrier", null)
-    event.country = this.optionalString("country", null)
-    event.region = this.optionalString("region", null)
-    event.city = this.optionalString("city", null)
-    event.dma = this.optionalString("dma", null)
-    event.language = this.optionalString("language", null)
-    event.price = if (this.has("price")) this.getDouble("price") else null
-    event.quantity = if (this.has("quantity")) this.getInt("quantity") else null
-    event.revenue = if (this.has("revenue")) this.getDouble("revenue") else null
-    event.productId = this.optionalString("productId", null)
-    event.revenueType = this.optionalString("revenueType", null)
-    event.locationLat = if (this.has("location_lat")) this.getDouble("location_lat") else null
-    event.locationLng = if (this.has("location_lng")) this.getDouble("location_lng") else null
-    event.ip = this.optionalString("ip", null)
-    event.idfa = this.optionalString("idfa", null)
-    event.idfv = this.optionalString("idfv", null)
-    event.adid = this.optionalString("adid", null)
-    event.androidId = this.optionalString("android_id", null)
-    event.appSetId = this.optionalString("android_app_set_id", null)
-    event.eventId = if (this.has("event_id")) this.getLong("event_id") else null
-    event.sessionId = this.getLong("session_id")
-    event.insertId = this.optionalString("uuid", null) // name change
-    event.library = if (library != null) "${library.getString("name")}/${library.getString("version")}" else null
-    event.partnerId = this.optionalString("partner_id", null)
-    event.plan = if (this.has("plan")) Plan.fromJSONObject(this.getJSONObject("plan")) else null
-    return event
-}
-
-// Copy from core/src/main/java/com/amplitude/core/utilities/JSON.kt.
-// To avoid unexpected results if open this extension to wide permission.
-private fun JSONObject.toMapObj(): Map<String, Any?> {
-    val map = mutableMapOf<String, Any?>()
-    for (key in this.keys()) {
-        map[key] = this[key].fromJSON()
+            for (event in remnantIdentifies) {
+                val rowId = moveEvent(event, amplitude.storage)
+                databaseStorage.removeIdentify(rowId)
+            }
+        } catch (e: Exception) {
+            LogcatLogger.logger.error(
+                "identifies migration failed: ${e.message}"
+            )
+        }
     }
-    return map
-}
 
-// Copy from core/src/main/java/com/amplitude/core/utilities/JSON.kt.
-// To avoid unexpected results if open this extension to wide permission.
-private fun Any?.fromJSON(): Any? {
-    return when (this) {
-        is JSONObject -> this.toMapObj()
-        is JSONArray -> this.toListObj()
-        // org.json uses BigDecimal for doubles and floats; normalize to double
-        // to make testing for equality easier.
-        is BigDecimal -> this.toDouble()
-        JSONObject.NULL -> null
-        else -> this
-    }
-}
+    private suspend fun moveInterceptedIdentifies() {
+        try {
+            val remnantIdentifies = databaseStorage.readInterceptedIdentifiesContent()
 
-// Copy from core/src/main/java/com/amplitude/core/utilities/JSON.kt.
-// To avoid unexpected results if open this extension to wide permission.
-private fun JSONArray.toListObj(): List<Any?> {
-    val list = mutableListOf<Any?>()
-    for (i in 0 until this.length()) {
-        val value = this[i].fromJSON()
-        list.add(value)
+            for (event in remnantIdentifies) {
+                val rowId = moveEvent(event, amplitude.identifyInterceptStorage)
+                databaseStorage.removeInterceptedIdentify(rowId)
+            }
+        } catch (e: Exception) {
+            LogcatLogger.logger.error(
+                "identifies migration failed: ${e.message}"
+            )
+        }
     }
-    return list
+
+    private suspend fun moveEvent(event: JSONObject, storage: Storage): Long {
+        val rowId = event.getLong(DatabaseConstants.ROW_ID_FIELD)
+        event.put("event_id", rowId)
+        event.remove(DatabaseConstants.ROW_ID_FIELD)
+
+        val library = event.optionalJSONObject("library", null)
+        if (library != null) {
+            event.put("library", "${library.getString("name")}/${library.getString("version")}")
+        }
+
+        val timestamp = event.getLong("timestamp")
+        event.put("time", timestamp)
+
+        val apiProperties = event.optionalJSONObject("api_properties", null)
+        if (apiProperties != null) {
+            if (apiProperties.has("androidADID")) {
+                val adid = apiProperties.getString("androidADID")
+                event.put("adid", adid)
+            }
+            if (apiProperties.has("android_app_set_id")) {
+                val appSetId = apiProperties.getString("android_app_set_id")
+                event.put("android_app_set_id", appSetId)
+            }
+        }
+
+        storage.writeEvent(event)
+        return rowId
+    }
 }

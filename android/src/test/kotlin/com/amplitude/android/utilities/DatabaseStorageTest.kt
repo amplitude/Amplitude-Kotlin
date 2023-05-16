@@ -73,9 +73,6 @@ class DatabaseStorageTest {
                 any<String>(),
                 any<Array<String?>>(),
                 any<String>(),
-                any<String>(),
-                any<String>(),
-                any<String>(),
             )
         } returns mockedCursor
         every { mockedDatabaseStorage.close() } answers { nothing }
