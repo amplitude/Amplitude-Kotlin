@@ -46,13 +46,15 @@ class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper
     DatabaseConstants.DATABASE_VERSION
 ) {
     private var file: File = context.getDatabasePath(databaseName)
+    var currentDbVersion: Int = DatabaseConstants.DATABASE_VERSION
+        private set
 
     override fun onCreate(db: SQLiteDatabase) {
         throw NotImplementedError()
     }
 
     override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
-        throw NotImplementedError()
+        currentDbVersion = oldVersion
     }
 
     private fun queryDb(
@@ -105,6 +107,9 @@ class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper
 
     @Synchronized
     fun readInterceptedIdentifiesContent(): List<JSONObject> {
+        if (currentDbVersion < 4) {
+            return listOf()
+        }
         return readEventsFromTable(DatabaseConstants.IDENTIFY_INTERCEPTOR_TABLE_NAME)
     }
 
@@ -168,6 +173,9 @@ class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper
 
     @Synchronized
     fun removeInterceptedIdentify(rowId: Long) {
+        if (currentDbVersion < 4) {
+            return
+        }
         removeEventFromTable(DatabaseConstants.IDENTIFY_INTERCEPTOR_TABLE_NAME, rowId)
     }
 
