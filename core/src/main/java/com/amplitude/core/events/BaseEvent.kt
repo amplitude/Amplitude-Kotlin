@@ -11,47 +11,45 @@ open class BaseEvent : EventOptions() {
     var groupProperties: MutableMap<String, Any?>? = null
 
     fun mergeEventOptions(options: EventOptions) {
-        userId ?: let { userId = options.userId }
-        deviceId ?: let { deviceId = options.deviceId }
-        timestamp ?: let { timestamp = options.timestamp }
-        eventId ?: let { eventId = options.eventId }
-        insertId ?: let { insertId = options.insertId }
-        locationLat ?: let { locationLat = options.locationLat }
-        locationLng ?: let { locationLng = options.locationLng }
-        appVersion ?: let { appVersion = options.appVersion }
-        versionName ?: let { versionName = options.versionName }
-        platform ?: let { platform = options.platform }
-        osName ?: let { osName = options.osName }
-        osVersion ?: let { osVersion = options.osVersion }
-        deviceBrand ?: let { deviceBrand = options.deviceBrand }
-        deviceManufacturer ?: let { deviceManufacturer = options.deviceManufacturer }
-        deviceModel ?: let { deviceModel = options.deviceModel }
-        carrier ?: let { carrier = options.carrier }
-        country ?: let { country = options.country }
-        region ?: let { region = options.region }
-        city ?: let { city = options.city }
-        dma ?: let { dma = options.dma }
-        idfa ?: let { idfa = options.idfa }
-        idfv ?: let { idfv = options.idfv }
-        adid ?: let { adid = options.adid }
-        appSetId ?: let { appSetId = options.appSetId }
-        androidId ?: let { androidId = options.androidId }
-        language ?: let { language = options.language }
-        library ?: let { library = options.library }
-        ip ?: let { ip = options.ip }
-        plan ?: let { plan = options.plan }
-        ingestionMetadata ?: let { ingestionMetadata = options.ingestionMetadata }
-        revenue ?: let { revenue = options.revenue }
-        price ?: let { price = options.price }
-        quantity ?: let { quantity = options.quantity }
-        productId ?: let { productId = options.productId }
-        revenueType ?: let { revenueType = options.revenueType }
-        extra ?: let { extra = options.extra }
-        callback ?: let { callback = options.callback }
-        partnerId ?: let { partnerId = options.partnerId }
-        if (sessionId < 0) {
-            sessionId = options.sessionId
-        }
+        options.userId?.let { userId = it }
+        options.deviceId?.let { deviceId = it }
+        options.timestamp?.let { timestamp = it }
+        options.eventId?.let { eventId = it }
+        options.insertId?.let { insertId = it }
+        options.locationLat?.let { locationLat = it }
+        options.locationLng?.let { locationLng = it }
+        options.appVersion?.let { appVersion = it }
+        options.versionName?.let { versionName = it }
+        options.platform?.let { platform = it }
+        options.osName?.let { osName = it }
+        options.osVersion?.let { osVersion = it }
+        options.deviceBrand?.let { deviceBrand = it }
+        options.deviceManufacturer?.let { deviceManufacturer = it }
+        options.deviceModel?.let { deviceModel = it }
+        options.carrier?.let { carrier = it }
+        options.country?.let { country = it }
+        options.region?.let { region = it }
+        options.city?.let { city = it }
+        options.dma?.let { dma = it }
+        options.idfa?.let { idfa = it }
+        options.idfv?.let { idfv = it }
+        options.adid?.let { adid = it }
+        options.appSetId?.let { appSetId = it }
+        options.androidId?.let { androidId = it }
+        options.language?.let { language = it }
+        options.library?.let { library = it }
+        options.ip?.let { ip = it }
+        options.plan?.let { plan = it }
+        options.ingestionMetadata?.let { ingestionMetadata = it }
+        options.revenue?.let { revenue = it }
+        options.price?.let { price = it }
+        options.quantity?.let { quantity = it }
+        options.productId?.let { productId = it }
+        options.revenueType?.let { revenueType = it }
+        options.extra?.let { extra = it }
+        options.callback?.let { callback = it }
+        options.partnerId?.let { partnerId = it }
+        options.sessionId?.let { sessionId = it }
     }
 
     /**

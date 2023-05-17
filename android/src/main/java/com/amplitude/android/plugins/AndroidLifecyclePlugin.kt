@@ -27,7 +27,7 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     }
 
     override fun onActivityPaused(activity: Activity) {
-        (amplitude as com.amplitude.android.Amplitude).onExitForeground()
+        (amplitude as com.amplitude.android.Amplitude).onExitForeground(getCurrentTimeMillis())
     }
 
     override fun onActivityStopped(activity: Activity) {

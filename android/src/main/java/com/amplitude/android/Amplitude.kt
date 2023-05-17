@@ -97,15 +97,19 @@ open class Amplitude(
             return
         }
 
-        val dummySessionStartEvent = BaseEvent()
-        dummySessionStartEvent.eventType = START_SESSION_EVENT
-        dummySessionStartEvent.timestamp = timestamp
-        dummySessionStartEvent.sessionId = -1
-        timeline.process(dummySessionStartEvent)
+        val dummyEnterForegroundEvent = BaseEvent()
+        dummyEnterForegroundEvent.eventType = DUMMY_ENTER_FOREGROUND_EVENT
+        dummyEnterForegroundEvent.timestamp = timestamp
+        timeline.process(dummyEnterForegroundEvent)
     }
 
-    fun onExitForeground() {
+    fun onExitForeground(timestamp: Long) {
         inForeground = false
+
+        val dummyExitForegroundEvent = BaseEvent()
+        dummyExitForegroundEvent.eventType = DUMMY_EXIT_FOREGROUND_EVENT
+        dummyExitForegroundEvent.timestamp = timestamp
+        timeline.process(dummyExitForegroundEvent)
 
         amplitudeScope.launch(amplitudeDispatcher) {
             isBuilt.await()
@@ -132,6 +136,15 @@ open class Amplitude(
          * The event type for end session events.
          */
         const val END_SESSION_EVENT = "session_end"
+
+        /**
+         * The event type for dummy enter foreground events.
+         */
+        internal const val DUMMY_ENTER_FOREGROUND_EVENT = "dummy_enter_foreground"
+        /**
+         * The event type for dummy exit foreground events.
+         */
+        internal const val DUMMY_EXIT_FOREGROUND_EVENT = "dummy_exit_foreground"
     }
 }
 /**
