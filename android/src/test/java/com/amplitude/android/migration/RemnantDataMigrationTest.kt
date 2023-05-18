@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.amplitude.android.Amplitude
 import com.amplitude.android.Configuration
+import com.amplitude.core.Storage
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.junit.Test
@@ -65,6 +66,12 @@ class RemnantDataMigrationTest {
             amplitude.storage.rollover()
             amplitude.identifyInterceptStorage.rollover()
 
+            if (inputStream != null) {
+                Assertions.assertEquals(1684219150343, amplitude.storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLongOrNull())
+                Assertions.assertEquals(1684219150344, amplitude.storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLongOrNull())
+                Assertions.assertEquals(2, amplitude.storage.read(Storage.Constants.LAST_EVENT_ID)?.toLongOrNull())
+            }
+
             val eventsData = amplitude.storage.readEventsContent()
             if (inputStream != null) {
                 val jsonEvents = JSONArray()
@@ -116,11 +123,18 @@ class RemnantDataMigrationTest {
 
         // Check legacy sqlite data are cleaned
         val databaseStorage = migration.databaseStorage
-        Assertions.assertNull(databaseStorage.getValue(RemnantDataMigration.DEVICE_ID_KEY))
-        Assertions.assertNull(databaseStorage.getValue(RemnantDataMigration.USER_ID_KEY))
         Assertions.assertEquals(0, databaseStorage.readEventsContent().size)
         Assertions.assertEquals(0, databaseStorage.readIdentifiesContent().size)
         Assertions.assertEquals(0, databaseStorage.readInterceptedIdentifiesContent().size)
+
+        // User/device id should not be cleaned.
+        if (inputStream != null) {
+            Assertions.assertEquals("22833898-c487-4536-b213-40f207abdce0R", databaseStorage.getValue(RemnantDataMigration.DEVICE_ID_KEY))
+            Assertions.assertEquals("android-kotlin-sample-user-legacy", databaseStorage.getValue(RemnantDataMigration.USER_ID_KEY))
+        } else {
+            Assertions.assertNull(databaseStorage.getValue(RemnantDataMigration.DEVICE_ID_KEY))
+            Assertions.assertNull(databaseStorage.getValue(RemnantDataMigration.USER_ID_KEY))
+        }
     }
 
     private fun copyStream(src: InputStream, dst: File) {

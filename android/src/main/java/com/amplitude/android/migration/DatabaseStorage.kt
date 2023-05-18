@@ -27,6 +27,7 @@ object DatabaseConstants {
     const val ID_FIELD = "id"
     const val EVENT_FIELD = "event"
 
+    const val LONG_STORE_TABLE_NAME = "long_store"
     const val STORE_TABLE_NAME = "store"
     const val KEY_FIELD = "key"
     const val VALUE_FIELD = "value"
@@ -202,18 +203,27 @@ class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper
 
     @Synchronized
     fun getValue(key: String): String? {
+        return getValueFromTable(DatabaseConstants.STORE_TABLE_NAME, key) as String?
+    }
+
+    @Synchronized
+    fun getLongValue(key: String): Long? {
+        return getValueFromTable(DatabaseConstants.LONG_STORE_TABLE_NAME, key) as Long?
+    }
+
+    private fun getValueFromTable(table: String, key: String): Any? {
         if (!file.exists()) {
             return null
         }
 
-        var value: String? = null
+        var value: Any? = null
         var cursor: Cursor? = null
         try {
             val db = readableDatabase
             cursor = queryDb(
                 db,
-                DatabaseConstants.STORE_TABLE_NAME,
-                arrayOf(
+                table,
+                arrayOf<String?>(
                     DatabaseConstants.KEY_FIELD,
                     DatabaseConstants.VALUE_FIELD
                 ),
@@ -222,17 +232,17 @@ class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper
                 null,
             )
             if (cursor!!.moveToFirst()) {
-                value = cursor.getString(1)
+                value = if (table == DatabaseConstants.STORE_TABLE_NAME) cursor.getString(1) else cursor.getLong(1)
             }
         } catch (e: SQLiteException) {
             LogcatLogger.logger.error(
-                "getValue from ${DatabaseConstants.STORE_TABLE_NAME} failed: ${e.message}"
+                "getValue from $table failed: ${e.message}"
             )
             // Hard to recover from SQLiteExceptions, just start fresh
             delete()
         } catch (e: StackOverflowError) {
             LogcatLogger.logger.error(
-                "getValue from ${DatabaseConstants.STORE_TABLE_NAME} failed: ${e.message}"
+                "getValue from $table failed: ${e.message}"
             )
             // potential stack overflow error when getting database on custom Android versions
             delete()
@@ -251,21 +261,30 @@ class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper
 
     @Synchronized
     fun removeValue(key: String) {
+        removeValueFromTable(DatabaseConstants.STORE_TABLE_NAME, key)
+    }
+
+    @Synchronized
+    fun removeLongValue(key: String) {
+        removeValueFromTable(DatabaseConstants.LONG_STORE_TABLE_NAME, key)
+    }
+
+    private fun removeValueFromTable(table: String, key: String) {
         try {
             val db = writableDatabase
             db.delete(
-                DatabaseConstants.STORE_TABLE_NAME,
+                table,
                 "${DatabaseConstants.KEY_FIELD} = ?",
                 arrayOf(key)
             )
         } catch (e: SQLiteException) {
             LogcatLogger.logger.error(
-                "remove value from ${DatabaseConstants.STORE_TABLE_NAME} failed: ${e.message}"
+                "remove value from $table failed: ${e.message}"
             )
             delete()
         } catch (e: StackOverflowError) {
             LogcatLogger.logger.error(
-                "remove value from ${DatabaseConstants.STORE_TABLE_NAME} failed: ${e.message}"
+                "remove value from $table failed: ${e.message}"
             )
             delete()
         } finally {

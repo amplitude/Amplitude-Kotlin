@@ -21,6 +21,9 @@ class RemnantDataMigration : Initializer {
     companion object {
         const val DEVICE_ID_KEY = "device_id"
         const val USER_ID_KEY = "user_id"
+        const val LAST_EVENT_TIME_KEY = "last_event_time"
+        const val LAST_EVENT_ID_KEY = "last_event_id"
+        const val PREVIOUS_SESSION_ID_KEY = "previous_session_id"
     }
 
     lateinit var amplitude: Amplitude
@@ -30,9 +33,16 @@ class RemnantDataMigration : Initializer {
         this.amplitude = amplitude
         runBlocking {
             databaseStorage = DatabaseStorageProvider().getStorage(amplitude)
+
+            val firstRunSinceUpgrade = amplitude.storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLongOrNull() == null
+
             moveDeviceAndUserId()
-            moveInterceptedIdentifies()
-            moveIdentifies()
+            moveSessionData()
+
+            if (firstRunSinceUpgrade) {
+                moveInterceptedIdentifies()
+                moveIdentifies()
+            }
             moveEvents()
         }
     }
@@ -45,22 +55,49 @@ class RemnantDataMigration : Initializer {
                 return
             }
 
-            if (deviceId != null) {
+            val currentIdentity = amplitude.identityStorage.load()
+
+            if (currentIdentity.deviceId == null && deviceId != null) {
                 amplitude.identityStorage.saveDeviceId(deviceId)
             }
-            if (userId != null) {
-                amplitude.identityStorage.saveUserId(userId)
-            }
 
-            if (deviceId != null) {
-                databaseStorage.removeValue(DEVICE_ID_KEY)
-            }
-            if (userId != null) {
-                databaseStorage.removeValue(USER_ID_KEY)
+            if (currentIdentity.userId == null && userId != null) {
+                amplitude.identityStorage.saveUserId(userId)
             }
         } catch (e: Exception) {
             LogcatLogger.logger.error(
                 "device/user id migration failed: ${e.message}"
+            )
+        }
+    }
+
+    private suspend fun moveSessionData() {
+        try {
+            val currentSessionId = amplitude.storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLongOrNull()
+            val currentLastEventTime = amplitude.storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLongOrNull()
+            val currentLastEventId = amplitude.storage.read(Storage.Constants.LAST_EVENT_ID)?.toLongOrNull()
+
+            val previousSessionId = databaseStorage.getLongValue(PREVIOUS_SESSION_ID_KEY)
+            val lastEventTime = databaseStorage.getLongValue(LAST_EVENT_TIME_KEY)
+            val lastEventId = databaseStorage.getLongValue(LAST_EVENT_ID_KEY)
+
+            if (currentSessionId == null && previousSessionId != null) {
+                amplitude.storage.write(Storage.Constants.PREVIOUS_SESSION_ID, previousSessionId.toString())
+                databaseStorage.removeLongValue(PREVIOUS_SESSION_ID_KEY)
+            }
+
+            if (currentLastEventTime == null && lastEventTime != null) {
+                amplitude.storage.write(Storage.Constants.LAST_EVENT_TIME, lastEventTime.toString())
+                databaseStorage.removeLongValue(LAST_EVENT_TIME_KEY)
+            }
+
+            if (currentLastEventId == null && lastEventId != null) {
+                amplitude.storage.write(Storage.Constants.LAST_EVENT_ID, lastEventId.toString())
+                databaseStorage.removeLongValue(LAST_EVENT_ID_KEY)
+            }
+        } catch (e: Exception) {
+            LogcatLogger.logger.error(
+                "session data migration failed: ${e.message}"
             )
         }
     }
