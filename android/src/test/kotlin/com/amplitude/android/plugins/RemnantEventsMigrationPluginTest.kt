@@ -17,14 +17,24 @@ import java.io.InputStream
 @RunWith(RobolectricTestRunner::class)
 class RemnantEventsMigrationPluginTest {
     @Test
-    fun `test legacy data should be migrated`() {
+    fun `test legacy data version 4 should be migrated`() {
+        checkLegacyDataMigration("legacy_v4.sqlite", 4)
+    }
+
+    @Test
+    fun `test legacy data version 3 should be migrated`() {
+        checkLegacyDataMigration("legacy_v3.sqlite", 3)
+    }
+
+    private fun checkLegacyDataMigration(legacyDbName: String, dbVersion: Int) {
         val context = ApplicationProvider.getApplicationContext<Context>()
 
-        val dbPath = context.getDatabasePath("com.amplitude.api_remnant")
-        val inputStream = javaClass.classLoader?.getResourceAsStream("legacy.sqlite")
+        val instanceName = "legacy_v${dbVersion}"
+        val dbPath = context.getDatabasePath("com.amplitude.api_${instanceName}")
+        val inputStream = javaClass.classLoader?.getResourceAsStream(legacyDbName)
         copyStream(inputStream!!, dbPath)
 
-        val amplitude = Amplitude(Configuration("test-api-key", context, instanceName = "remnant"))
+        val amplitude = Amplitude(Configuration("test-api-key", context, instanceName = instanceName))
 
         // Check no data before RemnantEventsMigrationPlugin
         runBlocking {
@@ -78,21 +88,25 @@ class RemnantEventsMigrationPluginTest {
             Assertions.assertEquals(1684219150355, event4.getLong("timestamp"))
 
             val interceptedIdentifiesData = amplitude.identifyInterceptStorage.readEventsContent()
-            val jsonInterceptedIdentifies = JSONArray()
-            for (eventsPath in interceptedIdentifiesData) {
-                val eventsString = amplitude.storage.getEventsString(eventsPath)
-                val events = JSONArray(eventsString)
-                for (i in 0 until events.length()) {
-                    jsonInterceptedIdentifies.put(events.get(i))
+            if (dbVersion >= 4) {
+                val jsonInterceptedIdentifies = JSONArray()
+                for (eventsPath in interceptedIdentifiesData) {
+                    val eventsString = amplitude.storage.getEventsString(eventsPath)
+                    val events = JSONArray(eventsString)
+                    for (i in 0 until events.length()) {
+                        jsonInterceptedIdentifies.put(events.get(i))
+                    }
                 }
+                Assertions.assertEquals(2, jsonInterceptedIdentifies.length())
+                val intercepted1 = jsonInterceptedIdentifies.getJSONObject(0)
+                Assertions.assertEquals("\$identify", intercepted1.getString("event_type"))
+                Assertions.assertEquals(1684219150358, intercepted1.getLong("timestamp"))
+                val intercepted2 = jsonInterceptedIdentifies.getJSONObject(1)
+                Assertions.assertEquals("\$identify", intercepted2.getString("event_type"))
+                Assertions.assertEquals(1684219150359, intercepted2.getLong("timestamp"))
+            } else {
+                Assertions.assertEquals(0, interceptedIdentifiesData.size)
             }
-            Assertions.assertEquals(2, jsonInterceptedIdentifies.length())
-            val intercepted1 = jsonInterceptedIdentifies.getJSONObject(0)
-            Assertions.assertEquals("\$identify", intercepted1.getString("event_type"))
-            Assertions.assertEquals(1684219150358, intercepted1.getLong("timestamp"))
-            val intercepted2 = jsonInterceptedIdentifies.getJSONObject(1)
-            Assertions.assertEquals("\$identify", intercepted2.getString("event_type"))
-            Assertions.assertEquals(1684219150359, intercepted2.getLong("timestamp"))
         }
 
         // Check legacy sqlite data are cleaned
