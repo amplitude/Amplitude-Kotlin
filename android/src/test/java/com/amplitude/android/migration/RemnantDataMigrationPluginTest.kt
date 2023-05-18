@@ -1,4 +1,4 @@
-package com.amplitude.android.plugins
+package com.amplitude.android.migration
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
@@ -15,7 +15,7 @@ import java.io.FileOutputStream
 import java.io.InputStream
 
 @RunWith(RobolectricTestRunner::class)
-class RemnantEventsMigrationPluginTest {
+class RemnantDataMigrationPluginTest {
     @Test
     fun `test legacy data version 4 should be migrated`() {
         checkLegacyDataMigration("legacy_v4.sqlite", 4)
@@ -29,8 +29,8 @@ class RemnantEventsMigrationPluginTest {
     private fun checkLegacyDataMigration(legacyDbName: String, dbVersion: Int) {
         val context = ApplicationProvider.getApplicationContext<Context>()
 
-        val instanceName = "legacy_v${dbVersion}"
-        val dbPath = context.getDatabasePath("com.amplitude.api_${instanceName}")
+        val instanceName = "legacy_v$dbVersion"
+        val dbPath = context.getDatabasePath("com.amplitude.api_$instanceName")
         val inputStream = javaClass.classLoader?.getResourceAsStream(legacyDbName)
         copyStream(inputStream!!, dbPath)
 
@@ -52,7 +52,7 @@ class RemnantEventsMigrationPluginTest {
             Assertions.assertEquals(0, interceptedIdentifiesData.size)
         }
 
-        val migrationPlugin = RemnantEventsMigrationPlugin()
+        val migrationPlugin = RemnantDataMigrationPlugin()
         amplitude.add(migrationPlugin)
 
         // Check migrated data after RemnantEventsMigrationPlugin
@@ -111,8 +111,8 @@ class RemnantEventsMigrationPluginTest {
 
         // Check legacy sqlite data are cleaned
         val databaseStorage = migrationPlugin.databaseStorage
-        Assertions.assertNull(databaseStorage.getValue(DEVICE_ID_KEY))
-        Assertions.assertNull(databaseStorage.getValue(USER_ID_KEY))
+        Assertions.assertNull(databaseStorage.getValue(RemnantDataMigrationPlugin.DEVICE_ID_KEY))
+        Assertions.assertNull(databaseStorage.getValue(RemnantDataMigrationPlugin.USER_ID_KEY))
         Assertions.assertEquals(0, databaseStorage.readEventsContent().size)
         Assertions.assertEquals(0, databaseStorage.readIdentifiesContent().size)
         Assertions.assertEquals(0, databaseStorage.readInterceptedIdentifiesContent().size)

@@ -1,4 +1,4 @@
-package com.amplitude.android.utilities
+package com.amplitude.android.migration
 
 import android.content.Context
 import android.database.Cursor
@@ -18,9 +18,9 @@ import java.nio.file.Path
 import kotlin.io.path.absolutePathString
 
 class DatabaseStorageTest {
-    var context: Context? = null
-    var databaseStorage: DatabaseStorage? = null
-    var db: SQLiteDatabase? = null
+    private var context: Context? = null
+    private var databaseStorage: DatabaseStorage? = null
+    private var db: SQLiteDatabase? = null
 
     @JvmField
     @TempDir

@@ -1,8 +1,5 @@
-package com.amplitude.android.plugins
+package com.amplitude.android.migration
 
-import com.amplitude.android.utilities.DatabaseConstants
-import com.amplitude.android.utilities.DatabaseStorage
-import com.amplitude.android.utilities.DatabaseStorageProvider
 import com.amplitude.common.android.LogcatLogger
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Storage
@@ -12,18 +9,20 @@ import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 
 /**
- * When switching the SDK from previous version to this version, remnant events might remain unsent in sqlite.
+ * When switching the SDK from previous version to this version, remnant data might remain unsent in sqlite.
  * This plugin:
- *      1. reads the events from sqlite table
- *      2. convert events to JsonObjects
- *      3. save events to current storage
- *      4. delete events from sqlite table
+ *      1. reads device/user id, events, identifies from sqlite tables
+ *      2. converts the events and identifies to JsonObjects
+ *      3. saves the device/user id, converted events and identifies to current storage
+ *      4. deletes data from sqlite table
  */
 
-const val DEVICE_ID_KEY = "device_id"
-const val USER_ID_KEY = "user_id"
+class RemnantDataMigrationPlugin : Plugin {
+    companion object {
+        const val DEVICE_ID_KEY = "device_id"
+        const val USER_ID_KEY = "user_id"
+    }
 
-class RemnantEventsMigrationPlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Utility
     override lateinit var amplitude: Amplitude
     lateinit var databaseStorage: DatabaseStorage
