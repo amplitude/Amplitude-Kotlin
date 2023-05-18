@@ -15,8 +15,6 @@ import com.amplitude.core.utilities.ConsoleLoggerProvider
 import com.amplitude.core.utilities.InMemoryStorage
 import com.amplitude.core.utilities.InMemoryStorageProvider
 import com.amplitude.id.IMIdentityStorageProvider
-import com.amplitude.id.IdentityConfiguration
-import com.amplitude.id.IdentityContainer
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkConstructor
@@ -62,11 +60,6 @@ class AmplitudeTest {
         every { anyConstructed<AndroidContextProvider>().mostRecentLocation } returns null
         every { anyConstructed<AndroidContextProvider>().appSetId } returns ""
 
-        val configuration = IdentityConfiguration(
-            instanceName,
-            identityStorageProvider = IMIdentityStorageProvider()
-        )
-        IdentityContainer.getInstance(configuration)
         amplitude = Amplitude(createConfiguration())
     }
 
@@ -82,11 +75,12 @@ class AmplitudeTest {
         val configuration = Configuration(
             apiKey = "api-key",
             context = context!!,
-            instanceName = "testInstance",
+            instanceName = instanceName,
             storageProvider = storageProvider,
             trackingSessionEvents = minTimeBetweenSessionsMillis != null,
             loggerProvider = ConsoleLoggerProvider(),
-            identifyInterceptStorageProvider = InMemoryStorageProvider()
+            identifyInterceptStorageProvider = InMemoryStorageProvider(),
+            identityStorageProvider = IMIdentityStorageProvider(),
         )
 
         if (minTimeBetweenSessionsMillis != null) {

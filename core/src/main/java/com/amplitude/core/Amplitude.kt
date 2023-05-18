@@ -19,9 +19,9 @@ import com.amplitude.core.utilities.AnalyticsEventReceiver
 import com.amplitude.core.utilities.AnalyticsIdentityListener
 import com.amplitude.eventbridge.EventBridgeContainer
 import com.amplitude.eventbridge.EventChannel
-import com.amplitude.id.IMIdentityStorageProvider
 import com.amplitude.id.IdentityConfiguration
 import com.amplitude.id.IdentityContainer
+import com.amplitude.id.IdentityStorage
 import com.amplitude.id.IdentityUpdateType
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -48,8 +48,9 @@ open class Amplitude internal constructor(
     val retryDispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
 ) {
     val timeline: Timeline
-    lateinit var storage: Storage
-    lateinit var identifyInterceptStorage: Storage
+    val storage: Storage
+    val identifyInterceptStorage: Storage
+    val identityStorage: IdentityStorage
     val logger: Logger
     val idContainer: IdentityContainer
     val isBuilt: Deferred<Boolean>
@@ -58,7 +59,15 @@ open class Amplitude internal constructor(
         require(configuration.isValid()) { "invalid configuration" }
         timeline = this.createTimeline()
         logger = configuration.loggerProvider.getLogger(this)
-        idContainer = createIdentityContainer()
+        storage = configuration.storageProvider.getStorage(this)
+        identifyInterceptStorage = configuration.identifyInterceptStorageProvider.getStorage(this, "amplitude-identify-intercept")
+
+        val identityConfiguration = createIdentityConfiguration()
+        identityStorage = configuration.identityStorageProvider.getIdentityStorage(identityConfiguration)
+
+        configuration.initializers?.forEach { it.execute(this) }
+
+        idContainer = IdentityContainer.getInstance(identityConfiguration)
         isBuilt = build()
         isBuilt.start()
     }
@@ -72,21 +81,16 @@ open class Amplitude internal constructor(
         return Timeline().also { it.amplitude = this }
     }
 
-    open fun createIdentityContainer(): IdentityContainer {
-        return IdentityContainer.getInstance(
-            IdentityConfiguration(
-                instanceName = configuration.instanceName,
-                apiKey = configuration.apiKey,
-                identityStorageProvider = IMIdentityStorageProvider(),
-                logger = logger
-            )
+    open fun createIdentityConfiguration(): IdentityConfiguration {
+        return IdentityConfiguration(
+            instanceName = configuration.instanceName,
+            apiKey = configuration.apiKey,
+            identityStorageProvider = configuration.identityStorageProvider,
+            logger = logger
         )
     }
 
     open fun build(): Deferred<Boolean> {
-        storage = configuration.storageProvider.getStorage(this)
-        identifyInterceptStorage = configuration.identifyInterceptStorageProvider.getStorage(this, "amplitude-identify-intercept")
-
         val listener = AnalyticsIdentityListener(store)
         idContainer.identityManager.addIdentityListener(listener)
         if (idContainer.identityManager.isInitialized()) {

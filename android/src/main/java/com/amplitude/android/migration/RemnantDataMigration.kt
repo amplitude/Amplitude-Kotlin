@@ -3,7 +3,7 @@ package com.amplitude.android.migration
 import com.amplitude.common.android.LogcatLogger
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Storage
-import com.amplitude.core.platform.Plugin
+import com.amplitude.core.platform.Initializer
 import com.amplitude.core.utilities.optionalJSONObject
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
@@ -17,21 +17,18 @@ import org.json.JSONObject
  *      4. deletes data from sqlite table
  */
 
-class RemnantDataMigrationPlugin : Plugin {
+class RemnantDataMigration : Initializer {
     companion object {
         const val DEVICE_ID_KEY = "device_id"
         const val USER_ID_KEY = "user_id"
     }
 
-    override val type: Plugin.Type = Plugin.Type.Utility
-    override lateinit var amplitude: Amplitude
+    lateinit var amplitude: Amplitude
     lateinit var databaseStorage: DatabaseStorage
 
-    override fun setup(amplitude: Amplitude) {
-        super.setup(amplitude)
-
+    override fun execute(amplitude: Amplitude) {
+        this.amplitude = amplitude
         runBlocking {
-            amplitude.isBuilt.await()
             databaseStorage = DatabaseStorageProvider().getStorage(amplitude)
             moveDeviceAndUserId()
             moveInterceptedIdentifies()
@@ -48,15 +45,12 @@ class RemnantDataMigrationPlugin : Plugin {
                 return
             }
 
-            val editor = amplitude.idContainer.identityManager.editIdentity()
             if (deviceId != null) {
-                editor.setDeviceId(deviceId)
+                amplitude.identityStorage.saveDeviceId(deviceId)
             }
             if (userId != null) {
-                editor.setUserId(userId)
+                amplitude.identityStorage.saveUserId(userId)
             }
-
-            editor.commit()
 
             if (deviceId != null) {
                 databaseStorage.removeValue(DEVICE_ID_KEY)

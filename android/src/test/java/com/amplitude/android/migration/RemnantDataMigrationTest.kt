@@ -2,8 +2,8 @@ package com.amplitude.android.migration
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.amplitude.android.Amplitude
 import com.amplitude.android.Configuration
-import com.amplitude.core.Amplitude
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.junit.Test
@@ -15,7 +15,7 @@ import java.io.FileOutputStream
 import java.io.InputStream
 
 @RunWith(RobolectricTestRunner::class)
-class RemnantDataMigrationPluginTest {
+class RemnantDataMigrationTest {
     @Test
     fun `legacy data version 4 should be migrated`() {
         checkLegacyDataMigration("legacy_v4.sqlite", 4)
@@ -41,36 +41,25 @@ class RemnantDataMigrationPluginTest {
             copyStream(inputStream, dbPath)
         }
 
-        val amplitude = Amplitude(Configuration("test-api-key", context, instanceName = instanceName))
+        val migration = RemnantDataMigration()
 
-        // Check no data before RemnantEventsMigrationPlugin
-        runBlocking {
-            val identity = amplitude.idContainer.identityManager.getIdentity()
-            Assertions.assertNull(identity.deviceId)
-            Assertions.assertNull(identity.userId)
-
-            amplitude.storage.rollover()
-            amplitude.identifyInterceptStorage.rollover()
-
-            val eventsData = amplitude.storage.readEventsContent()
-            Assertions.assertEquals(0, eventsData.size)
-
-            val interceptedIdentifiesData = amplitude.identifyInterceptStorage.readEventsContent()
-            Assertions.assertEquals(0, interceptedIdentifiesData.size)
-        }
-
-        val migrationPlugin = RemnantDataMigrationPlugin()
-        amplitude.add(migrationPlugin)
+        val amplitude = Amplitude(
+            Configuration(
+                "test-api-key",
+                context,
+                instanceName = instanceName,
+                initializers = listOf(migration)
+            )
+        )
 
         // Check migrated data after RemnantEventsMigrationPlugin
         runBlocking {
+            amplitude.build().await()
+
             val identity = amplitude.idContainer.identityManager.getIdentity()
             if (inputStream != null) {
                 Assertions.assertEquals("22833898-c487-4536-b213-40f207abdce0R", identity.deviceId)
                 Assertions.assertEquals("android-kotlin-sample-user-legacy", identity.userId)
-            } else {
-                Assertions.assertNull(identity.deviceId)
-                Assertions.assertNull(identity.userId)
             }
 
             amplitude.storage.rollover()
@@ -126,9 +115,9 @@ class RemnantDataMigrationPluginTest {
         }
 
         // Check legacy sqlite data are cleaned
-        val databaseStorage = migrationPlugin.databaseStorage
-        Assertions.assertNull(databaseStorage.getValue(RemnantDataMigrationPlugin.DEVICE_ID_KEY))
-        Assertions.assertNull(databaseStorage.getValue(RemnantDataMigrationPlugin.USER_ID_KEY))
+        val databaseStorage = migration.databaseStorage
+        Assertions.assertNull(databaseStorage.getValue(RemnantDataMigration.DEVICE_ID_KEY))
+        Assertions.assertNull(databaseStorage.getValue(RemnantDataMigration.USER_ID_KEY))
         Assertions.assertEquals(0, databaseStorage.readEventsContent().size)
         Assertions.assertEquals(0, databaseStorage.readIdentifiesContent().size)
         Assertions.assertEquals(0, databaseStorage.readInterceptedIdentifiesContent().size)

@@ -10,6 +10,9 @@ import com.amplitude.core.ServerZone
 import com.amplitude.core.StorageProvider
 import com.amplitude.core.events.IngestionMetadata
 import com.amplitude.core.events.Plan
+import com.amplitude.core.platform.Initializer
+import com.amplitude.id.FileIdentityStorageProvider
+import com.amplitude.id.IdentityStorageProvider
 
 open class Configuration @JvmOverloads constructor(
     apiKey: String,
@@ -39,8 +42,10 @@ open class Configuration @JvmOverloads constructor(
     var minTimeBetweenSessionsMillis: Long = MIN_TIME_BETWEEN_SESSIONS_MILLIS,
     var trackingSessionEvents: Boolean = true,
     override var identifyBatchIntervalMillis: Long = IDENTIFY_BATCH_INTERVAL_MILLIS,
-    override var identifyInterceptStorageProvider: StorageProvider = AndroidStorageProvider()
-) : Configuration(apiKey, flushQueueSize, flushIntervalMillis, instanceName, optOut, storageProvider, loggerProvider, minIdLength, partnerId, callback, flushMaxRetries, useBatch, serverZone, serverUrl, plan, ingestionMetadata, identifyBatchIntervalMillis, identifyInterceptStorageProvider) {
+    override var identifyInterceptStorageProvider: StorageProvider = AndroidStorageProvider(),
+    override var identityStorageProvider: IdentityStorageProvider = FileIdentityStorageProvider(),
+    initializers: List<Initializer>? = null
+) : Configuration(apiKey, flushQueueSize, flushIntervalMillis, instanceName, optOut, storageProvider, loggerProvider, minIdLength, partnerId, callback, flushMaxRetries, useBatch, serverZone, serverUrl, plan, ingestionMetadata, identifyBatchIntervalMillis, identifyInterceptStorageProvider, identityStorageProvider, initializers) {
     companion object {
         const val MIN_TIME_BETWEEN_SESSIONS_MILLIS: Long = 300000
     }

@@ -11,9 +11,7 @@ import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
 import com.amplitude.core.utilities.AnalyticsIdentityListener
 import com.amplitude.core.utilities.FileStorage
-import com.amplitude.id.FileIdentityStorageProvider
 import com.amplitude.id.IdentityConfiguration
-import com.amplitude.id.IdentityContainer
 import com.amplitude.id.IdentityUpdateType
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
@@ -41,28 +39,21 @@ open class Amplitude(
         return Timeline().also { it.amplitude = this }
     }
 
-    override fun createIdentityContainer(): IdentityContainer {
+    override fun createIdentityConfiguration(): IdentityConfiguration {
         val configuration = configuration as Configuration
         val storageDirectory = configuration.context.getDir("${FileStorage.STORAGE_PREFIX}-${configuration.instanceName}", Context.MODE_PRIVATE)
 
-        return IdentityContainer.getInstance(
-            IdentityConfiguration(
-                instanceName = configuration.instanceName,
-                apiKey = configuration.apiKey,
-                identityStorageProvider = FileIdentityStorageProvider(),
-                storageDirectory = storageDirectory,
-                logger = configuration.loggerProvider.getLogger(this)
-            )
+        return IdentityConfiguration(
+            instanceName = configuration.instanceName,
+            apiKey = configuration.apiKey,
+            identityStorageProvider = configuration.identityStorageProvider,
+            storageDirectory = storageDirectory,
+            logger = configuration.loggerProvider.getLogger(this)
         )
     }
 
     override fun build(): Deferred<Boolean> {
-        val client = this
-
         val built = amplitudeScope.async(amplitudeDispatcher, CoroutineStart.LAZY) {
-            storage = configuration.storageProvider.getStorage(client)
-            identifyInterceptStorage = configuration.identifyInterceptStorageProvider.getStorage(client, "amplitude-identify-intercept")
-
             val listener = AnalyticsIdentityListener(store)
             idContainer.identityManager.addIdentityListener(listener)
             if (idContainer.identityManager.isInitialized()) {
