@@ -88,9 +88,8 @@ class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper
     private fun delete() {
         try {
             close()
-            file.delete()
         } catch (e: Exception) {
-            LogcatLogger.logger.error("deletion failed: ${e.message}")
+            LogcatLogger.logger.error("close failed: ${e.message}")
         }
     }
 
@@ -203,6 +202,10 @@ class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper
 
     @Synchronized
     fun getValue(key: String): String? {
+        if (!file.exists()) {
+            return null
+        }
+
         var value: String? = null
         var cursor: Cursor? = null
         try {

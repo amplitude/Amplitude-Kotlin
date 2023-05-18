@@ -111,7 +111,7 @@ class RemnantDataMigrationPlugin : Plugin {
             }
         } catch (e: Exception) {
             LogcatLogger.logger.error(
-                "identifies migration failed: ${e.message}"
+                "intercepted identifies migration failed: ${e.message}"
             )
         }
     }
