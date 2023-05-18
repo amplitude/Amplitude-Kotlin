@@ -23,9 +23,9 @@ class Timeline : Timeline() {
         amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
             amplitude.isBuilt.await()
 
-            _sessionId.set(amplitude.storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLong() ?: -1)
-            lastEventId = amplitude.storage.read(Storage.Constants.LAST_EVENT_ID)?.toLong() ?: 0
-            lastEventTime = amplitude.storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLong() ?: -1
+            _sessionId.set(amplitude.storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLongOrNull() ?: -1)
+            lastEventId = amplitude.storage.read(Storage.Constants.LAST_EVENT_ID)?.toLongOrNull() ?: 0
+            lastEventTime = amplitude.storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLongOrNull() ?: -1
 
             for (message in eventMessageChannel) {
                 processEventMessage(message)
@@ -49,18 +49,20 @@ class Timeline : Timeline() {
         val event = message.event
         var sessionEvents: Iterable<BaseEvent>? = null
         val eventTimestamp = event.timestamp!!
+        val eventSessionId = event.sessionId
         var skipEvent = false
 
         if (event.eventType == Amplitude.START_SESSION_EVENT) {
-            if (event.sessionId < 0) { // dummy start_session event
-                skipEvent = true
-                sessionEvents = startNewSessionIfNeeded(eventTimestamp)
-            } else {
-                setSessionId(event.sessionId)
-                refreshSessionTime(eventTimestamp)
-            }
+            setSessionId(eventSessionId ?: eventTimestamp)
+            refreshSessionTime(eventTimestamp)
         } else if (event.eventType == Amplitude.END_SESSION_EVENT) {
             // do nothing
+        } else if (event.eventType == Amplitude.DUMMY_ENTER_FOREGROUND_EVENT) {
+            skipEvent = true
+            sessionEvents = startNewSessionIfNeeded(eventTimestamp)
+        } else if (event.eventType == Amplitude.DUMMY_EXIT_FOREGROUND_EVENT) {
+            skipEvent = true
+            refreshSessionTime(eventTimestamp)
         } else {
             if (!message.inForeground) {
                 sessionEvents = startNewSessionIfNeeded(eventTimestamp)
@@ -69,7 +71,7 @@ class Timeline : Timeline() {
             }
         }
 
-        if (!skipEvent && event.sessionId < 0) {
+        if (!skipEvent && event.sessionId == null) {
             event.sessionId = sessionId
         }
 

@@ -198,7 +198,7 @@ fun JSONObject.toBaseEvent(): BaseEvent {
     event.androidId = this.optionalString("android_id", null)
     event.appSetId = this.optString("android_app_set_id", null)
     event.eventId = if (this.has("event_id")) this.getLong("event_id") else null
-    event.sessionId = this.getLong("session_id")
+    event.sessionId = if (this.has("session_id")) this.getLong("session_id") else null
     event.insertId = this.optionalString("insert_id", null)
     event.library = if (this.has("library")) this.getString("library") else null
     event.partnerId = this.optionalString("partner_id", null)

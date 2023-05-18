@@ -10,9 +10,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import java.util.concurrent.ConcurrentHashMap
 
-class InMemoryStorage(
-    val amplitude: Amplitude
-) : Storage {
+class InMemoryStorage : Storage {
 
     val eventsBuffer: MutableList<BaseEvent> = mutableListOf()
     val eventsListLock = Any()
@@ -68,6 +66,6 @@ class InMemoryStorage(
 
 class InMemoryStorageProvider : StorageProvider {
     override fun getStorage(amplitude: Amplitude, prefix: String?): Storage {
-        return InMemoryStorage(amplitude)
+        return InMemoryStorage()
     }
 }
