@@ -6,6 +6,7 @@ import com.amplitude.android.Configuration
 import com.amplitude.core.utilities.InMemoryStorageProvider
 import io.mockk.every
 import io.mockk.mockk
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -17,6 +18,11 @@ class AndroidLoggerProviderTest {
     @JvmField
     @TempDir
     var tempDir: Path? = null
+
+    @AfterEach
+    fun tearDown() {
+        Thread.sleep(200)
+    }
 
     @Test
     fun androidLoggerProvider_getLogger_returnsSingletonInstance() {

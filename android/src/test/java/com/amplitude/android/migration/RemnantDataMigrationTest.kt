@@ -7,6 +7,7 @@ import com.amplitude.android.Configuration
 import com.amplitude.core.Storage
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
+import org.junit.After
 import org.junit.Test
 import org.junit.jupiter.api.Assertions
 import org.junit.runner.RunWith
@@ -17,6 +18,11 @@ import java.io.InputStream
 
 @RunWith(RobolectricTestRunner::class)
 class RemnantDataMigrationTest {
+    @After
+    fun tearDown() {
+        Thread.sleep(200)
+    }
+
     @Test
     fun `legacy data version 4 should be migrated`() {
         checkLegacyDataMigration("legacy_v4.sqlite", 4)

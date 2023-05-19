@@ -36,6 +36,7 @@ class AmplitudeRobolectricTests {
 
     @After
     fun tearDown() {
+        Thread.sleep(200)
         tempDir.destroy()
     }
 

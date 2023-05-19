@@ -50,6 +50,7 @@ class ResponseHandlerTest {
 
     @After
     fun shutdown() {
+        Thread.sleep(200)
         server.shutdown()
     }
 

@@ -9,6 +9,7 @@ import io.mockk.mockkConstructor
 import io.mockk.spyk
 import io.mockk.verify
 import org.json.JSONObject
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -31,6 +32,11 @@ class DatabaseStorageTest {
         context = mockk(relaxed = true)
         databaseStorage = DatabaseStorage(context!!, "")
         db = mockk()
+    }
+
+    @AfterEach
+    fun tearDown() {
+        Thread.sleep(200)
     }
 
     @Test
