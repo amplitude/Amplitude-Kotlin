@@ -57,7 +57,7 @@ class AmplitudeRobolectricTests {
         event2.timestamp = 1700
         amplitudeInstance.track(event2)
 
-        amplitudeInstance.onExitForeground()
+        amplitudeInstance.onExitForeground(2000)
 
         verify(exactly = 0) { mockedPluginTest.track(any()) }
     }
