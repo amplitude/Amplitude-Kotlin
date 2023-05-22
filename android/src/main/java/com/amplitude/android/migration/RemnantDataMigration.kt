@@ -107,8 +107,7 @@ class RemnantDataMigration : Initializer {
             val remnantEvents = databaseStorage.readEventsContent()
 
             for (event in remnantEvents) {
-                val rowId = moveEvent(event, amplitude.storage)
-                databaseStorage.removeEvent(rowId)
+                moveEvent(event, amplitude.storage, databaseStorage::removeEvent)
             }
         } catch (e: Exception) {
             LogcatLogger.logger.error(
@@ -122,8 +121,7 @@ class RemnantDataMigration : Initializer {
             val remnantIdentifies = databaseStorage.readIdentifiesContent()
 
             for (event in remnantIdentifies) {
-                val rowId = moveEvent(event, amplitude.storage)
-                databaseStorage.removeIdentify(rowId)
+                moveEvent(event, amplitude.storage, databaseStorage::removeIdentify)
             }
         } catch (e: Exception) {
             LogcatLogger.logger.error(
@@ -137,8 +135,7 @@ class RemnantDataMigration : Initializer {
             val remnantIdentifies = databaseStorage.readInterceptedIdentifiesContent()
 
             for (event in remnantIdentifies) {
-                val rowId = moveEvent(event, amplitude.identifyInterceptStorage)
-                databaseStorage.removeInterceptedIdentify(rowId)
+                moveEvent(event, amplitude.identifyInterceptStorage, databaseStorage::removeInterceptedIdentify)
             }
         } catch (e: Exception) {
             LogcatLogger.logger.error(
@@ -147,32 +144,38 @@ class RemnantDataMigration : Initializer {
         }
     }
 
-    private suspend fun moveEvent(event: JSONObject, storage: Storage): Long {
-        val rowId = event.getLong(DatabaseConstants.ROW_ID_FIELD)
-        event.put("event_id", rowId)
-        event.remove(DatabaseConstants.ROW_ID_FIELD)
+    private suspend fun moveEvent(event: JSONObject, destinationStorage: Storage, removeFromSource: (rowId: Long) -> Unit) {
+        try {
+            val rowId = event.getLong(DatabaseConstants.ROW_ID_FIELD)
+            event.put("event_id", rowId)
+            event.remove(DatabaseConstants.ROW_ID_FIELD)
 
-        val library = event.optionalJSONObject("library", null)
-        if (library != null) {
-            event.put("library", "${library.getString("name")}/${library.getString("version")}")
-        }
-
-        val timestamp = event.getLong("timestamp")
-        event.put("time", timestamp)
-
-        val apiProperties = event.optionalJSONObject("api_properties", null)
-        if (apiProperties != null) {
-            if (apiProperties.has("androidADID")) {
-                val adid = apiProperties.getString("androidADID")
-                event.put("adid", adid)
+            val library = event.optionalJSONObject("library", null)
+            if (library != null) {
+                event.put("library", "${library.getString("name")}/${library.getString("version")}")
             }
-            if (apiProperties.has("android_app_set_id")) {
-                val appSetId = apiProperties.getString("android_app_set_id")
-                event.put("android_app_set_id", appSetId)
-            }
-        }
 
-        storage.writeEvent(event)
-        return rowId
+            val timestamp = event.getLong("timestamp")
+            event.put("time", timestamp)
+
+            val apiProperties = event.optionalJSONObject("api_properties", null)
+            if (apiProperties != null) {
+                if (apiProperties.has("androidADID")) {
+                    val adid = apiProperties.getString("androidADID")
+                    event.put("adid", adid)
+                }
+                if (apiProperties.has("android_app_set_id")) {
+                    val appSetId = apiProperties.getString("android_app_set_id")
+                    event.put("android_app_set_id", appSetId)
+                }
+            }
+
+            destinationStorage.writeEvent(event)
+            removeFromSource(rowId)
+        } catch (e: Exception) {
+            LogcatLogger.logger.error(
+                "event migration failed: ${e.message}"
+            )
+        }
     }
 }
