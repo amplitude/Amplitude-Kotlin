@@ -23,7 +23,6 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -53,11 +52,6 @@ class AmplitudeSessionTest {
             identityStorageProvider = IMIdentityStorageProvider()
         )
         IdentityContainer.getInstance(configuration)
-    }
-
-    @AfterEach
-    fun tearDown() {
-        Thread.sleep(200)
     }
 
     private fun setDispatcher(amplitude: Amplitude, testScheduler: TestCoroutineScheduler) {

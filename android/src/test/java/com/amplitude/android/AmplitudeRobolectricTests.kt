@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.ConsoleLoggerProvider
+import com.amplitude.id.IMIdentityStorageProvider
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.spyk
@@ -36,7 +37,6 @@ class AmplitudeRobolectricTests {
 
     @After
     fun tearDown() {
-        Thread.sleep(200)
         tempDir.destroy()
     }
 
@@ -72,6 +72,7 @@ class AmplitudeRobolectricTests {
             apiKey = "api-key",
             context = context!!,
             instanceName = "testInstance",
+            identityStorageProvider = IMIdentityStorageProvider(),
             loggerProvider = ConsoleLoggerProvider(),
             optOut = optOut ?: false,
             minTimeBetweenSessionsMillis = minTimeBetweenSessionsMillis

@@ -56,7 +56,6 @@ class IdentifyInterceptorTest {
 
     @After
     fun shutdown() {
-        Thread.sleep(200)
         server.shutdown()
     }
 
