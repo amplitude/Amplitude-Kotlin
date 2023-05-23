@@ -71,7 +71,7 @@ class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper
     private fun handleIfCursorRowTooLargeException(e: java.lang.IllegalStateException) {
         val message = e.message
         if (!message.isNullOrEmpty() && message.contains("Couldn't read") && message.contains("CursorWindow")) {
-            delete()
+            closeDb()
         } else {
             throw e
         }
@@ -86,7 +86,7 @@ class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper
         }
     }
 
-    private fun delete() {
+    private fun closeDb() {
         try {
             close()
         } catch (e: Exception) {
@@ -143,12 +143,12 @@ class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper
             LogcatLogger.logger.error(
                 "read events from $table failed: ${e.message}"
             )
-            delete()
+            closeDb()
         } catch (e: StackOverflowError) {
             LogcatLogger.logger.error(
                 "read events from $table failed: ${e.message}"
             )
-            delete()
+            closeDb()
         } catch (e: IllegalStateException) { // put before Runtime since IllegalState extends
             handleIfCursorRowTooLargeException(e)
         } catch (e: RuntimeException) {
@@ -190,12 +190,12 @@ class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper
             LogcatLogger.logger.error(
                 "remove events from $table failed: ${e.message}"
             )
-            delete()
+            closeDb()
         } catch (e: StackOverflowError) {
             LogcatLogger.logger.error(
                 "remove events from $table failed: ${e.message}"
             )
-            delete()
+            closeDb()
         } finally {
             close()
         }
@@ -239,13 +239,13 @@ class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper
                 "getValue from $table failed: ${e.message}"
             )
             // Hard to recover from SQLiteExceptions, just start fresh
-            delete()
+            closeDb()
         } catch (e: StackOverflowError) {
             LogcatLogger.logger.error(
                 "getValue from $table failed: ${e.message}"
             )
             // potential stack overflow error when getting database on custom Android versions
-            delete()
+            closeDb()
         } catch (e: IllegalStateException) { // put before Runtime since IllegalState extends
             // cursor window row too big exception
             handleIfCursorRowTooLargeException(e)
@@ -281,12 +281,12 @@ class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper
             LogcatLogger.logger.error(
                 "remove value from $table failed: ${e.message}"
             )
-            delete()
+            closeDb()
         } catch (e: StackOverflowError) {
             LogcatLogger.logger.error(
                 "remove value from $table failed: ${e.message}"
             )
-            delete()
+            closeDb()
         } finally {
             close()
         }
@@ -296,11 +296,19 @@ class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper
 class CursorWindowAllocationException(description: String?) :
     java.lang.RuntimeException(description)
 
-class DatabaseStorageProvider {
+object DatabaseStorageProvider {
+    private val instances: MutableMap<String, DatabaseStorage> = mutableMapOf()
+
     fun getStorage(amplitude: Amplitude): DatabaseStorage {
         val configuration = amplitude.configuration as com.amplitude.android.Configuration
+        val databaseName = getDatabaseName(configuration.instanceName)
+        var storage = instances[databaseName]
+        if (storage == null) {
+            storage = DatabaseStorage(configuration.context, databaseName)
+            instances[databaseName] = storage
+        }
 
-        return DatabaseStorage(configuration.context, getDatabaseName(configuration.instanceName))
+        return storage
     }
 
     private fun getDatabaseName(instanceName: String?): String {

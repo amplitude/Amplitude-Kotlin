@@ -10,7 +10,6 @@ import com.amplitude.core.ServerZone
 import com.amplitude.core.StorageProvider
 import com.amplitude.core.events.IngestionMetadata
 import com.amplitude.core.events.Plan
-import com.amplitude.core.platform.Initializer
 import com.amplitude.id.FileIdentityStorageProvider
 import com.amplitude.id.IdentityStorageProvider
 
@@ -44,8 +43,8 @@ open class Configuration @JvmOverloads constructor(
     override var identifyBatchIntervalMillis: Long = IDENTIFY_BATCH_INTERVAL_MILLIS,
     override var identifyInterceptStorageProvider: StorageProvider = AndroidStorageProvider(),
     override var identityStorageProvider: IdentityStorageProvider = FileIdentityStorageProvider(),
-    initializers: List<Initializer>? = null
-) : Configuration(apiKey, flushQueueSize, flushIntervalMillis, instanceName, optOut, storageProvider, loggerProvider, minIdLength, partnerId, callback, flushMaxRetries, useBatch, serverZone, serverUrl, plan, ingestionMetadata, identifyBatchIntervalMillis, identifyInterceptStorageProvider, identityStorageProvider, initializers) {
+    val migrateLegacyData: Boolean = false,
+) : Configuration(apiKey, flushQueueSize, flushIntervalMillis, instanceName, optOut, storageProvider, loggerProvider, minIdLength, partnerId, callback, flushMaxRetries, useBatch, serverZone, serverUrl, plan, ingestionMetadata, identifyBatchIntervalMillis, identifyInterceptStorageProvider, identityStorageProvider) {
     companion object {
         const val MIN_TIME_BETWEEN_SESSIONS_MILLIS: Long = 300000
     }

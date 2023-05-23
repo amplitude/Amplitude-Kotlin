@@ -42,20 +42,18 @@ class RemnantDataMigrationTest {
             copyStream(inputStream, dbPath)
         }
 
-        val migration = RemnantDataMigration()
-
         val amplitude = Amplitude(
             Configuration(
                 "test-api-key",
                 context,
                 instanceName = instanceName,
-                initializers = listOf(migration)
+                migrateLegacyData = true,
             )
         )
 
         // Check migrated data after RemnantEventsMigrationPlugin
         runBlocking {
-            amplitude.build().await()
+            amplitude.isBuilt.await()
 
             val identity = amplitude.idContainer.identityManager.getIdentity()
             if (inputStream != null) {
@@ -122,7 +120,7 @@ class RemnantDataMigrationTest {
         }
 
         // Check legacy sqlite data are cleaned
-        val databaseStorage = migration.databaseStorage
+        val databaseStorage = DatabaseStorageProvider.getStorage(amplitude)
         Assertions.assertEquals(0, databaseStorage.readEventsContent().size)
         Assertions.assertEquals(0, databaseStorage.readIdentifiesContent().size)
         Assertions.assertEquals(0, databaseStorage.readInterceptedIdentifiesContent().size)

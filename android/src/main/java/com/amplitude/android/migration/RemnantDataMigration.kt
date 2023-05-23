@@ -3,21 +3,21 @@ package com.amplitude.android.migration
 import com.amplitude.common.android.LogcatLogger
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Storage
-import com.amplitude.core.platform.Initializer
 import com.amplitude.core.utilities.optionalJSONObject
-import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 
 /**
  * When switching the SDK from previous version to this version, remnant data might remain unsent in sqlite.
- * This plugin:
+ * This migration:
  *      1. reads device/user id, events, identifies from sqlite tables
  *      2. converts the events and identifies to JsonObjects
  *      3. saves the device/user id, converted events and identifies to current storage
  *      4. deletes data from sqlite table
  */
 
-class RemnantDataMigration : Initializer {
+class RemnantDataMigration(
+    val amplitude: Amplitude,
+) {
     companion object {
         const val DEVICE_ID_KEY = "device_id"
         const val USER_ID_KEY = "user_id"
@@ -26,25 +26,21 @@ class RemnantDataMigration : Initializer {
         const val PREVIOUS_SESSION_ID_KEY = "previous_session_id"
     }
 
-    lateinit var amplitude: Amplitude
     lateinit var databaseStorage: DatabaseStorage
 
-    override fun execute(amplitude: Amplitude) {
-        this.amplitude = amplitude
-        runBlocking {
-            databaseStorage = DatabaseStorageProvider().getStorage(amplitude)
+    suspend fun execute() {
+        databaseStorage = DatabaseStorageProvider.getStorage(amplitude)
 
-            val firstRunSinceUpgrade = amplitude.storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLongOrNull() == null
+        val firstRunSinceUpgrade = amplitude.storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLongOrNull() == null
 
-            moveDeviceAndUserId()
-            moveSessionData()
+        moveDeviceAndUserId()
+        moveSessionData()
 
-            if (firstRunSinceUpgrade) {
-                moveInterceptedIdentifies()
-                moveIdentifies()
-            }
-            moveEvents()
+        if (firstRunSinceUpgrade) {
+            moveInterceptedIdentifies()
+            moveIdentifies()
         }
+        moveEvents()
     }
 
     private fun moveDeviceAndUserId() {

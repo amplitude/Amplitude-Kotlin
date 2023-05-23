@@ -3,7 +3,6 @@ package com.amplitude.core
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.IngestionMetadata
 import com.amplitude.core.events.Plan
-import com.amplitude.core.platform.Initializer
 import com.amplitude.core.utilities.ConsoleLoggerProvider
 import com.amplitude.core.utilities.InMemoryStorageProvider
 import com.amplitude.id.IMIdentityStorageProvider
@@ -31,7 +30,6 @@ open class Configuration @JvmOverloads constructor(
     open var identifyBatchIntervalMillis: Long = IDENTIFY_BATCH_INTERVAL_MILLIS,
     open var identifyInterceptStorageProvider: StorageProvider = InMemoryStorageProvider(),
     open var identityStorageProvider: IdentityStorageProvider = IMIdentityStorageProvider(),
-    val initializers: List<Initializer>? = null
 ) {
 
     companion object {
