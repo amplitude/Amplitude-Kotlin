@@ -32,10 +32,15 @@ class RemnantDataMigrationTest {
         checkLegacyDataMigration("dummy.sqlite", 0)
     }
 
-    private fun checkLegacyDataMigration(legacyDbName: String, dbVersion: Int) {
+    @Test
+    fun `no data should be migrated if migrateLegacyData=false`() {
+        checkLegacyDataMigration("legacy_v4.sqlite", 4, false)
+    }
+
+    private fun checkLegacyDataMigration(legacyDbName: String, dbVersion: Int, migrateLegacyData: Boolean = true) {
         val context = ApplicationProvider.getApplicationContext<Context>()
 
-        val instanceName = "legacy_v$dbVersion"
+        val instanceName = "legacy_v${dbVersion}_$migrateLegacyData"
         val dbPath = context.getDatabasePath("com.amplitude.api_$instanceName")
         val inputStream = javaClass.classLoader?.getResourceAsStream(legacyDbName)
         if (inputStream != null) {
@@ -47,7 +52,7 @@ class RemnantDataMigrationTest {
                 "test-api-key",
                 context,
                 instanceName = instanceName,
-                migrateLegacyData = true,
+                migrateLegacyData = migrateLegacyData,
             )
         )
 
@@ -56,22 +61,29 @@ class RemnantDataMigrationTest {
             amplitude.isBuilt.await()
 
             val identity = amplitude.idContainer.identityManager.getIdentity()
-            if (inputStream != null) {
+            if (inputStream != null && migrateLegacyData) {
                 Assertions.assertEquals("22833898-c487-4536-b213-40f207abdce0R", identity.deviceId)
                 Assertions.assertEquals("android-kotlin-sample-user-legacy", identity.userId)
+            } else {
+                Assertions.assertNotEquals("22833898-c487-4536-b213-40f207abdce0R", identity.deviceId)
+                Assertions.assertNotEquals("android-kotlin-sample-user-legacy", identity.userId)
             }
 
             amplitude.storage.rollover()
             amplitude.identifyInterceptStorage.rollover()
 
-            if (inputStream != null) {
+            if (inputStream != null && migrateLegacyData) {
                 Assertions.assertEquals(1684219150343, amplitude.storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLongOrNull())
                 Assertions.assertEquals(1684219150344, amplitude.storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLongOrNull())
                 Assertions.assertEquals(2, amplitude.storage.read(Storage.Constants.LAST_EVENT_ID)?.toLongOrNull())
+            } else {
+                Assertions.assertNull(amplitude.storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLongOrNull())
+                Assertions.assertNull(amplitude.storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLongOrNull())
+                Assertions.assertNull(amplitude.storage.read(Storage.Constants.LAST_EVENT_ID)?.toLongOrNull())
             }
 
             val eventsData = amplitude.storage.readEventsContent()
-            if (inputStream != null) {
+            if (inputStream != null && migrateLegacyData) {
                 val jsonEvents = JSONArray()
                 for (eventsPath in eventsData) {
                     val eventsString = amplitude.storage.getEventsString(eventsPath)
@@ -98,7 +110,7 @@ class RemnantDataMigrationTest {
             }
 
             val interceptedIdentifiesData = amplitude.identifyInterceptStorage.readEventsContent()
-            if (inputStream != null && dbVersion >= 4) {
+            if (inputStream != null && dbVersion >= 4 && migrateLegacyData) {
                 val jsonInterceptedIdentifies = JSONArray()
                 for (eventsPath in interceptedIdentifiesData) {
                     val eventsString = amplitude.storage.getEventsString(eventsPath)
@@ -121,9 +133,15 @@ class RemnantDataMigrationTest {
 
         // Check legacy sqlite data are cleaned
         val databaseStorage = DatabaseStorageProvider.getStorage(amplitude)
-        Assertions.assertEquals(0, databaseStorage.readEventsContent().size)
-        Assertions.assertEquals(0, databaseStorage.readIdentifiesContent().size)
-        Assertions.assertEquals(0, databaseStorage.readInterceptedIdentifiesContent().size)
+        if (migrateLegacyData) {
+            Assertions.assertEquals(0, databaseStorage.readEventsContent().size)
+            Assertions.assertEquals(0, databaseStorage.readIdentifiesContent().size)
+            Assertions.assertEquals(0, databaseStorage.readInterceptedIdentifiesContent().size)
+        } else {
+            Assertions.assertEquals(2, databaseStorage.readEventsContent().size)
+            Assertions.assertEquals(2, databaseStorage.readIdentifiesContent().size)
+            Assertions.assertEquals(2, databaseStorage.readInterceptedIdentifiesContent().size)
+        }
 
         // User/device id should not be cleaned.
         if (inputStream != null) {
