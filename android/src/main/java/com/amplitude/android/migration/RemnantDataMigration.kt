@@ -4,6 +4,7 @@ import com.amplitude.common.android.LogcatLogger
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Storage
 import com.amplitude.core.utilities.optionalJSONObject
+import com.amplitude.core.utilities.optionalString
 import org.json.JSONObject
 
 /**
@@ -153,6 +154,12 @@ class RemnantDataMigration(
 
             val timestamp = event.getLong("timestamp")
             event.put("time", timestamp)
+            event.remove("timestamp")
+
+            event.optionalString("uuid", null) ?.let { uuid ->
+                event.put("insert_id", uuid)
+                event.remove("uuid")
+            }
 
             val apiProperties = event.optionalJSONObject("api_properties", null)
             if (apiProperties != null) {
