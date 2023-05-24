@@ -95,7 +95,7 @@ open class Amplitude internal constructor(
         }
     }
 
-    private fun build(): Deferred<Boolean> {
+    protected open fun build(): Deferred<Boolean> {
         val amplitude = this
 
         val built = amplitudeScope.async(amplitudeDispatcher, CoroutineStart.LAZY) {
