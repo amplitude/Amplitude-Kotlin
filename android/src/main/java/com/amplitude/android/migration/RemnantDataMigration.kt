@@ -3,8 +3,7 @@ package com.amplitude.android.migration
 import com.amplitude.common.android.LogcatLogger
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Storage
-import com.amplitude.core.utilities.optionalJSONObject
-import com.amplitude.core.utilities.optionalString
+import com.amplitude.core.utilities.toBaseEvent
 import org.json.JSONObject
 
 /**
@@ -143,42 +142,59 @@ class RemnantDataMigration(
 
     private suspend fun moveEvent(event: JSONObject, destinationStorage: Storage, removeFromSource: (rowId: Long) -> Unit) {
         try {
-            val rowId = event.getLong(DatabaseConstants.ROW_ID_FIELD)
-            event.put("event_id", rowId)
-            event.remove(DatabaseConstants.ROW_ID_FIELD)
-
-            val library = event.optionalJSONObject("library", null)
-            if (library != null) {
-                event.put("library", "${library.getString("name")}/${library.getString("version")}")
-            }
-
-            val timestamp = event.getLong("timestamp")
-            event.put("time", timestamp)
-            event.remove("timestamp")
-
-            event.optionalString("uuid", null) ?.let { uuid ->
-                event.put("insert_id", uuid)
-                event.remove("uuid")
-            }
-
-            val apiProperties = event.optionalJSONObject("api_properties", null)
-            if (apiProperties != null) {
-                if (apiProperties.has("androidADID")) {
-                    val adid = apiProperties.getString("androidADID")
-                    event.put("adid", adid)
-                }
-                if (apiProperties.has("android_app_set_id")) {
-                    val appSetId = apiProperties.getString("android_app_set_id")
-                    event.put("android_app_set_id", appSetId)
-                }
-            }
-
-            destinationStorage.writeEvent(event)
+            val rowId = convertLegacyEvent(event)
+            destinationStorage.writeEvent(event.toBaseEvent())
             removeFromSource(rowId)
         } catch (e: Exception) {
             LogcatLogger.logger.error(
                 "event migration failed: ${e.message}"
             )
         }
+    }
+
+    private fun convertLegacyEvent(event: JSONObject): Long {
+        val rowId = event.getLong(DatabaseConstants.ROW_ID_FIELD)
+        event.put("event_id", rowId)
+
+        event.optJSONObject("library") ?.let { library ->
+            event.put("library", "${library.getString("name")}/${library.getString("version")}")
+        }
+
+        event.opt("timestamp") ?.let { timestamp ->
+            event.put("time", timestamp)
+        }
+
+        event.opt("uuid") ?.let { uuid ->
+            event.put("insert_id", uuid)
+        }
+
+        event.optJSONObject("api_properties") ?.let { apiProperties ->
+            apiProperties.opt("androidADID") ?.let { event.put("adid", it) }
+            apiProperties.opt("android_app_set_id") ?.let { event.put("android_app_set_id", it) }
+
+            apiProperties.opt("productId") ?.let { event.put("productId", it) }
+            apiProperties.opt("quantity") ?.let { event.put("quantity", it) }
+            apiProperties.opt("price") ?.let { event.put("price", it) }
+
+            apiProperties.optJSONObject("location") ?.let { location ->
+                location.opt("lat") ?.let { event.put("location_lat", it) }
+                location.opt("lng") ?.let { event.put("location_lng", it) }
+            }
+        }
+
+        event.opt("\$productId") ?.let {
+            event.put("productId", it)
+        }
+        event.opt("\$quantity") ?.let {
+            event.put("quantity", it)
+        }
+        event.opt("\$price") ?.let {
+            event.put("price", it)
+        }
+        event.opt("\$revenueType") ?.let {
+            event.put("revenueType", it)
+        }
+
+        return rowId
     }
 }

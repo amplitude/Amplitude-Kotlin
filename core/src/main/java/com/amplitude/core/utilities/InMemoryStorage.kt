@@ -8,7 +8,6 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import org.json.JSONObject
 import java.util.concurrent.ConcurrentHashMap
 
 class InMemoryStorage : Storage {
@@ -20,12 +19,6 @@ class InMemoryStorage : Storage {
     override suspend fun writeEvent(event: BaseEvent) {
         synchronized(eventsListLock) {
             eventsBuffer.add(event)
-        }
-    }
-
-    override suspend fun writeEvent(event: JSONObject) {
-        synchronized(eventsListLock) {
-            eventsBuffer.add(event.toBaseEvent())
         }
     }
 

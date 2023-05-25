@@ -57,16 +57,18 @@ class RemnantDataMigrationTest {
         )
 
         // Check migrated data after RemnantEventsMigrationPlugin
+        val deviceId = "22833898-c487-4536-b213-40f207abdce0R"
+        val userId = "android-kotlin-sample-user-legacy"
         runBlocking {
             amplitude.isBuilt.await()
 
             val identity = amplitude.idContainer.identityManager.getIdentity()
             if (inputStream != null && migrateLegacyData) {
-                Assertions.assertEquals("22833898-c487-4536-b213-40f207abdce0R", identity.deviceId)
-                Assertions.assertEquals("android-kotlin-sample-user-legacy", identity.userId)
+                Assertions.assertEquals(deviceId, identity.deviceId)
+                Assertions.assertEquals(userId, identity.userId)
             } else {
-                Assertions.assertNotEquals("22833898-c487-4536-b213-40f207abdce0R", identity.deviceId)
-                Assertions.assertNotEquals("android-kotlin-sample-user-legacy", identity.userId)
+                Assertions.assertNotEquals(deviceId, identity.deviceId)
+                Assertions.assertNotEquals(userId, identity.userId)
             }
 
             amplitude.storage.rollover()
@@ -97,18 +99,30 @@ class RemnantDataMigrationTest {
                 Assertions.assertEquals("\$identify", event1.getString("event_type"))
                 Assertions.assertEquals(1684219150343, event1.getLong("time"))
                 Assertions.assertEquals("be09ecba-83f7-444a-aba0-fe1f529a3716", event1.getString("insert_id"))
+                Assertions.assertEquals("amplitude-android/2.39.3-SNAPSHOT", event1.getString("library"))
+                Assertions.assertEquals(deviceId, event1.getString("device_id"))
+                Assertions.assertEquals(userId, event1.getString("user_id"))
                 val event2 = jsonEvents.getJSONObject(1)
                 Assertions.assertEquals("\$identify", event2.getString("event_type"))
                 Assertions.assertEquals(1684219150344, event2.getLong("time"))
                 Assertions.assertEquals("0894387e-e923-423b-9feb-086ba8cb2cfa", event2.getString("insert_id"))
+                Assertions.assertEquals("amplitude-android/2.39.3-SNAPSHOT", event2.getString("library"))
+                Assertions.assertEquals(deviceId, event2.getString("device_id"))
+                Assertions.assertEquals(userId, event2.getString("user_id"))
                 val event3 = jsonEvents.getJSONObject(2)
                 Assertions.assertEquals("legacy event 1", event3.getString("event_type"))
                 Assertions.assertEquals(1684219150354, event3.getLong("time"))
                 Assertions.assertEquals("d6eff10b-9cd4-45d7-85cb-c81cb6cb8b2e", event3.getString("insert_id"))
+                Assertions.assertEquals("amplitude-android/2.39.3-SNAPSHOT", event3.getString("library"))
+                Assertions.assertEquals(deviceId, event3.getString("device_id"))
+                Assertions.assertEquals(userId, event3.getString("user_id"))
                 val event4 = jsonEvents.getJSONObject(3)
                 Assertions.assertEquals("legacy event 2", event4.getString("event_type"))
                 Assertions.assertEquals(1684219150355, event4.getLong("time"))
                 Assertions.assertEquals("7b4c5c13-6fdc-4931-9ba1-e4efdf346ee0", event4.getString("insert_id"))
+                Assertions.assertEquals("amplitude-android/2.39.3-SNAPSHOT", event4.getString("library"))
+                Assertions.assertEquals(deviceId, event4.getString("device_id"))
+                Assertions.assertEquals(userId, event4.getString("user_id"))
             } else {
                 Assertions.assertEquals(0, eventsData.size)
             }
@@ -128,10 +142,16 @@ class RemnantDataMigrationTest {
                 Assertions.assertEquals("\$identify", intercepted1.getString("event_type"))
                 Assertions.assertEquals(1684219150358, intercepted1.getLong("time"))
                 Assertions.assertEquals("1a14d057-8a12-40bb-8217-2d62dd08a525", intercepted1.getString("insert_id"))
+                Assertions.assertEquals("amplitude-android/2.39.3-SNAPSHOT", intercepted1.getString("library"))
+                Assertions.assertEquals(deviceId, intercepted1.getString("device_id"))
+                Assertions.assertEquals(userId, intercepted1.getString("user_id"))
                 val intercepted2 = jsonInterceptedIdentifies.getJSONObject(1)
                 Assertions.assertEquals("\$identify", intercepted2.getString("event_type"))
                 Assertions.assertEquals(1684219150359, intercepted2.getLong("time"))
                 Assertions.assertEquals("b115a299-4cc6-495b-8e4e-c2ce6f244be9", intercepted2.getString("insert_id"))
+                Assertions.assertEquals("amplitude-android/2.39.3-SNAPSHOT", intercepted2.getString("library"))
+                Assertions.assertEquals(deviceId, intercepted2.getString("device_id"))
+                Assertions.assertEquals(userId, intercepted2.getString("user_id"))
             } else {
                 Assertions.assertEquals(0, interceptedIdentifiesData.size)
             }
@@ -151,8 +171,8 @@ class RemnantDataMigrationTest {
 
         // User/device id should not be cleaned.
         if (inputStream != null) {
-            Assertions.assertEquals("22833898-c487-4536-b213-40f207abdce0R", databaseStorage.getValue(RemnantDataMigration.DEVICE_ID_KEY))
-            Assertions.assertEquals("android-kotlin-sample-user-legacy", databaseStorage.getValue(RemnantDataMigration.USER_ID_KEY))
+            Assertions.assertEquals(deviceId, databaseStorage.getValue(RemnantDataMigration.DEVICE_ID_KEY))
+            Assertions.assertEquals(userId, databaseStorage.getValue(RemnantDataMigration.USER_ID_KEY))
         } else {
             Assertions.assertNull(databaseStorage.getValue(RemnantDataMigration.DEVICE_ID_KEY))
             Assertions.assertNull(databaseStorage.getValue(RemnantDataMigration.USER_ID_KEY))

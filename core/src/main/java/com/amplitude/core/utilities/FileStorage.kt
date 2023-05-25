@@ -12,7 +12,6 @@ import com.amplitude.id.utilities.PropertiesFile
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import org.json.JSONArray
-import org.json.JSONObject
 import java.io.File
 
 class FileStorage(
@@ -43,10 +42,6 @@ class FileStorage(
                 eventCallbacksMap.put(it, callback)
             }
         }
-    }
-
-    override suspend fun writeEvent(event: JSONObject) {
-        eventsFile.storeEvent(event.toString())
     }
 
     override suspend fun write(key: Storage.Constants, value: String) {
