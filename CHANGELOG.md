@@ -1,3 +1,15 @@
+# [1.9.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.8.2...v1.9.0) (2023-05-26)
+
+
+### Bug Fixes
+
+* event options should override event properties, refresh last event time on exit foreground ([#122](https://github.com/amplitude/Amplitude-Kotlin/issues/122)) ([652ea42](https://github.com/amplitude/Amplitude-Kotlin/commit/652ea42bac124e079865c3ffffcf02015f9b6765))
+
+
+### Features
+
+* add remnant events migration plugin ([#40](https://github.com/amplitude/Amplitude-Kotlin/issues/40)) ([6225f5d](https://github.com/amplitude/Amplitude-Kotlin/commit/6225f5d855ed439f154b4c297461b763337f316b))
+
 ## [1.8.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.8.1...v1.8.2) (2023-04-24)
 
 
