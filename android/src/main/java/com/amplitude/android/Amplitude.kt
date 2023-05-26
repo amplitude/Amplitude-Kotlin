@@ -1,6 +1,7 @@
 package com.amplitude.android
 
 import android.content.Context
+import com.amplitude.android.migration.RemnantDataMigration
 import com.amplitude.android.plugins.AnalyticsConnectorIdentityPlugin
 import com.amplitude.android.plugins.AnalyticsConnectorPlugin
 import com.amplitude.android.plugins.AndroidContextPlugin
@@ -9,15 +10,8 @@ import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
-import com.amplitude.core.utilities.AnalyticsIdentityListener
 import com.amplitude.core.utilities.FileStorage
-import com.amplitude.id.FileIdentityStorageProvider
 import com.amplitude.id.IdentityConfiguration
-import com.amplitude.id.IdentityContainer
-import com.amplitude.id.IdentityUpdateType
-import kotlinx.coroutines.CoroutineStart
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 
 open class Amplitude(
@@ -33,7 +27,6 @@ open class Amplitude(
         }
 
     init {
-        (timeline as Timeline).start()
         registerShutdownHook()
     }
 
@@ -41,37 +34,34 @@ open class Amplitude(
         return Timeline().also { it.amplitude = this }
     }
 
-    override fun build(): Deferred<Boolean> {
-        val client = this
+    override fun createIdentityConfiguration(): IdentityConfiguration {
+        val configuration = configuration as Configuration
+        val storageDirectory = configuration.context.getDir("${FileStorage.STORAGE_PREFIX}-${configuration.instanceName}", Context.MODE_PRIVATE)
 
-        val built = amplitudeScope.async(amplitudeDispatcher, CoroutineStart.LAZY) {
-            storage = configuration.storageProvider.getStorage(client)
+        return IdentityConfiguration(
+            instanceName = configuration.instanceName,
+            apiKey = configuration.apiKey,
+            identityStorageProvider = configuration.identityStorageProvider,
+            storageDirectory = storageDirectory,
+            logger = configuration.loggerProvider.getLogger(this)
+        )
+    }
 
-            val storageDirectory = (configuration as Configuration).context.getDir("${FileStorage.STORAGE_PREFIX}-${configuration.instanceName}", Context.MODE_PRIVATE)
-            idContainer = IdentityContainer.getInstance(
-                IdentityConfiguration(
-                    instanceName = configuration.instanceName,
-                    apiKey = configuration.apiKey,
-                    identityStorageProvider = FileIdentityStorageProvider(),
-                    storageDirectory = storageDirectory,
-                    logger = configuration.loggerProvider.getLogger(client)
-                )
-            )
-            val listener = AnalyticsIdentityListener(store)
-            idContainer.identityManager.addIdentityListener(listener)
-            if (idContainer.identityManager.isInitialized()) {
-                listener.onIdentityChanged(idContainer.identityManager.getIdentity(), IdentityUpdateType.Initialized)
-            }
-            androidContextPlugin = AndroidContextPlugin()
-            add(androidContextPlugin)
-            add(GetAmpliExtrasPlugin())
-            add(AndroidLifecyclePlugin())
-            add(AnalyticsConnectorIdentityPlugin())
-            add(AnalyticsConnectorPlugin())
-            add(AmplitudeDestination())
-            true
+    override suspend fun buildInternal(identityConfiguration: IdentityConfiguration) {
+        if ((this.configuration as Configuration).migrateLegacyData) {
+            RemnantDataMigration(this).execute()
         }
-        return built
+        this.createIdentityContainer(identityConfiguration)
+
+        androidContextPlugin = AndroidContextPlugin()
+        add(androidContextPlugin)
+        add(GetAmpliExtrasPlugin())
+        add(AndroidLifecyclePlugin())
+        add(AnalyticsConnectorIdentityPlugin())
+        add(AnalyticsConnectorPlugin())
+        add(AmplitudeDestination())
+
+        (timeline as Timeline).start()
     }
 
     /**

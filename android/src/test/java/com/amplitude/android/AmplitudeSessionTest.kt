@@ -73,7 +73,8 @@ class AmplitudeSessionTest {
             storageProvider = storageProvider ?: InMemoryStorageProvider(),
             trackingSessionEvents = true,
             loggerProvider = ConsoleLoggerProvider(),
-            identifyInterceptStorageProvider = InMemoryStorageProvider()
+            identifyInterceptStorageProvider = InMemoryStorageProvider(),
+            identityStorageProvider = IMIdentityStorageProvider()
         )
     }
 

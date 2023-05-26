@@ -49,7 +49,7 @@ open class Plan @JvmOverloads constructor(
         const val AMP_PLAN_VERSION = "version"
         const val AMP_PLAN_VERSION_ID = "versionId"
 
-        internal fun fromJSONObject(jsonObject: JSONObject): Plan {
+        fun fromJSONObject(jsonObject: JSONObject): Plan {
             val branch = jsonObject.optString(AMP_PLAN_BRANCH, null)
             val source = jsonObject.optString(AMP_PLAN_SOURCE, null)
             val version = jsonObject.optString(AMP_PLAN_VERSION, null)

@@ -7,6 +7,7 @@ import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.toEvents
+import com.amplitude.id.IMIdentityStorageProvider
 import io.mockk.every
 import io.mockk.mockkConstructor
 import io.mockk.mockkStatic
@@ -39,13 +40,18 @@ class ResponseHandlerTest {
         mockContextProvider()
 
         val apiKey = "test-api-key"
-        amplitude = Amplitude(apiKey, context) {
-            this.serverUrl = server.url("/").toString()
-            this.trackingSessionEvents = false
-            this.flushIntervalMillis = 150
-            this.identifyBatchIntervalMillis = 1000
-            this.flushMaxRetries = 3
-        }
+        amplitude = Amplitude(
+            Configuration(
+                apiKey = apiKey,
+                context = context,
+                serverUrl = server.url("/").toString(),
+                trackingSessionEvents = false,
+                flushIntervalMillis = 150,
+                identifyBatchIntervalMillis = 1000,
+                flushMaxRetries = 3,
+                identityStorageProvider = IMIdentityStorageProvider(),
+            )
+        )
     }
 
     @After

@@ -5,6 +5,7 @@ import com.amplitude.id.utilities.createDirectory
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
+import java.io.BufferedReader
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Collections
@@ -133,7 +134,7 @@ class EventsFileManager(
             return ""
         }
         filePathSet.add(filePath)
-        File(filePath).bufferedReader().use {
+        File(filePath).bufferedReader().use<BufferedReader, String> {
             return it.readText()
         }
     }

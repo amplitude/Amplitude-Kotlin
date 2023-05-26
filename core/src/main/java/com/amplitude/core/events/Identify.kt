@@ -546,7 +546,7 @@ open class Identify() {
         return this
     }
 
-    private fun setUserProperty(operation: IdentifyOperation, property: String, value: Any) {
+    private fun setUserProperty(operation: IdentifyOperation, property: String, value: Any?) {
         if (property.isEmpty()) {
             ConsoleLogger.logger.warn("Attempting to perform operation ${operation.operationType} with a null or empty string property, ignoring")
             return

@@ -5,6 +5,8 @@ import com.amplitude.core.events.IngestionMetadata
 import com.amplitude.core.events.Plan
 import com.amplitude.core.utilities.ConsoleLoggerProvider
 import com.amplitude.core.utilities.InMemoryStorageProvider
+import com.amplitude.id.IMIdentityStorageProvider
+import com.amplitude.id.IdentityStorageProvider
 
 typealias EventCallBack = (BaseEvent, status: Int, message: String) -> Unit
 
@@ -26,7 +28,8 @@ open class Configuration @JvmOverloads constructor(
     open var plan: Plan? = null,
     open var ingestionMetadata: IngestionMetadata? = null,
     open var identifyBatchIntervalMillis: Long = IDENTIFY_BATCH_INTERVAL_MILLIS,
-    open var identifyInterceptStorageProvider: StorageProvider = InMemoryStorageProvider()
+    open var identifyInterceptStorageProvider: StorageProvider = InMemoryStorageProvider(),
+    open var identityStorageProvider: IdentityStorageProvider = IMIdentityStorageProvider(),
 ) {
 
     companion object {

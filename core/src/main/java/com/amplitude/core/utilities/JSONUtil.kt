@@ -76,7 +76,7 @@ object JSONUtil {
         return eventsArray.toString()
     }
 
-    private fun truncate(obj: JSONObject?): JSONObject? {
+    private fun truncate(obj: JSONObject?): JSONObject {
         if (obj == null) {
             return JSONObject()
         }
@@ -108,7 +108,7 @@ object JSONUtil {
     }
 
     @Throws(JSONException::class)
-    fun truncate(array: JSONArray?): JSONArray? {
+    fun truncate(array: JSONArray?): JSONArray {
         if (array == null) {
             return JSONArray()
         }
@@ -125,7 +125,7 @@ object JSONUtil {
         return array
     }
 
-    private fun truncate(value: String): String? {
+    private fun truncate(value: String): String {
         return if (value.length <= Constants.MAX_STRING_LENGTH) value else value.substring(
             0,
             Constants.MAX_STRING_LENGTH
@@ -167,10 +167,10 @@ fun JSONObject.toBaseEvent(): BaseEvent {
     event.userId = this.optionalString("user_id", null)
     event.deviceId = this.optionalString("device_id", null)
     event.timestamp = if (this.has("time")) this.getLong("time") else null
-    event.eventProperties = this.optionalJSONObject("event_properties", null)?.let { it.toMapObj().toMutableMap() }
-    event.userProperties = this.optionalJSONObject("user_properties", null)?.let { it.toMapObj().toMutableMap() }
-    event.groups = this.optionalJSONObject("groups", null)?.let { it.toMapObj().toMutableMap() }
-    event.groupProperties = this.optionalJSONObject("group_properties", null)?.let { it.toMapObj().toMutableMap() }
+    event.eventProperties = this.optionalJSONObject("event_properties", null)?.toMapObj()?.toMutableMap()
+    event.userProperties = this.optionalJSONObject("user_properties", null)?.toMapObj()?.toMutableMap()
+    event.groups = this.optionalJSONObject("groups", null)?.toMapObj()?.toMutableMap()
+    event.groupProperties = this.optionalJSONObject("group_properties", null)?.toMapObj()?.toMutableMap()
     event.appVersion = this.optionalString("app_version", null)
     event.platform = this.optionalString("platform", null)
     event.osName = this.optionalString("os_name", null)
@@ -235,14 +235,14 @@ internal fun JSONObject.addValue(key: String, value: Any?) {
     }
 }
 
-inline fun JSONObject.optionalJSONObject(key: String, defaultValue: JSONObject?): JSONObject? {
+fun JSONObject.optionalJSONObject(key: String, defaultValue: JSONObject?): JSONObject? {
     if (this.has(key)) {
         return this.getJSONObject(key)
     }
     return defaultValue
 }
 
-inline fun JSONObject.optionalString(key: String, defaultValue: String?): String? {
+fun JSONObject.optionalString(key: String, defaultValue: String?): String? {
     if (this.has(key)) {
         return this.getString(key)
     }

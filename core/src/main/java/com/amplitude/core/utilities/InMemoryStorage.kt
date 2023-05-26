@@ -12,9 +12,9 @@ import java.util.concurrent.ConcurrentHashMap
 
 class InMemoryStorage : Storage {
 
-    val eventsBuffer: MutableList<BaseEvent> = mutableListOf()
-    val eventsListLock = Any()
-    val valuesMap = ConcurrentHashMap<String, String>()
+    private val eventsBuffer: MutableList<BaseEvent> = mutableListOf()
+    private val eventsListLock = Any()
+    private val valuesMap = ConcurrentHashMap<String, String>()
 
     override suspend fun writeEvent(event: BaseEvent) {
         synchronized(eventsListLock) {
@@ -36,7 +36,7 @@ class InMemoryStorage : Storage {
     override fun readEventsContent(): List<Any> {
         val eventsToSend: List<BaseEvent>
         synchronized(eventsListLock) {
-            eventsToSend = ArrayList(eventsBuffer)
+            eventsToSend = eventsBuffer.toList()
             eventsBuffer.clear()
         }
         // return List<List<BaseEvent>>

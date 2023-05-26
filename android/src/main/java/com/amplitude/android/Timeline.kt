@@ -21,8 +21,6 @@ class Timeline : Timeline() {
 
     internal fun start() {
         amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
-            amplitude.isBuilt.await()
-
             _sessionId.set(amplitude.storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLongOrNull() ?: -1)
             lastEventId = amplitude.storage.read(Storage.Constants.LAST_EVENT_ID)?.toLongOrNull() ?: 0
             lastEventTime = amplitude.storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLongOrNull() ?: -1

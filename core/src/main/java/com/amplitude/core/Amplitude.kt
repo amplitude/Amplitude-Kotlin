@@ -19,12 +19,13 @@ import com.amplitude.core.utilities.AnalyticsEventReceiver
 import com.amplitude.core.utilities.AnalyticsIdentityListener
 import com.amplitude.eventbridge.EventBridgeContainer
 import com.amplitude.eventbridge.EventChannel
-import com.amplitude.id.IMIdentityStorageProvider
 import com.amplitude.id.IdentityConfiguration
 import com.amplitude.id.IdentityContainer
+import com.amplitude.id.IdentityStorage
 import com.amplitude.id.IdentityUpdateType
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -49,15 +50,21 @@ open class Amplitude internal constructor(
 ) {
     val timeline: Timeline
     lateinit var storage: Storage
+        private set
+    lateinit var identifyInterceptStorage: Storage
+        private set
+    lateinit var identityStorage: IdentityStorage
+        private set
     val logger: Logger
-    protected lateinit var idContainer: IdentityContainer
+    lateinit var idContainer: IdentityContainer
+        private set
     val isBuilt: Deferred<Boolean>
 
     init {
         require(configuration.isValid()) { "invalid configuration" }
         timeline = this.createTimeline()
         logger = configuration.loggerProvider.getLogger(this)
-        isBuilt = build()
+        isBuilt = this.build()
         isBuilt.start()
     }
 
@@ -70,29 +77,45 @@ open class Amplitude internal constructor(
         return Timeline().also { it.amplitude = this }
     }
 
-    open fun build(): Deferred<Boolean> {
-        storage = configuration.storageProvider.getStorage(this)
-        idContainer = IdentityContainer.getInstance(
-            IdentityConfiguration(
-                instanceName = configuration.instanceName,
-                apiKey = configuration.apiKey,
-                identityStorageProvider = IMIdentityStorageProvider(),
-                logger = configuration.loggerProvider.getLogger(this)
-            )
+    protected open fun createIdentityConfiguration(): IdentityConfiguration {
+        return IdentityConfiguration(
+            instanceName = configuration.instanceName,
+            apiKey = configuration.apiKey,
+            identityStorageProvider = configuration.identityStorageProvider,
+            logger = logger
         )
+    }
+
+    protected fun createIdentityContainer(identityConfiguration: IdentityConfiguration) {
+        idContainer = IdentityContainer.getInstance(identityConfiguration)
         val listener = AnalyticsIdentityListener(store)
         idContainer.identityManager.addIdentityListener(listener)
         if (idContainer.identityManager.isInitialized()) {
             listener.onIdentityChanged(idContainer.identityManager.getIdentity(), IdentityUpdateType.Initialized)
         }
+    }
+
+    protected open fun build(): Deferred<Boolean> {
+        val amplitude = this
+
+        val built = amplitudeScope.async(amplitudeDispatcher, CoroutineStart.LAZY) {
+            storage = configuration.storageProvider.getStorage(amplitude)
+            identifyInterceptStorage = configuration.identifyInterceptStorageProvider.getStorage(amplitude, "amplitude-identify-intercept")
+            val identityConfiguration = createIdentityConfiguration()
+            identityStorage = configuration.identityStorageProvider.getIdentityStorage(identityConfiguration)
+
+            amplitude.buildInternal(identityConfiguration)
+            true
+        }
+        return built
+    }
+
+    protected open suspend fun buildInternal(identityConfiguration: IdentityConfiguration) {
+        createIdentityContainer(identityConfiguration)
         EventBridgeContainer.getInstance(configuration.instanceName).eventBridge.setEventReceiver(EventChannel.EVENT, AnalyticsEventReceiver(this))
         add(ContextPlugin())
         add(GetAmpliExtrasPlugin())
         add(AmplitudeDestination())
-
-        return amplitudeScope.async(amplitudeDispatcher) {
-            true
-        }
     }
 
     @Deprecated("Please use 'track' instead.", ReplaceWith("track"))
@@ -192,6 +215,15 @@ open class Amplitude internal constructor(
     }
 
     /**
+     * Get the user id.
+     *
+     * @return User id.
+     */
+    fun getUserId(): String? {
+        return if (this::idContainer.isInitialized) idContainer.identityManager.getIdentity().userId else null
+    }
+
+    /**
      * Sets a custom device id. <b>Note: only do this if you know what you are doing!</b>
      *
      * @param deviceId custom device id
@@ -203,6 +235,15 @@ open class Amplitude internal constructor(
             idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
         }
         return this
+    }
+
+    /**
+     * Get the device id.
+     *
+     * @return Device id.
+     */
+    fun getDeviceId(): String? {
+        return if (this::idContainer.isInitialized) idContainer.identityManager.getIdentity().deviceId else null
     }
 
     /**
