@@ -235,14 +235,14 @@ internal fun JSONObject.addValue(key: String, value: Any?) {
     }
 }
 
-inline fun JSONObject.optionalJSONObject(key: String, defaultValue: JSONObject?): JSONObject? {
+fun JSONObject.optionalJSONObject(key: String, defaultValue: JSONObject?): JSONObject? {
     if (this.has(key)) {
         return this.getJSONObject(key)
     }
     return defaultValue
 }
 
-inline fun JSONObject.optionalString(key: String, defaultValue: String?): String? {
+fun JSONObject.optionalString(key: String, defaultValue: String?): String? {
     if (this.has(key)) {
         return this.getString(key)
     }

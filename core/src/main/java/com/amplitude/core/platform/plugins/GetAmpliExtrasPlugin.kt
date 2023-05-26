@@ -21,8 +21,8 @@ class GetAmpliExtrasPlugin : Plugin {
         try {
             val ingestionMetadataMap = (ampliExtra as Map<String, Any>).get("ingestionMetadata") as Map<String, String>
             val ingestionMetadata = IngestionMetadata(
-                ingestionMetadataMap?.get("sourceName"),
-                ingestionMetadataMap?.get("sourceVersion")
+                ingestionMetadataMap["sourceName"],
+                ingestionMetadataMap["sourceVersion"]
             )
             event.ingestionMetadata = ingestionMetadata
         } finally {

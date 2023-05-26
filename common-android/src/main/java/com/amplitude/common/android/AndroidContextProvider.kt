@@ -27,7 +27,7 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
     ContextProvider {
     var isLocationListening = true
     private var cachedInfo: CachedInfo? = null
-        private get() {
+        get() {
             if (field == null) {
                 field = CachedInfo()
             }
@@ -125,7 +125,7 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
 
         // Failed to reverse geocode location
         private val countryFromLocation: String?
-            private get() {
+            get() {
                 if (!isLocationListening) {
                     return null
                 }
@@ -165,14 +165,14 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
 
         // Failed to get country from network
         private val countryFromNetwork: String?
-            private get() {
+            get() {
                 try {
                     val manager = context
                         .getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
                     if (manager.phoneType != TelephonyManager.PHONE_TYPE_CDMA) {
                         val country = manager.networkCountryIso
                         if (country != null) {
-                            return country.toUpperCase(Locale.US)
+                            return country.uppercase(Locale.US)
                         }
                     }
                 } catch (e: Exception) {
@@ -182,7 +182,7 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
             }
 
         private val locale: Locale
-            private get() {
+            get() {
                 val configuration = Resources.getSystem().configuration
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                     val localeList = configuration.locales
@@ -197,7 +197,7 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
             }
 
         private val countryFromLocale: String
-            private get() = locale.country
+            get() = locale.country
 
         private fun fetchLanguage(): String {
             return locale.language
@@ -240,14 +240,14 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
         }
 
         private val fetchAndCacheAmazonAdvertisingId: String?
-            private get() {
+            get() {
                 val cr = context.contentResolver
                 limitAdTrackingEnabled = Secure.getInt(cr, SETTING_LIMIT_AD_TRACKING, 0) == 1
                 advertisingId = Secure.getString(cr, SETTING_ADVERTISING_ID)
                 return advertisingId
             }
         private val fetchAndCacheGoogleAdvertisingId: String?
-            private get() {
+            get() {
                 try {
                     val AdvertisingIdClient = Class
                         .forName("com.google.android.gms.ads.identifier.AdvertisingIdClient")
@@ -260,7 +260,7 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
                         "isLimitAdTrackingEnabled"
                     )
                     val limitAdTrackingEnabled = isLimitAdTrackingEnabled
-                        .invoke(advertisingInfo) as Boolean
+                        .invoke(advertisingInfo) as? Boolean
                     this.limitAdTrackingEnabled =
                         limitAdTrackingEnabled != null && limitAdTrackingEnabled
                     val getId = advertisingInfo.javaClass.getMethod("getId")
@@ -288,7 +288,7 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
                     "isGooglePlayServicesAvailable",
                     Context::class.java
                 )
-                val status = getGPSAvailable.invoke(null, context) as Int
+                val status = getGPSAvailable.invoke(null, context) as? Int
                 // status 0 corresponds to com.google.android.gms.common.ConnectionResult.SUCCESS;
                 return status != null && status == 0
             } catch (e: NoClassDefFoundError) {
@@ -357,17 +357,17 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
                 ContextCompat.checkSelfPermission(
                         context,
                         Manifest.permission.ACCESS_COARSE_LOCATION
-                    ) === PackageManager.PERMISSION_GRANTED ||
+                    ) == PackageManager.PERMISSION_GRANTED ||
                     ContextCompat.checkSelfPermission(
                         context,
                         Manifest.permission.ACCESS_FINE_LOCATION
-                    ) === PackageManager.PERMISSION_GRANTED
+                    ) == PackageManager.PERMISSION_GRANTED
                 )
             ) {
                 return null
             }
             val locationManager = context
-                .getSystemService(Context.LOCATION_SERVICE) as LocationManager
+                .getSystemService(Context.LOCATION_SERVICE) as? LocationManager
                 ?: return null
 
             // Don't crash if the device does not have location services.
@@ -410,9 +410,8 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
             return bestLocation
         }
 
-    // @VisibleForTesting
-    protected val geocoder: Geocoder
-        protected get() = Geocoder(context, Locale.ENGLISH)
+    private val geocoder: Geocoder
+        get() = Geocoder(context, Locale.ENGLISH)
 
     companion object {
         const val OS_NAME = "android"
