@@ -15,10 +15,21 @@ enum class IdentifyOperation(val operationType: String) {
     REMOVE("\$remove")
 }
 
-open class Identify() {
+open class Identify {
 
     private val propertySet: MutableSet<String> = mutableSetOf()
-    val properties = mutableMapOf<String, Any?>()
+
+    private val _properties = mutableMapOf<String, Any?>()
+    val properties: MutableMap<String, Any?>
+        @Synchronized get() {
+            val clonedProperties = _properties.toMutableMap()
+            for ((key, value) in clonedProperties) {
+                if (value is Map<*, *>) {
+                    clonedProperties[key] = value.toMutableMap()
+                }
+            }
+            return clonedProperties
+        }
 
     fun set(property: String, value: Boolean): Identify {
         setUserProperty(IdentifyOperation.SET, property, value)
@@ -540,13 +551,13 @@ open class Identify() {
         return this
     }
 
-    fun clearAll(): Identify {
-        properties.clear()
-        properties.put(IdentifyOperation.CLEAR_ALL.operationType, UNSET_VALUE)
+    @Synchronized fun clearAll(): Identify {
+        _properties.clear()
+        _properties.put(IdentifyOperation.CLEAR_ALL.operationType, UNSET_VALUE)
         return this
     }
 
-    private fun setUserProperty(operation: IdentifyOperation, property: String, value: Any?) {
+    @Synchronized private fun setUserProperty(operation: IdentifyOperation, property: String, value: Any?) {
         if (property.isEmpty()) {
             ConsoleLogger.logger.warn("Attempting to perform operation ${operation.operationType} with a null or empty string property, ignoring")
             return
@@ -556,7 +567,7 @@ open class Identify() {
             return
         }
         // check that clearAll wasn't already used in this Identify
-        if (properties.containsKey(IdentifyOperation.CLEAR_ALL.operationType)) {
+        if (_properties.containsKey(IdentifyOperation.CLEAR_ALL.operationType)) {
             ConsoleLogger.logger.warn("This Identify already contains a \$clearAll operation, ignoring operation %s")
             return
         }
@@ -565,10 +576,10 @@ open class Identify() {
             ConsoleLogger.logger.warn("Already used property $property in previous operation, ignoring operation ${operation.operationType}")
             return
         }
-        if (!properties.containsKey(operation.operationType)) {
-            properties[operation.operationType] = mutableMapOf<String, Any>()
+        if (!_properties.containsKey(operation.operationType)) {
+            _properties[operation.operationType] = mutableMapOf<String, Any>()
         }
-        (properties[operation.operationType] as MutableMap<String, Any>)[property] = value
+        (_properties[operation.operationType] as MutableMap<String, Any>)[property] = value
         propertySet.add(property)
     }
 
