@@ -1,3 +1,10 @@
+## [1.9.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.9.0...v1.9.1) (2023-06-03)
+
+
+### Bug Fixes
+
+* thread-safe Identify object ([#124](https://github.com/amplitude/Amplitude-Kotlin/issues/124)) ([60120f2](https://github.com/amplitude/Amplitude-Kotlin/commit/60120f281a02c9abf7c90176135aff9f95c0e801))
+
 # [1.9.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.8.2...v1.9.0) (2023-05-26)
 
 
