@@ -24,6 +24,7 @@ class MainApplication : Application() {
                 apiKey = AMPLITUDE_API_KEY,
                 context = applicationContext,
                 trackingDeepLinks = true,
+                trackingScreenViews = true,
             )
         )
 

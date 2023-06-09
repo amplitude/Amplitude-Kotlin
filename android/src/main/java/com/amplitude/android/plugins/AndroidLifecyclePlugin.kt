@@ -20,11 +20,15 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     override fun onActivityCreated(activity: Activity, bundle: Bundle?) {
         val configuration = amplitude.configuration as Configuration
         if (configuration.trackingDeepLinks) {
-            DefaultEventUtils(amplitude as com.amplitude.android.Amplitude).trackDeepLinkEvent(activity)
+            DefaultEventUtils(amplitude as com.amplitude.android.Amplitude).trackDeepLinkOpenedEvent(activity)
         }
     }
 
     override fun onActivityStarted(activity: Activity) {
+        val configuration = amplitude.configuration as Configuration
+        if (configuration.trackingScreenViews) {
+            DefaultEventUtils(amplitude as com.amplitude.android.Amplitude).trackScreenViewedEvent(activity)
+        }
     }
 
     override fun onActivityResumed(activity: Activity) {
