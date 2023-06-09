@@ -23,9 +23,10 @@ import java.util.Locale
 import java.util.UUID
 import kotlin.collections.ArrayList
 
-class AndroidContextProvider(private val context: Context, locationListening: Boolean) :
+class AndroidContextProvider(private val context: Context, locationListening: Boolean, shouldTrackAdid: Boolean) :
     ContextProvider {
     var isLocationListening = true
+    var shouldTrackAdid = true
     private var cachedInfo: CachedInfo? = null
         get() {
             if (field == null) {
@@ -204,6 +205,10 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
         }
 
         private fun fetchAdvertisingId(): String? {
+            if (!shouldTrackAdid) {
+                return null
+            }
+
             // This should not be called on the main thread.
             return if ("Amazon" == fetchManufacturer()) {
                 fetchAndCacheAmazonAdvertisingId
@@ -424,5 +429,6 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
 
     init {
         isLocationListening = locationListening
+        this.shouldTrackAdid = shouldTrackAdid
     }
 }

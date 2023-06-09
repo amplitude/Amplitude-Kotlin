@@ -17,7 +17,11 @@ class AndroidContextPlugin : Plugin {
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
         val configuration = amplitude.configuration as Configuration
-        contextProvider = AndroidContextProvider(configuration.context, configuration.locationListening)
+        contextProvider = AndroidContextProvider(
+            configuration.context,
+            configuration.locationListening,
+            configuration.trackingOptions.shouldTrackAdid()
+        )
         initializeDeviceId(configuration)
     }
 
