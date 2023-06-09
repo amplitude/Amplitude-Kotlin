@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Application
 import android.os.Bundle
 import com.amplitude.android.Configuration
+import com.amplitude.android.utilities.DefaultEventUtils
 import com.amplitude.core.Amplitude
 import com.amplitude.core.platform.Plugin
 
@@ -17,6 +18,10 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     }
 
     override fun onActivityCreated(activity: Activity, bundle: Bundle?) {
+        val configuration = amplitude.configuration as Configuration
+        if (configuration.trackingDeepLinks) {
+            DefaultEventUtils(amplitude as com.amplitude.android.Amplitude).trackDeepLinkEvent(activity)
+        }
     }
 
     override fun onActivityStarted(activity: Activity) {

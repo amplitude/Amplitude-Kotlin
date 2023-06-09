@@ -7,7 +7,6 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
 import com.amplitude.experiment.Experiment
 import com.amplitude.experiment.ExperimentConfig
-import java.lang.Exception
 
 class MainApplication : Application() {
     companion object {
@@ -23,7 +22,8 @@ class MainApplication : Application() {
         amplitude = Amplitude(
             Configuration(
                 apiKey = AMPLITUDE_API_KEY,
-                context = applicationContext
+                context = applicationContext,
+                trackingDeepLinks = true,
             )
         )
 
@@ -45,7 +45,7 @@ class MainApplication : Application() {
             override val type: Plugin.Type = Plugin.Type.Enrichment
             override lateinit var amplitude: com.amplitude.core.Amplitude
 
-            override fun execute(event: BaseEvent): BaseEvent? {
+            override fun execute(event: BaseEvent): BaseEvent {
                 event.eventProperties = event.eventProperties ?: mutableMapOf()
                 event.eventProperties?.put("custom android event property", "test")
                 return event
