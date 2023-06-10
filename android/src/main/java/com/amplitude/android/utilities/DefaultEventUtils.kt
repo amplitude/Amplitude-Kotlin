@@ -35,8 +35,13 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 activity.componentName,
                 PackageManager.GET_META_DATA
             )
-            val activityLabel = info?.loadLabel(packageManager)
-            amplitude.track(EventTypes.SCREEN_VIEWED, mapOf("[Amplitude] Screen Name" to activityLabel.toString()))
+            /* Get the label metadata in following order
+              1. activity label
+              2. if 1 is missing, fallback to parent application label
+              3. if 2 is missing, use the activity name
+             */
+            val activityLabel = info?.loadLabel(packageManager)?.toString() ?: info?.name
+            amplitude.track(EventTypes.SCREEN_VIEWED, mapOf("[Amplitude] Screen Name" to activityLabel))
         } catch (e: PackageManager.NameNotFoundException) {
             amplitude.logger.error("Failed to get activity info: $e")
         } catch (e: Exception) {
