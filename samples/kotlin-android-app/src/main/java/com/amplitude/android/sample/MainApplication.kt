@@ -23,6 +23,7 @@ class MainApplication : Application() {
             Configuration(
                 apiKey = AMPLITUDE_API_KEY,
                 context = applicationContext,
+                trackingAppLifecycleEvents = true,
                 trackingDeepLinks = true,
                 trackingScreenViews = true,
             )

@@ -2,16 +2,73 @@ package com.amplitude.android.utilities
 
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.net.ParseException
 import android.net.Uri
 import android.os.Build
 import com.amplitude.android.Amplitude
+import com.amplitude.core.Storage
+import kotlinx.coroutines.launch
 
 class DefaultEventUtils(private val amplitude: Amplitude) {
     object EventTypes {
+        const val APPLICATION_INSTALLED = "[Amplitude] Application Installed"
+        const val APPLICATION_UPDATED = "[Amplitude] Application Updated"
+        const val APPLICATION_OPENED = "[Amplitude] Application Opened"
+        const val APPLICATION_BACKGROUNDED = "[Amplitude] Application Backgrounded"
         const val DEEP_LINK_OPENED = "[Amplitude] Deep Link Opened"
         const val SCREEN_VIEWED = "[Amplitude] Screen Viewed"
+    }
+
+    fun trackAppUpdatedInstalledEvent(packageInfo: PackageInfo) {
+        // Get current version/build and previously stored version/build information
+        val currentVersion = packageInfo.versionName
+        val currentBuild = packageInfo.getVersionCode().toString()
+        val storage = amplitude.storage
+        val previousVersion = storage.read(Storage.Constants.APP_VERSION)
+        val previousBuild = storage.read(Storage.Constants.APP_BUILD)
+
+        if (previousBuild == null) {
+            // No stored build, treat it as fresh installed
+            amplitude.track(
+                EventTypes.APPLICATION_INSTALLED, mapOf(
+                    "[Amplitude] Version" to currentVersion,
+                    "[Amplitude] Build" to currentBuild
+                )
+            )
+        } else if (currentBuild != previousBuild) {
+            // Has stored build, but different from current build
+            amplitude.track(
+                EventTypes.APPLICATION_UPDATED, mapOf(
+                    "[Amplitude] Previous Version" to previousVersion,
+                    "[Amplitude] Previous Build" to previousBuild,
+                    "[Amplitude] Version" to currentVersion,
+                    "[Amplitude] Build" to currentBuild
+                )
+            )
+        }
+
+        // Write the current version/build into persistent storage
+        amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
+            storage.write(Storage.Constants.APP_VERSION, currentVersion)
+            storage.write(Storage.Constants.APP_BUILD, currentBuild)
+        }
+    }
+
+    fun trackAppOpenedEvent(packageInfo: PackageInfo, isFromBackground: Boolean) {
+        val currentVersion = packageInfo.versionName
+        val currentBuild = packageInfo.getVersionCode().toString()
+
+        amplitude.track(EventTypes.APPLICATION_OPENED, mapOf(
+            "[Amplitude] From Background" to isFromBackground,
+            "[Amplitude] Version" to currentVersion,
+            "[Amplitude] Build" to currentBuild
+        ))
+    }
+
+    fun trackAppBackgroundedEvent() {
+        amplitude.track(EventTypes.APPLICATION_BACKGROUNDED)
     }
 
     fun trackDeepLinkOpenedEvent(activity: Activity) {
@@ -72,3 +129,11 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         }
     }
 }
+
+private fun PackageInfo.getVersionCode(): Number =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        this.longVersionCode
+    } else {
+        @Suppress("DEPRECATION")
+        this.versionCode
+    }
