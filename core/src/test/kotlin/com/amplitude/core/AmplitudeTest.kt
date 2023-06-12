@@ -13,13 +13,14 @@ import com.amplitude.core.events.RevenueEvent
 import com.amplitude.core.platform.Plugin
 import com.amplitude.core.utils.StubPlugin
 import com.amplitude.core.utils.TestRunPlugin
-import com.amplitude.core.utils.createSuccessResponse
-import com.amplitude.core.utils.mockHTTPClient
 import com.amplitude.core.utils.testAmplitude
 import io.mockk.slot
 import io.mockk.spyk
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import okhttp3.mockwebserver.MockResponse
+import okhttp3.mockwebserver.MockWebServer
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -31,17 +32,26 @@ import org.junit.jupiter.api.TestInstance
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 internal class AmplitudeTest {
+    private lateinit var server: MockWebServer
 
     private lateinit var amplitude: Amplitude
 
     @ExperimentalCoroutinesApi
     @BeforeEach
     fun setup() {
-        mockHTTPClient(createSuccessResponse())
+        server = MockWebServer()
+        server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+        server.start()
+
         val testApiKey = "test-123"
         val plan = Plan("test-branch", "test")
         val ingestionMetadata = IngestionMetadata("ampli", "2.0.0")
-        amplitude = testAmplitude(Configuration(testApiKey, plan = plan, ingestionMetadata = ingestionMetadata))
+        amplitude = testAmplitude(Configuration(testApiKey, plan = plan, ingestionMetadata = ingestionMetadata, serverUrl = server.url("/").toString()))
+    }
+
+    @AfterEach
+    fun shutdown() {
+        server.shutdown()
     }
 
     @Nested
