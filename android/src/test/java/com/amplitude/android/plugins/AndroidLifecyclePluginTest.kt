@@ -149,13 +149,14 @@ class AndroidLifecyclePluginTest {
         setDispatcher(testScheduler)
         (amplitude.configuration as Configuration).trackingAppLifecycleEvents = true
         amplitude.add(androidLifecyclePlugin)
-        // Stored previous version/build
-        amplitude.storage.write(Storage.Constants.APP_BUILD, "55")
-        amplitude.storage.write(Storage.Constants.APP_VERSION, "5.0.0")
 
         val mockedPlugin = spyk(StubPlugin())
         amplitude.add(mockedPlugin)
         amplitude.isBuilt.await()
+
+        // Stored previous version/build
+        amplitude.storage.write(Storage.Constants.APP_BUILD, "55")
+        amplitude.storage.write(Storage.Constants.APP_VERSION, "5.0.0")
 
         val mockedActivity = mockk<Activity>()
         val mockedBundle = mockk<Bundle>()
@@ -182,13 +183,14 @@ class AndroidLifecyclePluginTest {
         setDispatcher(testScheduler)
         (amplitude.configuration as Configuration).trackingAppLifecycleEvents = false
         amplitude.add(androidLifecyclePlugin)
-        // Stored previous version/build
-        amplitude.storage.write(Storage.Constants.APP_BUILD, "55")
-        amplitude.storage.write(Storage.Constants.APP_VERSION, "5.0.0")
 
         val mockedPlugin = spyk(StubPlugin())
         amplitude.add(mockedPlugin)
         amplitude.isBuilt.await()
+
+        // Stored previous version/build
+        amplitude.storage.write(Storage.Constants.APP_BUILD, "55")
+        amplitude.storage.write(Storage.Constants.APP_VERSION, "5.0.0")
 
         val mockedActivity = mockk<Activity>()
         val mockedBundle = mockk<Bundle>()
