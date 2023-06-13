@@ -12,6 +12,7 @@ import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GooglePlayServicesUtil
 import io.mockk.every
 import io.mockk.mockkStatic
+import io.mockk.verify
 import org.junit.Test
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -53,7 +54,7 @@ class AndroidContextProviderTest {
                 .getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
         )
         manager.setNetworkOperatorName(TEST_CARRIER)
-        androidContextProvider = AndroidContextProvider(context, true)
+        androidContextProvider = AndroidContextProvider(context, true, false)
     }
 
     @Test
@@ -88,7 +89,7 @@ class AndroidContextProviderTest {
                 .getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
         )
         manager.setNetworkCountryIso(TEST_NETWORK_COUNTRY)
-        val deviceInfo = AndroidContextProvider(context, true)
+        val deviceInfo = AndroidContextProvider(context, true, false)
         assertEquals(TEST_NETWORK_COUNTRY, deviceInfo.country)
     }
 
@@ -110,11 +111,32 @@ class AndroidContextProviderTest {
         } catch (e: Exception) {
             fail(e.toString())
         }
-        val deviceInfo = AndroidContextProvider(context, true)
+        val deviceInfo = AndroidContextProvider(context, true, true)
 
         // still get advertisingId even if limit ad tracking disabled
         assertEquals(advertisingId, deviceInfo.advertisingId)
         assertFalse(deviceInfo.isLimitAdTrackingEnabled())
+        verify(exactly = 1) { AdvertisingIdClient.getAdvertisingIdInfo(context) }
+    }
+
+    @Test
+    fun testGetAdvertisingIdFromGoogleDeviceDisabledTrackAdid() {
+        mockkStatic(AdvertisingIdClient::class)
+        val advertisingId = "advertisingId"
+        val info = AdvertisingIdClient.Info(
+            advertisingId,
+            false
+        )
+        try {
+            every { AdvertisingIdClient.getAdvertisingIdInfo(context) } returns info
+        } catch (e: Exception) {
+            fail(e.toString())
+        }
+        val deviceInfo = AndroidContextProvider(context, true, false)
+
+        assertNull(deviceInfo.advertisingId)
+        assertTrue(deviceInfo.isLimitAdTrackingEnabled())
+        verify(exactly = 0) { AdvertisingIdClient.getAdvertisingIdInfo(context) }
     }
 
     @Test
@@ -124,7 +146,7 @@ class AndroidContextProviderTest {
         val cr = context.contentResolver
         Secure.putInt(cr, "limit_ad_tracking", 1)
         Secure.putString(cr, "advertising_id", advertisingId)
-        val contextProvider = AndroidContextProvider(context, true)
+        val contextProvider = AndroidContextProvider(context, true, true)
 
         // still get advertisingID even if limit ad tracking enabled
         assertEquals(advertisingId, contextProvider.advertisingId)
@@ -132,9 +154,22 @@ class AndroidContextProviderTest {
     }
 
     @Test
+    fun testGetAdvertisingIdFromAmazonDeviceDisabledTrackAdid() {
+        ReflectionHelpers.setStaticField(Build::class.java, "MANUFACTURER", "Amazon")
+        val advertisingId = "advertisingId"
+        val cr = context.contentResolver
+        Secure.putInt(cr, "limit_ad_tracking", 1)
+        Secure.putString(cr, "advertising_id", advertisingId)
+        val contextProvider = AndroidContextProvider(context, true, false)
+
+        assertNull(contextProvider.advertisingId)
+        assertTrue(contextProvider.isLimitAdTrackingEnabled())
+    }
+
+    @Test
     fun testGPSDisabled() {
         // GPS not enabled
-        val deviceInfo = AndroidContextProvider(context, true)
+        val deviceInfo = AndroidContextProvider(context, true, false)
         assertFalse(deviceInfo.isGooglePlayServicesEnabled())
 
         // GPS bundled but not enabled, GooglePlayUtils.isAvailable returns non-0 value
@@ -160,7 +195,7 @@ class AndroidContextProviderTest {
 
     @Test
     fun testNoLocation() {
-        val deviceInfo = AndroidContextProvider(context, true)
+        val deviceInfo = AndroidContextProvider(context, true, false)
         val recent = deviceInfo.mostRecentLocation
         assertNull(recent)
     }
