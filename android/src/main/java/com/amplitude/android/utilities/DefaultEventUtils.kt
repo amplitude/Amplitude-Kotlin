@@ -32,20 +32,22 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         if (previousBuild == null) {
             // No stored build, treat it as fresh installed
             amplitude.track(
-                EventTypes.APPLICATION_INSTALLED, mapOf(
+                EventTypes.APPLICATION_INSTALLED,
+                mapOf(
                     "[Amplitude] Version" to currentVersion,
-                    "[Amplitude] Build" to currentBuild
-                )
+                    "[Amplitude] Build" to currentBuild,
+                ),
             )
         } else if (currentBuild != previousBuild) {
             // Has stored build, but different from current build
             amplitude.track(
-                EventTypes.APPLICATION_UPDATED, mapOf(
+                EventTypes.APPLICATION_UPDATED,
+                mapOf(
                     "[Amplitude] Previous Version" to previousVersion,
                     "[Amplitude] Previous Build" to previousBuild,
                     "[Amplitude] Version" to currentVersion,
-                    "[Amplitude] Build" to currentBuild
-                )
+                    "[Amplitude] Build" to currentBuild,
+                ),
             )
         }
 
@@ -60,11 +62,14 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         val currentVersion = packageInfo.versionName
         val currentBuild = packageInfo.getVersionCode().toString()
 
-        amplitude.track(EventTypes.APPLICATION_OPENED, mapOf(
-            "[Amplitude] From Background" to isFromBackground,
-            "[Amplitude] Version" to currentVersion,
-            "[Amplitude] Build" to currentBuild
-        ))
+        amplitude.track(
+            EventTypes.APPLICATION_OPENED,
+            mapOf(
+                "[Amplitude] From Background" to isFromBackground,
+                "[Amplitude] Version" to currentVersion,
+                "[Amplitude] Build" to currentBuild,
+            ),
+        )
     }
 
     fun trackAppBackgroundedEvent() {
@@ -77,10 +82,11 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             val referrer = getReferrer(activity)?.toString()
             val url = it.data?.toString()
             amplitude.track(
-                EventTypes.DEEP_LINK_OPENED, mapOf(
+                EventTypes.DEEP_LINK_OPENED,
+                mapOf(
                     "[Amplitude] Link URL" to url,
-                    "[Amplitude] Link Referrer" to referrer
-                )
+                    "[Amplitude] Link Referrer" to referrer,
+                ),
             )
         }
     }
@@ -90,7 +96,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             val packageManager = activity.packageManager
             val info = packageManager?.getActivityInfo(
                 activity.componentName,
-                PackageManager.GET_META_DATA
+                PackageManager.GET_META_DATA,
             )
             /* Get the label metadata in following order
               1. activity label
