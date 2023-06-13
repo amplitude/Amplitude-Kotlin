@@ -86,8 +86,8 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
     }
 
     fun trackScreenViewedEvent(activity: Activity) {
-        val packageManager = activity.packageManager
         try {
+            val packageManager = activity.packageManager
             val info = packageManager?.getActivityInfo(
                 activity.componentName,
                 PackageManager.GET_META_DATA
