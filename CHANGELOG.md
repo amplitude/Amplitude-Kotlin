@@ -1,3 +1,10 @@
+## [1.9.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.9.1...v1.9.2) (2023-06-13)
+
+
+### Bug Fixes
+
+* do not fetch advertising Id if adid tracking is disabled ([#125](https://github.com/amplitude/Amplitude-Kotlin/issues/125)) ([7e570a2](https://github.com/amplitude/Amplitude-Kotlin/commit/7e570a291288c62a89d1ef6a1839f01465f40801))
+
 ## [1.9.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.9.0...v1.9.1) (2023-06-03)
 
 
