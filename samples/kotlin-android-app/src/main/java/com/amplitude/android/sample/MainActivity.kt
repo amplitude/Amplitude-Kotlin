@@ -7,7 +7,6 @@ import androidx.appcompat.app.AppCompatActivity
 import com.amplitude.core.events.EventOptions
 import com.amplitude.core.events.Plan
 
-
 class MainActivity : AppCompatActivity() {
     private val amplitude = MainApplication.amplitude
 
