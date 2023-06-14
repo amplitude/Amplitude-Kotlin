@@ -117,8 +117,8 @@ class AndroidLifecyclePluginTest {
 
         with(tracks[0]) {
             Assertions.assertEquals(DefaultEventUtils.EventTypes.APPLICATION_INSTALLED, eventType)
-            Assertions.assertEquals(eventProperties?.get("[Amplitude] Build"), "66")
-            Assertions.assertEquals(eventProperties?.get("[Amplitude] Version"), "6.0.0")
+            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.BUILD), "66")
+            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.VERSION), "6.0.0")
         }
     }
 
@@ -171,10 +171,10 @@ class AndroidLifecyclePluginTest {
 
         with(tracks[0]) {
             Assertions.assertEquals(DefaultEventUtils.EventTypes.APPLICATION_UPDATED, eventType)
-            Assertions.assertEquals(eventProperties?.get("[Amplitude] Build"), "66")
-            Assertions.assertEquals(eventProperties?.get("[Amplitude] Version"), "6.0.0")
-            Assertions.assertEquals(eventProperties?.get("[Amplitude] Previous Build"), "55")
-            Assertions.assertEquals(eventProperties?.get("[Amplitude] Previous Version"), "5.0.0")
+            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.BUILD), "66")
+            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.VERSION), "6.0.0")
+            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.PREVIOUS_BUILD), "55")
+            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.PREVIOUS_VERSION), "5.0.0")
         }
     }
 
@@ -232,9 +232,9 @@ class AndroidLifecyclePluginTest {
         }
         with(tracks[1]) {
             Assertions.assertEquals(DefaultEventUtils.EventTypes.APPLICATION_OPENED, eventType)
-            Assertions.assertEquals(eventProperties?.get("[Amplitude] Build"), "66")
-            Assertions.assertEquals(eventProperties?.get("[Amplitude] Version"), "6.0.0")
-            Assertions.assertEquals(eventProperties?.get("[Amplitude] From Background"), false)
+            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.BUILD), "66")
+            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.VERSION), "6.0.0")
+            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.FROM_BACKGROUND), false)
         }
     }
 
@@ -341,7 +341,7 @@ class AndroidLifecyclePluginTest {
 
         with(tracks[0]) {
             Assertions.assertEquals(DefaultEventUtils.EventTypes.SCREEN_VIEWED, eventType)
-            Assertions.assertEquals(eventProperties?.get("[Amplitude] Screen Name"), "test-label")
+            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.SCREEN_NAME), "test-label")
         }
     }
 
@@ -400,8 +400,8 @@ class AndroidLifecyclePluginTest {
 
         with(tracks[0]) {
             Assertions.assertEquals(DefaultEventUtils.EventTypes.DEEP_LINK_OPENED, eventType)
-            Assertions.assertEquals(eventProperties?.get("[Amplitude] Link URL"), "app://url.com/open")
-            Assertions.assertEquals(eventProperties?.get("[Amplitude] Link Referrer"), "android-app://com.android.chrome")
+            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.LINK_URL), "app://url.com/open")
+            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.LINK_REFERRER), "android-app://com.android.chrome")
         }
     }
 
@@ -433,8 +433,8 @@ class AndroidLifecyclePluginTest {
 
         with(tracks[0]) {
             Assertions.assertEquals(DefaultEventUtils.EventTypes.DEEP_LINK_OPENED, eventType)
-            Assertions.assertEquals(eventProperties?.get("[Amplitude] Link URL"), "app://url.com/open")
-            Assertions.assertEquals(eventProperties?.get("[Amplitude] Link Referrer"), "android-app://com.android.chrome")
+            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.LINK_URL), "app://url.com/open")
+            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.LINK_REFERRER), "android-app://com.android.chrome")
         }
     }
 
@@ -466,8 +466,8 @@ class AndroidLifecyclePluginTest {
 
         with(tracks[0]) {
             Assertions.assertEquals(DefaultEventUtils.EventTypes.DEEP_LINK_OPENED, eventType)
-            Assertions.assertEquals(eventProperties?.get("[Amplitude] Link URL"), "app://url.com/open")
-            Assertions.assertEquals(eventProperties?.get("[Amplitude] Link Referrer"), null)
+            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.LINK_URL), "app://url.com/open")
+            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.LINK_REFERRER), null)
         }
     }
 

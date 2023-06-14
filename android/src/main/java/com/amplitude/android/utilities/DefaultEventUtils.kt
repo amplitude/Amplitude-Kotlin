@@ -21,6 +21,17 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         const val SCREEN_VIEWED = "[Amplitude] Screen Viewed"
     }
 
+    object EventProperties {
+        const val VERSION = "[Amplitude] Version"
+        const val BUILD = "[Amplitude] Build"
+        const val PREVIOUS_VERSION = "[Amplitude] Previous Version"
+        const val PREVIOUS_BUILD = "[Amplitude] Previous Build"
+        const val FROM_BACKGROUND = "[Amplitude] From Background"
+        const val LINK_URL = "[Amplitude] Link URL"
+        const val LINK_REFERRER = "[Amplitude] Link Referrer"
+        const val SCREEN_NAME = "[Amplitude] Screen Name"
+    }
+
     fun trackAppUpdatedInstalledEvent(packageInfo: PackageInfo) {
         // Get current version/build and previously stored version/build information
         val currentVersion = packageInfo.versionName
@@ -34,8 +45,8 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             amplitude.track(
                 EventTypes.APPLICATION_INSTALLED,
                 mapOf(
-                    "[Amplitude] Version" to currentVersion,
-                    "[Amplitude] Build" to currentBuild,
+                    EventProperties.VERSION to currentVersion,
+                    EventProperties.BUILD to currentBuild,
                 ),
             )
         } else if (currentBuild != previousBuild) {
@@ -43,10 +54,10 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             amplitude.track(
                 EventTypes.APPLICATION_UPDATED,
                 mapOf(
-                    "[Amplitude] Previous Version" to previousVersion,
-                    "[Amplitude] Previous Build" to previousBuild,
-                    "[Amplitude] Version" to currentVersion,
-                    "[Amplitude] Build" to currentBuild,
+                    EventProperties.PREVIOUS_VERSION to previousVersion,
+                    EventProperties.PREVIOUS_BUILD to previousBuild,
+                    EventProperties.VERSION to currentVersion,
+                    EventProperties.BUILD to currentBuild,
                 ),
             )
         }
@@ -65,9 +76,9 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         amplitude.track(
             EventTypes.APPLICATION_OPENED,
             mapOf(
-                "[Amplitude] From Background" to isFromBackground,
-                "[Amplitude] Version" to currentVersion,
-                "[Amplitude] Build" to currentBuild,
+                EventProperties.FROM_BACKGROUND to isFromBackground,
+                EventProperties.VERSION to currentVersion,
+                EventProperties.BUILD to currentBuild,
             ),
         )
     }
@@ -84,8 +95,8 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             amplitude.track(
                 EventTypes.DEEP_LINK_OPENED,
                 mapOf(
-                    "[Amplitude] Link URL" to url,
-                    "[Amplitude] Link Referrer" to referrer,
+                    EventProperties.LINK_URL to url,
+                    EventProperties.LINK_REFERRER to referrer,
                 ),
             )
         }
@@ -104,7 +115,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
               3. if 2 is missing, use the activity name
              */
             val activityLabel = info?.loadLabel(packageManager)?.toString() ?: info?.name
-            amplitude.track(EventTypes.SCREEN_VIEWED, mapOf("[Amplitude] Screen Name" to activityLabel))
+            amplitude.track(EventTypes.SCREEN_VIEWED, mapOf(EventProperties.SCREEN_NAME to activityLabel))
         } catch (e: PackageManager.NameNotFoundException) {
             amplitude.logger.error("Failed to get activity info: $e")
         } catch (e: Exception) {
@@ -126,6 +137,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                         try {
                             Uri.parse(it)
                         } catch (e: ParseException) {
+                            amplitude.logger.error("Failed to parse the referrer uri: $it")
                             null
                         }
                     }

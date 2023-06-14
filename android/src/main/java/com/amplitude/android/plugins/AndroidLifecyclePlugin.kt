@@ -29,7 +29,9 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
         packageInfo = try {
             packageManager.getPackageInfo(application.packageName, 0)
         } catch (e: PackageManager.NameNotFoundException) {
-            throw AssertionError("Cannot find package with application.packageName: " + application.packageName)
+            // This shouldn't happen, but in case it happens, fallback to empty package info.
+            amplitude.logger.error("Cannot find package with application.packageName: " + application.packageName)
+            PackageInfo()
         }
         application.registerActivityLifecycleCallbacks(this)
     }
