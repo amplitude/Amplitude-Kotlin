@@ -41,19 +41,18 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     }
 
     override fun onActivityCreated(activity: Activity, bundle: Bundle?) {
-        println(androidConfiguration.trackingDeepLinks)
-        if (!hasTrackedApplicationLifecycleEvents.getAndSet(true) && androidConfiguration.trackingAppLifecycleEvents) {
+        if (!hasTrackedApplicationLifecycleEvents.getAndSet(true) && androidConfiguration.defaultTracking.trackingAppLifecycleEvents) {
             numberOfActivities.set(0)
             isFirstLaunch.set(true)
             DefaultEventUtils(androidAmplitude).trackAppUpdatedInstalledEvent(packageInfo)
         }
-        if (androidConfiguration.trackingDeepLinks) {
+        if (androidConfiguration.defaultTracking.trackingDeepLinks) {
             DefaultEventUtils(androidAmplitude).trackDeepLinkOpenedEvent(activity)
         }
     }
 
     override fun onActivityStarted(activity: Activity) {
-        if (androidConfiguration.trackingScreenViews) {
+        if (androidConfiguration.defaultTracking.trackingScreenViews) {
             DefaultEventUtils(androidAmplitude).trackScreenViewedEvent(activity)
         }
     }
@@ -62,7 +61,7 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
         androidAmplitude.onEnterForeground(getCurrentTimeMillis())
 
         // numberOfActivities makes sure it only fires after activity creation or activity stopped
-        if (androidConfiguration.trackingAppLifecycleEvents && numberOfActivities.incrementAndGet() == 1) {
+        if (androidConfiguration.defaultTracking.trackingAppLifecycleEvents && numberOfActivities.incrementAndGet() == 1) {
             val isFromBackground = !isFirstLaunch.getAndSet(false)
             DefaultEventUtils(androidAmplitude).trackAppOpenedEvent(packageInfo, isFromBackground)
         }
@@ -74,7 +73,7 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
 
     override fun onActivityStopped(activity: Activity) {
         // numberOfActivities makes sure it only fires after setup or activity resumed
-        if (androidConfiguration.trackingAppLifecycleEvents && numberOfActivities.decrementAndGet() == 0) {
+        if (androidConfiguration.defaultTracking.trackingAppLifecycleEvents && numberOfActivities.decrementAndGet() == 0) {
             DefaultEventUtils(androidAmplitude).trackAppBackgroundedEvent()
         }
     }

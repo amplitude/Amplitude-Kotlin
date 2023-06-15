@@ -24,20 +24,43 @@ class ConfigurationTest {
         Assertions.assertTrue(configuration.isValid())
     }
 
+    @Suppress("DEPRECATION")
     @Test
     fun configuration_allows_propertyUpdate() {
         val configuration = Configuration("test-apikey", context!!)
         Assertions.assertTrue(configuration.trackingSessionEvents)
-        Assertions.assertFalse(configuration.trackingAppLifecycleEvents)
-        Assertions.assertFalse(configuration.trackingDeepLinks)
-        Assertions.assertFalse(configuration.trackingScreenViews)
+        Assertions.assertTrue(configuration.defaultTracking.trackingSessionEvents)
+        Assertions.assertFalse(configuration.defaultTracking.trackingAppLifecycleEvents)
+        Assertions.assertFalse(configuration.defaultTracking.trackingDeepLinks)
+        Assertions.assertFalse(configuration.defaultTracking.trackingScreenViews)
         configuration.trackingSessionEvents = false
-        configuration.trackingAppLifecycleEvents = true
-        configuration.trackingDeepLinks = true
-        configuration.trackingScreenViews = true
+        configuration.defaultTracking.trackingSessionEvents = false
+        configuration.defaultTracking.trackingAppLifecycleEvents = true
+        configuration.defaultTracking.trackingDeepLinks = true
+        configuration.defaultTracking.trackingScreenViews = true
         Assertions.assertFalse(configuration.trackingSessionEvents)
-        Assertions.assertTrue(configuration.trackingAppLifecycleEvents)
-        Assertions.assertTrue(configuration.trackingDeepLinks)
-        Assertions.assertTrue(configuration.trackingScreenViews)
+        Assertions.assertFalse(configuration.defaultTracking.trackingSessionEvents)
+        Assertions.assertTrue(configuration.defaultTracking.trackingAppLifecycleEvents)
+        Assertions.assertTrue(configuration.defaultTracking.trackingDeepLinks)
+        Assertions.assertTrue(configuration.defaultTracking.trackingScreenViews)
+    }
+
+    @Test
+    fun configuration_defaultTracking_quick_update() {
+        val configuration = Configuration(
+            "test-apikey",
+            context!!,
+            defaultTracking = DefaultTrackingOptions.ALL
+        )
+        Assertions.assertTrue(configuration.defaultTracking.trackingSessionEvents)
+        Assertions.assertTrue(configuration.defaultTracking.trackingAppLifecycleEvents)
+        Assertions.assertTrue(configuration.defaultTracking.trackingDeepLinks)
+        Assertions.assertTrue(configuration.defaultTracking.trackingScreenViews)
+
+        configuration.defaultTracking = DefaultTrackingOptions.NONE
+        Assertions.assertFalse(configuration.defaultTracking.trackingSessionEvents)
+        Assertions.assertFalse(configuration.defaultTracking.trackingAppLifecycleEvents)
+        Assertions.assertFalse(configuration.defaultTracking.trackingDeepLinks)
+        Assertions.assertFalse(configuration.defaultTracking.trackingScreenViews)
     }
 }

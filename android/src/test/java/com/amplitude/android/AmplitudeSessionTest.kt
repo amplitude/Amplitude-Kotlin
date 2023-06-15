@@ -549,6 +549,57 @@ class AmplitudeSessionTest {
         Assertions.assertEquals(1100, event.timestamp)
     }
 
+    @Suppress("DEPRECATION")
+    @Test
+    fun amplitude_noSessionEventsWhenDisabledWithTrackingSessionEvents() = runTest {
+        val configuration = createConfiguration()
+        configuration.trackingSessionEvents = false
+        val amplitude = Amplitude(configuration)
+        setDispatcher(amplitude, testScheduler)
+
+        val mockedPlugin = spyk(StubPlugin())
+        amplitude.add(mockedPlugin)
+
+        amplitude.isBuilt.await()
+
+        amplitude.track(createEvent(1000, "test event"))
+
+        advanceUntilIdle()
+        Thread.sleep(100)
+
+        val tracks = mutableListOf<BaseEvent>()
+
+        verify {
+            mockedPlugin.track(capture(tracks))
+        }
+        Assertions.assertEquals(1, tracks.count())
+    }
+
+    @Test
+    fun amplitude_noSessionEventsWhenDisabledWithDefaultTrackingOptions() = runTest {
+        val configuration = createConfiguration()
+        configuration.defaultTracking.trackingSessionEvents = false
+        val amplitude = Amplitude(configuration)
+        setDispatcher(amplitude, testScheduler)
+
+        val mockedPlugin = spyk(StubPlugin())
+        amplitude.add(mockedPlugin)
+
+        amplitude.isBuilt.await()
+
+        amplitude.track(createEvent(1000, "test event"))
+
+        advanceUntilIdle()
+        Thread.sleep(100)
+
+        val tracks = mutableListOf<BaseEvent>()
+
+        verify {
+            mockedPlugin.track(capture(tracks))
+        }
+        Assertions.assertEquals(1, tracks.count())
+    }
+
     private fun createEvent(timestamp: Long, eventType: String, sessionId: Long? = null): BaseEvent {
         val event = BaseEvent()
         event.userId = "user"

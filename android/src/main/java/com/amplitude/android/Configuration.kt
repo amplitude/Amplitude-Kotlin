@@ -39,10 +39,9 @@ open class Configuration @JvmOverloads constructor(
     var locationListening: Boolean = true,
     var flushEventsOnClose: Boolean = true,
     var minTimeBetweenSessionsMillis: Long = MIN_TIME_BETWEEN_SESSIONS_MILLIS,
+    @Deprecated("Please use 'defaultTracking' instead.", ReplaceWith("defaultTracking"))
     var trackingSessionEvents: Boolean = true,
-    var trackingAppLifecycleEvents: Boolean = false,
-    var trackingDeepLinks: Boolean = false,
-    var trackingScreenViews: Boolean = false,
+    var defaultTracking: DefaultTrackingOptions = DefaultTrackingOptions(),
     override var identifyBatchIntervalMillis: Long = IDENTIFY_BATCH_INTERVAL_MILLIS,
     override var identifyInterceptStorageProvider: StorageProvider = AndroidStorageProvider(),
     override var identityStorageProvider: IdentityStorageProvider = FileIdentityStorageProvider(),

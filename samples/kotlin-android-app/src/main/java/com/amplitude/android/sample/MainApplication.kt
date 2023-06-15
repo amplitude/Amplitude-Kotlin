@@ -3,6 +3,7 @@ package com.amplitude.android.sample
 import android.app.Application
 import com.amplitude.android.Amplitude
 import com.amplitude.android.Configuration
+import com.amplitude.android.DefaultTrackingOptions
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
 import com.amplitude.experiment.Experiment
@@ -23,9 +24,7 @@ class MainApplication : Application() {
             Configuration(
                 apiKey = AMPLITUDE_API_KEY,
                 context = applicationContext,
-                trackingAppLifecycleEvents = true,
-                trackingDeepLinks = true,
-                trackingScreenViews = true,
+                defaultTracking = DefaultTrackingOptions.ALL
             )
         )
 
