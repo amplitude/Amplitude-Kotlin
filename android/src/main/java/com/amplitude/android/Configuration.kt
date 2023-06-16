@@ -39,7 +39,7 @@ open class Configuration @JvmOverloads constructor(
     var locationListening: Boolean = true,
     var flushEventsOnClose: Boolean = true,
     var minTimeBetweenSessionsMillis: Long = MIN_TIME_BETWEEN_SESSIONS_MILLIS,
-    @Deprecated("Please use 'defaultTracking' instead.", ReplaceWith("defaultTracking"))
+    @Deprecated("Please use 'defaultTracking' instead.", ReplaceWith("defaultTracking.sessions"))
     var trackingSessionEvents: Boolean = true,
     var defaultTracking: DefaultTrackingOptions = DefaultTrackingOptions(),
     override var identifyBatchIntervalMillis: Long = IDENTIFY_BATCH_INTERVAL_MILLIS,

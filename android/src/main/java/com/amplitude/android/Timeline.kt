@@ -126,7 +126,7 @@ class Timeline : Timeline() {
         val configuration = amplitude.configuration as Configuration
         // If any trackingSessionEvents is false (default value is true), means it is manually set
         @Suppress("DEPRECATION")
-        val trackingSessionEvents = configuration.trackingSessionEvents && configuration.defaultTracking.trackingSessionEvents
+        val trackingSessionEvents = configuration.trackingSessionEvents && configuration.defaultTracking.sessions
 
         // end previous session
         if (trackingSessionEvents && inSession()) {

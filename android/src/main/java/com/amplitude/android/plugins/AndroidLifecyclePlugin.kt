@@ -41,18 +41,18 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     }
 
     override fun onActivityCreated(activity: Activity, bundle: Bundle?) {
-        if (!hasTrackedApplicationLifecycleEvents.getAndSet(true) && androidConfiguration.defaultTracking.trackingAppLifecycleEvents) {
+        if (!hasTrackedApplicationLifecycleEvents.getAndSet(true) && androidConfiguration.defaultTracking.appLifecycles) {
             numberOfActivities.set(0)
             isFirstLaunch.set(true)
             DefaultEventUtils(androidAmplitude).trackAppUpdatedInstalledEvent(packageInfo)
         }
-        if (androidConfiguration.defaultTracking.trackingDeepLinks) {
+        if (androidConfiguration.defaultTracking.deepLinks) {
             DefaultEventUtils(androidAmplitude).trackDeepLinkOpenedEvent(activity)
         }
     }
 
     override fun onActivityStarted(activity: Activity) {
-        if (androidConfiguration.defaultTracking.trackingScreenViews) {
+        if (androidConfiguration.defaultTracking.screenViews) {
             DefaultEventUtils(androidAmplitude).trackScreenViewedEvent(activity)
         }
     }
@@ -61,7 +61,7 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
         androidAmplitude.onEnterForeground(getCurrentTimeMillis())
 
         // numberOfActivities makes sure it only fires after activity creation or activity stopped
-        if (androidConfiguration.defaultTracking.trackingAppLifecycleEvents && numberOfActivities.incrementAndGet() == 1) {
+        if (androidConfiguration.defaultTracking.appLifecycles && numberOfActivities.incrementAndGet() == 1) {
             val isFromBackground = !isFirstLaunch.getAndSet(false)
             DefaultEventUtils(androidAmplitude).trackAppOpenedEvent(packageInfo, isFromBackground)
         }
@@ -73,7 +73,7 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
 
     override fun onActivityStopped(activity: Activity) {
         // numberOfActivities makes sure it only fires after setup or activity resumed
-        if (androidConfiguration.defaultTracking.trackingAppLifecycleEvents && numberOfActivities.decrementAndGet() == 0) {
+        if (androidConfiguration.defaultTracking.appLifecycles && numberOfActivities.decrementAndGet() == 0) {
             DefaultEventUtils(androidAmplitude).trackAppBackgroundedEvent()
         }
     }

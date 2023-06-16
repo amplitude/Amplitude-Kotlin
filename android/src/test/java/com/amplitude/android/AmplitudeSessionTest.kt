@@ -578,7 +578,7 @@ class AmplitudeSessionTest {
     @Test
     fun amplitude_noSessionEventsWhenDisabledWithDefaultTrackingOptions() = runTest {
         val configuration = createConfiguration()
-        configuration.defaultTracking.trackingSessionEvents = false
+        configuration.defaultTracking.sessions = false
         val amplitude = Amplitude(configuration)
         setDispatcher(amplitude, testScheduler)
 
