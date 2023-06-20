@@ -15,17 +15,33 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Kotlinsdk">
         <activity
+            android:name=".AdvancedActivity"
+            android:label="Advanced Events"
+            android:exported="false" />
+        <activity
             android:name=".MainActivity"
+            android:label="Basic Event"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <!-- Deep link: app://kotlin-android-app -->
+                <data
+                    android:host="kotlin-android-app"
+                    android:scheme="app" />
+            </intent-filter>
         </activity>
+
         <meta-data
             android:name="com.google.android.gms.ads.AD_MANAGER_APP"
-            android:value="true"/>
+            android:value="true" />
     </application>
 
 </manifest>

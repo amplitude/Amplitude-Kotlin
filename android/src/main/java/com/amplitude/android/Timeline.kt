@@ -75,7 +75,7 @@ class Timeline : Timeline() {
 
         val savedLastEventId = lastEventId
 
-        sessionEvents ?. let {
+        sessionEvents?.let {
             it.forEach { e ->
                 e.eventId ?: let {
                     val newEventId = lastEventId + 1
@@ -97,7 +97,7 @@ class Timeline : Timeline() {
             amplitude.storage.write(Storage.Constants.LAST_EVENT_ID, lastEventId.toString())
         }
 
-        sessionEvents ?. let {
+        sessionEvents?.let {
             it.forEach { e ->
                 super.process(e)
             }
@@ -123,7 +123,10 @@ class Timeline : Timeline() {
 
     private suspend fun startNewSession(timestamp: Long): Iterable<BaseEvent> {
         val sessionEvents = mutableListOf<BaseEvent>()
-        val trackingSessionEvents = (amplitude.configuration as Configuration).trackingSessionEvents
+        val configuration = amplitude.configuration as Configuration
+        // If any trackingSessionEvents is false (default value is true), means it is manually set
+        @Suppress("DEPRECATION")
+        val trackingSessionEvents = configuration.trackingSessionEvents && configuration.defaultTracking.sessions
 
         // end previous session
         if (trackingSessionEvents && inSession()) {

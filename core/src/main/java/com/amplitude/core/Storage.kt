@@ -13,7 +13,9 @@ interface Storage {
         PREVIOUS_SESSION_ID("previous_session_id"),
         LAST_EVENT_TIME("last_event_time"),
         OPT_OUT("opt_out"),
-        Events("events")
+        Events("events"),
+        APP_VERSION("app_version"),
+        APP_BUILD("app_build")
     }
 
     suspend fun writeEvent(event: BaseEvent)
