@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.9.2...v1.10.0) (2023-06-21)
+
+
+### Features
+
+* add default events ([#126](https://github.com/amplitude/Amplitude-Kotlin/issues/126)) ([12a743b](https://github.com/amplitude/Amplitude-Kotlin/commit/12a743bb8b03d87c474ab20719601d704c2e8bff))
+
 ## [1.9.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.9.1...v1.9.2) (2023-06-13)
 
 
