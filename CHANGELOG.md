@@ -1,3 +1,10 @@
+## [1.10.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.10.0...v1.10.1) (2023-06-22)
+
+
+### Bug Fixes
+
+* make default tracking options java compatible ([#129](https://github.com/amplitude/Amplitude-Kotlin/issues/129)) ([290bf31](https://github.com/amplitude/Amplitude-Kotlin/commit/290bf316685c406e3fbf216707e737ab1ef1d283))
+
 # [1.10.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.9.2...v1.10.0) (2023-06-21)
 
 
