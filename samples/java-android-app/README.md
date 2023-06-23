@@ -1,5 +1,5 @@
 # Android SDK (Kotlin)
-An example Kotlin app using the Amplitude Android SDK (Kotlin)
+A Java example app using the Amplitude Android SDK (Kotlin)
 
 # Usage
 
@@ -15,7 +15,6 @@ You will need to do the following before running the app.
     ```kotlin
     ext {
         AMPLITUDE_API_KEY = ""
-        EXPERIMENT_API_KEY = ""
     }
     ```
 
@@ -24,6 +23,6 @@ Run the application using Android Studio or your favorite IDE.
 
 # Project structure
 * README.md - you are here *
-* java/com/amplitude/android/sample
-  * [MainApplication.kt](java/com/amplitude/android/sample/MainApplication.kt) - Example user app using Amplitude Kotlin SDK. A good place to start.
-  * [MainActivity.kt](java/com/amplitude/android/sample/MainActivity.kt) - Example activity that tracks an event
+* src/main/java/com/amplitude/android/sample
+  * [MainApplication.kt](src/main/java/com/amplitude/android/sample/MainApplication.java) - Example Java user app using Amplitude Kotlin SDK. A good place to start.
+  * [MainActivity.kt](src/main/java/com/amplitude/android/sample/MainActivity.java) - Example activity that tracks an event
