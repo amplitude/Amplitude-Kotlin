@@ -1,3 +1,10 @@
+## [1.10.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.10.1...v1.10.2) (2023-06-23)
+
+
+### Bug Fixes
+
+* enable legacy data migration by default ([#130](https://github.com/amplitude/Amplitude-Kotlin/issues/130)) ([24430ec](https://github.com/amplitude/Amplitude-Kotlin/commit/24430ecf1b08d5179aeb8c9795da3e1b4dc4a679))
+
 ## [1.10.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.10.0...v1.10.1) (2023-06-22)
 
 
