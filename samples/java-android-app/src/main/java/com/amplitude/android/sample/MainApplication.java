@@ -38,7 +38,7 @@ public class MainApplication extends Application {
         amplitude.add(new SamplePlugin());
 
         // add trouble shooting plugin for debugging
-        amplitude.add(new TourbleShootingPlugin());
+        amplitude.add(new TroubleShootingPlugin());
 
         // identify a sample user
         amplitude.setUserId("android-java-sample-user");

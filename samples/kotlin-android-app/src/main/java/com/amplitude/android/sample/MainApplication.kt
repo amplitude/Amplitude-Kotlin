@@ -25,8 +25,7 @@ class MainApplication : Application() {
             Configuration(
                 apiKey = AMPLITUDE_API_KEY,
                 context = applicationContext,
-                defaultTracking = DefaultTrackingOptions.ALL,
-
+                defaultTracking = DefaultTrackingOptions.ALL
             )
         )
 
@@ -43,6 +42,9 @@ class MainApplication : Application() {
             e.printStackTrace()
         }
 
+        // set app to debug mode
+        amplitude.logger.logMode = Logger.LogMode.DEBUG
+
         // add sample plugin
         amplitude.add(object : Plugin {
             override val type: Plugin.Type = Plugin.Type.Enrichment
@@ -55,8 +57,6 @@ class MainApplication : Application() {
             }
         })
 
-        // set app to debug mode
-        amplitude.logger.logMode = Logger.LogMode.DEBUG
         // add the trouble shooting plugin for debugging
         amplitude.add(TroubleShootingPlugin())
 

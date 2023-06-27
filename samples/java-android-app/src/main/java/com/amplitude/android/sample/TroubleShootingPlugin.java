@@ -6,7 +6,7 @@ import com.amplitude.core.events.BaseEvent;
 import com.amplitude.core.platform.DestinationPlugin;
 import com.google.gson.Gson;
 
-public class TourbleShootingPlugin extends DestinationPlugin {
+public class TroubleShootingPlugin extends DestinationPlugin {
     private Logger logger;
     @Override
     public void setup(Amplitude amplitude) {
@@ -22,7 +22,7 @@ public class TourbleShootingPlugin extends DestinationPlugin {
     public BaseEvent track(BaseEvent event) {
         Gson gson = new Gson();
         String eventJsonStr = gson.toJson(event);
-        logger.debug("Ingested Event: "+eventJsonStr);
+        logger.debug("Processed event: "+eventJsonStr);
         return event;
     }
 }
