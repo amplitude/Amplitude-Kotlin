@@ -6,7 +6,6 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.DestinationPlugin
 import com.google.gson.Gson
 
-
 class TroubleShootingPlugin : DestinationPlugin() {
     private lateinit var logger: Logger
     override fun setup(amplitude: Amplitude) {
