@@ -4,6 +4,7 @@ import android.app.Application
 import com.amplitude.android.Amplitude
 import com.amplitude.android.Configuration
 import com.amplitude.android.DefaultTrackingOptions
+import com.amplitude.common.Logger
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
 import com.amplitude.experiment.Experiment
@@ -24,7 +25,8 @@ class MainApplication : Application() {
             Configuration(
                 apiKey = AMPLITUDE_API_KEY,
                 context = applicationContext,
-                defaultTracking = DefaultTrackingOptions.ALL
+                defaultTracking = DefaultTrackingOptions.ALL,
+
             )
         )
 
@@ -52,6 +54,11 @@ class MainApplication : Application() {
                 return event
             }
         })
+
+        // set app to debug mode
+        amplitude.logger.logMode = Logger.LogMode.DEBUG
+        // add the trouble shooting plugin for debugging
+        amplitude.add(TroubleShootingPlugin())
 
         // identify a sample user
         amplitude.setUserId("android-kotlin-sample-user")

@@ -8,6 +8,7 @@ import androidx.annotation.Nullable;
 import com.amplitude.android.Amplitude;
 import com.amplitude.android.AmplitudeKt;
 import com.amplitude.android.events.Plan;
+import com.amplitude.common.Logger;
 import com.amplitude.core.events.BaseEvent;
 import com.amplitude.core.platform.Plugin;
 
@@ -30,8 +31,14 @@ public class MainApplication extends Application {
             return Unit.INSTANCE;
         });
 
+        // sett app to debug mode
+        amplitude.getLogger().setLogMode(Logger.LogMode.DEBUG);
+
         // add sample plugin
         amplitude.add(new SamplePlugin());
+
+        // add trouble shooting plugin for debugging
+        amplitude.add(new TourbleShootingPlugin());
 
         // identify a sample user
         amplitude.setUserId("android-java-sample-user");
