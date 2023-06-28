@@ -50,4 +50,6 @@ dependencies {
     implementation 'com.google.android.gms:play-services-ads:20.6.0'
     implementation 'com.google.android.gms:play-services-appset:16.0.2'
     implementation 'com.amplitude:experiment-android-client:1.6.3'
+    // For trouble shooting plugin
+    implementation group: 'com.google.code.gson', name: 'gson', version: '2.10'
 }
