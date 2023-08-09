@@ -1,3 +1,11 @@
+## [1.10.4](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.10.3...v1.10.4) (2023-08-09)
+
+
+### Bug Fixes
+
+* revert "fix: wait until build (including possible legacy data migration) is finished ([#138](https://github.com/amplitude/Amplitude-Kotlin/issues/138))" ([#140](https://github.com/amplitude/Amplitude-Kotlin/issues/140)) ([c1acc71](https://github.com/amplitude/Amplitude-Kotlin/commit/c1acc7105b9b3950e9d79ff588662595c79fa104))
+* wait until build (including possible legacy data migration) is finished ([#142](https://github.com/amplitude/Amplitude-Kotlin/issues/142)) ([78110e4](https://github.com/amplitude/Amplitude-Kotlin/commit/78110e449edc1bab107543c0defd3b95b11d7587)), closes [#138](https://github.com/amplitude/Amplitude-Kotlin/issues/138)
+
 ## [1.10.3](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.10.2...v1.10.3) (2023-08-09)
 
 
