@@ -11,7 +11,7 @@ on:
 jobs:
   authorize:
     name: Authorize
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - name: ${{ github.actor }} permission check to do a release
         uses: "lannonbr/repo-permission-check-action@2.0.2"
@@ -22,7 +22,7 @@ jobs:
 
   release:
     name: Release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     needs: [authorize]
     steps:
       - name: Checkout
