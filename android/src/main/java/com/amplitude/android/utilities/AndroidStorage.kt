@@ -22,20 +22,20 @@ import java.io.File
 
 class AndroidStorage(
     context: Context,
-    apiKey: String,
+    val storageKey: String,
     private val logger: Logger,
-    private val prefix: String?
+    internal val prefix: String?
 ) : Storage, EventsFileStorage {
 
     companion object {
         const val STORAGE_PREFIX = "amplitude-android"
     }
 
-    private val sharedPreferences: SharedPreferences =
-        context.getSharedPreferences("${getPrefix()}-$apiKey", Context.MODE_PRIVATE)
+    internal val sharedPreferences: SharedPreferences =
+        context.getSharedPreferences("${getPrefix()}-$storageKey", Context.MODE_PRIVATE)
     private val storageDirectory: File = context.getDir(getDir(), Context.MODE_PRIVATE)
     private val eventsFile =
-        EventsFileManager(storageDirectory, apiKey, AndroidKVS(sharedPreferences))
+        EventsFileManager(storageDirectory, storageKey, AndroidKVS(sharedPreferences))
     private val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
 
     override suspend fun writeEvent(event: BaseEvent) {
@@ -47,8 +47,12 @@ class AndroidStorage(
         }
     }
 
-    override suspend fun write(key: Storage.Constants, value: String) {
+    override fun write(key: Storage.Constants, value: String) {
         sharedPreferences.edit().putString(key.rawVal, value).apply()
+    }
+
+    override fun remove(key: Storage.Constants) {
+        sharedPreferences.edit().remove(key.rawVal).apply()
     }
 
     override suspend fun rollover() {
@@ -120,7 +124,7 @@ class AndroidStorageProvider : StorageProvider {
         val configuration = amplitude.configuration as com.amplitude.android.Configuration
         return AndroidStorage(
             configuration.context,
-            configuration.apiKey,
+            configuration.instanceName,
             configuration.loggerProvider.getLogger(amplitude),
             prefix
         )

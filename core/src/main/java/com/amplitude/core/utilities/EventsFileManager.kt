@@ -13,14 +13,14 @@ import java.util.concurrent.ConcurrentHashMap
 
 class EventsFileManager(
     private val directory: File,
-    private val apiKey: String,
+    private val storageKey: String,
     private val kvs: KeyValueStore
 ) {
     init {
         createDirectory(directory)
     }
 
-    private val fileIndexKey = "amplitude.events.file.index.$apiKey"
+    private val fileIndexKey = "amplitude.events.file.index.$storageKey"
 
     companion object {
         const val MAX_FILE_SIZE = 975_000 // 975KB
@@ -75,10 +75,10 @@ class EventsFileManager(
     fun read(): List<String> {
         // we need to filter out .temp file, since it's operating on the writing thread
         val fileList = directory.listFiles { _, name ->
-            name.contains(apiKey) && !name.endsWith(".tmp")
+            name.contains(storageKey) && !name.endsWith(".tmp")
         } ?: emptyArray()
         return fileList.sortedBy { it ->
-            getIndexFromFile(it)
+            getSortKeyForFile(it)
         }.map {
             it.absolutePath
         }
@@ -158,25 +158,26 @@ class EventsFileManager(
 
     // return the current tmp file
     private fun currentFile(): File {
-        val file = curFile[apiKey] ?: run {
+        val file = curFile[storageKey] ?: run {
             // check leftover tmp file
             val fileList = directory.listFiles { _, name ->
-                name.contains(apiKey) && name.endsWith(".tmp")
+                name.contains(storageKey) && name.endsWith(".tmp")
             } ?: emptyArray()
 
             fileList.getOrNull(0)
         }
         val index = kvs.getLong(fileIndexKey, 0)
-        curFile[apiKey] = file ?: File(directory, "$apiKey-$index.tmp")
-        return curFile[apiKey]!!
+        curFile[storageKey] = file ?: File(directory, "$storageKey-$index.tmp")
+        return curFile[storageKey]!!
     }
 
-    private fun getIndexFromFile(file: File): Int {
-        val name = file.nameWithoutExtension.replace("$apiKey-", "")
-        if (name.contains("-")) {
-            return name.split("-").get(0).toInt()
+    private fun getSortKeyForFile(file: File): String {
+        val name = file.nameWithoutExtension.replace("$storageKey-", "")
+        val dashIndex = name.indexOf('-')
+        if (dashIndex >= 0) {
+            return name.substring(0, dashIndex).padStart(10, '0') + name.substring(dashIndex)
         }
-        return name.toInt()
+        return name
     }
 
     // write to underlying file
@@ -197,6 +198,6 @@ class EventsFileManager(
     }
 
     private fun reset() {
-        curFile.remove(apiKey)
+        curFile.remove(storageKey)
     }
 }
