@@ -1,13 +1,12 @@
 package com.amplitude.android
 
 import android.content.Context
+import com.amplitude.android.migration.ApiKeyStorageMigration
 import com.amplitude.android.migration.RemnantDataMigration
-import com.amplitude.android.migration.StorageKeyMigration
 import com.amplitude.android.plugins.AnalyticsConnectorIdentityPlugin
 import com.amplitude.android.plugins.AnalyticsConnectorPlugin
 import com.amplitude.android.plugins.AndroidContextPlugin
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
-import com.amplitude.android.utilities.AndroidStorage
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.plugins.AmplitudeDestination
@@ -50,7 +49,7 @@ open class Amplitude(
     }
 
     override suspend fun buildInternal(identityConfiguration: IdentityConfiguration) {
-        migrateApiKeyStorages()
+        ApiKeyStorageMigration(this).execute()
 
         if ((this.configuration as Configuration).migrateLegacyData) {
             RemnantDataMigration(this).execute()
@@ -119,22 +118,6 @@ open class Amplitude(
                 (this@Amplitude.timeline as Timeline).stop()
             }
         })
-    }
-
-    private suspend fun migrateApiKeyStorages() {
-        val configuration = this.configuration as Configuration
-
-        val storage = storage as? AndroidStorage
-        if (storage != null) {
-            val apiKeyStorage = AndroidStorage(configuration.context, configuration.apiKey, logger, storage.prefix)
-            StorageKeyMigration(apiKeyStorage, storage, logger).execute()
-        }
-
-        val identifyInterceptStorage = identifyInterceptStorage as? AndroidStorage
-        if (identifyInterceptStorage != null) {
-            val apiKeyStorage = AndroidStorage(configuration.context, configuration.apiKey, logger, identifyInterceptStorage.prefix)
-            StorageKeyMigration(apiKeyStorage, identifyInterceptStorage, logger).execute()
-        }
     }
 
     companion object {

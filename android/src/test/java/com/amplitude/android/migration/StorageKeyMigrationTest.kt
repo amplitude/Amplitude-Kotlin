@@ -26,9 +26,11 @@ class StorageKeyMigrationTest {
         val sourceFileIndexKey = "amplitude.events.file.index.${source.storageKey}"
         val destinationFileIndexKey = "amplitude.events.file.index.${destination.storageKey}"
 
-        source.write(Storage.Constants.PREVIOUS_SESSION_ID, "123")
-        source.write(Storage.Constants.LAST_EVENT_TIME, "456")
-        source.write(Storage.Constants.LAST_EVENT_ID, "789")
+        runBlocking {
+            source.write(Storage.Constants.PREVIOUS_SESSION_ID, "123")
+            source.write(Storage.Constants.LAST_EVENT_TIME, "456")
+            source.write(Storage.Constants.LAST_EVENT_ID, "789")
+        }
         source.sharedPreferences.edit().putLong(sourceFileIndexKey, 1234567).commit()
 
         var destinationPreviousSessionId = destination.read(Storage.Constants.PREVIOUS_SESSION_ID)

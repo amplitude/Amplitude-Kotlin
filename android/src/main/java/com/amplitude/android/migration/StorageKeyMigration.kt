@@ -52,7 +52,7 @@ class StorageKeyMigration(
         }
     }
 
-    private fun moveSimpleValues() {
+    private suspend fun moveSimpleValues() {
         moveSimpleValue(Storage.Constants.PREVIOUS_SESSION_ID)
         moveSimpleValue(Storage.Constants.LAST_EVENT_TIME)
         moveSimpleValue(Storage.Constants.LAST_EVENT_ID)
@@ -65,7 +65,7 @@ class StorageKeyMigration(
         moveFileIndex()
     }
 
-    private fun moveSimpleValue(key: Storage.Constants) {
+    private suspend fun moveSimpleValue(key: Storage.Constants) {
         try {
             val sourceValue = source.read(key) ?: return
 

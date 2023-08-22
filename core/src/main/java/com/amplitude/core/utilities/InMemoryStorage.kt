@@ -22,11 +22,11 @@ class InMemoryStorage : Storage {
         }
     }
 
-    override fun write(key: Storage.Constants, value: String) {
+    override suspend fun write(key: Storage.Constants, value: String) {
         valuesMap[key.rawVal] = value
     }
 
-    override fun remove(key: Storage.Constants) {
+    override suspend fun remove(key: Storage.Constants) {
         valuesMap.remove(key.rawVal)
     }
 

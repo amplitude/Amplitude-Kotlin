@@ -20,9 +20,9 @@ interface Storage {
 
     suspend fun writeEvent(event: BaseEvent)
 
-    fun write(key: Constants, value: String)
+    suspend fun write(key: Constants, value: String)
 
-    fun remove(key: Constants)
+    suspend fun remove(key: Constants)
 
     suspend fun rollover()
 

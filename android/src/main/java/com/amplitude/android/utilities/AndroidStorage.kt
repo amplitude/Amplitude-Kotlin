@@ -47,11 +47,11 @@ class AndroidStorage(
         }
     }
 
-    override fun write(key: Storage.Constants, value: String) {
+    override suspend fun write(key: Storage.Constants, value: String) {
         sharedPreferences.edit().putString(key.rawVal, value).apply()
     }
 
-    override fun remove(key: Storage.Constants) {
+    override suspend fun remove(key: Storage.Constants) {
         sharedPreferences.edit().remove(key.rawVal).apply()
     }
 
