@@ -1,6 +1,7 @@
 package com.amplitude.android
 
 import android.content.Context
+import com.amplitude.android.migration.ApiKeyStorageMigration
 import com.amplitude.android.migration.RemnantDataMigration
 import com.amplitude.android.plugins.AnalyticsConnectorIdentityPlugin
 import com.amplitude.android.plugins.AnalyticsConnectorPlugin
@@ -48,6 +49,8 @@ open class Amplitude(
     }
 
     override suspend fun buildInternal(identityConfiguration: IdentityConfiguration) {
+        ApiKeyStorageMigration(this).execute()
+
         if ((this.configuration as Configuration).migrateLegacyData) {
             RemnantDataMigration(this).execute()
         }

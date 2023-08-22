@@ -15,7 +15,7 @@ import org.json.JSONArray
 import java.io.File
 
 class FileStorage(
-    private val apiKey: String,
+    storageKey: String,
     private val logger: Logger,
     private val prefix: String?
 ) : Storage, EventsFileStorage {
@@ -24,12 +24,12 @@ class FileStorage(
         const val STORAGE_PREFIX = "amplitude-kotlin"
     }
 
-    private val storageDirectory = File("/tmp/${getPrefix()}/$apiKey")
+    private val storageDirectory = File("/tmp/${getPrefix()}/$storageKey")
     private val storageDirectoryEvents = File(storageDirectory, "events")
 
-    internal val propertiesFile = PropertiesFile(storageDirectory, apiKey, getPrefix(), null)
-    internal val eventsFile = EventsFileManager(storageDirectoryEvents, apiKey, propertiesFile)
-    val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
+    private val propertiesFile = PropertiesFile(storageDirectory, storageKey, getPrefix(), null)
+    private val eventsFile = EventsFileManager(storageDirectoryEvents, storageKey, propertiesFile)
+    private val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
 
     init {
         propertiesFile.load()
@@ -46,6 +46,10 @@ class FileStorage(
 
     override suspend fun write(key: Storage.Constants, value: String) {
         propertiesFile.putString(key.rawVal, value)
+    }
+
+    override suspend fun remove(key: Storage.Constants) {
+        propertiesFile.remove(key.rawVal)
     }
 
     override suspend fun rollover() {
@@ -110,7 +114,7 @@ class FileStorage(
 class FileStorageProvider : StorageProvider {
     override fun getStorage(amplitude: Amplitude, prefix: String?): Storage {
         return FileStorage(
-            amplitude.configuration.apiKey,
+            amplitude.configuration.instanceName,
             amplitude.configuration.loggerProvider.getLogger(amplitude),
             prefix
         )

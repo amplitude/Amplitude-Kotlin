@@ -22,6 +22,8 @@ interface Storage {
 
     suspend fun write(key: Constants, value: String)
 
+    suspend fun remove(key: Constants)
+
     suspend fun rollover()
 
     fun read(key: Constants): String?

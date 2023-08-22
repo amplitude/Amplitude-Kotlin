@@ -23,7 +23,11 @@ class InMemoryStorage : Storage {
     }
 
     override suspend fun write(key: Storage.Constants, value: String) {
-        valuesMap.put(key.rawVal, value)
+        valuesMap[key.rawVal] = value
+    }
+
+    override suspend fun remove(key: Storage.Constants) {
+        valuesMap.remove(key.rawVal)
     }
 
     override suspend fun rollover() {
