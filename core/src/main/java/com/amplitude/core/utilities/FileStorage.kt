@@ -28,7 +28,7 @@ class FileStorage(
     private val storageDirectoryEvents = File(storageDirectory, "events")
 
     private val propertiesFile = PropertiesFile(storageDirectory, storageKey, getPrefix(), null)
-    private val eventsFile = EventsFileManager(storageDirectoryEvents, storageKey, propertiesFile)
+    private val eventsFile = EventsFileManager(storageDirectoryEvents, storageKey, logger)
     private val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
 
     init {
@@ -36,7 +36,7 @@ class FileStorage(
     }
 
     override suspend fun writeEvent(event: BaseEvent) {
-        eventsFile.storeEvent(JSONUtil.eventToString(event))
+        eventsFile.storeEvent(event)
         event.callback?.let { callback ->
             event.insertId?. let {
                 eventCallbacksMap.put(it, callback)
@@ -65,11 +65,7 @@ class FileStorage(
         return eventsFile.read()
     }
 
-    override fun releaseFile(filePath: String) {
-        eventsFile.release(filePath)
-    }
-
-    override suspend fun getEventsString(content: Any): String {
+    override fun getEventsString(content: Any): String {
         // content is filePath String
         return eventsFile.getEventString(content as String)
     }
@@ -132,9 +128,7 @@ interface EventsFileStorage {
 
     fun readEventsContent(): List<Any>
 
-    fun releaseFile(filePath: String)
-
-    suspend fun getEventsString(content: Any): String
+    fun getEventsString(content: Any): String
 
     suspend fun rollover()
 }

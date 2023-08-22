@@ -13,7 +13,6 @@ import com.amplitude.core.platform.EventPipeline
 import com.amplitude.core.utilities.EventsFileManager
 import com.amplitude.core.utilities.EventsFileStorage
 import com.amplitude.core.utilities.FileResponseHandler
-import com.amplitude.core.utilities.JSONUtil
 import com.amplitude.core.utilities.ResponseHandler
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -34,12 +33,12 @@ class AndroidStorage(
     internal val sharedPreferences: SharedPreferences =
         context.getSharedPreferences("${getPrefix()}-$storageKey", Context.MODE_PRIVATE)
     private val storageDirectory: File = context.getDir(getDir(), Context.MODE_PRIVATE)
-    private val eventsFile =
-        EventsFileManager(storageDirectory, storageKey, AndroidKVS(sharedPreferences))
+    internal val eventsFile =
+        EventsFileManager(storageDirectory, storageKey, logger)
     private val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
 
     override suspend fun writeEvent(event: BaseEvent) {
-        eventsFile.storeEvent(JSONUtil.eventToString(event))
+        eventsFile.storeEvent(event)
         event.callback?.let { callback ->
             event.insertId?.let {
                 eventCallbacksMap.put(it, callback)
@@ -67,11 +66,7 @@ class AndroidStorage(
         return eventsFile.read()
     }
 
-    override fun releaseFile(filePath: String) {
-        eventsFile.release(filePath)
-    }
-
-    override suspend fun getEventsString(content: Any): String {
+    override fun getEventsString(content: Any): String {
         return eventsFile.getEventString(content as String)
     }
 

@@ -145,50 +145,6 @@ class StorageKeyMigrationTest {
         Assertions.assertEquals(0, destinationEventFiles.size)
     }
 
-    @Test
-    fun `event files with duplicated names should be migrated`() {
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        val logger = ConsoleLogger()
-
-        val source = AndroidStorage(context, UUID.randomUUID().toString(), logger, null)
-        val destination = AndroidStorage(context, UUID.randomUUID().toString(), logger, null)
-
-        runBlocking {
-            source.writeEvent(createEvent(1))
-            source.rollover()
-            source.writeEvent(createEvent(22))
-            source.rollover()
-        }
-
-        val sourceEventFiles = source.readEventsContent() as List<String>
-        Assertions.assertEquals(2, sourceEventFiles.size)
-
-        val sourceFileSizes = sourceEventFiles.map { File(it).length() }
-
-        runBlocking {
-            destination.writeEvent(createEvent(333))
-            destination.rollover()
-        }
-
-        var destinationEventFiles = destination.readEventsContent() as List<String>
-        Assertions.assertEquals(1, destinationEventFiles.size)
-
-        val destinationFileSizes = destinationEventFiles.map { File(it).length() }
-
-        val migration = StorageKeyMigration(source, destination, logger)
-        runBlocking {
-            migration.execute()
-        }
-
-        destinationEventFiles = destination.readEventsContent() as List<String>
-        Assertions.assertEquals("-0", destinationEventFiles[0].substring(destinationEventFiles[0].length - 2))
-        Assertions.assertTrue(destinationEventFiles[1].contains("-0-"))
-        Assertions.assertEquals("-1", destinationEventFiles[2].substring(destinationEventFiles[0].length - 2))
-        Assertions.assertEquals(destinationFileSizes[0], File(destinationEventFiles[0]).length())
-        Assertions.assertEquals(sourceFileSizes[0], File(destinationEventFiles[1]).length())
-        Assertions.assertEquals(sourceFileSizes[1], File(destinationEventFiles[2]).length())
-    }
-
     private fun createEvent(eventIndex: Int): BaseEvent {
         val event = BaseEvent()
         event.eventType = "event-$eventIndex"

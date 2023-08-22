@@ -119,14 +119,12 @@ class FileResponseHandler(
     override fun handleTooManyRequestsResponse(tooManyRequestsResponse: TooManyRequestsResponse, events: Any, eventsString: String) {
         logger?.debug("Handle response, status: ${tooManyRequestsResponse.status}, error: ${tooManyRequestsResponse.error}")
         // trigger exponential backoff
-        storage.releaseFile(events as String)
         triggerBackOff(true)
     }
 
     override fun handleTimeoutResponse(timeoutResponse: TimeoutResponse, events: Any, eventsString: String) {
         logger?.debug("Handle response, status: ${timeoutResponse.status}")
         // trigger exponential backoff
-        storage.releaseFile(events as String)
         triggerBackOff(true)
     }
 
@@ -134,7 +132,6 @@ class FileResponseHandler(
         logger?.debug("Handle response, status: ${failedResponse.status}, error: ${failedResponse.error}")
         // wait for next time to try again
         // trigger exponential backoff
-        storage.releaseFile(events as String)
         triggerBackOff(true)
     }
 

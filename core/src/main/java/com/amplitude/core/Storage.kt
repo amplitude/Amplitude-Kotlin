@@ -30,7 +30,7 @@ interface Storage {
 
     fun readEventsContent(): List<Any>
 
-    suspend fun getEventsString(content: Any): String
+    fun getEventsString(content: Any): String
 
     fun getResponseHandler(eventPipeline: EventPipeline, configuration: Configuration, scope: CoroutineScope, dispatcher: CoroutineDispatcher): ResponseHandler
 }

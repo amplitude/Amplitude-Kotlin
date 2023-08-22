@@ -4,7 +4,6 @@ import com.amplitude.android.utilities.AndroidStorage
 import com.amplitude.common.Logger
 import com.amplitude.core.Storage
 import java.io.File
-import java.util.UUID
 
 class StorageKeyMigration(
     private val source: AndroidStorage,
@@ -29,22 +28,22 @@ class StorageKeyMigration(
 
             for (sourceEventFilePath in sourceEventFiles) {
                 val sourceEventFile = File(sourceEventFilePath)
-                var destinationEventFile =
-                    File(sourceEventFilePath.replace(source.storageKey, destination.storageKey))
+                val destinationFilePath = sourceEventFilePath.replace(
+                    "/${source.storageKey}/",
+                    "/${destination.storageKey}/"
+                ).replace(
+                    source.eventsFile.id,
+                    destination.eventsFile.id,
+                )
+                val destinationEventFile = File(destinationFilePath)
                 if (destinationEventFile.exists()) {
-                    var fileExtension = destinationEventFile.extension
-                    if (fileExtension != "") {
-                        fileExtension = ".$fileExtension"
+                    logger.error("destination ${destinationEventFile.absoluteFile} already exists")
+                } else {
+                    try {
+                        sourceEventFile.renameTo(destinationEventFile)
+                    } catch (e: Exception) {
+                        logger.error("can't rename $sourceEventFile to $destinationEventFile: ${e.message}")
                     }
-                    destinationEventFile = File(
-                        destinationEventFile.parent,
-                        "${destinationEventFile.nameWithoutExtension}-${UUID.randomUUID()}$fileExtension"
-                    )
-                }
-                try {
-                    sourceEventFile.renameTo(destinationEventFile)
-                } catch (e: Exception) {
-                    logger.error("can't rename $sourceEventFile to $destinationEventFile: ${e.message}")
                 }
             }
         } catch (e: Exception) {
