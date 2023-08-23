@@ -1,3 +1,10 @@
+# [1.11.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.10.4...v1.11.0) (2023-08-23)
+
+
+### Features
+
+* migrate 'api key' storage data to 'instance name' storage ([#143](https://github.com/amplitude/Amplitude-Kotlin/issues/143)) ([67af8e3](https://github.com/amplitude/Amplitude-Kotlin/commit/67af8e3f536f23cac78bfb7906718717aebd901f))
+
 ## [1.10.4](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.10.3...v1.10.4) (2023-08-09)
 
 
