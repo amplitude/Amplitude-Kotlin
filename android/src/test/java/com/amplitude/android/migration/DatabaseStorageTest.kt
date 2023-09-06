@@ -34,13 +34,6 @@ class DatabaseStorageTest {
     }
 
     @Test
-    fun databaseStorage_onCreate_throwsNotImplementedError() {
-        Assertions.assertThrows(NotImplementedError::class.java) {
-            databaseStorage?.onCreate(db!!)
-        }
-    }
-
-    @Test
     fun databaseStorage_onUpgrade_shouldSaveCurrentDbVersion() {
         Assertions.assertEquals(DatabaseConstants.DATABASE_VERSION, databaseStorage?.currentDbVersion)
         databaseStorage?.onUpgrade(db, 1, 2)

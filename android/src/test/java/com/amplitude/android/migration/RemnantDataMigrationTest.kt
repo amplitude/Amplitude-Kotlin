@@ -37,6 +37,11 @@ class RemnantDataMigrationTest {
         checkLegacyDataMigration("legacy_v4.sqlite", 4, false)
     }
 
+    @Test
+    fun `not database file should not fail`() {
+        checkLegacyDataMigration("not_db_file", 0)
+    }
+
     private fun checkLegacyDataMigration(legacyDbName: String, dbVersion: Int, migrateLegacyData: Boolean = true) {
         val context = ApplicationProvider.getApplicationContext<Context>()
 
@@ -46,6 +51,7 @@ class RemnantDataMigrationTest {
         if (inputStream != null) {
             copyStream(inputStream, dbPath)
         }
+        val isValidDbFile = inputStream != null && legacyDbName != "not_db_file"
 
         val amplitude = Amplitude(
             Configuration(
@@ -63,7 +69,7 @@ class RemnantDataMigrationTest {
             amplitude.isBuilt.await()
 
             val identity = amplitude.idContainer.identityManager.getIdentity()
-            if (inputStream != null && migrateLegacyData) {
+            if (isValidDbFile && migrateLegacyData) {
                 Assertions.assertEquals(deviceId, identity.deviceId)
                 Assertions.assertEquals(userId, identity.userId)
             } else {
@@ -74,7 +80,7 @@ class RemnantDataMigrationTest {
             amplitude.storage.rollover()
             amplitude.identifyInterceptStorage.rollover()
 
-            if (inputStream != null && migrateLegacyData) {
+            if (isValidDbFile && migrateLegacyData) {
                 Assertions.assertEquals(1684219150343, amplitude.storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLongOrNull())
                 Assertions.assertEquals(1684219150344, amplitude.storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLongOrNull())
                 Assertions.assertEquals(2, amplitude.storage.read(Storage.Constants.LAST_EVENT_ID)?.toLongOrNull())
@@ -85,7 +91,7 @@ class RemnantDataMigrationTest {
             }
 
             val eventsData = amplitude.storage.readEventsContent()
-            if (inputStream != null && migrateLegacyData) {
+            if (isValidDbFile && migrateLegacyData) {
                 val jsonEvents = JSONArray()
                 for (eventsPath in eventsData) {
                     val eventsString = amplitude.storage.getEventsString(eventsPath)
@@ -128,7 +134,7 @@ class RemnantDataMigrationTest {
             }
 
             val interceptedIdentifiesData = amplitude.identifyInterceptStorage.readEventsContent()
-            if (inputStream != null && dbVersion >= 4 && migrateLegacyData) {
+            if (isValidDbFile && dbVersion >= 4 && migrateLegacyData) {
                 val jsonInterceptedIdentifies = JSONArray()
                 for (eventsPath in interceptedIdentifiesData) {
                     val eventsString = amplitude.storage.getEventsString(eventsPath)
@@ -170,7 +176,7 @@ class RemnantDataMigrationTest {
         }
 
         // User/device id should not be cleaned.
-        if (inputStream != null) {
+        if (isValidDbFile) {
             Assertions.assertEquals(deviceId, databaseStorage.getValue(RemnantDataMigration.DEVICE_ID_KEY))
             Assertions.assertEquals(userId, databaseStorage.getValue(RemnantDataMigration.USER_ID_KEY))
         } else {

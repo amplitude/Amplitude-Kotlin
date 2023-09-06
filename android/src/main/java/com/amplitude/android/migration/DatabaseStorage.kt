@@ -46,11 +46,13 @@ class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper
     DatabaseConstants.DATABASE_VERSION
 ) {
     private var file: File = context.getDatabasePath(databaseName)
+    private var isValidDatabaseFile = true
     var currentDbVersion: Int = DatabaseConstants.DATABASE_VERSION
         private set
 
     override fun onCreate(db: SQLiteDatabase) {
-        throw NotImplementedError()
+        // File exists but it is not a legacy database for some reason.
+        this.isValidDatabaseFile = false
     }
 
     override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
@@ -121,6 +123,10 @@ class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper
         var cursor: Cursor? = null
         try {
             val db = readableDatabase
+            if (!isValidDatabaseFile) {
+                return arrayListOf()
+            }
+
             cursor = queryDb(
                 db,
                 table,
@@ -220,6 +226,10 @@ class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper
         var cursor: Cursor? = null
         try {
             val db = readableDatabase
+            if (!isValidDatabaseFile) {
+                return null
+            }
+
             cursor = queryDb(
                 db,
                 table,
