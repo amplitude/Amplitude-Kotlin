@@ -5,6 +5,7 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteException
 import android.database.sqlite.SQLiteOpenHelper
+import com.amplitude.common.Logger
 import com.amplitude.common.android.LogcatLogger
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Configuration
@@ -39,18 +40,25 @@ object DatabaseConstants {
  * The SDK doesn't need to write/read from local sqlite database.
  * This storage class is used for migrating events only.
  */
-class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper(
+class DatabaseStorage(
+    context: Context,
+    databaseName: String,
+    private val logger: Logger
+) : SQLiteOpenHelper(
     context,
     databaseName,
     null,
     DatabaseConstants.DATABASE_VERSION
 ) {
     private var file: File = context.getDatabasePath(databaseName)
+    private var isValidDatabaseFile = true
     var currentDbVersion: Int = DatabaseConstants.DATABASE_VERSION
         private set
 
     override fun onCreate(db: SQLiteDatabase) {
-        throw NotImplementedError()
+        // File exists but it is not a legacy database for some reason.
+        this.isValidDatabaseFile = false
+        logger.error("Attempt to re-create existing legacy database file ${file.absolutePath}")
     }
 
     override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
@@ -121,6 +129,10 @@ class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper
         var cursor: Cursor? = null
         try {
             val db = readableDatabase
+            if (!isValidDatabaseFile) {
+                return arrayListOf()
+            }
+
             cursor = queryDb(
                 db,
                 table,
@@ -220,6 +232,10 @@ class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper
         var cursor: Cursor? = null
         try {
             val db = readableDatabase
+            if (!isValidDatabaseFile) {
+                return null
+            }
+
             cursor = queryDb(
                 db,
                 table,
@@ -304,7 +320,7 @@ object DatabaseStorageProvider {
         val databaseName = getDatabaseName(configuration.instanceName)
         var storage = instances[databaseName]
         if (storage == null) {
-            storage = DatabaseStorage(configuration.context, databaseName)
+            storage = DatabaseStorage(configuration.context, databaseName, configuration.loggerProvider.getLogger(amplitude))
             instances[databaseName] = storage
         }
 
