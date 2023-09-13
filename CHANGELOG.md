@@ -1,3 +1,10 @@
+## [1.11.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.11.0...v1.11.1) (2023-09-13)
+
+
+### Bug Fixes
+
+* do not throw NotImplemented error for existing "legacy database"file if the file is not a sqlite file ([#147](https://github.com/amplitude/Amplitude-Kotlin/issues/147)) ([3e0b851](https://github.com/amplitude/Amplitude-Kotlin/commit/3e0b85132a3d0c4c78d64c8980a166c978bd558a))
+
 # [1.11.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.10.4...v1.11.0) (2023-08-23)
 
 
