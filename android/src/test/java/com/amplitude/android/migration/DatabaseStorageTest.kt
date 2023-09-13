@@ -3,6 +3,7 @@ package com.amplitude.android.migration
 import android.content.Context
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
+import com.amplitude.common.jvm.ConsoleLogger
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkConstructor
@@ -29,7 +30,7 @@ class DatabaseStorageTest {
     @BeforeEach
     fun setUp() {
         context = mockk(relaxed = true)
-        databaseStorage = DatabaseStorage(context!!, "")
+        databaseStorage = DatabaseStorage(context!!, "", ConsoleLogger())
         db = mockk()
     }
 
@@ -57,7 +58,7 @@ class DatabaseStorageTest {
         every { anyConstructed<JSONObject>().put(any(), any<Long>()) } returns JSONObject()
         every { anyConstructed<JSONObject>().get("event_id") } returnsMany listOf(1, 2)
 
-        val mockedDatabaseStorage = spyk(DatabaseStorage(context!!, ""), recordPrivateCalls = true)
+        val mockedDatabaseStorage = spyk(DatabaseStorage(context!!, "", ConsoleLogger()), recordPrivateCalls = true)
         every {
             mockedDatabaseStorage["queryDb"](
                 any<SQLiteDatabase>(),
@@ -79,7 +80,7 @@ class DatabaseStorageTest {
 
     @Test
     fun databaseStorage_removeEvent_returnsEventsContent() {
-        val mockedDatabaseStorage = spyk(DatabaseStorage(context!!, ""), recordPrivateCalls = true)
+        val mockedDatabaseStorage = spyk(DatabaseStorage(context!!, "", ConsoleLogger()), recordPrivateCalls = true)
         every { mockedDatabaseStorage.close() } answers { nothing }
         every { mockedDatabaseStorage.writableDatabase } returns db
         every { db!!.delete(any(), any(), arrayOf("2")) } returns 2

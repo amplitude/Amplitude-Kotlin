@@ -5,6 +5,7 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteException
 import android.database.sqlite.SQLiteOpenHelper
+import com.amplitude.common.Logger
 import com.amplitude.common.android.LogcatLogger
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Configuration
@@ -39,7 +40,11 @@ object DatabaseConstants {
  * The SDK doesn't need to write/read from local sqlite database.
  * This storage class is used for migrating events only.
  */
-class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper(
+class DatabaseStorage(
+    context: Context,
+    databaseName: String,
+    private val logger: Logger
+) : SQLiteOpenHelper(
     context,
     databaseName,
     null,
@@ -53,6 +58,7 @@ class DatabaseStorage(context: Context, databaseName: String) : SQLiteOpenHelper
     override fun onCreate(db: SQLiteDatabase) {
         // File exists but it is not a legacy database for some reason.
         this.isValidDatabaseFile = false
+        logger.error("Attempt to re-create existing legacy database file ${file.absolutePath}")
     }
 
     override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
@@ -314,7 +320,7 @@ object DatabaseStorageProvider {
         val databaseName = getDatabaseName(configuration.instanceName)
         var storage = instances[databaseName]
         if (storage == null) {
-            storage = DatabaseStorage(configuration.context, databaseName)
+            storage = DatabaseStorage(configuration.context, databaseName, configuration.loggerProvider.getLogger(amplitude))
             instances[databaseName] = storage
         }
 

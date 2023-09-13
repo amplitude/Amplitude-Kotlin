@@ -5,6 +5,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.amplitude.android.Amplitude
 import com.amplitude.android.Configuration
 import com.amplitude.core.Storage
+import com.amplitude.core.utilities.ConsoleLoggerProvider
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.junit.Test
@@ -59,6 +60,7 @@ class RemnantDataMigrationTest {
                 context,
                 instanceName = instanceName,
                 migrateLegacyData = migrateLegacyData,
+                loggerProvider = ConsoleLoggerProvider()
             )
         )
 
