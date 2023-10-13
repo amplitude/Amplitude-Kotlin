@@ -496,4 +496,30 @@ class AndroidLifecyclePluginTest {
         verify(exactly = 0) { mockedPlugin.track(capture(tracks)) }
         Assertions.assertEquals(0, tracks.count())
     }
+
+    @Test
+    fun `test deep link opened event is not tracked when URL is missing`() = runTest {
+        setDispatcher(testScheduler)
+        configuration.defaultTracking.deepLinks = true
+        amplitude.add(androidLifecyclePlugin)
+
+        val mockedPlugin = spyk(StubPlugin())
+        amplitude.add(mockedPlugin)
+        amplitude.isBuilt.await()
+
+        val mockedIntent = mockk<Intent>()
+        every { mockedIntent.data } returns null
+        val mockedActivity = mockk<Activity>()
+        every { mockedActivity.intent } returns mockedIntent
+        every { mockedActivity.referrer } returns Uri.parse("android-app://com.android.unit-test")
+        val mockedBundle = mockk<Bundle>()
+        androidLifecyclePlugin.onActivityCreated(mockedActivity, mockedBundle)
+
+        advanceUntilIdle()
+        Thread.sleep(100)
+
+        val tracks = mutableListOf<BaseEvent>()
+        verify(exactly = 0) { mockedPlugin.track(capture(tracks)) }
+        Assertions.assertEquals(0, tracks.count())
+    }
 }
