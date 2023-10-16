@@ -91,14 +91,16 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         val intent = activity.intent
         intent?.let {
             val referrer = getReferrer(activity)?.toString()
-            val url = it.data?.toString()
-            amplitude.track(
-                EventTypes.DEEP_LINK_OPENED,
-                mapOf(
-                    EventProperties.LINK_URL to url,
-                    EventProperties.LINK_REFERRER to referrer,
-                ),
-            )
+            it.data?.let { uri ->
+                val url = uri.toString()
+                amplitude.track(
+                    EventTypes.DEEP_LINK_OPENED,
+                    mapOf(
+                        EventProperties.LINK_URL to url,
+                        EventProperties.LINK_REFERRER to referrer,
+                    ),
+                )
+            }
         }
     }
 
