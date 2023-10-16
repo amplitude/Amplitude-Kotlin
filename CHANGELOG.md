@@ -1,3 +1,10 @@
+## [1.11.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.11.1...v1.11.2) (2023-10-16)
+
+
+### Bug Fixes
+
+* skip deep link event when url is missing ([#150](https://github.com/amplitude/Amplitude-Kotlin/issues/150)) ([b8a4a87](https://github.com/amplitude/Amplitude-Kotlin/commit/b8a4a875cede9d8c78e61f36d314e90c541042f6))
+
 ## [1.11.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.11.0...v1.11.1) (2023-09-13)
 
 
