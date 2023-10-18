@@ -12,6 +12,9 @@ import java.io.OutputStream
 import java.net.HttpURLConnection
 import java.net.MalformedURLException
 import java.net.URL
+import java.time.ZoneOffset
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
 
 internal class HttpClient(
     private val configuration: Configuration
@@ -26,6 +29,7 @@ internal class HttpClient(
             override fun close() {
                 try {
                     this.setApiKey(getApiKey())
+                    this.setClientUploadTime(getClientUploadTime())
                     this.setMinIdLength(getMindIdLength())
                     this.setBody()
                     this.outputStream?.close()
@@ -80,6 +84,10 @@ internal class HttpClient(
         return configuration.apiKey
     }
 
+    internal fun getClientUploadTime(): String {
+        return ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT)
+    }
+
     internal fun getMindIdLength(): Int? {
         return configuration.minIdLength
     }
@@ -100,6 +108,7 @@ abstract class Connection(
 ) : Closeable {
 
     private lateinit var apiKey: String
+    private lateinit var clientUploadTime: String
     private lateinit var events: String
     private var minIdLength: Int? = null
     internal lateinit var response: Response
@@ -111,6 +120,10 @@ abstract class Connection(
 
     internal fun setApiKey(apiKey: String) {
         this.apiKey = apiKey
+    }
+
+    internal fun setClientUploadTime(clientUploadTime: String) {
+        this.clientUploadTime = clientUploadTime
     }
 
     internal fun setMinIdLength(minIdLength: Int?) {
