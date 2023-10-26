@@ -12,9 +12,10 @@ import java.io.OutputStream
 import java.net.HttpURLConnection
 import java.net.MalformedURLException
 import java.net.URL
-import java.time.ZoneOffset
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
 internal class HttpClient(
     private val configuration: Configuration
@@ -85,7 +86,10 @@ internal class HttpClient(
     }
 
     internal fun getClientUploadTime(): String {
-        return ZonedDateTime.now(ZoneOffset.UTC).format(DateTimeFormatter.ISO_INSTANT)
+        val currentTimeMillis = System.currentTimeMillis()
+        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+        sdf.timeZone = TimeZone.getTimeZone("UTC")
+        return sdf.format(Date(currentTimeMillis))
     }
 
     internal fun getMindIdLength(): Int? {
@@ -144,9 +148,9 @@ abstract class Connection(
 
     private fun getBodyStr(): String {
         if (minIdLength == null) {
-            return "{\"api_key\":\"$apiKey\",\"events\":$events}"
+            return "{\"api_key\":\"$apiKey\",\"client_upload_time\":\"$clientUploadTime\",\"events\":$events}"
         }
-        return "{\"api_key\":\"$apiKey\",\"events\":$events,\"options\":{\"min_id_length\":$minIdLength}}"
+        return "{\"api_key\":\"$apiKey\",\"client_upload_time\":$clientUploadTime,\"events\":$events,\"options\":{\"min_id_length\":$minIdLength}}"
     }
 }
 
