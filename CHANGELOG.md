@@ -1,3 +1,10 @@
+# [1.12.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.11.2...v1.12.0) (2023-10-27)
+
+
+### Features
+
+* add client upload time ([#153](https://github.com/amplitude/Amplitude-Kotlin/issues/153)) ([9863b53](https://github.com/amplitude/Amplitude-Kotlin/commit/9863b532f0e2db05b937da35557aa04fa0594cfe))
+
 ## [1.11.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.11.1...v1.11.2) (2023-10-16)
 
 
