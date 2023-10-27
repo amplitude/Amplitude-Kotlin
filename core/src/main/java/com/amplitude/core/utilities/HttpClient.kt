@@ -12,6 +12,9 @@ import java.io.OutputStream
 import java.net.HttpURLConnection
 import java.net.MalformedURLException
 import java.net.URL
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.TimeZone
 
 internal class HttpClient(
     private val configuration: Configuration
@@ -26,6 +29,7 @@ internal class HttpClient(
             override fun close() {
                 try {
                     this.setApiKey(getApiKey())
+                    this.setClientUploadTime(getClientUploadTime())
                     this.setMinIdLength(getMindIdLength())
                     this.setBody()
                     this.outputStream?.close()
@@ -80,6 +84,13 @@ internal class HttpClient(
         return configuration.apiKey
     }
 
+    internal fun getClientUploadTime(): String {
+        val currentTimeMillis = System.currentTimeMillis()
+        val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+        sdf.timeZone = TimeZone.getTimeZone("UTC")
+        return sdf.format(Date(currentTimeMillis))
+    }
+
     internal fun getMindIdLength(): Int? {
         return configuration.minIdLength
     }
@@ -100,6 +111,7 @@ abstract class Connection(
 ) : Closeable {
 
     private lateinit var apiKey: String
+    private lateinit var clientUploadTime: String
     private lateinit var events: String
     private var minIdLength: Int? = null
     internal lateinit var response: Response
@@ -111,6 +123,10 @@ abstract class Connection(
 
     internal fun setApiKey(apiKey: String) {
         this.apiKey = apiKey
+    }
+
+    internal fun setClientUploadTime(clientUploadTime: String) {
+        this.clientUploadTime = clientUploadTime
     }
 
     internal fun setMinIdLength(minIdLength: Int?) {
@@ -131,9 +147,9 @@ abstract class Connection(
 
     private fun getBodyStr(): String {
         if (minIdLength == null) {
-            return "{\"api_key\":\"$apiKey\",\"events\":$events}"
+            return "{\"api_key\":\"$apiKey\",\"client_upload_time\":\"$clientUploadTime\",\"events\":$events}"
         }
-        return "{\"api_key\":\"$apiKey\",\"events\":$events,\"options\":{\"min_id_length\":$minIdLength}}"
+        return "{\"api_key\":\"$apiKey\",\"client_upload_time\":$clientUploadTime,\"events\":$events,\"options\":{\"min_id_length\":$minIdLength}}"
     }
 }
 
