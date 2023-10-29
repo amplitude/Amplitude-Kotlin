@@ -60,16 +60,15 @@ class Timeline : Timeline() {
             // do nothing
         } else if (event.eventType == Amplitude.DUMMY_ENTER_FOREGROUND_EVENT) {
             skipEvent = true
-            sessionEvents = startNewSessionIfNeeded(eventTimestamp)
+            sessionEvents = startNewSessionIfNeeded(eventTimestamp, false)
         } else if (event.eventType == Amplitude.DUMMY_EXIT_FOREGROUND_EVENT) {
             skipEvent = true
             refreshSessionTime(eventTimestamp)
+        } else if (event.eventType == Amplitude.DUMMY_SET_SESSION_EVENT) {
+            skipEvent = true
+            sessionEvents = if ((eventSessionId ?: -1) >= 0) startNewSession(eventSessionId!!) else endCurrentSession()
         } else {
-            if (!message.inForeground) {
-                sessionEvents = startNewSessionIfNeeded(eventTimestamp)
-            } else {
-                refreshSessionTime(eventTimestamp)
-            }
+            sessionEvents = startNewSessionIfNeeded(eventTimestamp, message.inForeground)
         }
 
         if (!skipEvent && event.sessionId == null) {
@@ -111,8 +110,8 @@ class Timeline : Timeline() {
         }
     }
 
-    private suspend fun startNewSessionIfNeeded(timestamp: Long): Iterable<BaseEvent>? {
-        if (inSession() && isWithinMinTimeBetweenSessions(timestamp)) {
+    private suspend fun startNewSessionIfNeeded(timestamp: Long, inForeground: Boolean): Iterable<BaseEvent>? {
+        if (inSession() && (inForeground || isWithinMinTimeBetweenSessions(timestamp))) {
             refreshSessionTime(timestamp)
             return null
         }
@@ -147,10 +146,29 @@ class Timeline : Timeline() {
             val sessionStartEvent = BaseEvent()
             sessionStartEvent.eventType = Amplitude.START_SESSION_EVENT
             sessionStartEvent.timestamp = timestamp
-            sessionStartEvent.sessionId = sessionId
+            sessionStartEvent.sessionId = timestamp
             sessionEvents.add(sessionStartEvent)
         }
 
+        return sessionEvents
+    }
+
+    private suspend fun endCurrentSession(): Iterable<BaseEvent> {
+        val sessionEvents = mutableListOf<BaseEvent>()
+        val configuration = amplitude.configuration as Configuration
+        // If any trackingSessionEvents is false (default value is true), means it is manually set
+        @Suppress("DEPRECATION")
+        val trackingSessionEvents = configuration.trackingSessionEvents && configuration.defaultTracking.sessions
+
+        if (trackingSessionEvents && inSession()) {
+            val sessionEndEvent = BaseEvent()
+            sessionEndEvent.eventType = Amplitude.END_SESSION_EVENT
+            sessionEndEvent.timestamp = if (lastEventTime > 0) lastEventTime else null
+            sessionEndEvent.sessionId = sessionId
+            sessionEvents.add(sessionEndEvent)
+        }
+
+        setSessionId(-1)
         return sessionEvents
     }
 

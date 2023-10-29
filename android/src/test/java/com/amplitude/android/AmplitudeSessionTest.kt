@@ -600,6 +600,220 @@ class AmplitudeSessionTest {
         Assertions.assertEquals(1, tracks.count())
     }
 
+    @Test
+    fun amplitude_setSessionIdInBackgroundShouldStartNewSession() = runTest {
+        val amplitude = Amplitude(createConfiguration())
+        setDispatcher(amplitude, testScheduler)
+
+        val mockedPlugin = spyk(StubPlugin())
+        amplitude.add(mockedPlugin)
+
+        amplitude.isBuilt.await()
+
+        amplitude.track(createEvent(100, "test event 1"))
+        amplitude.setSessionId(150)
+        amplitude.track(createEvent(200, "test event 2"))
+
+        advanceUntilIdle()
+        Thread.sleep(100)
+
+        val tracks = mutableListOf<BaseEvent>()
+
+        verify {
+            mockedPlugin.track(capture(tracks))
+        }
+
+        tracks.sortBy { event -> event.eventId }
+
+        Assertions.assertEquals(5, tracks.count())
+
+        var event = tracks[0]
+        Assertions.assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
+        Assertions.assertEquals(100, event.sessionId)
+        Assertions.assertEquals(100, event.timestamp)
+
+        event = tracks[1]
+        Assertions.assertEquals("test event 1", event.eventType)
+        Assertions.assertEquals(100, event.sessionId)
+        Assertions.assertEquals(100, event.timestamp)
+
+        event = tracks[2]
+        Assertions.assertEquals(Amplitude.END_SESSION_EVENT, event.eventType)
+        Assertions.assertEquals(100, event.sessionId)
+        Assertions.assertEquals(100, event.timestamp)
+
+        event = tracks[3]
+        Assertions.assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
+        Assertions.assertEquals(150, event.sessionId)
+        Assertions.assertEquals(150, event.timestamp)
+
+        event = tracks[4]
+        Assertions.assertEquals("test event 2", event.eventType)
+        Assertions.assertEquals(150, event.sessionId)
+        Assertions.assertEquals(200, event.timestamp)
+    }
+
+    @Test
+    fun amplitude_setSessionIdInForegroundShouldStartNewSession() = runTest {
+        val amplitude = Amplitude(createConfiguration())
+        setDispatcher(amplitude, testScheduler)
+
+        val mockedPlugin = spyk(StubPlugin())
+        amplitude.add(mockedPlugin)
+
+        amplitude.isBuilt.await()
+
+        amplitude.onEnterForeground(1000)
+        amplitude.track(createEvent(1050, "test event 1"))
+        amplitude.setSessionId(1100)
+        amplitude.track(createEvent(2000, "test event 2"))
+
+        advanceUntilIdle()
+        Thread.sleep(100)
+
+        val tracks = mutableListOf<BaseEvent>()
+
+        verify {
+            mockedPlugin.track(capture(tracks))
+        }
+
+        tracks.sortBy { event -> event.eventId }
+
+        Assertions.assertEquals(5, tracks.count())
+
+        var event = tracks[0]
+        Assertions.assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
+        Assertions.assertEquals(1000, event.sessionId)
+        Assertions.assertEquals(1000, event.timestamp)
+
+        event = tracks[1]
+        Assertions.assertEquals("test event 1", event.eventType)
+        Assertions.assertEquals(1000, event.sessionId)
+        Assertions.assertEquals(1050, event.timestamp)
+
+        event = tracks[2]
+        Assertions.assertEquals(Amplitude.END_SESSION_EVENT, event.eventType)
+        Assertions.assertEquals(1000, event.sessionId)
+        Assertions.assertEquals(1050, event.timestamp)
+
+        event = tracks[3]
+        Assertions.assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
+        Assertions.assertEquals(1100, event.sessionId)
+        Assertions.assertEquals(1100, event.timestamp)
+
+        event = tracks[4]
+        Assertions.assertEquals("test event 2", event.eventType)
+        Assertions.assertEquals(1100, event.sessionId)
+        Assertions.assertEquals(2000, event.timestamp)
+    }
+
+    @Test
+    fun amplitude_setSessionEndInBackgroundShouldEndCurrentSession() = runTest {
+        val amplitude = Amplitude(createConfiguration())
+        setDispatcher(amplitude, testScheduler)
+
+        val mockedPlugin = spyk(StubPlugin())
+        amplitude.add(mockedPlugin)
+
+        amplitude.isBuilt.await()
+
+        amplitude.track(createEvent(1000, "test event 1"))
+        amplitude.setSessionId(-1)
+        amplitude.track(createEvent(2000, "test event 2"))
+
+        advanceUntilIdle()
+        Thread.sleep(100)
+
+        val tracks = mutableListOf<BaseEvent>()
+
+        verify {
+            mockedPlugin.track(capture(tracks))
+        }
+
+        tracks.sortBy { event -> event.eventId }
+
+        Assertions.assertEquals(5, tracks.count())
+
+        var event = tracks[0]
+        Assertions.assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
+        Assertions.assertEquals(1000, event.sessionId)
+        Assertions.assertEquals(1000, event.timestamp)
+
+        event = tracks[1]
+        Assertions.assertEquals("test event 1", event.eventType)
+        Assertions.assertEquals(1000, event.sessionId)
+        Assertions.assertEquals(1000, event.timestamp)
+
+        event = tracks[2]
+        Assertions.assertEquals(Amplitude.END_SESSION_EVENT, event.eventType)
+        Assertions.assertEquals(1000, event.sessionId)
+        Assertions.assertEquals(1000, event.timestamp)
+
+        event = tracks[3]
+        Assertions.assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
+        Assertions.assertEquals(2000, event.sessionId)
+        Assertions.assertEquals(2000, event.timestamp)
+
+        event = tracks[4]
+        Assertions.assertEquals("test event 2", event.eventType)
+        Assertions.assertEquals(2000, event.sessionId)
+        Assertions.assertEquals(2000, event.timestamp)
+    }
+
+    @Test
+    fun amplitude_setSessionEndInForegroundShouldEndCurrentSession() = runTest {
+        val amplitude = Amplitude(createConfiguration())
+        setDispatcher(amplitude, testScheduler)
+
+        val mockedPlugin = spyk(StubPlugin())
+        amplitude.add(mockedPlugin)
+
+        amplitude.isBuilt.await()
+
+        amplitude.onEnterForeground(1000)
+        amplitude.track(createEvent(1500, "test event 1"))
+        amplitude.setSessionId(-1)
+        amplitude.track(createEvent(2000, "test event 2"))
+
+        advanceUntilIdle()
+        Thread.sleep(100)
+
+        val tracks = mutableListOf<BaseEvent>()
+
+        verify {
+            mockedPlugin.track(capture(tracks))
+        }
+
+        tracks.sortBy { event -> event.eventId }
+
+        Assertions.assertEquals(5, tracks.count())
+
+        var event = tracks[0]
+        Assertions.assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
+        Assertions.assertEquals(1000, event.sessionId)
+        Assertions.assertEquals(1000, event.timestamp)
+
+        event = tracks[1]
+        Assertions.assertEquals("test event 1", event.eventType)
+        Assertions.assertEquals(1000, event.sessionId)
+        Assertions.assertEquals(1500, event.timestamp)
+
+        event = tracks[2]
+        Assertions.assertEquals(Amplitude.END_SESSION_EVENT, event.eventType)
+        Assertions.assertEquals(1000, event.sessionId)
+        Assertions.assertEquals(1500, event.timestamp)
+
+        event = tracks[3]
+        Assertions.assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
+        Assertions.assertEquals(2000, event.sessionId)
+        Assertions.assertEquals(2000, event.timestamp)
+
+        event = tracks[4]
+        Assertions.assertEquals("test event 2", event.eventType)
+        Assertions.assertEquals(2000, event.sessionId)
+        Assertions.assertEquals(2000, event.timestamp)
+    }
+
     private fun createEvent(timestamp: Long, eventType: String, sessionId: Long? = null): BaseEvent {
         val event = BaseEvent()
         event.userId = "user"
