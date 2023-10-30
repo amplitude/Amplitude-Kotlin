@@ -87,10 +87,6 @@ open class Amplitude(
     fun onEnterForeground(timestamp: Long) {
         inForeground = true
 
-        if ((configuration as Configuration).optOut) {
-            return
-        }
-
         val dummyEnterForegroundEvent = BaseEvent()
         dummyEnterForegroundEvent.eventType = DUMMY_ENTER_FOREGROUND_EVENT
         dummyEnterForegroundEvent.timestamp = timestamp
