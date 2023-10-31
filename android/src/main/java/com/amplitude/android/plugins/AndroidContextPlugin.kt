@@ -38,19 +38,19 @@ class AndroidContextPlugin : Plugin {
         if (!configuration.newDeviceIdPerInstall && configuration.useAdvertisingIdForDeviceId && !contextProvider.isLimitAdTrackingEnabled()) {
             val advertisingId = contextProvider.advertisingId
             if (advertisingId != null && validDeviceId(advertisingId)) {
-                amplitude.setDeviceId(advertisingId)
+                setDeviceId(advertisingId)
                 return
             }
         }
         if (configuration.useAppSetIdForDeviceId) {
             val appSetId = contextProvider.appSetId
             if (appSetId != null && validDeviceId(appSetId)) {
-                amplitude.setDeviceId("${appSetId}S")
+                setDeviceId("${appSetId}S")
                 return
             }
         }
         val randomId = AndroidContextProvider.generateUUID() + "R"
-        amplitude.setDeviceId(randomId)
+        setDeviceId(randomId)
     }
 
     private fun applyContextData(event: BaseEvent) {
@@ -142,6 +142,10 @@ class AndroidContextPlugin : Plugin {
                 event.ingestionMetadata = it.clone()
             }
         }
+    }
+
+    private fun setDeviceId(deviceId: String) {
+        amplitude.idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
     }
 
     companion object {

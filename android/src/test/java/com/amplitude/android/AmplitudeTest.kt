@@ -182,6 +182,47 @@ class AmplitudeTest {
         }
     }
 
+    @Test
+    fun test_setDeviceId_generatedDeviceIdShouldBeUsed() = runTest {
+        setDispatcher(testScheduler)
+        val n = 100
+        val clients = arrayOfNulls<Amplitude>(n)
+        for (i in 0 until n) {
+            val configuration = createConfiguration()
+            configuration.instanceName = "generated-instance-$i"
+            val amplitude = Amplitude(configuration)
+            clients[i] = amplitude
+        }
+
+        advanceUntilIdle()
+        Thread.sleep(1000)
+
+        for (i in 0 until n) {
+            Assertions.assertTrue(clients[i]?.getDeviceId()?.endsWith('R') ?: false)
+        }
+    }
+
+    @Test
+    fun test_setDeviceId_customDeviceIdShouldBeUsed() = runTest {
+        setDispatcher(testScheduler)
+        val n = 100
+        val clients = mutableListOf<Amplitude>()
+        for (i in 0 until n) {
+            val configuration = createConfiguration()
+            configuration.instanceName = "custom-instance-$i"
+            val amplitude = Amplitude(configuration)
+            amplitude.setDeviceId("custom-device-$i")
+            clients.add(amplitude)
+        }
+
+        advanceUntilIdle()
+        Thread.sleep(1000)
+
+        for (i in 0 until n) {
+            Assertions.assertEquals("custom-device-$i", clients[i].getDeviceId())
+        }
+    }
+
     companion object {
         const val instanceName = "testInstance"
     }
