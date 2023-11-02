@@ -9,7 +9,7 @@
 
 # Amplitude-Kotlin
 
-This is Amplitude's latest version of the Kotlin SDK, covering Android (beta).
+This is Amplitude's latest version of the Kotlin SDK, covering Android.
 
 ## Installation and Quick Start
 Please visit our :100:[Developer Center](https://developers.amplitude.com/docs/kotlin-android-beta) for instructions on installing and using our the SDK.
