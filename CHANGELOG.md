@@ -1,3 +1,10 @@
+## [1.12.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.12.0...v1.12.1) (2023-11-02)
+
+
+### Bug Fixes
+
+* updated README ([d74562d](https://github.com/amplitude/Amplitude-Kotlin/commit/d74562dec43451cde3d88c08c5fcf3dc81483d80))
+
 # [1.12.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.11.2...v1.12.0) (2023-10-27)
 
 
