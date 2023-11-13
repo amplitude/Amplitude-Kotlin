@@ -1,3 +1,10 @@
+## [1.12.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.12.1...v1.12.2) (2023-11-13)
+
+
+### Bug Fixes
+
+* correctly format client_upload_time in HTTP request when minIdLength is set ([#160](https://github.com/amplitude/Amplitude-Kotlin/issues/160)) ([f5203a5](https://github.com/amplitude/Amplitude-Kotlin/commit/f5203a53f84bbea9a6443ed7602b8cc0ab653439))
+
 ## [1.12.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.12.0...v1.12.1) (2023-11-02)
 
 
