@@ -46,7 +46,7 @@ class HttpClientTest {
         val event = BaseEvent()
         event.eventType = "test"
 
-        val httpClient = spyk(HttpClient(config));
+        val httpClient = spyk(HttpClient(config))
         every { httpClient.getCurrentTimeMillis() } returns clientUploadTimeMillis
 
         val connection = httpClient.upload()
@@ -59,7 +59,7 @@ class HttpClientTest {
         }
 
         val request: RecordedRequest? = runRequest()
-        val body = request?.body?.readUtf8();
+        val body = request?.body?.readUtf8()
         val result = JSONObject(body)
 
         assertEquals(apiKey, result.getString("api_key"))
@@ -78,7 +78,7 @@ class HttpClientTest {
         val event = BaseEvent()
         event.eventType = "test"
 
-        val httpClient = spyk(HttpClient(config));
+        val httpClient = spyk(HttpClient(config))
         every { httpClient.getCurrentTimeMillis() } returns clientUploadTimeMillis
 
         val connection = httpClient.upload()
@@ -91,7 +91,7 @@ class HttpClientTest {
         }
 
         val request: RecordedRequest? = runRequest()
-        val body = request?.body?.readUtf8();
+        val body = request?.body?.readUtf8()
         val result = JSONObject(body)
 
         assertEquals(apiKey, result.getString("api_key"))
