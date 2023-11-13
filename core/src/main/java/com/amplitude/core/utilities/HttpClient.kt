@@ -85,7 +85,7 @@ internal class HttpClient(
     }
 
     internal fun getClientUploadTime(): String {
-        val currentTimeMillis = System.currentTimeMillis()
+        val currentTimeMillis = getCurrentTimeMillis()
         val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
         sdf.timeZone = TimeZone.getTimeZone("UTC")
         return sdf.format(Date(currentTimeMillis))
@@ -93,6 +93,10 @@ internal class HttpClient(
 
     internal fun getMindIdLength(): Int? {
         return configuration.minIdLength
+    }
+
+    internal fun getCurrentTimeMillis(): Long {
+        return System.currentTimeMillis()
     }
 
     fun getInputStream(connection: HttpURLConnection): InputStream {
@@ -149,7 +153,7 @@ abstract class Connection(
         if (minIdLength == null) {
             return "{\"api_key\":\"$apiKey\",\"client_upload_time\":\"$clientUploadTime\",\"events\":$events}"
         }
-        return "{\"api_key\":\"$apiKey\",\"client_upload_time\":$clientUploadTime,\"events\":$events,\"options\":{\"min_id_length\":$minIdLength}}"
+        return "{\"api_key\":\"$apiKey\",\"client_upload_time\":\"$clientUploadTime\",\"events\":$events,\"options\":{\"min_id_length\":$minIdLength}}"
     }
 }
 
