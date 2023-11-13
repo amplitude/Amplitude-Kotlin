@@ -50,17 +50,14 @@ class HttpClientTest {
         every { httpClient.getCurrentTimeMillis() } returns clientUploadTimeMillis
 
         val connection = httpClient.upload()
-        System.currentTimeMillis()
-
         connection.outputStream?.let {
             connection.setEvents(JSONUtil.eventsToString(listOf(event)))
             // Upload the payloads.
             connection.close()
         }
 
-        val request: RecordedRequest? = runRequest()
-        val body = request?.body?.readUtf8()
-        val result = JSONObject(body)
+        val request = runRequest()
+        val result = JSONObject(request?.body?.readUtf8())
 
         assertEquals(apiKey, result.getString("api_key"))
         assertEquals(clientUploadTimeString, result.getString("client_upload_time"))
@@ -82,17 +79,14 @@ class HttpClientTest {
         every { httpClient.getCurrentTimeMillis() } returns clientUploadTimeMillis
 
         val connection = httpClient.upload()
-        System.currentTimeMillis()
-
         connection.outputStream?.let {
             connection.setEvents(JSONUtil.eventsToString(listOf(event)))
             // Upload the payloads.
             connection.close()
         }
 
-        val request: RecordedRequest? = runRequest()
-        val body = request?.body?.readUtf8()
-        val result = JSONObject(body)
+        val request = runRequest()
+        val result = JSONObject(request?.body?.readUtf8())
 
         assertEquals(apiKey, result.getString("api_key"))
         assertEquals(clientUploadTimeString, result.getString("client_upload_time"))
