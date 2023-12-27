@@ -1,11 +1,11 @@
 package com.amplitude.android.utilities
 
+import android.annotation.SuppressLint
 import android.content.Context
+import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Build
-import android.annotation.SuppressLint
-import android.content.pm.PackageManager
 import com.amplitude.core.platform.NetworkConnectivityChecker
 
 class AndroidNetworkConnectivityChecker(private val context: Context) : NetworkConnectivityChecker {
