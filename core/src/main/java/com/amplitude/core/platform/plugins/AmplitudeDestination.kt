@@ -7,10 +7,11 @@ import com.amplitude.core.events.IdentifyEvent
 import com.amplitude.core.events.RevenueEvent
 import com.amplitude.core.platform.DestinationPlugin
 import com.amplitude.core.platform.EventPipeline
+import com.amplitude.core.platform.NetworkConnectivityChecker
 import com.amplitude.core.platform.intercept.IdentifyInterceptor
 import kotlinx.coroutines.launch
 
-class AmplitudeDestination : DestinationPlugin() {
+class AmplitudeDestination(private val networkConnectivityChecker: NetworkConnectivityChecker? = null) : DestinationPlugin() {
     private lateinit var pipeline: EventPipeline
     private lateinit var identifyInterceptor: IdentifyInterceptor
 
@@ -66,7 +67,8 @@ class AmplitudeDestination : DestinationPlugin() {
 
         with(amplitude) {
             pipeline = EventPipeline(
-                amplitude
+                amplitude,
+                networkConnectivityChecker
             )
             pipeline.start()
             identifyInterceptor = IdentifyInterceptor(
