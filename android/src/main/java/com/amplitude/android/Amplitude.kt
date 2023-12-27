@@ -1,5 +1,6 @@
 package com.amplitude.android
 
+import AndroidNetworkListener
 import android.content.Context
 import com.amplitude.android.migration.ApiKeyStorageMigration
 import com.amplitude.android.migration.RemnantDataMigration
@@ -7,6 +8,7 @@ import com.amplitude.android.plugins.AnalyticsConnectorIdentityPlugin
 import com.amplitude.android.plugins.AnalyticsConnectorPlugin
 import com.amplitude.android.plugins.AndroidContextPlugin
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
+import com.amplitude.android.utilities.AndroidNetworkConnectivityChecker
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.plugins.AmplitudeDestination
@@ -16,11 +18,21 @@ import com.amplitude.id.IdentityConfiguration
 import kotlinx.coroutines.launch
 
 open class Amplitude(
-    configuration: Configuration
-) : Amplitude(configuration) {
-
+    configuration: Configuration,
+) : Amplitude(configuration), AndroidNetworkListener.NetworkChangeCallback {
     internal var inForeground = false
     private lateinit var androidContextPlugin: AndroidContextPlugin
+    private var networkListener: AndroidNetworkListener
+    private val networkChangeHandler =
+        object : AndroidNetworkListener.NetworkChangeCallback {
+            override fun onNetworkAvailable() {
+                flush()
+            }
+
+            override fun onNetworkUnavailable() {
+                // Nothing to do so far
+            }
+        }
 
     val sessionId: Long
         get() {
@@ -29,6 +41,9 @@ open class Amplitude(
 
     init {
         registerShutdownHook()
+        networkListener = AndroidNetworkListener((this.configuration as Configuration).context)
+        networkListener.setNetworkChangeCallback(networkChangeHandler)
+        networkListener.startListening()
     }
 
     override fun createTimeline(): Timeline {
@@ -62,7 +77,7 @@ open class Amplitude(
         add(AndroidLifecyclePlugin())
         add(AnalyticsConnectorIdentityPlugin())
         add(AnalyticsConnectorPlugin())
-        add(AmplitudeDestination())
+        add(AmplitudeDestination(AndroidNetworkConnectivityChecker(this.configuration.context, this.logger)))
 
         (timeline as Timeline).start()
     }
@@ -113,11 +128,14 @@ open class Amplitude(
     }
 
     private fun registerShutdownHook() {
-        Runtime.getRuntime().addShutdownHook(object : Thread() {
-            override fun run() {
-                (this@Amplitude.timeline as Timeline).stop()
-            }
-        })
+        Runtime.getRuntime().addShutdownHook(
+            object : Thread() {
+                override fun run() {
+                    (this@Amplitude.timeline as Timeline).stop()
+                    (this@Amplitude.networkListener as AndroidNetworkListener).stopListening()
+                }
+            },
+        )
     }
 
     companion object {
@@ -138,6 +156,14 @@ open class Amplitude(
          * The event type for dummy exit foreground events.
          */
         internal const val DUMMY_EXIT_FOREGROUND_EVENT = "dummy_exit_foreground"
+    }
+
+    override fun onNetworkAvailable() {
+        networkChangeHandler.onNetworkAvailable()
+    }
+
+    override fun onNetworkUnavailable() {
+        networkChangeHandler.onNetworkUnavailable()
     }
 }
 /**
