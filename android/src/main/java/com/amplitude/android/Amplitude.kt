@@ -63,7 +63,7 @@ open class Amplitude(
         add(AndroidLifecyclePlugin())
         add(AnalyticsConnectorIdentityPlugin())
         add(AnalyticsConnectorPlugin())
-        add(AmplitudeDestination(AndroidNetworkConnectivityChecker(this.configuration.context)))
+        add(AmplitudeDestination(AndroidNetworkConnectivityChecker(this.configuration.context, this.logger)))
 
         (timeline as Timeline).start()
     }

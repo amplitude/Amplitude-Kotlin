@@ -6,10 +6,10 @@ import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Build
+import com.amplitude.common.Logger
 import com.amplitude.core.platform.NetworkConnectivityChecker
 
-class AndroidNetworkConnectivityChecker(private val context: Context) : NetworkConnectivityChecker {
-
+class AndroidNetworkConnectivityChecker(private val context: Context, private val logger: Logger) : NetworkConnectivityChecker {
     companion object {
         private const val ACCESS_NETWORK_STATE = "android.permission.ACCESS_NETWORK_STATE"
     }
@@ -19,6 +19,7 @@ class AndroidNetworkConnectivityChecker(private val context: Context) : NetworkC
         // Events will be treated like online
         // regardless network connectivity
         if (!hasPermission(context, ACCESS_NETWORK_STATE)) {
+            logger.warn("No ACCESS_NETWORK_STATE permission, offline mode is not supported.")
             return true
         }
 
@@ -26,7 +27,9 @@ class AndroidNetworkConnectivityChecker(private val context: Context) : NetworkC
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             val network = cm.activeNetwork ?: return false
             val capabilities = cm.getNetworkCapabilities(network) ?: return false
-            return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+
+            return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
         } else {
             @SuppressLint("MissingPermission")
             val networkInfo = cm.activeNetworkInfo
@@ -34,7 +37,10 @@ class AndroidNetworkConnectivityChecker(private val context: Context) : NetworkC
         }
     }
 
-    private fun hasPermission(context: Context, permission: String): Boolean {
+    private fun hasPermission(
+        context: Context,
+        permission: String,
+    ): Boolean {
         return context.checkCallingOrSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
     }
 }
