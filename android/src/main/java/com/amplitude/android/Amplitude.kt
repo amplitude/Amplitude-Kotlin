@@ -1,5 +1,6 @@
 package com.amplitude.android
 
+import AndroidNetworkListener
 import android.content.Context
 import com.amplitude.android.migration.ApiKeyStorageMigration
 import com.amplitude.android.migration.RemnantDataMigration
@@ -17,11 +18,21 @@ import com.amplitude.id.IdentityConfiguration
 import kotlinx.coroutines.launch
 
 open class Amplitude(
-    configuration: Configuration
-) : Amplitude(configuration) {
-
+    configuration: Configuration,
+) : Amplitude(configuration), AndroidNetworkListener.NetworkChangeCallback {
     internal var inForeground = false
     private lateinit var androidContextPlugin: AndroidContextPlugin
+    private var networkListener: AndroidNetworkListener
+    private val networkChangeHandler =
+        object : AndroidNetworkListener.NetworkChangeCallback {
+            override fun onNetworkAvailable() {
+                flush()
+            }
+
+            override fun onNetworkUnavailable() {
+                // Nothing to do so far
+            }
+        }
 
     val sessionId: Long
         get() {
@@ -30,6 +41,9 @@ open class Amplitude(
 
     init {
         registerShutdownHook()
+        networkListener = AndroidNetworkListener((this.configuration as Configuration).context)
+        networkListener.setNetworkChangeCallback(networkChangeHandler)
+        networkListener.startListening()
     }
 
     override fun createTimeline(): Timeline {
@@ -38,14 +52,18 @@ open class Amplitude(
 
     override fun createIdentityConfiguration(): IdentityConfiguration {
         val configuration = configuration as Configuration
-        val storageDirectory = configuration.context.getDir("${FileStorage.STORAGE_PREFIX}-${configuration.instanceName}", Context.MODE_PRIVATE)
+        val storageDirectory =
+            configuration.context.getDir(
+                "${FileStorage.STORAGE_PREFIX}-${configuration.instanceName}",
+                Context.MODE_PRIVATE,
+            )
 
         return IdentityConfiguration(
             instanceName = configuration.instanceName,
             apiKey = configuration.apiKey,
             identityStorageProvider = configuration.identityStorageProvider,
             storageDirectory = storageDirectory,
-            logger = configuration.loggerProvider.getLogger(this)
+            logger = configuration.loggerProvider.getLogger(this),
         )
     }
 
@@ -114,11 +132,14 @@ open class Amplitude(
     }
 
     private fun registerShutdownHook() {
-        Runtime.getRuntime().addShutdownHook(object : Thread() {
-            override fun run() {
-                (this@Amplitude.timeline as Timeline).stop()
-            }
-        })
+        Runtime.getRuntime().addShutdownHook(
+            object : Thread() {
+                override fun run() {
+                    (this@Amplitude.timeline as Timeline).stop()
+                    networkListener.stopListening()
+                }
+            },
+        )
     }
 
     companion object {
@@ -126,6 +147,7 @@ open class Amplitude(
          * The event type for start session events.
          */
         const val START_SESSION_EVENT = "session_start"
+
         /**
          * The event type for end session events.
          */
@@ -135,12 +157,22 @@ open class Amplitude(
          * The event type for dummy enter foreground events.
          */
         internal const val DUMMY_ENTER_FOREGROUND_EVENT = "dummy_enter_foreground"
+
         /**
          * The event type for dummy exit foreground events.
          */
         internal const val DUMMY_EXIT_FOREGROUND_EVENT = "dummy_exit_foreground"
     }
+
+    override fun onNetworkAvailable() {
+        networkChangeHandler.onNetworkAvailable()
+    }
+
+    override fun onNetworkUnavailable() {
+        networkChangeHandler.onNetworkUnavailable()
+    }
 }
+
 /**
  * constructor function to build amplitude in dsl format with config options
  * Usage: Amplitude("123", context) {
@@ -154,7 +186,11 @@ open class Amplitude(
  * @param configs Configuration
  * @return Amplitude Android Instance
  */
-fun Amplitude(apiKey: String, context: Context, configs: Configuration.() -> Unit): com.amplitude.android.Amplitude {
+fun Amplitude(
+    apiKey: String,
+    context: Context,
+    configs: Configuration.() -> Unit,
+): com.amplitude.android.Amplitude {
     val config = Configuration(apiKey, context)
     configs.invoke(config)
     return com.amplitude.android.Amplitude(config)
