@@ -10,7 +10,7 @@ import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import org.junit.jupiter.api.BeforeEach
+import org.junit.Before
 import org.junit.jupiter.api.Test
 
 @ExperimentalCoroutinesApi
@@ -19,7 +19,7 @@ class EventPipelineTest {
     private lateinit var networkConnectivityChecker: NetworkConnectivityChecker
     private val config = Configuration(apiKey = "API_KEY", flushIntervalMillis = 5)
 
-    @BeforeEach
+    @Before
     fun setup() {
         amplitude = Amplitude(config)
         networkConnectivityChecker = mockk<NetworkConnectivityChecker>(relaxed = true)
