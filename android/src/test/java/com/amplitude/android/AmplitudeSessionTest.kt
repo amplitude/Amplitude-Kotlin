@@ -1,6 +1,8 @@
 package com.amplitude.android
 
 import android.app.Application
+import android.content.Context
+import android.net.ConnectivityManager
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.core.Storage
@@ -64,6 +66,8 @@ class AmplitudeSessionTest {
 
     private fun createConfiguration(storageProvider: StorageProvider? = null): Configuration {
         val context = mockk<Application>(relaxed = true)
+        var connectivityManager = mockk<ConnectivityManager>(relaxed = true)
+        every { context!!.getSystemService(Context.CONNECTIVITY_SERVICE) } returns connectivityManager
 
         return Configuration(
             apiKey = "api-key",

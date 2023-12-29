@@ -14,8 +14,13 @@ import kotlinx.coroutines.withContext
 import java.io.FileNotFoundException
 import java.util.concurrent.atomic.AtomicInteger
 
+interface NetworkConnectivityChecker {
+    suspend fun isConnected(): Boolean
+}
+
 class EventPipeline(
-    private val amplitude: Amplitude
+    private val amplitude: Amplitude,
+    private val networkConnectivityChecker: NetworkConnectivityChecker? = null
 ) {
 
     private val writeChannel: Channel<WriteQueueMessage>
@@ -97,6 +102,13 @@ class EventPipeline(
                 e.message?.let {
                     amplitude.logger.error("Error when write event: $it")
                 }
+            }
+
+            // Skip flush when offline only if
+            // network connectivity is not null
+            // and network is not connected.
+            if (networkConnectivityChecker?.isConnected() == false) {
+                continue
             }
 
             // if flush condition met, generate paths

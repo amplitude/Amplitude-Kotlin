@@ -2,10 +2,12 @@ package com.amplitude.android.plugins
 
 import android.app.Activity
 import android.app.Application
+import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
 import android.net.Uri
 import android.os.Bundle
 import com.amplitude.android.Amplitude
@@ -44,6 +46,7 @@ class AndroidLifecyclePluginTest {
 
     private val mockedContext = mockk<Application>(relaxed = true)
     private var mockedPackageManager: PackageManager
+    private lateinit var connectivityManager: ConnectivityManager
 
     init {
         val packageInfo = PackageInfo()
@@ -82,15 +85,19 @@ class AndroidLifecyclePluginTest {
         every { anyConstructed<AndroidContextProvider>().mostRecentLocation } returns null
         every { anyConstructed<AndroidContextProvider>().appSetId } returns ""
 
-        configuration = Configuration(
-            apiKey = "api-key",
-            context = mockedContext,
-            storageProvider = InMemoryStorageProvider(),
-            loggerProvider = ConsoleLoggerProvider(),
-            identifyInterceptStorageProvider = InMemoryStorageProvider(),
-            identityStorageProvider = IMIdentityStorageProvider(),
-            trackingSessionEvents = false,
-        )
+        connectivityManager = mockk<ConnectivityManager>(relaxed = true)
+        every { mockedContext!!.getSystemService(Context.CONNECTIVITY_SERVICE) } returns connectivityManager
+
+        configuration =
+            Configuration(
+                apiKey = "api-key",
+                context = mockedContext,
+                storageProvider = InMemoryStorageProvider(),
+                loggerProvider = ConsoleLoggerProvider(),
+                identifyInterceptStorageProvider = InMemoryStorageProvider(),
+                identityStorageProvider = IMIdentityStorageProvider(),
+                trackingSessionEvents = false,
+            )
         amplitude = Amplitude(configuration)
     }
 
