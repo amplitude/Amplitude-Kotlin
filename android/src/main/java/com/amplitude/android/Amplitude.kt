@@ -136,7 +136,7 @@ open class Amplitude(
             object : Thread() {
                 override fun run() {
                     (this@Amplitude.timeline as Timeline).stop()
-                    networkListener.stopListening()
+                    (this@Amplitude.networkListener as AndroidNetworkListener).stopListening()
                 }
             },
         )

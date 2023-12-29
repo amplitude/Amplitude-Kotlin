@@ -8,6 +8,7 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.os.Build
+import java.lang.IllegalArgumentException
 
 class AndroidNetworkListener(private val context: Context) {
     private var networkCallback: NetworkChangeCallback? = null
@@ -80,11 +81,17 @@ class AndroidNetworkListener(private val context: Context) {
     }
 
     fun stopListening() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-            networkCallbackForHigherApiLevels?.let { connectivityManager.unregisterNetworkCallback(it) }
-        } else {
-            networkCallbackForLowerApiLevels?.let { context.unregisterReceiver(it) }
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                networkCallbackForHigherApiLevels?.let { connectivityManager.unregisterNetworkCallback(it) }
+            } else {
+                networkCallbackForLowerApiLevels?.let { context.unregisterReceiver(it) }
+            }
+        } catch (e: IllegalArgumentException) {
+            // callback was already unregistered.
+        } catch (e: IllegalStateException) {
+            // shutdown process is in progress and certain operations are not allowed.
         }
     }
 }
