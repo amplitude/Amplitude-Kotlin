@@ -74,21 +74,17 @@ class AmplitudeTest {
         amplitudeDispatcherField.set(amplitude, dispatcher)
     }
 
-    private fun createConfiguration(
-        minTimeBetweenSessionsMillis: Long? = null,
-        storageProvider: StorageProvider = InMemoryStorageProvider(),
-    ): Configuration {
-        val configuration =
-            Configuration(
-                apiKey = "api-key",
-                context = context!!,
-                instanceName = instanceName,
-                storageProvider = storageProvider,
-                trackingSessionEvents = minTimeBetweenSessionsMillis != null,
-                loggerProvider = ConsoleLoggerProvider(),
-                identifyInterceptStorageProvider = InMemoryStorageProvider(),
-                identityStorageProvider = IMIdentityStorageProvider(),
-            )
+    private fun createConfiguration(minTimeBetweenSessionsMillis: Long? = null, storageProvider: StorageProvider = InMemoryStorageProvider()): Configuration {
+        val configuration = Configuration(
+            apiKey = "api-key",
+            context = context!!,
+            instanceName = instanceName,
+            storageProvider = storageProvider,
+            trackingSessionEvents = minTimeBetweenSessionsMillis != null,
+            loggerProvider = ConsoleLoggerProvider(),
+            identifyInterceptStorageProvider = InMemoryStorageProvider(),
+            identityStorageProvider = IMIdentityStorageProvider(),
+        )
 
         if (minTimeBetweenSessionsMillis != null) {
             configuration.minTimeBetweenSessionsMillis = minTimeBetweenSessionsMillis
@@ -98,101 +94,98 @@ class AmplitudeTest {
     }
 
     @Test
-    fun amplitude_reset_wipesUserIdDeviceId() =
-        runTest {
-            setDispatcher(testScheduler)
-            if (amplitude?.isBuilt!!.await()) {
-                amplitude?.setUserId("test user")
-                amplitude?.setDeviceId("test device")
-                advanceUntilIdle()
-                Assertions.assertEquals("test user", amplitude?.store?.userId)
-                Assertions.assertEquals("test device", amplitude?.store?.deviceId)
-                Assertions.assertEquals("test user", amplitude?.getUserId())
-                Assertions.assertEquals("test device", amplitude?.getDeviceId())
+    fun amplitude_reset_wipesUserIdDeviceId() = runTest {
+        setDispatcher(testScheduler)
+        if (amplitude?.isBuilt!!.await()) {
+            amplitude?.setUserId("test user")
+            amplitude?.setDeviceId("test device")
+            advanceUntilIdle()
+            Assertions.assertEquals("test user", amplitude?.store?.userId)
+            Assertions.assertEquals("test device", amplitude?.store?.deviceId)
+            Assertions.assertEquals("test user", amplitude?.getUserId())
+            Assertions.assertEquals("test device", amplitude?.getDeviceId())
 
-                amplitude?.reset()
-                advanceUntilIdle()
-                Assertions.assertNull(amplitude?.store?.userId)
-                Assertions.assertNotEquals("test device", amplitude?.store?.deviceId)
-                Assertions.assertNull(amplitude?.getUserId())
-                Assertions.assertNotEquals("test device", amplitude?.getDeviceId())
-            }
+            amplitude?.reset()
+            advanceUntilIdle()
+            Assertions.assertNull(amplitude?.store?.userId)
+            Assertions.assertNotEquals("test device", amplitude?.store?.deviceId)
+            Assertions.assertNull(amplitude?.getUserId())
+            Assertions.assertNotEquals("test device", amplitude?.getDeviceId())
         }
+    }
 
     @Test
-    fun amplitude_unset_country_with_remote_ip() =
-        runTest {
-            setDispatcher(testScheduler)
-            val mockedPlugin = spyk(StubPlugin())
-            amplitude?.add(mockedPlugin)
+    fun amplitude_unset_country_with_remote_ip() = runTest {
+        setDispatcher(testScheduler)
+        val mockedPlugin = spyk(StubPlugin())
+        amplitude?.add(mockedPlugin)
 
-            if (amplitude?.isBuilt!!.await()) {
-                val event = BaseEvent()
-                event.eventType = "test event"
-                amplitude?.track(event)
-                advanceUntilIdle()
-                Thread.sleep(100)
+        if (amplitude?.isBuilt!!.await()) {
+            val event = BaseEvent()
+            event.eventType = "test event"
+            amplitude?.track(event)
+            advanceUntilIdle()
+            Thread.sleep(100)
 
-                val track = slot<BaseEvent>()
-                verify { mockedPlugin.track(capture(track)) }
-                track.captured.let {
-                    Assertions.assertEquals("\$remote", it.ip)
-                    Assertions.assertNull(it.country)
-                }
+            val track = slot<BaseEvent>()
+            verify { mockedPlugin.track(capture(track)) }
+            track.captured.let {
+                Assertions.assertEquals("\$remote", it.ip)
+                Assertions.assertNull(it.country)
             }
         }
+    }
 
     @Test
-    fun amplitude_fetch_country_with_customized_ip() =
-        runTest {
-            setDispatcher(testScheduler)
-            val mockedPlugin = spyk(StubPlugin())
-            amplitude?.add(mockedPlugin)
+    fun amplitude_fetch_country_with_customized_ip() = runTest {
+        setDispatcher(testScheduler)
+        val mockedPlugin = spyk(StubPlugin())
+        amplitude?.add(mockedPlugin)
 
-            if (amplitude?.isBuilt!!.await()) {
-                val event = BaseEvent()
-                event.eventType = "test event"
-                event.ip = "127.0.0.1"
-                amplitude?.track(event)
-                advanceUntilIdle()
-                Thread.sleep(100)
+        if (amplitude?.isBuilt!!.await()) {
+            val event = BaseEvent()
+            event.eventType = "test event"
+            event.ip = "127.0.0.1"
+            amplitude?.track(event)
+            advanceUntilIdle()
+            Thread.sleep(100)
 
-                val track = slot<BaseEvent>()
-                verify { mockedPlugin.track(capture(track)) }
-                track.captured.let {
-                    Assertions.assertEquals("127.0.0.1", it.ip)
-                    Assertions.assertEquals("US", it.country)
-                }
+            val track = slot<BaseEvent>()
+            verify { mockedPlugin.track(capture(track)) }
+            track.captured.let {
+                Assertions.assertEquals("127.0.0.1", it.ip)
+                Assertions.assertEquals("US", it.country)
             }
         }
+    }
 
     @Test
-    fun test_analytics_connector() =
-        runTest {
-            setDispatcher(testScheduler)
-            val mockedPlugin = spyk(StubPlugin())
-            amplitude?.add(mockedPlugin)
+    fun test_analytics_connector() = runTest {
+        setDispatcher(testScheduler)
+        val mockedPlugin = spyk(StubPlugin())
+        amplitude?.add(mockedPlugin)
 
-            if (amplitude?.isBuilt!!.await()) {
-                val connector = AnalyticsConnector.getInstance(instanceName)
-                val connectorUserId = "connector user id"
-                val connectorDeviceId = "connector device id"
-                var connectorIdentitySet = false
-                val identityListener = { _: Identity ->
-                    if (connectorIdentitySet) {
-                        Assertions.assertEquals(connectorUserId, connector.identityStore.getIdentity().userId)
-                        Assertions.assertEquals(connectorDeviceId, connector.identityStore.getIdentity().deviceId)
-                        connectorIdentitySet = false
-                    }
+        if (amplitude?.isBuilt!!.await()) {
+
+            val connector = AnalyticsConnector.getInstance(instanceName)
+            val connectorUserId = "connector user id"
+            val connectorDeviceId = "connector device id"
+            var connectorIdentitySet = false
+            val identityListener = { _: Identity ->
+                if (connectorIdentitySet) {
+                    Assertions.assertEquals(connectorUserId, connector.identityStore.getIdentity().userId)
+                    Assertions.assertEquals(connectorDeviceId, connector.identityStore.getIdentity().deviceId)
+                    connectorIdentitySet = false
                 }
-                connector.identityStore.addIdentityListener(identityListener)
-                amplitude?.setUserId(connectorUserId)
-                amplitude?.setDeviceId(connectorDeviceId)
-                advanceUntilIdle()
-                connectorIdentitySet = true
-                connector.identityStore.removeIdentityListener(identityListener)
             }
+            connector.identityStore.addIdentityListener(identityListener)
+            amplitude?.setUserId(connectorUserId)
+            amplitude?.setDeviceId(connectorDeviceId)
+            advanceUntilIdle()
+            connectorIdentitySet = true
+            connector.identityStore.removeIdentityListener(identityListener)
         }
+    }
 
     companion object {
         const val instanceName = "testInstance"
