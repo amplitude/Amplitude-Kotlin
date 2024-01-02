@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
 
 open class Amplitude(
     configuration: Configuration,
-) : Amplitude(configuration), AndroidNetworkListener.NetworkChangeCallback {
+) : Amplitude(configuration){
     internal var inForeground = false
     private lateinit var androidContextPlugin: AndroidContextPlugin
     private var networkListener: AndroidNetworkListener
@@ -156,14 +156,6 @@ open class Amplitude(
          * The event type for dummy exit foreground events.
          */
         internal const val DUMMY_EXIT_FOREGROUND_EVENT = "dummy_exit_foreground"
-    }
-
-    override fun onNetworkAvailable() {
-        networkChangeHandler.onNetworkAvailable()
-    }
-
-    override fun onNetworkUnavailable() {
-        networkChangeHandler.onNetworkUnavailable()
     }
 }
 /**
