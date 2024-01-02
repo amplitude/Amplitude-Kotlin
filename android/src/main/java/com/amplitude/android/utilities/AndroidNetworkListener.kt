@@ -33,7 +33,9 @@ class AndroidNetworkListener(private val context: Context) {
         }
     }
 
-    @SuppressLint("NewApi")
+    @SuppressLint("NewApi", "MissingPermission")
+    // startListening() checks API level
+    // ACCESS_NETWORK_STATE permission should be added manually by users to enable this feature
     private fun setupNetworkCallback() {
         val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val networkRequest =
@@ -58,6 +60,7 @@ class AndroidNetworkListener(private val context: Context) {
     private fun setupBroadcastReceiver() {
         networkCallbackForLowerApiLevels =
             object : BroadcastReceiver() {
+                @SuppressLint("MissingPermission")
                 override fun onReceive(
                     context: Context,
                     intent: Intent,

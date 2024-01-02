@@ -14,6 +14,7 @@ class AndroidNetworkConnectivityChecker(private val context: Context, private va
         private const val ACCESS_NETWORK_STATE = "android.permission.ACCESS_NETWORK_STATE"
     }
 
+    @SuppressLint("MissingPermission")
     override suspend fun isConnected(): Boolean {
         // Assume connection and proceed.
         // Events will be treated like online

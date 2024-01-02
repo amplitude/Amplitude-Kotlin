@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
 
 open class Amplitude(
     configuration: Configuration,
-) : Amplitude(configuration){
+) : Amplitude(configuration) {
     internal var inForeground = false
     private lateinit var androidContextPlugin: AndroidContextPlugin
     private var networkListener: AndroidNetworkListener
