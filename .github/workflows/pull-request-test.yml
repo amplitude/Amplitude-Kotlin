@@ -18,3 +18,15 @@ jobs:
         run: ./gradlew testDebugUnitTest
       - name: Lint
         run: ./gradlew ktlintCheck
+      - name: Upload build results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          # artifacts name
+          name: build-results
+          # copy reports of all packages
+          path: '**/build/reports/**'
+          # artifact will expire in 7 days.
+          retention-days: 7
+
+
