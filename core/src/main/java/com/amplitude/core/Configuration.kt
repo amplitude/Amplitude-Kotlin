@@ -30,6 +30,7 @@ open class Configuration @JvmOverloads constructor(
     open var identifyBatchIntervalMillis: Long = IDENTIFY_BATCH_INTERVAL_MILLIS,
     open var identifyInterceptStorageProvider: StorageProvider = InMemoryStorageProvider(),
     open var identityStorageProvider: IdentityStorageProvider = IMIdentityStorageProvider(),
+    var isNetworkConnected: Boolean = true,
 ) {
 
     companion object {

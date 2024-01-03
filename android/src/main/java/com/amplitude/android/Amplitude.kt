@@ -8,7 +8,7 @@ import com.amplitude.android.plugins.AnalyticsConnectorIdentityPlugin
 import com.amplitude.android.plugins.AnalyticsConnectorPlugin
 import com.amplitude.android.plugins.AndroidContextPlugin
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
-import com.amplitude.android.utilities.AndroidNetworkConnectivityChecker
+import com.amplitude.android.plugins.AndroidNetworkConnectivityCheckerPlugin
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.plugins.AmplitudeDestination
@@ -20,17 +20,19 @@ import kotlinx.coroutines.launch
 open class Amplitude(
     configuration: Configuration
 ) : Amplitude(configuration) {
+
     internal var inForeground = false
     private lateinit var androidContextPlugin: AndroidContextPlugin
     private var networkListener: AndroidNetworkListener
     private val networkChangeHandler =
         object : AndroidNetworkListener.NetworkChangeCallback {
             override fun onNetworkAvailable() {
+                configuration.isNetworkConnected = true
                 flush()
             }
 
             override fun onNetworkUnavailable() {
-                // Nothing to do so far
+                configuration.isNetworkConnected = false
             }
         }
 
@@ -71,13 +73,14 @@ open class Amplitude(
         }
         this.createIdentityContainer(identityConfiguration)
 
+        add(AndroidNetworkConnectivityCheckerPlugin())
         androidContextPlugin = AndroidContextPlugin()
         add(androidContextPlugin)
         add(GetAmpliExtrasPlugin())
         add(AndroidLifecyclePlugin())
         add(AnalyticsConnectorIdentityPlugin())
         add(AnalyticsConnectorPlugin())
-        add(AmplitudeDestination(AndroidNetworkConnectivityChecker(this.configuration.context, this.logger)))
+        add(AmplitudeDestination())
 
         (timeline as Timeline).start()
     }
