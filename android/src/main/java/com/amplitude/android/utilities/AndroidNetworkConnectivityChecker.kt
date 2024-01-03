@@ -20,7 +20,7 @@ class AndroidNetworkConnectivityChecker(private val context: Context, private va
         // Events will be treated like online
         // regardless network connectivity
         if (!hasPermission(context, ACCESS_NETWORK_STATE)) {
-            logger.warn("No ACCESS_NETWORK_STATE permission, offline mode is not supported.")
+            logger.warn("No ACCESS_NETWORK_STATE permission, offline mode is not supported. To enable, add <uses-permission android:name=\"android.permission.ACCESS_NETWORK_STATE\" /> to your AndroidManifest.xml. Learn more at https://www.docs.developers.amplitude.com/data/sdks/android-kotlin/#offline-mode")
             return true
         }
 
