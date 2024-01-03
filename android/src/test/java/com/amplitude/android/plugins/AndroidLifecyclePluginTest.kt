@@ -88,16 +88,15 @@ class AndroidLifecyclePluginTest {
         connectivityManager = mockk<ConnectivityManager>(relaxed = true)
         every { mockedContext!!.getSystemService(Context.CONNECTIVITY_SERVICE) } returns connectivityManager
 
-        configuration =
-            Configuration(
-                apiKey = "api-key",
-                context = mockedContext,
-                storageProvider = InMemoryStorageProvider(),
-                loggerProvider = ConsoleLoggerProvider(),
-                identifyInterceptStorageProvider = InMemoryStorageProvider(),
-                identityStorageProvider = IMIdentityStorageProvider(),
-                trackingSessionEvents = false,
-            )
+        configuration = Configuration(
+            apiKey = "api-key",
+            context = mockedContext,
+            storageProvider = InMemoryStorageProvider(),
+            loggerProvider = ConsoleLoggerProvider(),
+            identifyInterceptStorageProvider = InMemoryStorageProvider(),
+            identityStorageProvider = IMIdentityStorageProvider(),
+            trackingSessionEvents = false,
+        )
         amplitude = Amplitude(configuration)
     }
 

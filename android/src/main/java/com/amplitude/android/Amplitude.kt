@@ -18,7 +18,7 @@ import com.amplitude.id.IdentityConfiguration
 import kotlinx.coroutines.launch
 
 open class Amplitude(
-    configuration: Configuration,
+    configuration: Configuration
 ) : Amplitude(configuration) {
     internal var inForeground = false
     private lateinit var androidContextPlugin: AndroidContextPlugin
@@ -128,14 +128,12 @@ open class Amplitude(
     }
 
     private fun registerShutdownHook() {
-        Runtime.getRuntime().addShutdownHook(
-            object : Thread() {
-                override fun run() {
-                    (this@Amplitude.timeline as Timeline).stop()
-                    (this@Amplitude.networkListener as AndroidNetworkListener).stopListening()
-                }
-            },
-        )
+        Runtime.getRuntime().addShutdownHook(object : Thread() {
+            override fun run() {
+                (this@Amplitude.timeline as Timeline).stop()
+                this@Amplitude.networkListener.stopListening()
+            }
+        })
     }
 
     companion object {
