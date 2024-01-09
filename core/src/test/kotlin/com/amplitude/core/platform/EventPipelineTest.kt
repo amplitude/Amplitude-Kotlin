@@ -43,7 +43,7 @@ class EventPipelineTest {
     fun `should not flush when put and offline`() =
         runTest(testDispatcher) {
             amplitude.isBuilt.await()
-            amplitude.configuration.isNetworkConnected = false
+            amplitude.configuration.offline = true
             val eventPipeline = spyk(EventPipeline(amplitude))
             val event = BaseEvent().apply { eventType = "test_event" }
 
@@ -58,7 +58,7 @@ class EventPipelineTest {
     fun `should flush when put and online`() =
         runTest(testDispatcher) {
             amplitude.isBuilt.await()
-            amplitude.configuration.isNetworkConnected = true
+            amplitude.configuration.offline = false
             val eventPipeline = spyk(EventPipeline(amplitude))
             val event = BaseEvent().apply { eventType = "test_event" }
 

@@ -32,7 +32,7 @@ open class Configuration @JvmOverloads constructor(
     open var identityStorageProvider: IdentityStorageProvider = IMIdentityStorageProvider(),
 ) {
 
-    var isNetworkConnected: Boolean = true
+    var offline: Boolean = false
 
     companion object {
         const val FLUSH_QUEUE_SIZE = 30

@@ -1,6 +1,5 @@
 package com.amplitude.android
 
-import AndroidNetworkListener
 import android.content.Context
 import com.amplitude.android.migration.ApiKeyStorageMigration
 import com.amplitude.android.migration.RemnantDataMigration
@@ -23,18 +22,6 @@ open class Amplitude(
 
     internal var inForeground = false
     private lateinit var androidContextPlugin: AndroidContextPlugin
-    private var networkListener: AndroidNetworkListener
-    private val networkChangeHandler =
-        object : AndroidNetworkListener.NetworkChangeCallback {
-            override fun onNetworkAvailable() {
-                configuration.isNetworkConnected = true
-                flush()
-            }
-
-            override fun onNetworkUnavailable() {
-                configuration.isNetworkConnected = false
-            }
-        }
 
     val sessionId: Long
         get() {
@@ -43,9 +30,6 @@ open class Amplitude(
 
     init {
         registerShutdownHook()
-        networkListener = AndroidNetworkListener((this.configuration as Configuration).context)
-        networkListener.setNetworkChangeCallback(networkChangeHandler)
-        networkListener.startListening()
     }
 
     override fun createTimeline(): Timeline {
@@ -134,7 +118,6 @@ open class Amplitude(
         Runtime.getRuntime().addShutdownHook(object : Thread() {
             override fun run() {
                 (this@Amplitude.timeline as Timeline).stop()
-                this@Amplitude.networkListener.stopListening()
             }
         })
     }
