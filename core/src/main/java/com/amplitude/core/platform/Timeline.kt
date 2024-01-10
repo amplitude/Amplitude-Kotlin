@@ -42,6 +42,10 @@ open class Timeline {
     fun remove(plugin: Plugin) {
         // remove all plugins with this name in every category
         plugins.forEach { (_, list) ->
+            val wasRemoved = list.remove(plugin)
+            if (wasRemoved) {
+                plugin.teardown()
+            }
             list.remove(plugin)
         }
     }
