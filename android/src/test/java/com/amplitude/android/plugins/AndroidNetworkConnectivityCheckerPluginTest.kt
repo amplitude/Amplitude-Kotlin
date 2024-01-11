@@ -13,6 +13,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
 
 class AndroidNetworkConnectivityCheckerPluginTest {
 
@@ -38,19 +39,42 @@ class AndroidNetworkConnectivityCheckerPluginTest {
     }
 
     @Test
-    fun `should set up`() {
+    fun `should set up correctly by default`() {
+        // amplitude.configuration.offline defaults to false
         plugin.setup(amplitude)
         assertEquals(amplitude, plugin.amplitude)
         assertNotNull(plugin.networkConnectivityChecker)
         // Unit tests are run on JVM so default to online
         assertEquals(false, amplitude.configuration.offline)
+        assertNotNull(plugin.networkListener)
+    }
+
+    @Test
+    fun `should not set up if offline is disabled`() {
+        amplitude.configuration.offline = null
+        plugin.setup(amplitude)
+        assertEquals(amplitude, plugin.amplitude)
+        assertNull(plugin.networkConnectivityChecker)
+        // Unit tests are run on JVM so default to online
+        assertEquals(null, amplitude.configuration.offline)
+        assertNull(plugin.networkListener)
     }
 
     @Test
     fun `should teardown correctly`() {
         plugin.setup(amplitude)
-        spyk(plugin.networkListener)
-        plugin.teardown()
-        verify { plugin.networkListener.stopListening() }
+        assertNotNull(plugin.networkListener)
+        plugin.networkListener?.let { networkListener ->
+            spyk(networkListener)
+            plugin.teardown()
+            verify { networkListener.stopListening() }
+        }
+    }
+
+    @Test
+    fun `should not stop listening if offline is disabled`() {
+        amplitude.configuration.offline = null
+        plugin.setup(amplitude)
+        assertNull(plugin.networkListener)
     }
 }

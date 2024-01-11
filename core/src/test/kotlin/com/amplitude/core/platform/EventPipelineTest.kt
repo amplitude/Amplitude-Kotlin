@@ -68,4 +68,19 @@ class EventPipelineTest {
 
             verify(exactly = 1) { eventPipeline.flush() }
         }
+
+    @Test
+    fun `should flush when put and offline is disabled`() =
+        runTest(testDispatcher) {
+            amplitude.isBuilt.await()
+            amplitude.configuration.offline = null
+            val eventPipeline = spyk(EventPipeline(amplitude))
+            val event = BaseEvent().apply { eventType = "test_event" }
+
+            eventPipeline.start()
+            eventPipeline.put(event)
+            advanceUntilIdle()
+
+            verify(exactly = 1) { eventPipeline.flush() }
+        }
 }
