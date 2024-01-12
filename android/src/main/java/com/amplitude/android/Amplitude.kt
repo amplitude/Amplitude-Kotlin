@@ -57,7 +57,9 @@ open class Amplitude(
         }
         this.createIdentityContainer(identityConfiguration)
 
-        add(AndroidNetworkConnectivityCheckerPlugin())
+        if (this.configuration.offline != null) {
+            add(AndroidNetworkConnectivityCheckerPlugin())
+        }
         androidContextPlugin = AndroidContextPlugin()
         add(androidContextPlugin)
         add(GetAmpliExtrasPlugin())
