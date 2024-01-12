@@ -46,7 +46,6 @@ open class Timeline {
             if (wasRemoved) {
                 plugin.teardown()
             }
-            list.remove(plugin)
         }
     }
 
