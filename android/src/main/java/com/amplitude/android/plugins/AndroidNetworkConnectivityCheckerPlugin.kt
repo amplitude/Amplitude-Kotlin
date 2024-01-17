@@ -13,6 +13,10 @@ class AndroidNetworkConnectivityCheckerPlugin : Plugin {
     internal lateinit var networkConnectivityChecker: AndroidNetworkConnectivityChecker
     internal lateinit var networkListener: AndroidNetworkListener
 
+    companion object {
+        val Disabled = null
+    }
+
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
         amplitude.logger.debug("Installing AndroidNetworkConnectivityPlugin, offline feature should be supported.")
