@@ -1,8 +1,8 @@
 package com.amplitude.android.plugins
 
-import AndroidNetworkListener
 import com.amplitude.android.Configuration
 import com.amplitude.android.utilities.AndroidNetworkConnectivityChecker
+import com.amplitude.android.utilities.AndroidNetworkListener
 import com.amplitude.core.Amplitude
 import com.amplitude.core.platform.Plugin
 import kotlinx.coroutines.launch

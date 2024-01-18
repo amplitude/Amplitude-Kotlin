@@ -1,3 +1,5 @@
+package com.amplitude.android.utilities
+
 import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.Context
