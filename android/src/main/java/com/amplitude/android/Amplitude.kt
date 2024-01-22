@@ -57,7 +57,7 @@ open class Amplitude(
         }
         this.createIdentityContainer(identityConfiguration)
 
-        if (this.configuration.offline != null) {
+        if (this.configuration.offline != AndroidNetworkConnectivityCheckerPlugin.Disabled) {
             add(AndroidNetworkConnectivityCheckerPlugin())
         }
         androidContextPlugin = AndroidContextPlugin()
