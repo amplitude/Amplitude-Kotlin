@@ -85,8 +85,4 @@ class SamplePlugin implements Plugin {
         return event;
     }
 
-    @Override
-    public void teardown() {
-        // Clean up any resources from setup if necessary
-    }
 }
