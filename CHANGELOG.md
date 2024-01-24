@@ -1,3 +1,10 @@
+# [1.13.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.12.2...v1.13.0) (2024-01-24)
+
+
+### Features
+
+* offline support ([#171](https://github.com/amplitude/Amplitude-Kotlin/issues/171)) ([669eead](https://github.com/amplitude/Amplitude-Kotlin/commit/669eead95c7cd745f63481663fad5ea473feb99d))
+
 ## [1.12.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.12.1...v1.12.2) (2023-11-13)
 
 
