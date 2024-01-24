@@ -2,6 +2,7 @@ package com.amplitude.android
 
 import android.app.Application
 import android.content.Context
+import android.net.ConnectivityManager
 import com.amplitude.analytics.connector.AnalyticsConnector
 import com.amplitude.analytics.connector.Identity
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
@@ -38,10 +39,14 @@ open class StubPlugin : EventPlugin {
 class AmplitudeTest {
     private var context: Context? = null
     private var amplitude: Amplitude? = null
+    private lateinit var connectivityManager: ConnectivityManager
 
     @BeforeEach
     fun setUp() {
         context = mockk<Application>(relaxed = true)
+        connectivityManager = mockk<ConnectivityManager>(relaxed = true)
+        every { context!!.getSystemService(Context.CONNECTIVITY_SERVICE) } returns connectivityManager
+
         mockkStatic(AndroidLifecyclePlugin::class)
 
         mockkConstructor(AndroidContextProvider::class)

@@ -7,6 +7,7 @@ import com.amplitude.android.plugins.AnalyticsConnectorIdentityPlugin
 import com.amplitude.android.plugins.AnalyticsConnectorPlugin
 import com.amplitude.android.plugins.AndroidContextPlugin
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
+import com.amplitude.android.plugins.AndroidNetworkConnectivityCheckerPlugin
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.plugins.AmplitudeDestination
@@ -56,6 +57,9 @@ open class Amplitude(
         }
         this.createIdentityContainer(identityConfiguration)
 
+        if (this.configuration.offline != AndroidNetworkConnectivityCheckerPlugin.Disabled) {
+            add(AndroidNetworkConnectivityCheckerPlugin())
+        }
         androidContextPlugin = AndroidContextPlugin()
         add(androidContextPlugin)
         add(GetAmpliExtrasPlugin())

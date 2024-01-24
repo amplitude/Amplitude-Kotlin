@@ -2,6 +2,7 @@ package com.amplitude.android
 
 import android.app.Application
 import android.content.Context
+import android.net.ConnectivityManager
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.ConsoleLoggerProvider
 import com.amplitude.id.IMIdentityStorageProvider
@@ -23,6 +24,7 @@ import kotlin.io.path.absolutePathString
 class AmplitudeRobolectricTests {
     private lateinit var amplitude: Amplitude
     private var context: Context? = null
+    private lateinit var connectivityManager: ConnectivityManager
 
     var tempDir = TempDirectory()
 
@@ -30,8 +32,9 @@ class AmplitudeRobolectricTests {
     @Before
     fun setup() {
         context = mockk<Application>(relaxed = true)
+        connectivityManager = mockk<ConnectivityManager>(relaxed = true)
         every { context!!.getDir(any(), any()) } returns File(tempDir.create("data").absolutePathString())
-
+        every { context!!.getSystemService(Context.CONNECTIVITY_SERVICE) } returns connectivityManager
         amplitude = Amplitude(createConfiguration())
     }
 

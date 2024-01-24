@@ -25,6 +25,10 @@ interface Plugin {
     fun execute(event: BaseEvent): BaseEvent? {
         return event
     }
+
+    fun teardown() {
+        // Clean up any resources from setup if necessary
+    }
 }
 
 interface EventPlugin : Plugin {

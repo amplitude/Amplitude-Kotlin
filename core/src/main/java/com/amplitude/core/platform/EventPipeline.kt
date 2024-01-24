@@ -99,6 +99,11 @@ class EventPipeline(
                 }
             }
 
+            // Skip flush when offline
+            if (amplitude.configuration.offline == true) {
+                continue
+            }
+
             // if flush condition met, generate paths
             if (eventCount.incrementAndGet() >= getFlushCount() || triggerFlush) {
                 eventCount.set(0)
