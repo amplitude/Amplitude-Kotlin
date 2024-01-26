@@ -4,6 +4,7 @@ import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.HttpClient
 import com.amplitude.core.utilities.ResponseHandler
+import com.amplitude.core.utilities.logWithStackTrace
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
 import kotlinx.coroutines.channels.consumeEach
@@ -94,9 +95,7 @@ class EventPipeline(
             if (!triggerFlush && message.event != null) try {
                 storage.writeEvent(message.event)
             } catch (e: Exception) {
-                e.message?.let {
-                    amplitude.logger.error("Error when write event: $it")
-                }
+                e.logWithStackTrace(amplitude.logger, "Error when writing event to pipeline")
             }
 
             // Skip flush when offline
@@ -145,9 +144,7 @@ class EventPipeline(
                         amplitude.logger.warn("Event storage file not found: $it")
                     }
                 } catch (e: Exception) {
-                    e.message?.let {
-                        amplitude.logger.error("Error when upload event: $it")
-                    }
+                    e.logWithStackTrace(amplitude.logger, "Error when uploading event")
                 }
             }
         }
