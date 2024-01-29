@@ -8,6 +8,7 @@ import com.amplitude.core.Storage
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.IdentifyOperation
 import com.amplitude.core.platform.plugins.AmplitudeDestination
+import com.amplitude.core.utilities.logWithStackTrace
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
@@ -107,9 +108,7 @@ class IdentifyInterceptor(
         try {
             storage.writeEvent(event)
         } catch (e: Exception) {
-            e.message?.let {
-                logger.error("Error when write event: $it")
-            }
+            e.logWithStackTrace(logger, "Error when intercepting identifies")
         }
     }
 
