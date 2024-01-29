@@ -60,7 +60,12 @@ open class Amplitude(
         if (this.configuration.offline != AndroidNetworkConnectivityCheckerPlugin.Disabled) {
             add(AndroidNetworkConnectivityCheckerPlugin())
         }
-        androidContextPlugin = AndroidContextPlugin()
+        androidContextPlugin = object : AndroidContextPlugin() {
+            override fun setDeviceId(deviceId: String) {
+                // call internal method to set deviceId immediately i.e. dont' wait for build() to complete
+                this@Amplitude.setDeviceIdInternal(deviceId)
+            }
+        }
         add(androidContextPlugin)
         add(GetAmpliExtrasPlugin())
         add(AndroidLifecyclePlugin())
