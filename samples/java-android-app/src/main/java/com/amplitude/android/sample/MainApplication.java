@@ -84,8 +84,4 @@ class SamplePlugin implements Plugin {
         event.getEventProperties().put("custom android event property", "test");
         return event;
     }
-
-    @Override
-    public void teardown() {
-    }
 }
