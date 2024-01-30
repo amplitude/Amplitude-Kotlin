@@ -46,12 +46,14 @@ internal class AmplitudeTest {
         val testApiKey = "test-123"
         val plan = Plan("test-branch", "test")
         val ingestionMetadata = IngestionMetadata("ampli", "2.0.0")
-        amplitude = testAmplitude(Configuration(
-            testApiKey,
-            plan = plan,
-            ingestionMetadata = ingestionMetadata,
-            serverUrl = server.url("/").toString()
-        ))
+        amplitude = testAmplitude(
+            Configuration(
+                testApiKey,
+                plan = plan,
+                ingestionMetadata = ingestionMetadata,
+                serverUrl = server.url("/").toString()
+            )
+        )
     }
 
     @AfterEach
@@ -64,11 +66,13 @@ internal class AmplitudeTest {
         @Test
         fun `set deviceId`() {
             val deviceId = "test-device-id"
-            amplitude = testAmplitude(Configuration(
-                "api-key",
-                deviceId = deviceId,
-                serverUrl = server.url("/").toString()
-            ))
+            amplitude = testAmplitude(
+                Configuration(
+                    "api-key",
+                    deviceId = deviceId,
+                    serverUrl = server.url("/").toString()
+                )
+            )
             amplitude.isBuilt.invokeOnCompletion {
                 assertEquals(deviceId, amplitude.store.deviceId)
                 assertEquals(deviceId, amplitude.getDeviceId())
