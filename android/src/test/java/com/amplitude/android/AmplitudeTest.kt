@@ -187,6 +187,15 @@ class AmplitudeTest {
         }
     }
 
+    @Test
+    fun amplitude_getDeviceId_should_return_not_null_after_isBuilt() = runTest {
+        setDispatcher(testScheduler)
+        if (amplitude?.isBuilt!!.await()) {
+            Assertions.assertNotNull(amplitude?.store?.deviceId)
+            Assertions.assertNotNull(amplitude?.getDeviceId())
+        }
+    }
+
     companion object {
         const val instanceName = "testInstance"
     }

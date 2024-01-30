@@ -224,6 +224,17 @@ open class Amplitude internal constructor(
     }
 
     /**
+     * <b>INTERNAL METHOD!</b>
+     *
+     * Sets device id immediately without waiting for build() to complete.
+     *
+     * <b>Note: only do this if you know what you are doing!</b>
+     */
+    protected fun setDeviceIdInternal(deviceId: String) {
+        idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
+    }
+
+    /**
      * Sets a custom device id. <b>Note: only do this if you know what you are doing!</b>
      *
      * @param deviceId custom device id
@@ -232,7 +243,7 @@ open class Amplitude internal constructor(
     fun setDeviceId(deviceId: String): Amplitude {
         amplitudeScope.launch(amplitudeDispatcher) {
             isBuilt.await()
-            idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
+            setDeviceIdInternal(deviceId)
         }
         return this
     }
