@@ -1,17 +1,32 @@
 package com.amplitude.core.platform.plugins
 
 import com.amplitude.core.Amplitude
+import com.amplitude.core.Configuration
 import com.amplitude.core.Constants
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
 import java.util.UUID
 
-class ContextPlugin : Plugin {
+open class ContextPlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Before
     override lateinit var amplitude: Amplitude
 
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
+        initializeDeviceId(amplitude.configuration)
+    }
+
+    protected open fun setDeviceId(deviceId: String) {
+        amplitude.setDeviceId(deviceId)
+    }
+
+    private fun initializeDeviceId(configuration: Configuration) {
+        // Check configuration
+        var deviceId = configuration.deviceId
+        if (deviceId != null) {
+            setDeviceId(deviceId)
+            return
+        }
     }
 
     private fun applyContextData(event: BaseEvent) {

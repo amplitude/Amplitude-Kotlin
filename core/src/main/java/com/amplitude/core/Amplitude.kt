@@ -113,7 +113,12 @@ open class Amplitude internal constructor(
     protected open suspend fun buildInternal(identityConfiguration: IdentityConfiguration) {
         createIdentityContainer(identityConfiguration)
         EventBridgeContainer.getInstance(configuration.instanceName).eventBridge.setEventReceiver(EventChannel.EVENT, AnalyticsEventReceiver(this))
-        add(ContextPlugin())
+        add(object : ContextPlugin() {
+            override fun setDeviceId(deviceId: String) {
+                // set device id immediately, don't wait for isBuilt
+                setDeviceIdInternal(deviceId)
+            }
+        })
         add(GetAmpliExtrasPlugin())
         add(AmplitudeDestination())
     }
