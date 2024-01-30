@@ -227,7 +227,7 @@ open class Amplitude internal constructor(
      * <b>INTERNAL METHOD!</b>
      *
      * Sets device id immediately without waiting for build() to complete.
-     * 
+     *
      * <b>Note: only do this if you know what you are doing!</b>
      */
     protected fun setDeviceIdInternal(deviceId: String) {
