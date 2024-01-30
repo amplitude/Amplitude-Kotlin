@@ -215,7 +215,7 @@ class AmplitudeTest {
 
         if (amplitude?.isBuilt!!.await()) {
             Assertions.assertEquals(testDeviceId, amplitude?.store?.deviceId)
-            Assertions.assertNotNull(testDeviceId, amplitude?.getDeviceId())
+            Assertions.assertEquals(testDeviceId, amplitude?.getDeviceId())
         }
     }
 
