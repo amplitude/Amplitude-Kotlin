@@ -31,10 +31,20 @@ open class AndroidContextPlugin : Plugin {
     }
 
     fun initializeDeviceId(configuration: Configuration) {
-        val deviceId = amplitude.store.deviceId
+        // Check configuration
+        var deviceId = configuration.deviceId
+        if (deviceId != null) {
+            setDeviceId(deviceId)
+            return
+        }
+
+        // Check store
+        deviceId = amplitude.store.deviceId
         if (deviceId != null && validDeviceId(deviceId) && !deviceId.endsWith("S")) {
             return
         }
+
+        // Check new device id per install
         if (!configuration.newDeviceIdPerInstall && configuration.useAdvertisingIdForDeviceId && !contextProvider.isLimitAdTrackingEnabled()) {
             val advertisingId = contextProvider.advertisingId
             if (advertisingId != null && validDeviceId(advertisingId)) {
@@ -42,6 +52,8 @@ open class AndroidContextPlugin : Plugin {
                 return
             }
         }
+
+        // Check app set id
         if (configuration.useAppSetIdForDeviceId) {
             val appSetId = contextProvider.appSetId
             if (appSetId != null && validDeviceId(appSetId)) {
@@ -49,6 +61,8 @@ open class AndroidContextPlugin : Plugin {
                 return
             }
         }
+
+        // Generate random id
         val randomId = AndroidContextProvider.generateUUID() + "R"
         setDeviceId(randomId)
     }

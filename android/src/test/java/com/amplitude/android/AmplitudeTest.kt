@@ -74,7 +74,11 @@ class AmplitudeTest {
         amplitudeDispatcherField.set(amplitude, dispatcher)
     }
 
-    private fun createConfiguration(minTimeBetweenSessionsMillis: Long? = null, storageProvider: StorageProvider = InMemoryStorageProvider()): Configuration {
+    private fun createConfiguration(
+        minTimeBetweenSessionsMillis: Long? = null,
+        storageProvider: StorageProvider = InMemoryStorageProvider(),
+        deviceId: String? = null,
+    ): Configuration {
         val configuration = Configuration(
             apiKey = "api-key",
             context = context!!,
@@ -85,6 +89,10 @@ class AmplitudeTest {
             identifyInterceptStorageProvider = InMemoryStorageProvider(),
             identityStorageProvider = IMIdentityStorageProvider(),
         )
+
+        if (deviceId != null) {
+            configuration.deviceId = deviceId
+        }
 
         if (minTimeBetweenSessionsMillis != null) {
             configuration.minTimeBetweenSessionsMillis = minTimeBetweenSessionsMillis
@@ -193,6 +201,21 @@ class AmplitudeTest {
         if (amplitude?.isBuilt!!.await()) {
             Assertions.assertNotNull(amplitude?.store?.deviceId)
             Assertions.assertNotNull(amplitude?.getDeviceId())
+            // Should be a random id (ends with R)
+            Assertions.assertTrue(amplitude?.getDeviceId()?.endsWith("R") == true)
+        }
+    }
+
+    @Test
+    fun amplitude_should_set_deviceId_from_configuration() = runTest {
+        val testDeviceId = "test device id"
+        // set device Id in the config
+        amplitude = Amplitude(createConfiguration(deviceId = testDeviceId))
+        setDispatcher(testScheduler)
+
+        if (amplitude?.isBuilt!!.await()) {
+            Assertions.assertEquals(testDeviceId, amplitude?.store?.deviceId)
+            Assertions.assertNotNull(testDeviceId, amplitude?.getDeviceId())
         }
     }
 

@@ -31,6 +31,7 @@ open class Configuration @JvmOverloads constructor(
     open var identifyInterceptStorageProvider: StorageProvider = InMemoryStorageProvider(),
     open var identityStorageProvider: IdentityStorageProvider = IMIdentityStorageProvider(),
     open var offline: Boolean? = false,
+    open var deviceId: String? = null,
 ) {
 
     companion object {

@@ -47,7 +47,30 @@ open class Configuration @JvmOverloads constructor(
     override var identityStorageProvider: IdentityStorageProvider = FileIdentityStorageProvider(),
     var migrateLegacyData: Boolean = true,
     override var offline: Boolean? = false,
-) : Configuration(apiKey, flushQueueSize, flushIntervalMillis, instanceName, optOut, storageProvider, loggerProvider, minIdLength, partnerId, callback, flushMaxRetries, useBatch, serverZone, serverUrl, plan, ingestionMetadata, identifyBatchIntervalMillis, identifyInterceptStorageProvider, identityStorageProvider, offline) {
+    override var deviceId: String? = null,
+) : Configuration(
+    apiKey,
+    flushQueueSize,
+    flushIntervalMillis,
+    instanceName,
+    optOut,
+    storageProvider,
+    loggerProvider,
+    minIdLength,
+    partnerId,
+    callback,
+    flushMaxRetries,
+    useBatch,
+    serverZone,
+    serverUrl,
+    plan,
+    ingestionMetadata,
+    identifyBatchIntervalMillis,
+    identifyInterceptStorageProvider,
+    identityStorageProvider,
+    offline,
+    deviceId,
+) {
     companion object {
         const val MIN_TIME_BETWEEN_SESSIONS_MILLIS: Long = 300000
     }
