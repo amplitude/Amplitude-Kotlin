@@ -1,3 +1,15 @@
+# [1.14.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.13.0...v1.14.0) (2024-01-30)
+
+
+### Bug Fixes
+
+* race condition when setting device id in android ([#177](https://github.com/amplitude/Amplitude-Kotlin/issues/177)) ([671edb9](https://github.com/amplitude/Amplitude-Kotlin/commit/671edb9f7647667c2ef6ca0fd7dde8159f689eb6))
+
+
+### Features
+
+* added deviceId to Configuration options ([#178](https://github.com/amplitude/Amplitude-Kotlin/issues/178)) ([45b6181](https://github.com/amplitude/Amplitude-Kotlin/commit/45b61813c46e1495b152a52be2d97b170837b7f8))
+
 # [1.13.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.12.2...v1.13.0) (2024-01-24)
 
 
