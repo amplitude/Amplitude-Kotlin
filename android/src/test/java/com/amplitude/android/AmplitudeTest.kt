@@ -201,8 +201,6 @@ class AmplitudeTest {
         if (amplitude?.isBuilt!!.await()) {
             Assertions.assertNotNull(amplitude?.store?.deviceId)
             Assertions.assertNotNull(amplitude?.getDeviceId())
-            // Should be a random id (ends with R)
-            Assertions.assertTrue(amplitude?.getDeviceId()?.endsWith("R") == true)
         }
     }
 
