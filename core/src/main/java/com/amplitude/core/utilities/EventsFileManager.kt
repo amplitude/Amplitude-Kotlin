@@ -190,7 +190,7 @@ class EventsFileManager(
 
     private fun writeToFile(content: String, file: File) {
         file.createNewFile()
-        FileOutputStream(file).use {
+        FileOutputStream(file, true).use {
             it.write(content.toByteArray())
             it.flush()
         }
