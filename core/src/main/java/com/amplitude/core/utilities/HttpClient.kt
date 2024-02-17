@@ -62,7 +62,8 @@ internal class HttpClient(
         val connection = requestedURL.openConnection() as HttpURLConnection
         connection.requestMethod = "POST"
         connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-        connection.setRequestProperty("Accept", "application/json")
+        connection.setRequestProperty("Accept", "*/*")
+        connection.setRequestProperty("Connection", "close")
         connection.doOutput = true
         connection.doInput = true
         connection.connectTimeout = 15_000 // 15s
