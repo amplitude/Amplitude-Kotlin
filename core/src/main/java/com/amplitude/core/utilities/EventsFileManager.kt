@@ -1,10 +1,13 @@
 package com.amplitude.core.utilities
 
+import com.amplitude.common.Logger
 import com.amplitude.id.utilities.KeyValueStore
 import com.amplitude.id.utilities.createDirectory
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
+import org.json.JSONException
+import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileOutputStream
@@ -14,7 +17,8 @@ import java.util.concurrent.ConcurrentHashMap
 class EventsFileManager(
     private val directory: File,
     private val storageKey: String,
-    private val kvs: KeyValueStore
+    private val kvs: KeyValueStore,
+    private val logger: Logger
 ) {
     init {
         createDirectory(directory)
@@ -54,13 +58,7 @@ class EventsFileManager(
             }
         }
 
-        var contents = ""
-        if (file.length() == 0L) {
-            start(file)
-        } else if (file.length() > 1) {
-            contents += ","
-        }
-        contents += event
+        val contents = "${event}\n"
         writeToFile(contents.toByteArray(), file)
     }
 
@@ -122,8 +120,10 @@ class EventsFileManager(
         val firstHalfFile = File(directory, "$fileName-1.tmp")
         val secondHalfFile = File(directory, "$fileName-2.tmp")
         val splitStrings = events.split()
-        writeToFile(splitStrings.first, firstHalfFile)
-        writeToFile(splitStrings.second, secondHalfFile)
+        writeEventsToFile(splitStrings.first, firstHalfFile)
+        writeEventsToFile(splitStrings.second, secondHalfFile)
+        firstHalfFile.renameTo(File(directory, firstHalfFile.nameWithoutExtension))
+        secondHalfFile.renameTo(File(directory, secondHalfFile.nameWithoutExtension))
         this.remove(filePath)
     }
 
@@ -135,7 +135,40 @@ class EventsFileManager(
         }
         filePathSet.add(filePath)
         File(filePath).bufferedReader().use<BufferedReader, String> {
-            return it.readText()
+            val content = it.readText()
+            val isCurrentVersion = content.endsWith("\n")
+            if (isCurrentVersion) {
+                // handle current version
+                val events = JSONArray();
+                content.split("\n").forEach {
+                    if (it.isNotEmpty()) {
+                        try {
+                            events.put(JSONObject(it))
+                        } catch (e: JSONException) {
+                            logger.error("Failed to parse event: $it")
+                        }
+                    }
+                }
+                return if (events.length() > 0) {
+                    events.toString()
+                } else {
+                    ""
+                }
+            } else {
+                // handle earlier versions
+                val normalizedContent = "[${content.trimStart('[').trimEnd(']', ',')}]"
+                if (normalizedContent.isEmpty()) {
+                    return ""
+                }
+                try {
+                    JSONArray(normalizedContent)
+                    return normalizedContent
+                } catch (e: JSONException) {
+                    logger.error("Failed to parse events: $normalizedContent, dropping file: $filePath")
+                    this.remove(filePath)
+                    return ""
+                }
+            }
         }
     }
 
@@ -148,9 +181,6 @@ class EventsFileManager(
             // if tmp file doesn't exist or empty then we don't need to do anything
             return
         }
-        // close events array and batch object
-        val contents = """]"""
-        writeToFile(contents.toByteArray(), file)
         file.renameTo(File(directory, file.nameWithoutExtension))
         incrementFileIndex()
         reset()
@@ -195,6 +225,11 @@ class EventsFileManager(
             it.flush()
         }
         file.renameTo(File(directory, file.nameWithoutExtension))
+    }
+
+    private fun writeEventsToFile(events: List<JSONObject>, file: File) {
+        val contents = events.joinToString(separator = "\n", postfix = "\n") { it.toString()}
+        writeToFile(contents, file)
     }
 
     private fun reset() {

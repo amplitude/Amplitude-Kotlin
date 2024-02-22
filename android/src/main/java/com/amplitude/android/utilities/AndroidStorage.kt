@@ -35,7 +35,7 @@ class AndroidStorage(
         context.getSharedPreferences("${getPrefix()}-$storageKey", Context.MODE_PRIVATE)
     private val storageDirectory: File = context.getDir(getDir(), Context.MODE_PRIVATE)
     private val eventsFile =
-        EventsFileManager(storageDirectory, storageKey, AndroidKVS(sharedPreferences))
+        EventsFileManager(storageDirectory, storageKey, AndroidKVS(sharedPreferences), logger)
     private val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
 
     override suspend fun writeEvent(event: BaseEvent) {

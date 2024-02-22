@@ -215,18 +215,18 @@ fun JSONArray.toEvents(): List<BaseEvent> {
     return events
 }
 
-internal fun JSONArray.split(): Pair<String, String> {
+internal fun JSONArray.split(): Pair<List<JSONObject>, List<JSONObject>> {
     val mid = this.length() / 2
-    val firstHalf = JSONArray()
-    val secondHalf = JSONArray()
+    val firstHalf = mutableListOf<JSONObject>()
+    val secondHalf = mutableListOf<JSONObject>()
     (0 until this.length()).forEach { index, ->
         if (index < mid) {
-            firstHalf.put(this.getJSONObject(index))
+            firstHalf.add(this.getJSONObject(index))
         } else {
-            secondHalf.put(this.getJSONObject(index))
+            secondHalf.add(this.getJSONObject(index))
         }
     }
-    return Pair(firstHalf.toString(), secondHalf.toString())
+    return Pair(firstHalf, secondHalf)
 }
 
 internal fun JSONObject.addValue(key: String, value: Any?) {

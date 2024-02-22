@@ -28,7 +28,7 @@ class FileStorage(
     private val storageDirectoryEvents = File(storageDirectory, "events")
 
     private val propertiesFile = PropertiesFile(storageDirectory, storageKey, getPrefix(), null)
-    private val eventsFile = EventsFileManager(storageDirectoryEvents, storageKey, propertiesFile)
+    private val eventsFile = EventsFileManager(storageDirectoryEvents, storageKey, propertiesFile, logger)
     private val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
 
     init {
