@@ -20,20 +20,21 @@ class EventsFileManager(
     private val kvs: KeyValueStore,
     private val logger: Logger
 ) {
-    init {
-        createDirectory(directory)
-    }
-
     private val fileIndexKey = "amplitude.events.file.index.$storageKey"
-
-    companion object {
-        const val MAX_FILE_SIZE = 975_000 // 975KB
-    }
-
+    private val storageVersionKey = "amplitude.events.file.version.$storageKey"
     val writeMutex = Mutex()
     val readMutex = Mutex()
     val filePathSet: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
     val curFile: MutableMap<String, File> = ConcurrentHashMap<String, File>()
+
+    init {
+        createDirectory(directory)
+        handleV1Files()
+    }
+
+    companion object {
+        const val MAX_FILE_SIZE = 975_000 // 975KB
+    }
 
     /**
      * closes existing file, if at capacity
@@ -73,7 +74,7 @@ class EventsFileManager(
     fun read(): List<String> {
         // we need to filter out .temp file, since it's operating on the writing thread
         val fileList = directory.listFiles { _, name ->
-            name.contains(storageKey) && !name.endsWith(".tmp")
+            name.contains(storageKey) && !name.endsWith(".tmp") && !name.endsWith(".properties")
         } ?: emptyArray()
         return fileList.sortedBy { it ->
             getSortKeyForFile(it)
@@ -122,8 +123,6 @@ class EventsFileManager(
         val splitStrings = events.split()
         writeEventsToFile(splitStrings.first, firstHalfFile)
         writeEventsToFile(splitStrings.second, secondHalfFile)
-        firstHalfFile.renameTo(File(directory, firstHalfFile.nameWithoutExtension))
-        secondHalfFile.renameTo(File(directory, secondHalfFile.nameWithoutExtension))
         this.remove(filePath)
     }
 
@@ -156,17 +155,14 @@ class EventsFileManager(
                 }
             } else {
                 // handle earlier versions
-                val normalizedContent = "[${content.trimStart('[').trimEnd(']', ',')}]"
-                if (normalizedContent.isEmpty()) {
-                    return ""
-                }
+                val normalizedContent = "[${content.trimStart('[', ',').trimEnd(']', ',')}]"
                 try {
-                    JSONArray(normalizedContent)
-                    return normalizedContent
+                    val jsonArray = JSONArray(normalizedContent)
+                    return jsonArray.toString()
                 } catch (e: JSONException) {
                     logger.error("Failed to parse events: $normalizedContent, dropping file: $filePath")
                     this.remove(filePath)
-                    return ""
+                     return ""
                 }
             }
         }
@@ -234,5 +230,22 @@ class EventsFileManager(
 
     private fun reset() {
         curFile.remove(storageKey)
+    }
+
+    private fun handleV1Files() {
+        if (kvs.getLong(storageVersionKey, 1L) > 1L) {
+            return
+        }
+        val unFinishedFiles = directory.listFiles { _, name ->
+            name.contains(storageKey) && name.endsWith(".tmp") && !name.endsWith(".properties")
+        } ?: emptyArray()
+        unFinishedFiles.forEach {
+            val content = it.readText()
+            if (!content.endsWith("\n")) {
+                // already in current format
+                finish(it)
+            }
+        }
+        kvs.putLong(storageVersionKey, 2)
     }
 }
