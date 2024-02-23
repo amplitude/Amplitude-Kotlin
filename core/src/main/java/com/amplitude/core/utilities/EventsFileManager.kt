@@ -10,8 +10,12 @@ import org.json.JSONException
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.File
+import java.io.FileNotFoundException
 import java.io.FileOutputStream
+import java.io.IOException
+import java.nio.channels.OverlappingFileLockException
 import java.util.Collections
+import java.util.Random
 import java.util.concurrent.ConcurrentHashMap
 
 class EventsFileManager(
@@ -22,18 +26,21 @@ class EventsFileManager(
 ) {
     private val fileIndexKey = "amplitude.events.file.index.$storageKey"
     private val storageVersionKey = "amplitude.events.file.version.$storageKey"
-    val writeMutex = Mutex()
-    val readMutex = Mutex()
     val filePathSet: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
     val curFile: MutableMap<String, File> = ConcurrentHashMap<String, File>()
+
+    companion object {
+        const val MAX_FILE_SIZE = 975_000 // 975KB
+        val writeMutexMap = ConcurrentHashMap<String, Mutex>()
+        val readMutexMap = ConcurrentHashMap<String, Mutex>()
+    }
+
+    val writeMutex = writeMutexMap.getOrPut(storageKey) { Mutex() }
+    private val readMutex = readMutexMap.getOrPut(storageKey) { Mutex() }
 
     init {
         createDirectory(directory)
         handleV1Files()
-    }
-
-    companion object {
-        const val MAX_FILE_SIZE = 975_000 // 975KB
     }
 
     /**
@@ -173,11 +180,21 @@ class EventsFileManager(
     }
 
     private fun finish(file: File?) {
-        if (file == null || !file.exists() || file.length() == 0L) {
+        if (file == null || !file.exists()) {
             // if tmp file doesn't exist or empty then we don't need to do anything
             return
         }
-        file.renameTo(File(directory, file.nameWithoutExtension))
+        val fileWithoutExtension = file.nameWithoutExtension
+        val finishedFile = File(directory, "$fileWithoutExtension")
+        if (finishedFile.exists()) {
+            logger.debug("File already exists: $finishedFile, handle gracefully.")
+            // if the file already exists, race condition detected and  rename the current file to a new name to avoid collision
+            val newName = "$fileWithoutExtension-${System.currentTimeMillis()}-${Random().nextInt(1000)}"
+            file.renameTo(File(directory, newName))
+            return
+        } else {
+            file.renameTo(File(directory, file.nameWithoutExtension))
+        }
         incrementFileIndex()
         reset()
     }
@@ -208,15 +225,23 @@ class EventsFileManager(
 
     // write to underlying file
     private fun writeToFile(content: ByteArray, file: File) {
-        FileOutputStream(file, true).use {
-            it.write(content)
-            it.flush()
+        try {
+            FileOutputStream(file, true).use {
+                it.write(content)
+                it.flush()
+            }
+        } catch (e: FileNotFoundException) {
+            logger.error("File not found: ${file.absolutePath}")
+        } catch (e: IOException) {
+            logger.error("Failed to write to file: ${file.absolutePath}")
+        } catch (e: SecurityException) {
+            logger.error("Security exception when saving event: ${e.message}")
         }
     }
 
     private fun writeToFile(content: String, file: File) {
         file.createNewFile()
-        FileOutputStream(file).use {
+        FileOutputStream(file, true).use {
             it.write(content.toByteArray())
             it.flush()
         }

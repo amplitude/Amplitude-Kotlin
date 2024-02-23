@@ -2,6 +2,7 @@ package com.amplitude.core.utilities
 
 import com.amplitude.common.jvm.ConsoleLogger
 import com.amplitude.id.utilities.PropertiesFile
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -186,6 +187,93 @@ class EventsFileManagerTest {
                }
            }
         }
+    }
+
+    @Test
+    fun `concurrent writes to the same event file manager instance`() {
+        val logger = ConsoleLogger()
+        val storageKey = "storageKey"
+        val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
+        val eventsFileManager =
+            EventsFileManager(tempDir, storageKey, propertiesFile, logger)
+        runBlocking {
+            val job1 = kotlinx.coroutines.GlobalScope.launch {
+                eventsFileManager.storeEvent(createEvent("test1"))
+                eventsFileManager.storeEvent(createEvent("test2"))
+                eventsFileManager.rollover()
+            }
+            val job2 = kotlinx.coroutines.GlobalScope.launch {
+                eventsFileManager.rollover()
+                eventsFileManager.storeEvent(createEvent("test3"))
+                eventsFileManager.storeEvent(createEvent("test4"))
+                eventsFileManager.rollover()
+            }
+            val job3 = kotlinx.coroutines.GlobalScope.launch {
+                eventsFileManager.rollover()
+                eventsFileManager.storeEvent(createEvent("test5"))
+                eventsFileManager.storeEvent(createEvent("test6"))
+                eventsFileManager.rollover()
+            }
+            kotlinx.coroutines.joinAll(job1, job2, job3)
+        }
+        val filePaths = eventsFileManager.read()
+        var eventsCount = 0
+        runBlocking {
+            filePaths.forEach { filePath ->
+                val eventsString = eventsFileManager.getEventString(filePath)
+                val events = JSONArray(eventsString)
+                eventsCount += events.length()
+            }
+        }
+        assertEquals(6, eventsCount)
+    }
+
+    @Test
+    fun `concurrent write to two instances with same configuration`() {
+        val logger = ConsoleLogger()
+        val storageKey = "storageKey"
+        val propertiesFile1 = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
+        val propertiesFile2 = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
+        val eventsFileManager1 =
+            EventsFileManager(tempDir, storageKey, propertiesFile1, logger)
+        val eventsFileManager2 =
+            EventsFileManager(tempDir, storageKey, propertiesFile2, logger)
+        runBlocking {
+            val job1 = kotlinx.coroutines.GlobalScope.launch {
+                eventsFileManager1.storeEvent(createEvent("test1"))
+                eventsFileManager1.storeEvent(createEvent("test2"))
+                eventsFileManager1.rollover()
+            }
+            val job2 = kotlinx.coroutines.GlobalScope.launch {
+                eventsFileManager2.rollover()
+                eventsFileManager2.storeEvent(createEvent("test3"))
+                eventsFileManager2.storeEvent(createEvent("test4"))
+                eventsFileManager2.rollover()
+            }
+            val job3 = kotlinx.coroutines.GlobalScope.launch {
+                eventsFileManager1.rollover()
+                eventsFileManager1.storeEvent(createEvent("test5"))
+                eventsFileManager1.storeEvent(createEvent("test6"))
+                eventsFileManager1.rollover()
+            }
+            val job4 = kotlinx.coroutines.GlobalScope.launch {
+                eventsFileManager2.rollover()
+                eventsFileManager2.storeEvent(createEvent("test7"))
+                eventsFileManager2.storeEvent(createEvent("test8"))
+                eventsFileManager2.rollover()
+            }
+            kotlinx.coroutines.joinAll(job1, job2, job3, job4)
+        }
+        val filePaths = eventsFileManager1.read()
+        var eventsCount = 0
+        runBlocking {
+            filePaths.forEach { filePath ->
+                val eventsString = eventsFileManager1.getEventString(filePath)
+                val events = JSONArray(eventsString)
+                eventsCount += events.length()
+            }
+        }
+        assertEquals(8, eventsCount)
     }
 
     private fun createEarlierVersionEventFiles() {
