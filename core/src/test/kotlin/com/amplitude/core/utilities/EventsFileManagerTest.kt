@@ -169,23 +169,23 @@ class EventsFileManagerTest {
         val filePaths = eventsFileManager.read()
         assertEquals(7, filePaths.size)
         runBlocking {
-           filePaths.withIndex().forEach { (index, filePath) ->
-               val eventsString = eventsFileManager.getEventString(filePath)
-               if (index == 5) {
-                   assertEquals("[{\"eventType\":\"test11\"}]", eventsString)
-               } else {
-                   val events = JSONArray(eventsString)
-                   assertEquals(2, events.length())
-                   assertEquals(
-                       "test${index * 2 + 1}",
-                       events.getJSONObject(0).getString("eventType")
-                   )
-                   assertEquals(
-                       "test${index * 2 + 2}",
-                       events.getJSONObject(1).getString("eventType")
-                   )
-               }
-           }
+            filePaths.withIndex().forEach { (index, filePath) ->
+                val eventsString = eventsFileManager.getEventString(filePath)
+                if (index == 5) {
+                    assertEquals("[{\"eventType\":\"test11\"}]", eventsString)
+                } else {
+                    val events = JSONArray(eventsString)
+                    assertEquals(2, events.length())
+                    assertEquals(
+                        "test${index * 2 + 1}",
+                        events.getJSONObject(0).getString("eventType"),
+                    )
+                    assertEquals(
+                        "test${index * 2 + 2}",
+                        events.getJSONObject(1).getString("eventType"),
+                    )
+                }
+            }
         }
     }
 
@@ -197,23 +197,26 @@ class EventsFileManagerTest {
         val eventsFileManager =
             EventsFileManager(tempDir, storageKey, propertiesFile, logger)
         runBlocking {
-            val job1 = kotlinx.coroutines.GlobalScope.launch {
-                eventsFileManager.storeEvent(createEvent("test1"))
-                eventsFileManager.storeEvent(createEvent("test2"))
-                eventsFileManager.rollover()
-            }
-            val job2 = kotlinx.coroutines.GlobalScope.launch {
-                eventsFileManager.rollover()
-                eventsFileManager.storeEvent(createEvent("test3"))
-                eventsFileManager.storeEvent(createEvent("test4"))
-                eventsFileManager.rollover()
-            }
-            val job3 = kotlinx.coroutines.GlobalScope.launch {
-                eventsFileManager.rollover()
-                eventsFileManager.storeEvent(createEvent("test5"))
-                eventsFileManager.storeEvent(createEvent("test6"))
-                eventsFileManager.rollover()
-            }
+            val job1 =
+                kotlinx.coroutines.GlobalScope.launch {
+                    eventsFileManager.storeEvent(createEvent("test1"))
+                    eventsFileManager.storeEvent(createEvent("test2"))
+                    eventsFileManager.rollover()
+                }
+            val job2 =
+                kotlinx.coroutines.GlobalScope.launch {
+                    eventsFileManager.rollover()
+                    eventsFileManager.storeEvent(createEvent("test3"))
+                    eventsFileManager.storeEvent(createEvent("test4"))
+                    eventsFileManager.rollover()
+                }
+            val job3 =
+                kotlinx.coroutines.GlobalScope.launch {
+                    eventsFileManager.rollover()
+                    eventsFileManager.storeEvent(createEvent("test5"))
+                    eventsFileManager.storeEvent(createEvent("test6"))
+                    eventsFileManager.rollover()
+                }
             kotlinx.coroutines.joinAll(job1, job2, job3)
         }
         val filePaths = eventsFileManager.read()
@@ -239,29 +242,33 @@ class EventsFileManagerTest {
         val eventsFileManager2 =
             EventsFileManager(tempDir, storageKey, propertiesFile2, logger)
         runBlocking {
-            val job1 = kotlinx.coroutines.GlobalScope.launch {
-                eventsFileManager1.storeEvent(createEvent("test1"))
-                eventsFileManager1.storeEvent(createEvent("test2"))
-                eventsFileManager1.rollover()
-            }
-            val job2 = kotlinx.coroutines.GlobalScope.launch {
-                eventsFileManager2.rollover()
-                eventsFileManager2.storeEvent(createEvent("test3"))
-                eventsFileManager2.storeEvent(createEvent("test4"))
-                eventsFileManager2.rollover()
-            }
-            val job3 = kotlinx.coroutines.GlobalScope.launch {
-                eventsFileManager1.rollover()
-                eventsFileManager1.storeEvent(createEvent("test5"))
-                eventsFileManager1.storeEvent(createEvent("test6"))
-                eventsFileManager1.rollover()
-            }
-            val job4 = kotlinx.coroutines.GlobalScope.launch {
-                eventsFileManager2.rollover()
-                eventsFileManager2.storeEvent(createEvent("test7"))
-                eventsFileManager2.storeEvent(createEvent("test8"))
-                eventsFileManager2.rollover()
-            }
+            val job1 =
+                kotlinx.coroutines.GlobalScope.launch {
+                    eventsFileManager1.storeEvent(createEvent("test1"))
+                    eventsFileManager1.storeEvent(createEvent("test2"))
+                    eventsFileManager1.rollover()
+                }
+            val job2 =
+                kotlinx.coroutines.GlobalScope.launch {
+                    eventsFileManager2.rollover()
+                    eventsFileManager2.storeEvent(createEvent("test3"))
+                    eventsFileManager2.storeEvent(createEvent("test4"))
+                    eventsFileManager2.rollover()
+                }
+            val job3 =
+                kotlinx.coroutines.GlobalScope.launch {
+                    eventsFileManager1.rollover()
+                    eventsFileManager1.storeEvent(createEvent("test5"))
+                    eventsFileManager1.storeEvent(createEvent("test6"))
+                    eventsFileManager1.rollover()
+                }
+            val job4 =
+                kotlinx.coroutines.GlobalScope.launch {
+                    eventsFileManager2.rollover()
+                    eventsFileManager2.storeEvent(createEvent("test7"))
+                    eventsFileManager2.storeEvent(createEvent("test8"))
+                    eventsFileManager2.rollover()
+                }
             kotlinx.coroutines.joinAll(job1, job2, job3, job4)
         }
         val filePaths = eventsFileManager1.read()
@@ -293,7 +300,7 @@ class EventsFileManagerTest {
         file6.writeText("[{\"eventType\":\"test13\"},{\"eventType\":\"test14\"}")
     }
 
-    private fun createEvent(eventType: String) : String {
+    private fun createEvent(eventType: String): String {
         return "{\"eventType\":\"$eventType\"}"
     }
 }

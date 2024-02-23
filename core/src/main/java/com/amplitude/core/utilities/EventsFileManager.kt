@@ -13,7 +13,6 @@ import java.io.File
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.io.IOException
-import java.nio.channels.OverlappingFileLockException
 import java.util.Collections
 import java.util.Random
 import java.util.concurrent.ConcurrentHashMap
@@ -145,7 +144,7 @@ class EventsFileManager(
             val isCurrentVersion = content.endsWith("\n")
             if (isCurrentVersion) {
                 // handle current version
-                val events = JSONArray();
+                val events = JSONArray()
                 content.split("\n").forEach {
                     if (it.isNotEmpty()) {
                         try {
@@ -169,7 +168,7 @@ class EventsFileManager(
                 } catch (e: JSONException) {
                     logger.error("Failed to parse events: $normalizedContent, dropping file: $filePath")
                     this.remove(filePath)
-                     return ""
+                    return ""
                 }
             }
         }
@@ -249,7 +248,7 @@ class EventsFileManager(
     }
 
     private fun writeEventsToFile(events: List<JSONObject>, file: File) {
-        val contents = events.joinToString(separator = "\n", postfix = "\n") { it.toString()}
+        val contents = events.joinToString(separator = "\n", postfix = "\n") { it.toString() }
         writeToFile(contents, file)
     }
 
