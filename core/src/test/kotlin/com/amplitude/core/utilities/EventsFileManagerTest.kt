@@ -227,7 +227,7 @@ class EventsFileManagerTest {
     }
 
     @Test
-    fun `could handle earlier versions with name conflict and new events`()  {
+    fun `could handle earlier versions with name conflict and new events`() {
         createEarlierVersionEventFiles()
         val file = File(tempDir, "storageKey-6")
         file.writeText("{\"eventType\":\"test15\"},{\"eventType\":\"test16\"}]")
