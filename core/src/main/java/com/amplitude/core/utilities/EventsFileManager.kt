@@ -62,6 +62,7 @@ class EventsFileManager(
                 try {
                     file.createNewFile()
                 } catch (e: IOException) {
+                    diagnostics.addErrorLog("Failed to create new storage file: ${e.message}")
                     logger.error("Failed to create new storage file: ${file.path}")
                     return@withLock
                 }
@@ -77,6 +78,7 @@ class EventsFileManager(
                     try {
                         file.createNewFile()
                     } catch (e: IOException) {
+                        diagnostics.addErrorLog("Failed to create new storage file: ${e.message}")
                         logger.error("Failed to create new storage file: ${file.path}")
                         return@withLock
                     }
@@ -271,12 +273,16 @@ class EventsFileManager(
                 it.flush()
             }
         } catch (e: FileNotFoundException) {
+            diagnostics.addErrorLog(("Error writing to file: ${e.message}"))
             logger.error("File not found: ${file.path}")
         } catch (e: IOException) {
+            diagnostics.addErrorLog(("Error writing to file: ${e.message}"))
             logger.error("Failed to write to file: ${file.path}")
         } catch (e: SecurityException) {
+            diagnostics.addErrorLog(("Error writing to file: ${e.message}"))
             logger.error("Security exception when saving event: ${e.message}")
         } catch (e: Exception) {
+            diagnostics.addErrorLog(("Error writing to file: ${e.message}"))
             logger.error("Failed to write to file: ${file.path}")
         }
     }
@@ -292,6 +298,7 @@ class EventsFileManager(
             writeToFile(contents.toByteArray(), file, append)
             rename(file)
         } catch (e: IOException) {
+            diagnostics.addErrorLog("Failed to create or write to split file: ${e.message}")
             logger.error("Failed to create or write to split file: ${file.path}")
         }
     }
@@ -338,6 +345,7 @@ class EventsFileManager(
             createDirectory(directory)
             return true
         } catch (e: IOException) {
+            diagnostics.addErrorLog("Failed to create directory: ${e.message}")
             logger.error("Failed to create directory for events storage: ${directory.path}")
             return false
         }
