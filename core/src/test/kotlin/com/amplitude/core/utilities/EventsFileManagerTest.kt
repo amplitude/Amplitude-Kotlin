@@ -6,9 +6,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
+import kotlin.concurrent.thread
 
 class EventsFileManagerTest {
     @TempDir
@@ -159,6 +161,26 @@ class EventsFileManagerTest {
     }
 
     @Test
+    fun `verify line breaks handled gracefully`() {
+        val file0 = File(tempDir, "storageKey-0")
+        file0.writeText("\n\n{\"eventType\":\"test1\"}\n\n{\"eventType\":\"test2\"}\n\n")
+        val logger = ConsoleLogger()
+        val storageKey = "storageKey"
+        val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
+        val eventsFileManager =
+            EventsFileManager(tempDir, storageKey, propertiesFile, logger)
+        runBlocking {
+            val filePaths = eventsFileManager.read()
+            assertEquals(1, filePaths.size)
+            val eventsString = eventsFileManager.getEventString(filePaths[0])
+            val events = JSONArray(eventsString)
+            assertEquals(2, events.length())
+            assertEquals("test1", events.getJSONObject(0).getString("eventType"))
+            assertEquals("test2", events.getJSONObject(1).getString("eventType"))
+        }
+    }
+
+    @Test
     fun `could handle earlier version of events file`() {
         createEarlierVersionEventFiles()
         val logger = ConsoleLogger()
@@ -170,6 +192,21 @@ class EventsFileManagerTest {
         assertEquals(7, filePaths.size)
         runBlocking {
             filePaths.withIndex().forEach { (index, filePath) ->
+                val file = File(filePath)
+                assertTrue(file.extension.isEmpty(), "file extension should be empty for v1 event files")
+                // verify file format updated to v2
+                val content = file.readText()
+                val lines = content.split("\n")
+                println(content)
+                if (index == 5) {
+                    assertEquals(2, lines.size)
+                    assertEquals("{\"eventType\":\"test11\"}", lines[0])
+                } else {
+                    assertEquals(3, lines.size)
+                    assertEquals("{\"eventType\":\"test${index * 2 + 1}\"}", lines[0])
+                    assertEquals("{\"eventType\":\"test${index * 2 + 2}\"}", lines[1])
+                }
+
                 val eventsString = eventsFileManager.getEventString(filePath)
                 if (index == 5) {
                     assertEquals("[{\"eventType\":\"test11\"}]", eventsString)
@@ -187,6 +224,33 @@ class EventsFileManagerTest {
                 }
             }
         }
+    }
+
+    @Test
+    fun `could handle earlier versions with name conflict and new events`()  {
+        createEarlierVersionEventFiles()
+        val file = File(tempDir, "storageKey-6")
+        file.writeText("{\"eventType\":\"test15\"},{\"eventType\":\"test16\"}]")
+        val logger = ConsoleLogger()
+        val storageKey = "storageKey"
+        val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
+        val eventsFileManager =
+            EventsFileManager(tempDir, storageKey, propertiesFile, logger)
+        runBlocking {
+            eventsFileManager.storeEvent(createEvent("test17"))
+            eventsFileManager.storeEvent(createEvent("test18"))
+            eventsFileManager.rollover()
+        }
+        var eventsCount = 0
+        val filePaths = eventsFileManager.read()
+        runBlocking {
+            filePaths.forEach { filePath ->
+                val eventsString = eventsFileManager.getEventString(filePath)
+                val events = JSONArray(eventsString)
+                eventsCount += events.length()
+            }
+        }
+        assertEquals(17, eventsCount)
     }
 
     @Test
@@ -229,6 +293,37 @@ class EventsFileManagerTest {
             }
         }
         assertEquals(6, eventsCount)
+    }
+
+    @Test
+    fun `concurrent write from multiple threads`() {
+        val logger = ConsoleLogger()
+        val storageKey = "storageKey"
+        val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
+        val eventsFileManager =
+            EventsFileManager(tempDir, storageKey, propertiesFile, logger)
+        for (i in 0..100) {
+            val thread =
+                thread {
+                    runBlocking {
+                        for (d in 0..10) {
+                            eventsFileManager.storeEvent(createEvent("test$i-$d"))
+                        }
+                        eventsFileManager.rollover()
+                    }
+                }
+            thread.join()
+        }
+        val filePaths = eventsFileManager.read()
+        var eventsCount = 0
+        runBlocking {
+            filePaths.forEach { filePath ->
+                val eventsString = eventsFileManager.getEventString(filePath)
+                val events = JSONArray(eventsString)
+                eventsCount += events.length()
+            }
+        }
+        assertEquals(101 * 11, eventsCount)
     }
 
     @Test
@@ -281,6 +376,40 @@ class EventsFileManagerTest {
             }
         }
         assertEquals(8, eventsCount)
+    }
+
+    @Test
+    fun `concurrent write from multiple threads on multiple instances`() {
+        val logger = ConsoleLogger()
+        val storageKey = "storageKey"
+        val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
+        for (i in 0..100) {
+            val eventsFileManager =
+                EventsFileManager(tempDir, storageKey, propertiesFile, logger)
+            val thread =
+                thread {
+                    runBlocking {
+                        for (d in 0..10) {
+                            eventsFileManager.storeEvent(createEvent("test$i-$d"))
+                        }
+                        eventsFileManager.rollover()
+                    }
+                }
+            thread.join()
+        }
+
+        val eventsFileManagerForRead =
+            EventsFileManager(tempDir, storageKey, propertiesFile, logger)
+        val filePaths = eventsFileManagerForRead.read()
+        var eventsCount = 0
+        runBlocking {
+            filePaths.forEach { filePath ->
+                val eventsString = eventsFileManagerForRead.getEventString(filePath)
+                val events = JSONArray(eventsString)
+                eventsCount += events.length()
+            }
+        }
+        assertEquals(101 * 11, eventsCount)
     }
 
     private fun createEarlierVersionEventFiles() {

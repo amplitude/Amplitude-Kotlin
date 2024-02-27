@@ -3,6 +3,7 @@ package com.amplitude.core.utilities
 import com.amplitude.common.Logger
 import com.amplitude.id.utilities.KeyValueStore
 import com.amplitude.id.utilities.createDirectory
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
@@ -39,7 +40,9 @@ class EventsFileManager(
 
     init {
         guardDirectory()
-        handleV1Files()
+        runBlocking {
+            handleV1Files()
+        }
     }
 
     /**
@@ -199,7 +202,13 @@ class EventsFileManager(
     }
 
     private fun finish(file: File?) {
-        if (file == null || !file.exists()) {
+        rename(file ?: return)
+        incrementFileIndex()
+        reset()
+    }
+
+    private fun rename(file: File) {
+        if (!file.exists() || file.extension.isEmpty()) {
             // if tmp file doesn't exist or empty then we don't need to do anything
             return
         }
@@ -214,8 +223,6 @@ class EventsFileManager(
         } else {
             file.renameTo(File(directory, file.nameWithoutExtension))
         }
-        incrementFileIndex()
-        reset()
     }
 
     // return the current tmp file
@@ -248,9 +255,10 @@ class EventsFileManager(
     private fun writeToFile(
         content: ByteArray,
         file: File,
+        append: Boolean = true,
     ) {
         try {
-            FileOutputStream(file, true).use {
+            FileOutputStream(file, append).use {
                 it.write(content)
                 it.flush()
             }
@@ -268,12 +276,13 @@ class EventsFileManager(
     private fun writeEventsToSplitFile(
         events: List<JSONObject>,
         file: File,
+        append: Boolean = true,
     ) {
         val contents = events.joinToString(separator = "\n", postfix = "\n") { it.toString() }
         try {
             file.createNewFile()
-            writeToFile(contents.toByteArray(), file)
-            file.renameTo(File(directory, file.nameWithoutExtension))
+            writeToFile(contents.toByteArray(), file, append)
+            rename(file)
         } catch (e: IOException) {
             logger.error("Failed to create or write to split file: ${file.path}")
         }
@@ -283,23 +292,38 @@ class EventsFileManager(
         curFile.remove(storageKey)
     }
 
-    private fun handleV1Files() {
-        if (kvs.getLong(storageVersionKey, 1L) > 1L) {
-            return
-        }
-        val unFinishedFiles =
-            directory.listFiles { _, name ->
-                name.contains(storageKey) && name.endsWith(".tmp") && !name.endsWith(".properties")
-            } ?: emptyArray()
-        unFinishedFiles.forEach {
-            val content = it.readText()
-            if (!content.endsWith("\n")) {
-                // already in current format
-                finish(it)
+    /**
+     * Migrate V1 files to V2 format
+     */
+    private suspend fun handleV1Files() =
+        writeMutex.withLock {
+            if (kvs.getLong(storageVersionKey, 1L) > 1L) {
+                return@withLock
             }
+            val unFinishedFiles =
+                directory.listFiles { _, name ->
+                    name.contains(storageKey) && !name.endsWith(".properties")
+                } ?: emptyArray()
+            unFinishedFiles.forEach {
+                val content = it.readText()
+                if (!content.endsWith("\n")) {
+                    // handle earlier versions
+                    val normalizedContent = "[${content.trimStart('[', ',').trimEnd(']', ',')}]"
+                    try {
+                        val jsonArray = JSONArray(normalizedContent)
+                        val list = jsonArray.toJSONObjectList()
+                        writeEventsToSplitFile(list, it, false)
+                        if (it.extension == "tmp") {
+                            finish(it)
+                        }
+                    } catch (e: JSONException) {
+                        logger.error("Failed to parse events: $normalizedContent, dropping file: ${it.path}")
+                        this.remove(it.path)
+                    }
+                }
+            }
+            kvs.putLong(storageVersionKey, 2)
         }
-        kvs.putLong(storageVersionKey, 2)
-    }
 
     private fun guardDirectory(): Boolean {
         try {

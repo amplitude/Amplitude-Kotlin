@@ -142,6 +142,36 @@ class AndroidStorageTest {
     }
 
     @Test
+    fun `concurrent writes from multiple threads`() {
+        val logger = ConsoleLogger()
+        val storageKey = "storageKey"
+        val storage = AndroidStorage(context, storageKey, logger, "test")
+        for (i in 0..100) {
+            val currentThread =
+                Thread {
+                    runBlocking {
+                        for (d in 0..10) {
+                            storage.writeEvent(createEvent("test$i-$d"))
+                        }
+                        storage.rollover()
+                    }
+                }
+            currentThread.start()
+            currentThread.join()
+        }
+        var eventsCount = 0
+        runBlocking {
+            val eventsData = storage.readEventsContent()
+            eventsData.withIndex().forEach { (_index, filePath) ->
+                val eventsString = storage.getEventsString(filePath)
+                val events = JSONArray(eventsString)
+                eventsCount += events.length()
+            }
+        }
+        assertEquals(101 * 11, eventsCount)
+    }
+
+    @Test
     fun `concurrent write to two instances`() {
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
@@ -187,6 +217,38 @@ class AndroidStorageTest {
             }
         }
         assertEquals(8, eventsCount)
+    }
+
+    @Test
+    fun `concurrent write from mutiple threads on multiple instances`() {
+        val logger = ConsoleLogger()
+        val storageKey = "storageKey"
+        val prefix = "test"
+        for (i in 0..100) {
+            val storage = AndroidStorage(context, storageKey, logger, prefix)
+            val currentThread =
+                Thread {
+                    runBlocking {
+                        for (d in 0..10) {
+                            storage.writeEvent(createEvent("test$i-$d"))
+                        }
+                        storage.rollover()
+                    }
+                }
+            currentThread.start()
+            currentThread.join()
+        }
+        var eventsCount = 0
+        val storageForRead = AndroidStorage(context, storageKey, logger, prefix)
+        runBlocking {
+            val eventsData = storageForRead.readEventsContent()
+            eventsData.withIndex().forEach { (_index, filePath) ->
+                val eventsString = storageForRead.getEventsString(filePath)
+                val events = JSONArray(eventsString)
+                eventsCount += events.length()
+            }
+        }
+        assertEquals(101 * 11, eventsCount)
     }
 
     private fun createEarlierVersionEventFiles(prefix: String) {
