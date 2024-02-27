@@ -28,6 +28,7 @@ class EventsFileManager(
     private val storageVersionKey = "amplitude.events.file.version.$storageKey"
     val filePathSet: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
     val curFile: MutableMap<String, File> = ConcurrentHashMap<String, File>()
+    private val diagnostics = Diagnostics()
 
     companion object {
         const val MAX_FILE_SIZE = 975_000 // 975KB
@@ -173,6 +174,7 @@ class EventsFileManager(
                             try {
                                 events.put(JSONObject(it))
                             } catch (e: JSONException) {
+                                diagnostics.addMalformedEvent(it)
                                 logger.error("Failed to parse event: $it")
                             }
                         }
@@ -189,6 +191,7 @@ class EventsFileManager(
                         val jsonArray = JSONArray(normalizedContent)
                         return@use jsonArray.toString()
                     } catch (e: JSONException) {
+                        diagnostics.addMalformedEvent(normalizedContent)
                         logger.error("Failed to parse events: $normalizedContent, dropping file: $filePath")
                         this.remove(filePath)
                         return@use ""
@@ -200,6 +203,11 @@ class EventsFileManager(
     fun release(filePath: String) {
         filePathSet.remove(filePath)
     }
+
+    suspend fun getDiagnostics(): String =
+        readMutex.withLock {
+            return@withLock diagnostics.extractDiagnostics()
+        }
 
     private fun finish(file: File?) {
         rename(file ?: return)

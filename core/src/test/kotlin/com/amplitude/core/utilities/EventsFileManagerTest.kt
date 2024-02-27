@@ -181,6 +181,28 @@ class EventsFileManagerTest {
     }
 
     @Test
+    fun `verify malformed event shows up in diagnostics`() {
+        val file0 = File(tempDir, "storageKey-0")
+        file0.writeText("{\"eventType\":\"test1\"}\n{\"eventType\":\"test2\"}\n{\"eventType\":\"test3\"\n")
+        val logger = ConsoleLogger()
+        val storageKey = "storageKey"
+        val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
+        val eventsFileManager =
+            EventsFileManager(tempDir, storageKey, propertiesFile, logger)
+        runBlocking {
+            val filePaths = eventsFileManager.read()
+            assertEquals(1, filePaths.size)
+            val eventsString = eventsFileManager.getEventString(filePaths[0])
+            val events = JSONArray(eventsString)
+            assertEquals(2, events.length())
+            assertEquals("test1", events.getJSONObject(0).getString("eventType"))
+            assertEquals("test2", events.getJSONObject(1).getString("eventType"))
+            val diagnostics = eventsFileManager.getDiagnostics()
+            assertEquals("{\"malformed_events\":[\"{\\\"eventType\\\":\\\"test3\\\"\"]}", diagnostics)
+        }
+    }
+
+    @Test
     fun `could handle earlier version of events file`() {
         createEarlierVersionEventFiles()
         val logger = ConsoleLogger()
@@ -197,7 +219,6 @@ class EventsFileManagerTest {
                 // verify file format updated to v2
                 val content = file.readText()
                 val lines = content.split("\n")
-                println(content)
                 if (index == 5) {
                     assertEquals(2, lines.size)
                     assertEquals("{\"eventType\":\"test11\"}", lines[0])

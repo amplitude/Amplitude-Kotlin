@@ -102,6 +102,29 @@ class AndroidStorageTest {
     }
 
     @Test
+    fun `verify malformed event show in diagonstics`() {
+        val logger = ConsoleLogger()
+        val storageKey = "storageKey"
+        val prefix = "test"
+        val storageDirectory = context.getDir("$prefix-disk-queue", Context.MODE_PRIVATE)
+        val file0 = File(storageDirectory, "storageKey-0")
+        file0.writeText("{\"eventType\":\"test1\"}\n{\"eventType\":\"test2\"}\n{\"eventType\":\"test3\"\n")
+        val storage = AndroidStorage(context, storageKey, logger, prefix)
+        runBlocking {
+            var eventsCount = 0
+            val eventsData = storage.readEventsContent()
+            eventsData.withIndex().forEach { (_, filePath) ->
+                val eventsString = storage.getEventsString(filePath)
+                val events = JSONArray(eventsString)
+                eventsCount += events.length()
+            }
+            assertEquals(2, eventsCount)
+            val diagnostics = storage.getDiagnostics()
+            assertEquals("{\"malformed_events\":[\"{\\\"eventType\\\":\\\"test3\\\"\"]}", diagnostics)
+        }
+    }
+
+    @Test
     fun `concurrent writes to the same instance`() {
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
@@ -242,7 +265,7 @@ class AndroidStorageTest {
         val storageForRead = AndroidStorage(context, storageKey, logger, prefix)
         runBlocking {
             val eventsData = storageForRead.readEventsContent()
-            eventsData.withIndex().forEach { (_index, filePath) ->
+            eventsData.withIndex().forEach { (_, filePath) ->
                 val eventsString = storageForRead.getEventsString(filePath)
                 val events = JSONArray(eventsString)
                 eventsCount += events.length()

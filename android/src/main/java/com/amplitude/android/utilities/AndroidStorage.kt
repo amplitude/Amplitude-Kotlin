@@ -24,9 +24,8 @@ class AndroidStorage(
     context: Context,
     val storageKey: String,
     private val logger: Logger,
-    internal val prefix: String?
+    internal val prefix: String?,
 ) : Storage, EventsFileStorage {
-
     companion object {
         const val STORAGE_PREFIX = "amplitude-android"
     }
@@ -47,7 +46,10 @@ class AndroidStorage(
         }
     }
 
-    override suspend fun write(key: Storage.Constants, value: String) {
+    override suspend fun write(
+        key: Storage.Constants,
+        value: String,
+    ) {
         sharedPreferences.edit().putString(key.rawVal, value).apply()
     }
 
@@ -87,7 +89,7 @@ class AndroidStorage(
             configuration,
             scope,
             dispatcher,
-            logger
+            logger,
         )
     }
 
@@ -103,8 +105,15 @@ class AndroidStorage(
         eventCallbacksMap.remove(insertId)
     }
 
-    override fun splitEventFile(filePath: String, events: JSONArray) {
+    override fun splitEventFile(
+        filePath: String,
+        events: JSONArray,
+    ) {
         eventsFile.splitFile(filePath, events)
+    }
+
+    override suspend fun getDiagnostics(): String {
+        return eventsFile.getDiagnostics()
     }
 
     private fun getPrefix(): String {
@@ -120,13 +129,16 @@ class AndroidStorage(
 }
 
 class AndroidStorageProvider : StorageProvider {
-    override fun getStorage(amplitude: Amplitude, prefix: String?): Storage {
+    override fun getStorage(
+        amplitude: Amplitude,
+        prefix: String?,
+    ): Storage {
         val configuration = amplitude.configuration as com.amplitude.android.Configuration
         return AndroidStorage(
             configuration.context,
             configuration.instanceName,
             configuration.loggerProvider.getLogger(amplitude),
-            prefix
+            prefix,
         )
     }
 }

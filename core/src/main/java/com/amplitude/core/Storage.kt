@@ -7,7 +7,6 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 
 interface Storage {
-
     enum class Constants(val rawVal: String) {
         LAST_EVENT_ID("last_event_id"),
         PREVIOUS_SESSION_ID("previous_session_id"),
@@ -15,12 +14,15 @@ interface Storage {
         OPT_OUT("opt_out"),
         Events("events"),
         APP_VERSION("app_version"),
-        APP_BUILD("app_build")
+        APP_BUILD("app_build"),
     }
 
     suspend fun writeEvent(event: BaseEvent)
 
-    suspend fun write(key: Constants, value: String)
+    suspend fun write(
+        key: Constants,
+        value: String,
+    )
 
     suspend fun remove(key: Constants)
 
@@ -32,9 +34,19 @@ interface Storage {
 
     suspend fun getEventsString(content: Any): String
 
-    fun getResponseHandler(eventPipeline: EventPipeline, configuration: Configuration, scope: CoroutineScope, dispatcher: CoroutineDispatcher): ResponseHandler
+    fun getResponseHandler(
+        eventPipeline: EventPipeline,
+        configuration: Configuration,
+        scope: CoroutineScope,
+        dispatcher: CoroutineDispatcher,
+    ): ResponseHandler
+
+    suspend fun getDiagnostics(): String = ""
 }
 
 interface StorageProvider {
-    fun getStorage(amplitude: Amplitude, prefix: String? = null): Storage
+    fun getStorage(
+        amplitude: Amplitude,
+        prefix: String? = null,
+    ): Storage
 }
