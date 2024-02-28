@@ -11,6 +11,7 @@ import okhttp3.mockwebserver.RecordedRequest
 import org.json.JSONObject
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -39,10 +40,11 @@ class HttpClientTest {
     fun `test client_upload_time is set on the request`() {
         server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
 
-        val config = Configuration(
-            apiKey = apiKey,
-            serverUrl = server.url("/").toString()
-        )
+        val config =
+            Configuration(
+                apiKey = apiKey,
+                serverUrl = server.url("/").toString(),
+            )
         val event = BaseEvent()
         event.eventType = "test"
 
@@ -67,11 +69,12 @@ class HttpClientTest {
     fun `test client_upload_time is set correctly when minIdLength is set`() {
         server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
 
-        val config = Configuration(
-            apiKey = apiKey,
-            serverUrl = server.url("/").toString(),
-            minIdLength = 3,
-        )
+        val config =
+            Configuration(
+                apiKey = apiKey,
+                serverUrl = server.url("/").toString(),
+                minIdLength = 3,
+            )
         val event = BaseEvent()
         event.eventType = "test"
 
@@ -90,6 +93,42 @@ class HttpClientTest {
 
         assertEquals(apiKey, result.getString("api_key"))
         assertEquals(clientUploadTimeString, result.getString("client_upload_time"))
+        assertNull(result.optJSONObject("request_metadata"))
+    }
+
+    @Test
+    fun `test payload is correct when diagnostics are set`() {
+        server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+
+        val config =
+            Configuration(
+                apiKey = apiKey,
+                serverUrl = server.url("/").toString(),
+            )
+        val event = BaseEvent()
+        event.eventType = "test"
+
+        val httpClient = spyk(HttpClient(config))
+        val diagnostics = Diagnostics()
+        diagnostics.addErrorLog("error")
+        diagnostics.addMalformedEvent("malformed-event")
+
+        val connection = httpClient.upload()
+        connection.outputStream?.let {
+            connection.setEvents(JSONUtil.eventsToString(listOf(event)))
+            connection.setDiagnostics(diagnostics)
+            // Upload the payloads.
+            connection.close()
+        }
+
+        val request = runRequest()
+        val result = JSONObject(request?.body?.readUtf8())
+
+        assertEquals(apiKey, result.getString("api_key"))
+        assertEquals(
+            "{\"error_logs\":[\"error\"],\"malformed_events\":[\"malformed-event\"]}",
+            result.getJSONObject("request_metadata").getJSONObject("sdk").toString(),
+        )
     }
 
     private fun runRequest(): RecordedRequest? {

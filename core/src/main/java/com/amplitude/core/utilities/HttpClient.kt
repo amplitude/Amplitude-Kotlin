@@ -160,7 +160,7 @@ abstract class Connection(
                 append(",\"options\":{\"min_id_length\":$minIdLength}")
             }
             if (diagnostics != null && diagnostics!!.hasDiagnostics()) {
-                append(",\"diagnostics\":${diagnostics!!.extractDiagnostics()}")
+                append(",\"request_metadata\":{\"sdk\":${diagnostics!!.extractDiagnostics()}}")
             }
             append("}")
         }
