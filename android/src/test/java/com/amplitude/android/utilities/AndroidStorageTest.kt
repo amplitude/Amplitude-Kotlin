@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.amplitude.android.events.BaseEvent
 import com.amplitude.common.jvm.ConsoleLogger
+import com.amplitude.core.utilities.Diagnostics
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
@@ -16,12 +17,13 @@ import java.io.File
 @RunWith(RobolectricTestRunner::class)
 class AndroidStorageTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
+    private val testDiagnostics = Diagnostics()
 
     @Test
     fun `test write event and read`() {
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
-        val storage = AndroidStorage(context, storageKey, logger, "test")
+        val storage = AndroidStorage(context, storageKey, logger, "test", testDiagnostics)
 
         runBlocking {
             storage.writeEvent(createEvent("test1"))
@@ -50,7 +52,7 @@ class AndroidStorageTest {
         val storageKey = "storageKey"
         val prefix = "test"
         createEarlierVersionEventFiles(prefix)
-        val storage = AndroidStorage(context, storageKey, logger, prefix)
+        val storage = AndroidStorage(context, storageKey, logger, prefix, testDiagnostics)
 
         runBlocking {
             val eventsData = storage.readEventsContent()
@@ -81,7 +83,7 @@ class AndroidStorageTest {
         val storageKey = "storageKey"
         val prefix = "test"
         createEarlierVersionEventFiles(prefix)
-        val storage = AndroidStorage(context, storageKey, logger, prefix)
+        val storage = AndroidStorage(context, storageKey, logger, prefix, testDiagnostics)
 
         runBlocking {
             storage.writeEvent(createEvent("test13"))
@@ -109,7 +111,8 @@ class AndroidStorageTest {
         val storageDirectory = context.getDir("$prefix-disk-queue", Context.MODE_PRIVATE)
         val file0 = File(storageDirectory, "storageKey-0")
         file0.writeText("{\"eventType\":\"test1\"}\n{\"eventType\":\"test2\"}\n{\"eventType\":\"test3\"\n")
-        val storage = AndroidStorage(context, storageKey, logger, prefix)
+        val diagnostics = Diagnostics()
+        val storage = AndroidStorage(context, storageKey, logger, prefix, diagnostics)
         runBlocking {
             var eventsCount = 0
             val eventsData = storage.readEventsContent()
@@ -119,8 +122,7 @@ class AndroidStorageTest {
                 eventsCount += events.length()
             }
             assertEquals(2, eventsCount)
-            val diagnostics = storage.getDiagnostics()
-            assertEquals("{\"malformed_events\":[\"{\\\"eventType\\\":\\\"test3\\\"\"]}", diagnostics)
+            assertEquals("{\"malformed_events\":[\"{\\\"eventType\\\":\\\"test3\\\"\"]}", diagnostics.extractDiagnostics())
         }
     }
 
@@ -128,7 +130,7 @@ class AndroidStorageTest {
     fun `concurrent writes to the same instance`() {
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
-        val storage = AndroidStorage(context, storageKey, logger, "test")
+        val storage = AndroidStorage(context, storageKey, logger, "test", testDiagnostics)
 
         runBlocking {
             val job1 =
@@ -168,7 +170,7 @@ class AndroidStorageTest {
     fun `concurrent writes from multiple threads`() {
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
-        val storage = AndroidStorage(context, storageKey, logger, "test")
+        val storage = AndroidStorage(context, storageKey, logger, "test", testDiagnostics)
         for (i in 0..100) {
             val currentThread =
                 Thread {
@@ -199,8 +201,8 @@ class AndroidStorageTest {
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
         val prefix = "test"
-        val storage1 = AndroidStorage(context, storageKey, logger, prefix)
-        val storage2 = AndroidStorage(context, storageKey, logger, prefix)
+        val storage1 = AndroidStorage(context, storageKey, logger, prefix, testDiagnostics)
+        val storage2 = AndroidStorage(context, storageKey, logger, prefix, testDiagnostics)
 
         runBlocking {
             val job1 =
@@ -248,7 +250,7 @@ class AndroidStorageTest {
         val storageKey = "storageKey"
         val prefix = "test"
         for (i in 0..100) {
-            val storage = AndroidStorage(context, storageKey, logger, prefix)
+            val storage = AndroidStorage(context, storageKey, logger, prefix, testDiagnostics)
             val currentThread =
                 Thread {
                     runBlocking {
@@ -262,7 +264,7 @@ class AndroidStorageTest {
             currentThread.join()
         }
         var eventsCount = 0
-        val storageForRead = AndroidStorage(context, storageKey, logger, prefix)
+        val storageForRead = AndroidStorage(context, storageKey, logger, prefix, testDiagnostics)
         runBlocking {
             val eventsData = storageForRead.readEventsContent()
             eventsData.withIndex().forEach { (_, filePath) ->

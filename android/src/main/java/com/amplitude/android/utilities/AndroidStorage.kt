@@ -10,6 +10,7 @@ import com.amplitude.core.Storage
 import com.amplitude.core.StorageProvider
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline
+import com.amplitude.core.utilities.Diagnostics
 import com.amplitude.core.utilities.EventsFileManager
 import com.amplitude.core.utilities.EventsFileStorage
 import com.amplitude.core.utilities.FileResponseHandler
@@ -25,6 +26,7 @@ class AndroidStorage(
     val storageKey: String,
     private val logger: Logger,
     internal val prefix: String?,
+    private val diagnostics: Diagnostics,
 ) : Storage, EventsFileStorage {
     companion object {
         const val STORAGE_PREFIX = "amplitude-android"
@@ -34,7 +36,7 @@ class AndroidStorage(
         context.getSharedPreferences("${getPrefix()}-$storageKey", Context.MODE_PRIVATE)
     private val storageDirectory: File = context.getDir(getDir(), Context.MODE_PRIVATE)
     private val eventsFile =
-        EventsFileManager(storageDirectory, storageKey, AndroidKVS(sharedPreferences), logger)
+        EventsFileManager(storageDirectory, storageKey, AndroidKVS(sharedPreferences), logger, diagnostics)
     private val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
 
     override suspend fun writeEvent(event: BaseEvent) {
@@ -112,10 +114,6 @@ class AndroidStorage(
         eventsFile.splitFile(filePath, events)
     }
 
-    override suspend fun getDiagnostics(): String {
-        return eventsFile.getDiagnostics()
-    }
-
     private fun getPrefix(): String {
         return prefix ?: STORAGE_PREFIX
     }
@@ -139,6 +137,7 @@ class AndroidStorageProvider : StorageProvider {
             configuration.instanceName,
             configuration.loggerProvider.getLogger(amplitude),
             prefix,
+            amplitude.diagnostics,
         )
     }
 }

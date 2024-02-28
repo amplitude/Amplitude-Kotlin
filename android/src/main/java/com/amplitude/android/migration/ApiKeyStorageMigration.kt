@@ -5,7 +5,7 @@ import com.amplitude.android.Configuration
 import com.amplitude.android.utilities.AndroidStorage
 
 class ApiKeyStorageMigration(
-    private val amplitude: Amplitude
+    private val amplitude: Amplitude,
 ) {
     suspend fun execute() {
         val configuration = amplitude.configuration as Configuration
@@ -13,13 +13,14 @@ class ApiKeyStorageMigration(
 
         val storage = amplitude.storage as? AndroidStorage
         if (storage != null) {
-            val apiKeyStorage = AndroidStorage(configuration.context, configuration.apiKey, logger, storage.prefix)
+            val apiKeyStorage = AndroidStorage(configuration.context, configuration.apiKey, logger, storage.prefix, amplitude.diagnostics)
             StorageKeyMigration(apiKeyStorage, storage, logger).execute()
         }
 
         val identifyInterceptStorage = amplitude.identifyInterceptStorage as? AndroidStorage
         if (identifyInterceptStorage != null) {
-            val apiKeyStorage = AndroidStorage(configuration.context, configuration.apiKey, logger, identifyInterceptStorage.prefix)
+            val apiKeyStorage =
+                AndroidStorage(configuration.context, configuration.apiKey, logger, identifyInterceptStorage.prefix, amplitude.diagnostics)
             StorageKeyMigration(apiKeyStorage, identifyInterceptStorage, logger).execute()
         }
     }

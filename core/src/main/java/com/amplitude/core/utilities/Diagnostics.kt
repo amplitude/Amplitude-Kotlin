@@ -1,19 +1,21 @@
 package com.amplitude.core.utilities
 
-internal class Diagnostics {
+import java.util.Collections
+
+class Diagnostics() {
     private var malformedEvents: MutableList<String>? = null
     private var errorLogs: MutableList<String>? = null
 
     fun addMalformedEvent(event: String) {
         if (malformedEvents == null) {
-            malformedEvents = mutableListOf()
+            malformedEvents = Collections.synchronizedList(mutableListOf())
         }
         malformedEvents?.add(event)
     }
 
     fun addErrorLog(log: String) {
         if (errorLogs == null) {
-            errorLogs = mutableListOf()
+            errorLogs = Collections.synchronizedList(mutableListOf())
         }
         errorLogs?.add(log)
     }

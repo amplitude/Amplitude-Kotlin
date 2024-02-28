@@ -17,6 +17,7 @@ import com.amplitude.core.platform.plugins.ContextPlugin
 import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
 import com.amplitude.core.utilities.AnalyticsEventReceiver
 import com.amplitude.core.utilities.AnalyticsIdentityListener
+import com.amplitude.core.utilities.Diagnostics
 import com.amplitude.eventbridge.EventBridgeContainer
 import com.amplitude.eventbridge.EventChannel
 import com.amplitude.id.IdentityConfiguration
@@ -46,7 +47,7 @@ open class Amplitude internal constructor(
     val amplitudeDispatcher: CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher(),
     val networkIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
     val storageIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
-    val retryDispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+    val retryDispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
 ) {
     val timeline: Timeline
     lateinit var storage: Storage
@@ -59,6 +60,7 @@ open class Amplitude internal constructor(
     lateinit var idContainer: IdentityContainer
         private set
     val isBuilt: Deferred<Boolean>
+    val diagnostics = Diagnostics()
 
     init {
         require(configuration.isValid()) { "invalid configuration" }
@@ -82,7 +84,7 @@ open class Amplitude internal constructor(
             instanceName = configuration.instanceName,
             apiKey = configuration.apiKey,
             identityStorageProvider = configuration.identityStorageProvider,
-            logger = logger
+            logger = logger,
         )
     }
 
@@ -98,27 +100,36 @@ open class Amplitude internal constructor(
     protected open fun build(): Deferred<Boolean> {
         val amplitude = this
 
-        val built = amplitudeScope.async(amplitudeDispatcher, CoroutineStart.LAZY) {
-            storage = configuration.storageProvider.getStorage(amplitude)
-            identifyInterceptStorage = configuration.identifyInterceptStorageProvider.getStorage(amplitude, "amplitude-identify-intercept")
-            val identityConfiguration = createIdentityConfiguration()
-            identityStorage = configuration.identityStorageProvider.getIdentityStorage(identityConfiguration)
+        val built =
+            amplitudeScope.async(amplitudeDispatcher, CoroutineStart.LAZY) {
+                storage = configuration.storageProvider.getStorage(amplitude)
+                identifyInterceptStorage =
+                    configuration.identifyInterceptStorageProvider.getStorage(
+                        amplitude,
+                        "amplitude-identify-intercept",
+                    )
+                val identityConfiguration = createIdentityConfiguration()
+                identityStorage = configuration.identityStorageProvider.getIdentityStorage(identityConfiguration)
 
-            amplitude.buildInternal(identityConfiguration)
-            true
-        }
+                amplitude.buildInternal(identityConfiguration)
+                true
+            }
         return built
     }
 
     protected open suspend fun buildInternal(identityConfiguration: IdentityConfiguration) {
         createIdentityContainer(identityConfiguration)
-        EventBridgeContainer.getInstance(configuration.instanceName).eventBridge.setEventReceiver(EventChannel.EVENT, AnalyticsEventReceiver(this))
-        add(object : ContextPlugin() {
-            override fun setDeviceId(deviceId: String) {
-                // set device id immediately, don't wait for isBuilt
-                setDeviceIdInternal(deviceId)
-            }
-        })
+        EventBridgeContainer.getInstance(
+            configuration.instanceName,
+        ).eventBridge.setEventReceiver(EventChannel.EVENT, AnalyticsEventReceiver(this))
+        add(
+            object : ContextPlugin() {
+                override fun setDeviceId(deviceId: String) {
+                    // set device id immediately, don't wait for isBuilt
+                    setDeviceIdInternal(deviceId)
+                }
+            },
+        )
         add(GetAmpliExtrasPlugin())
         add(AmplitudeDestination())
     }
@@ -137,7 +148,11 @@ open class Amplitude internal constructor(
      * @return the Amplitude instance
      */
     @JvmOverloads
-    fun track(event: BaseEvent, options: EventOptions? = null, callback: EventCallBack? = null): Amplitude {
+    fun track(
+        event: BaseEvent,
+        options: EventOptions? = null,
+        callback: EventCallBack? = null,
+    ): Amplitude {
         options ?. let {
             event.mergeEventOptions(it)
         }
@@ -157,7 +172,11 @@ open class Amplitude internal constructor(
      * @return the Amplitude instance
      */
     @JvmOverloads
-    fun track(eventType: String, eventProperties: Map<String, Any?>? = null, options: EventOptions? = null): Amplitude {
+    fun track(
+        eventType: String,
+        eventProperties: Map<String, Any?>? = null,
+        options: EventOptions? = null,
+    ): Amplitude {
         val event = BaseEvent()
         event.eventType = eventType
         event.eventProperties = eventProperties?.toMutableMap()
@@ -177,7 +196,10 @@ open class Amplitude internal constructor(
      * @return the Amplitude instance
      */
     @JvmOverloads
-    fun identify(userProperties: Map<String, Any?>?, options: EventOptions? = null): Amplitude {
+    fun identify(
+        userProperties: Map<String, Any?>?,
+        options: EventOptions? = null,
+    ): Amplitude {
         return identify(convertPropertiesToIdentify(userProperties), options)
     }
 
@@ -190,7 +212,10 @@ open class Amplitude internal constructor(
      * @return the Amplitude instance
      */
     @JvmOverloads
-    fun identify(identify: Identify, options: EventOptions? = null): Amplitude {
+    fun identify(
+        identify: Identify,
+        options: EventOptions? = null,
+    ): Amplitude {
         val event = IdentifyEvent()
         event.userProperties = identify.properties
 
@@ -284,7 +309,12 @@ open class Amplitude internal constructor(
      * @return the Amplitude instance
      */
     @JvmOverloads
-    fun groupIdentify(groupType: String, groupName: String, groupProperties: Map<String, Any?>?, options: EventOptions? = null): Amplitude {
+    fun groupIdentify(
+        groupType: String,
+        groupName: String,
+        groupProperties: Map<String, Any?>?,
+        options: EventOptions? = null,
+    ): Amplitude {
         return groupIdentify(groupType, groupName, convertPropertiesToIdentify(groupProperties), options)
     }
 
@@ -298,7 +328,12 @@ open class Amplitude internal constructor(
      * @return the Amplitude instance
      */
     @JvmOverloads
-    fun groupIdentify(groupType: String, groupName: String, identify: Identify, options: EventOptions? = null): Amplitude {
+    fun groupIdentify(
+        groupType: String,
+        groupName: String,
+        identify: Identify,
+        options: EventOptions? = null,
+    ): Amplitude {
         val event = GroupIdentifyEvent()
         val group = mutableMapOf<String, Any?>()
         group.put(groupType, groupName)
@@ -320,12 +355,17 @@ open class Amplitude internal constructor(
      * @return the Amplitude instance
      */
     @JvmOverloads
-    fun setGroup(groupType: String, groupName: String, options: EventOptions? = null): Amplitude {
+    fun setGroup(
+        groupType: String,
+        groupName: String,
+        options: EventOptions? = null,
+    ): Amplitude {
         val identify = Identify().set(groupType, groupName)
-        val event = IdentifyEvent().apply {
-            groups = mutableMapOf(groupType to groupName)
-            userProperties = identify.properties
-        }
+        val event =
+            IdentifyEvent().apply {
+                groups = mutableMapOf(groupType to groupName)
+                userProperties = identify.properties
+            }
         track(event, options)
         return this
     }
@@ -339,12 +379,17 @@ open class Amplitude internal constructor(
      * @return the Amplitude instance
      */
     @JvmOverloads
-    fun setGroup(groupType: String, groupName: Array<String>, options: EventOptions? = null): Amplitude {
+    fun setGroup(
+        groupType: String,
+        groupName: Array<String>,
+        options: EventOptions? = null,
+    ): Amplitude {
         val identify = Identify().set(groupType, groupName)
-        val event = IdentifyEvent().apply {
-            groups = mutableMapOf(groupType to groupName)
-            userProperties = identify.properties
-        }
+        val event =
+            IdentifyEvent().apply {
+                groups = mutableMapOf(groupType to groupName)
+                userProperties = identify.properties
+            }
         track(event, options)
         return this
     }
@@ -364,7 +409,10 @@ open class Amplitude internal constructor(
      * @return the Amplitude instance
      */
     @JvmOverloads
-    fun revenue(revenue: Revenue, options: EventOptions? = null): Amplitude {
+    fun revenue(
+        revenue: Revenue,
+        options: EventOptions? = null,
+    ): Amplitude {
         if (!revenue.isValid()) {
             logger.warn("Invalid revenue object, missing required fields")
             return this
@@ -459,7 +507,10 @@ open class Amplitude internal constructor(
  * @param configs
  * @return
  */
-fun Amplitude(apiKey: String, configs: Configuration.() -> Unit): Amplitude {
+fun Amplitude(
+    apiKey: String,
+    configs: Configuration.() -> Unit,
+): Amplitude {
     val config = Configuration(apiKey)
     configs.invoke(config)
     return Amplitude(config)

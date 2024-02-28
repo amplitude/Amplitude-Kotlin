@@ -40,8 +40,6 @@ interface Storage {
         scope: CoroutineScope,
         dispatcher: CoroutineDispatcher,
     ): ResponseHandler
-
-    suspend fun getDiagnostics(): String = ""
 }
 
 interface StorageProvider {

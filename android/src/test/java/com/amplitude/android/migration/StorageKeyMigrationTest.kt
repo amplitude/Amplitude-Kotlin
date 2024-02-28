@@ -6,6 +6,7 @@ import com.amplitude.android.utilities.AndroidStorage
 import com.amplitude.common.jvm.ConsoleLogger
 import com.amplitude.core.Storage
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.utilities.Diagnostics
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import org.junit.jupiter.api.Assertions
@@ -16,13 +17,15 @@ import java.util.UUID
 
 @RunWith(RobolectricTestRunner::class)
 class StorageKeyMigrationTest {
+    private val testDiagnostics = Diagnostics()
+
     @Test
     fun `simple values should be migrated`() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val logger = ConsoleLogger()
 
-        val source = AndroidStorage(context, UUID.randomUUID().toString(), logger, null)
-        val destination = AndroidStorage(context, UUID.randomUUID().toString(), logger, null)
+        val source = AndroidStorage(context, UUID.randomUUID().toString(), logger, null, testDiagnostics)
+        val destination = AndroidStorage(context, UUID.randomUUID().toString(), logger, null, testDiagnostics)
         val sourceFileIndexKey = "amplitude.events.file.index.${source.storageKey}"
         val destinationFileIndexKey = "amplitude.events.file.index.${destination.storageKey}"
 
@@ -74,8 +77,8 @@ class StorageKeyMigrationTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val logger = ConsoleLogger()
 
-        val source = AndroidStorage(context, UUID.randomUUID().toString(), logger, null)
-        val destination = AndroidStorage(context, UUID.randomUUID().toString(), logger, null)
+        val source = AndroidStorage(context, UUID.randomUUID().toString(), logger, null, testDiagnostics)
+        val destination = AndroidStorage(context, UUID.randomUUID().toString(), logger, null, testDiagnostics)
 
         runBlocking {
             source.writeEvent(createEvent(1))
@@ -117,8 +120,8 @@ class StorageKeyMigrationTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val logger = ConsoleLogger()
 
-        val source = AndroidStorage(context, UUID.randomUUID().toString(), logger, null)
-        val destination = AndroidStorage(context, UUID.randomUUID().toString(), logger, null)
+        val source = AndroidStorage(context, UUID.randomUUID().toString(), logger, null, testDiagnostics)
+        val destination = AndroidStorage(context, UUID.randomUUID().toString(), logger, null, testDiagnostics)
 
         var destinationPreviousSessionId = destination.read(Storage.Constants.PREVIOUS_SESSION_ID)
         var destinationLastEventTime = destination.read(Storage.Constants.LAST_EVENT_TIME)
@@ -150,8 +153,8 @@ class StorageKeyMigrationTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val logger = ConsoleLogger()
 
-        val source = AndroidStorage(context, UUID.randomUUID().toString(), logger, null)
-        val destination = AndroidStorage(context, UUID.randomUUID().toString(), logger, null)
+        val source = AndroidStorage(context, UUID.randomUUID().toString(), logger, null, testDiagnostics)
+        val destination = AndroidStorage(context, UUID.randomUUID().toString(), logger, null, testDiagnostics)
 
         runBlocking {
             source.writeEvent(createEvent(1))

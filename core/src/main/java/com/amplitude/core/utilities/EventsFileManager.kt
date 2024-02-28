@@ -23,12 +23,12 @@ class EventsFileManager(
     private val storageKey: String,
     private val kvs: KeyValueStore,
     private val logger: Logger,
+    private val diagnostics: Diagnostics,
 ) {
     private val fileIndexKey = "amplitude.events.file.index.$storageKey"
     private val storageVersionKey = "amplitude.events.file.version.$storageKey"
     val filePathSet: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
     val curFile: MutableMap<String, File> = ConcurrentHashMap<String, File>()
-    private val diagnostics = Diagnostics()
 
     companion object {
         const val MAX_FILE_SIZE = 975_000 // 975KB
@@ -118,12 +118,6 @@ class EventsFileManager(
         return File(filePath).delete()
     }
 
-    private fun start(file: File) {
-        // start batch object and events array
-        val contents = """["""
-        writeToFile(contents.toByteArray(), file)
-    }
-
     /**
      * closes current file, and increase the index
      * so next write go to a new file
@@ -205,11 +199,6 @@ class EventsFileManager(
     fun release(filePath: String) {
         filePathSet.remove(filePath)
     }
-
-    suspend fun getDiagnostics(): String =
-        readMutex.withLock {
-            return@withLock diagnostics.extractDiagnostics()
-        }
 
     private fun finish(file: File?) {
         rename(file ?: return)

@@ -16,13 +16,15 @@ class EventsFileManagerTest {
     @TempDir
     lateinit var tempDir: File
 
+    private val testDiagnostics = Diagnostics()
+
     @Test
     fun `test store event and read`() {
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
         val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
         val eventsFileManager =
-            EventsFileManager(tempDir, storageKey, propertiesFile, logger)
+            EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
         runBlocking {
             eventsFileManager.storeEvent(createEvent("test1"))
             eventsFileManager.storeEvent(createEvent("test2"))
@@ -67,7 +69,7 @@ class EventsFileManagerTest {
         val storageKey = "storageKey"
         val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
         val eventsFileManager =
-            EventsFileManager(tempDir, storageKey, propertiesFile, logger)
+            EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
         runBlocking {
             eventsFileManager.storeEvent(createEvent("test1"))
         }
@@ -98,7 +100,7 @@ class EventsFileManagerTest {
         val storageKey = "storageKey"
         val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
         val eventsFileManager =
-            EventsFileManager(tempDir, storageKey, propertiesFile, logger)
+            EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
         runBlocking {
             eventsFileManager.rollover()
         }
@@ -112,7 +114,7 @@ class EventsFileManagerTest {
         val storageKey = "storageKey"
         val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
         val eventsFileManager =
-            EventsFileManager(tempDir, storageKey, propertiesFile, logger)
+            EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
         runBlocking {
             eventsFileManager.storeEvent(createEvent("test1"))
             eventsFileManager.rollover()
@@ -130,7 +132,7 @@ class EventsFileManagerTest {
         val storageKey = "storageKey"
         val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
         val eventsFileManager =
-            EventsFileManager(tempDir, storageKey, propertiesFile, logger)
+            EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
         runBlocking {
             eventsFileManager.storeEvent(createEvent("test1"))
             eventsFileManager.storeEvent(createEvent("test2"))
@@ -168,7 +170,7 @@ class EventsFileManagerTest {
         val storageKey = "storageKey"
         val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
         val eventsFileManager =
-            EventsFileManager(tempDir, storageKey, propertiesFile, logger)
+            EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
         runBlocking {
             val filePaths = eventsFileManager.read()
             assertEquals(1, filePaths.size)
@@ -187,8 +189,9 @@ class EventsFileManagerTest {
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
         val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
+        val diagnostics = Diagnostics()
         val eventsFileManager =
-            EventsFileManager(tempDir, storageKey, propertiesFile, logger)
+            EventsFileManager(tempDir, storageKey, propertiesFile, logger, diagnostics)
         runBlocking {
             val filePaths = eventsFileManager.read()
             assertEquals(1, filePaths.size)
@@ -197,8 +200,7 @@ class EventsFileManagerTest {
             assertEquals(2, events.length())
             assertEquals("test1", events.getJSONObject(0).getString("eventType"))
             assertEquals("test2", events.getJSONObject(1).getString("eventType"))
-            val diagnostics = eventsFileManager.getDiagnostics()
-            assertEquals("{\"malformed_events\":[\"{\\\"eventType\\\":\\\"test3\\\"\"]}", diagnostics)
+            assertEquals("{\"malformed_events\":[\"{\\\"eventType\\\":\\\"test3\\\"\"]}", diagnostics.extractDiagnostics())
         }
     }
 
@@ -209,7 +211,7 @@ class EventsFileManagerTest {
         val storageKey = "storageKey"
         val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
         val eventsFileManager =
-            EventsFileManager(tempDir, storageKey, propertiesFile, logger)
+            EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
         val filePaths = eventsFileManager.read()
         assertEquals(7, filePaths.size)
         runBlocking {
@@ -256,7 +258,7 @@ class EventsFileManagerTest {
         val storageKey = "storageKey"
         val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
         val eventsFileManager =
-            EventsFileManager(tempDir, storageKey, propertiesFile, logger)
+            EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
         runBlocking {
             eventsFileManager.storeEvent(createEvent("test17"))
             eventsFileManager.storeEvent(createEvent("test18"))
@@ -280,7 +282,7 @@ class EventsFileManagerTest {
         val storageKey = "storageKey"
         val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
         val eventsFileManager =
-            EventsFileManager(tempDir, storageKey, propertiesFile, logger)
+            EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
         runBlocking {
             val job1 =
                 kotlinx.coroutines.GlobalScope.launch {
@@ -322,7 +324,7 @@ class EventsFileManagerTest {
         val storageKey = "storageKey"
         val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
         val eventsFileManager =
-            EventsFileManager(tempDir, storageKey, propertiesFile, logger)
+            EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
         for (i in 0..100) {
             val thread =
                 thread {
@@ -354,9 +356,9 @@ class EventsFileManagerTest {
         val propertiesFile1 = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
         val propertiesFile2 = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
         val eventsFileManager1 =
-            EventsFileManager(tempDir, storageKey, propertiesFile1, logger)
+            EventsFileManager(tempDir, storageKey, propertiesFile1, logger, testDiagnostics)
         val eventsFileManager2 =
-            EventsFileManager(tempDir, storageKey, propertiesFile2, logger)
+            EventsFileManager(tempDir, storageKey, propertiesFile2, logger, testDiagnostics)
         runBlocking {
             val job1 =
                 kotlinx.coroutines.GlobalScope.launch {
@@ -406,7 +408,7 @@ class EventsFileManagerTest {
         val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
         for (i in 0..100) {
             val eventsFileManager =
-                EventsFileManager(tempDir, storageKey, propertiesFile, logger)
+                EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
             val thread =
                 thread {
                     runBlocking {
@@ -420,7 +422,7 @@ class EventsFileManagerTest {
         }
 
         val eventsFileManagerForRead =
-            EventsFileManager(tempDir, storageKey, propertiesFile, logger)
+            EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
         val filePaths = eventsFileManagerForRead.read()
         var eventsCount = 0
         runBlocking {

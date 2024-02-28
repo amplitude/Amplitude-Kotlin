@@ -134,11 +134,10 @@ class EventPipeline(
                     try {
                         val eventsString = storage.getEventsString(events)
                         if (eventsString.isEmpty()) continue
-                        val disgnostics = storage.getDiagnostics()
                         val connection = httpClient.upload()
                         connection.outputStream?.let {
                             connection.setEvents(eventsString)
-                            connection.setDiagnostics(disgnostics)
+                            connection.setDiagnostics(amplitude.diagnostics)
                             // Upload the payloads.
                             connection.close()
                         }

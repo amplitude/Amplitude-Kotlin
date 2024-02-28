@@ -18,6 +18,7 @@ class FileStorage(
     storageKey: String,
     private val logger: Logger,
     private val prefix: String?,
+    private val diagnostics: Diagnostics,
 ) : Storage, EventsFileStorage {
     companion object {
         const val STORAGE_PREFIX = "amplitude-kotlin"
@@ -27,7 +28,7 @@ class FileStorage(
     private val storageDirectoryEvents = File(storageDirectory, "events")
 
     private val propertiesFile = PropertiesFile(storageDirectory, storageKey, getPrefix(), null)
-    private val eventsFile = EventsFileManager(storageDirectoryEvents, storageKey, propertiesFile, logger)
+    private val eventsFile = EventsFileManager(storageDirectoryEvents, storageKey, propertiesFile, logger, diagnostics)
     private val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
 
     init {
@@ -111,10 +112,6 @@ class FileStorage(
         eventsFile.splitFile(filePath, events)
     }
 
-    override suspend fun getDiagnostics(): String {
-        return eventsFile.getDiagnostics()
-    }
-
     private fun getPrefix(): String {
         return prefix ?: STORAGE_PREFIX
     }
@@ -129,6 +126,7 @@ class FileStorageProvider : StorageProvider {
             amplitude.configuration.instanceName,
             amplitude.configuration.loggerProvider.getLogger(amplitude),
             prefix,
+            amplitude.diagnostics,
         )
     }
 }

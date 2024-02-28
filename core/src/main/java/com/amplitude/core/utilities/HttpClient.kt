@@ -117,7 +117,7 @@ abstract class Connection(
     private lateinit var clientUploadTime: String
     private lateinit var events: String
     private var minIdLength: Int? = null
-    private var diagnostics: String? = null
+    private var diagnostics: Diagnostics? = null
     internal lateinit var response: Response
 
     @Throws(IOException::class)
@@ -141,10 +141,8 @@ abstract class Connection(
         this.events = events
     }
 
-    internal fun setDiagnostics(diagnostics: String) {
-        if (diagnostics.isNotEmpty()) {
-            this.diagnostics = diagnostics
-        }
+    internal fun setDiagnostics(diagnostics: Diagnostics) {
+        this.diagnostics = diagnostics
     }
 
     internal fun setBody() {
@@ -161,8 +159,8 @@ abstract class Connection(
             if (minIdLength != null) {
                 append(",\"options\":{\"min_id_length\":$minIdLength}")
             }
-            if (diagnostics != null) {
-                append(",\"diagnostics\":$diagnostics")
+            if (diagnostics != null && diagnostics!!.hasDiagnostics()) {
+                append(",\"diagnostics\":${diagnostics!!.extractDiagnostics()}")
             }
             append("}")
         }
