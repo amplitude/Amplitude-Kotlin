@@ -14,6 +14,9 @@ import java.io.File
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.io.IOException
+import java.io.UnsupportedEncodingException
+import java.net.URLDecoder
+import java.net.URLEncoder
 import java.util.Collections
 import java.util.Random
 import java.util.concurrent.ConcurrentHashMap
@@ -84,9 +87,16 @@ class EventsFileManager(
                     }
                 }
             }
-
-            val contents = "${event}\n"
-            writeToFile(contents.toByteArray(), file)
+            try {
+                val contents = "${URLEncoder.encode(event, "UTF-8")}\n"
+                writeToFile(contents.toByteArray(), file, true)
+            } catch (e: UnsupportedEncodingException) {
+                diagnostics.addErrorLog("Failed to encode event: ${e.message}")
+                logger.error("Failed to encode event: ${e.message}")
+            } catch (e: Exception) {
+                diagnostics.addErrorLog("Failed to store event: ${e.message}")
+                logger.error("Failed to store event: ${e.message}")
+            }
         }
 
     private fun incrementFileIndex(): Boolean {
@@ -167,11 +177,12 @@ class EventsFileManager(
                     val events = JSONArray()
                     content.split("\n").forEach {
                         if (it.isNotEmpty()) {
+                            val currentContent = URLDecoder.decode(it, "UTF-8")
                             try {
-                                events.put(JSONObject(it))
+                                events.put(JSONObject(currentContent))
                             } catch (e: JSONException) {
-                                diagnostics.addMalformedEvent(it)
-                                logger.error("Failed to parse event: $it")
+                                diagnostics.addMalformedEvent(currentContent)
+                                logger.error("Failed to parse event: $currentContent")
                             }
                         }
                     }
@@ -281,14 +292,20 @@ class EventsFileManager(
         file: File,
         append: Boolean = true,
     ) {
-        val contents = events.joinToString(separator = "\n", postfix = "\n") { it.toString() }
         try {
+            val contents = events.joinToString(separator = "\n", postfix = "\n") { URLEncoder.encode(it.toString(), "UTF-8") }
             file.createNewFile()
             writeToFile(contents.toByteArray(), file, append)
             rename(file)
         } catch (e: IOException) {
             diagnostics.addErrorLog("Failed to create or write to split file: ${e.message}")
             logger.error("Failed to create or write to split file: ${file.path}")
+        } catch (e: UnsupportedEncodingException) {
+            diagnostics.addErrorLog("Failed to encode event: ${e.message}")
+            logger.error("Failed to encode event: ${e.message}")
+        } catch (e: Exception) {
+            diagnostics.addErrorLog("Failed to write to split file: ${e.message}")
+            logger.error("Failed to write to split file: ${file.path} for error: ${e.message}")
         }
     }
 

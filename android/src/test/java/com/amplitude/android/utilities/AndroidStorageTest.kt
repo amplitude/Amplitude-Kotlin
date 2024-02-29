@@ -104,6 +104,26 @@ class AndroidStorageTest {
     }
 
     @Test
+    fun `verify could handle line break in event name`() {
+        val logger = ConsoleLogger()
+        val storageKey = "storageKey"
+        val prefix = "test"
+        val storage = AndroidStorage(context, storageKey, logger, prefix, testDiagnostics)
+
+        runBlocking {
+            storage.writeEvent(createEvent("test1\n"))
+            storage.rollover()
+            val eventsData = storage.readEventsContent()
+            eventsData.withIndex().forEach { (_, filePath) ->
+                val eventsString = storage.getEventsString(filePath)
+                val events = JSONArray(eventsString)
+                assertEquals(1, events.length())
+                assertEquals("test1\n", events.getJSONObject(0).getString("event_type"))
+            }
+        }
+    }
+
+    @Test
     fun `verify malformed event show in diagonstics`() {
         val logger = ConsoleLogger()
         val storageKey = "storageKey"

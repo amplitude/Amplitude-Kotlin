@@ -205,6 +205,27 @@ class EventsFileManagerTest {
     }
 
     @Test
+    fun `verify line breaks in event names`() {
+        val logger = ConsoleLogger()
+        val storageKey = "storageKey"
+        val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
+        val eventsFileManager =
+            EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
+        runBlocking {
+            eventsFileManager.storeEvent(createEvent("test1"))
+            eventsFileManager.storeEvent(createEvent("test2\\n"))
+            eventsFileManager.rollover()
+            val filePaths = eventsFileManager.read()
+            assertEquals(1, filePaths.size)
+            val eventsString = eventsFileManager.getEventString(filePaths[0])
+            val events = JSONArray(eventsString)
+            assertEquals(2, events.length())
+            assertEquals("test1", events.getJSONObject(0).getString("eventType"))
+            assertEquals("test2\n", events.getJSONObject(1).getString("eventType"))
+        }
+    }
+
+    @Test
     fun `could handle earlier version of events file`() {
         createEarlierVersionEventFiles()
         val logger = ConsoleLogger()
@@ -274,6 +295,26 @@ class EventsFileManagerTest {
             }
         }
         assertEquals(17, eventsCount)
+    }
+
+    @Test
+    fun `could handle earlier versions with line break in event name`() {
+        val file = File(tempDir, "storageKey-6")
+        file.writeText("{\"eventType\":\"test15\"},{\"eventType\":\"test16\\nsuffix\"}]")
+        val logger = ConsoleLogger()
+        val storageKey = "storageKey"
+        val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
+        val eventsFileManager =
+            EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
+        runBlocking {
+            val filePaths = eventsFileManager.read()
+            assertEquals(1, filePaths.size)
+            val eventsString = eventsFileManager.getEventString(filePaths[0])
+            val events = JSONArray(eventsString)
+            assertEquals(2, events.length())
+            assertEquals("test15", events.getJSONObject(0).getString("eventType"))
+            assertEquals("test16\nsuffix", events.getJSONObject(1).getString("eventType"))
+        }
     }
 
     @Test
