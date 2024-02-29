@@ -191,7 +191,7 @@ class EventsFileManager(
                         diagnostics.addMalformedEvent(normalizedContent)
                         logger.error("Failed to parse events: $normalizedContent, dropping file: $filePath")
                         this.remove(filePath)
-                        return@use ""
+                        return@use normalizedContent
                     }
                 }
             }
