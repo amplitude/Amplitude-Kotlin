@@ -182,7 +182,7 @@ class EventsFileManager(
                         ""
                     }
                 } else {
-                    // handle earlier versions
+                    // handle earlier versions. This is for backward compatibility for safety and would be removed later.
                     val normalizedContent = "[${content.trimStart('[', ',').trimEnd(']', ',')}]"
                     try {
                         val jsonArray = JSONArray(normalizedContent)
