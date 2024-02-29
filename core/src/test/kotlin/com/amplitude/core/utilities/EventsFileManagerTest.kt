@@ -10,6 +10,8 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
+import java.net.URLDecoder
+import java.net.URLEncoder
 import kotlin.concurrent.thread
 
 class EventsFileManagerTest {
@@ -43,8 +45,8 @@ class EventsFileManagerTest {
             val content = file.readText()
             val lines = content.split("\n")
             assertEquals(3, lines.size)
-            assertEquals(createEvent("test${index * 2 + 1}"), lines[0])
-            assertEquals(createEvent("test${index * 2 + 2}"), lines[1])
+            assertEquals(URLEncoder.encode(createEvent("test${index * 2 + 1}"), "UTF-8"), lines[0])
+            assertEquals(URLEncoder.encode(createEvent("test${index * 2 + 2}"), "UTF-8"), lines[1])
             assertEquals("", lines[2])
         }
 
@@ -84,7 +86,7 @@ class EventsFileManagerTest {
         val content = file.readText()
         val lines = content.split("\n")
         assertEquals(2, lines.size)
-        assertEquals(createEvent("test1"), lines[0])
+        assertEquals(URLEncoder.encode(createEvent("test1"), "UTF-8"), lines[0])
         assertEquals("", lines[1])
         runBlocking {
             val eventsString = eventsFileManager.getEventString(filePathsAfterRollover[0])
@@ -152,13 +154,13 @@ class EventsFileManagerTest {
         val content0 = file0.readText()
         val lines0 = content0.split("\n")
         assertEquals(2, lines0.size)
-        assertEquals(createEvent("test1"), lines0[0])
+        assertEquals(URLEncoder.encode(createEvent("test1"), "UTF-8"), lines0[0])
         assertEquals("", lines0[1])
         val file1 = File(filePathsAfterSplit[1])
         val content1 = file1.readText()
         val lines1 = content1.split("\n")
         assertEquals(2, lines1.size)
-        assertEquals(createEvent("test2"), lines1[0])
+        assertEquals(URLEncoder.encode(createEvent("test2"), "UTF-8"), lines1[0])
         assertEquals("", lines1[1])
     }
 
@@ -244,11 +246,11 @@ class EventsFileManagerTest {
                 val lines = content.split("\n")
                 if (index == 5) {
                     assertEquals(2, lines.size)
-                    assertEquals("{\"eventType\":\"test11\"}", lines[0])
+                    assertEquals("{\"eventType\":\"test11\"}", URLDecoder.decode(lines[0], "UTF-8"))
                 } else {
                     assertEquals(3, lines.size)
-                    assertEquals("{\"eventType\":\"test${index * 2 + 1}\"}", lines[0])
-                    assertEquals("{\"eventType\":\"test${index * 2 + 2}\"}", lines[1])
+                    assertEquals("{\"eventType\":\"test${index * 2 + 1}\"}", URLDecoder.decode(lines[0], "UTF-8"))
+                    assertEquals("{\"eventType\":\"test${index * 2 + 2}\"}", URLDecoder.decode(lines[1], "UTF-8"))
                 }
 
                 val eventsString = eventsFileManager.getEventString(filePath)
