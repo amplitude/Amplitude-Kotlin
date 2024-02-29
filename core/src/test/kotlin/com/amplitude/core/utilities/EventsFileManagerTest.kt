@@ -10,8 +10,6 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
-import java.net.URLDecoder
-import java.net.URLEncoder
 import kotlin.concurrent.thread
 
 class EventsFileManagerTest {
@@ -43,10 +41,10 @@ class EventsFileManagerTest {
             val file = File(filePath)
             assertEquals("$storageKey-$index", file.name)
             val content = file.readText()
-            val lines = content.split("\n")
+            val lines = content.split(EventsFileManager.DELIMITER)
             assertEquals(3, lines.size)
-            assertEquals(URLEncoder.encode(createEvent("test${index * 2 + 1}"), "UTF-8"), lines[0])
-            assertEquals(URLEncoder.encode(createEvent("test${index * 2 + 2}"), "UTF-8"), lines[1])
+            assertEquals(createEvent("test${index * 2 + 1}"), lines[0])
+            assertEquals(createEvent("test${index * 2 + 2}"), lines[1])
             assertEquals("", lines[2])
         }
 
@@ -84,9 +82,9 @@ class EventsFileManagerTest {
         assertEquals(1, filePathsAfterRollover.size)
         val file = File(filePathsAfterRollover[0])
         val content = file.readText()
-        val lines = content.split("\n")
+        val lines = content.split(EventsFileManager.DELIMITER)
         assertEquals(2, lines.size)
-        assertEquals(URLEncoder.encode(createEvent("test1"), "UTF-8"), lines[0])
+        assertEquals(createEvent("test1"), lines[0])
         assertEquals("", lines[1])
         runBlocking {
             val eventsString = eventsFileManager.getEventString(filePathsAfterRollover[0])
@@ -152,22 +150,22 @@ class EventsFileManagerTest {
         assertEquals(2, filePathsAfterSplit.size)
         val file0 = File(filePathsAfterSplit[0])
         val content0 = file0.readText()
-        val lines0 = content0.split("\n")
+        val lines0 = content0.split(EventsFileManager.DELIMITER)
         assertEquals(2, lines0.size)
-        assertEquals(URLEncoder.encode(createEvent("test1"), "UTF-8"), lines0[0])
+        assertEquals(createEvent("test1"), lines0[0])
         assertEquals("", lines0[1])
         val file1 = File(filePathsAfterSplit[1])
         val content1 = file1.readText()
-        val lines1 = content1.split("\n")
+        val lines1 = content1.split(EventsFileManager.DELIMITER)
         assertEquals(2, lines1.size)
-        assertEquals(URLEncoder.encode(createEvent("test2"), "UTF-8"), lines1[0])
+        assertEquals(createEvent("test2"), lines1[0])
         assertEquals("", lines1[1])
     }
 
     @Test
-    fun `verify line breaks handled gracefully`() {
+    fun `verify delimiter handled gracefully`() {
         val file0 = File(tempDir, "storageKey-0")
-        file0.writeText("\n\n{\"eventType\":\"test1\"}\n\n{\"eventType\":\"test2\"}\n\n")
+        file0.writeText("{\"eventType\":\"test1\"}\u0000{\"eventType\":\"test2\"}\u0000")
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
         val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
@@ -187,7 +185,7 @@ class EventsFileManagerTest {
     @Test
     fun `verify malformed event shows up in diagnostics`() {
         val file0 = File(tempDir, "storageKey-0")
-        file0.writeText("{\"eventType\":\"test1\"}\n{\"eventType\":\"test2\"}\n{\"eventType\":\"test3\"\n")
+        file0.writeText("{\"eventType\":\"test1\"}\u0000{\"eventType\":\"test2\"}\u0000{\"eventType\":\"test3\"\u0000")
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
         val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
@@ -207,7 +205,7 @@ class EventsFileManagerTest {
     }
 
     @Test
-    fun `verify line breaks in event names`() {
+    fun `verify delimiter in event names`() {
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
         val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
@@ -215,7 +213,7 @@ class EventsFileManagerTest {
             EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
         runBlocking {
             eventsFileManager.storeEvent(createEvent("test1"))
-            eventsFileManager.storeEvent(createEvent("test2\\n"))
+            eventsFileManager.storeEvent(createEvent("test2\u0000"))
             eventsFileManager.rollover()
             val filePaths = eventsFileManager.read()
             assertEquals(1, filePaths.size)
@@ -223,7 +221,7 @@ class EventsFileManagerTest {
             val events = JSONArray(eventsString)
             assertEquals(2, events.length())
             assertEquals("test1", events.getJSONObject(0).getString("eventType"))
-            assertEquals("test2\n", events.getJSONObject(1).getString("eventType"))
+            assertEquals("test2", events.getJSONObject(1).getString("eventType"))
         }
     }
 
@@ -243,14 +241,14 @@ class EventsFileManagerTest {
                 assertTrue(file.extension.isEmpty(), "file extension should be empty for v1 event files")
                 // verify file format updated to v2
                 val content = file.readText()
-                val lines = content.split("\n")
+                val lines = content.split(EventsFileManager.DELIMITER)
                 if (index == 5) {
                     assertEquals(2, lines.size)
-                    assertEquals("{\"eventType\":\"test11\"}", URLDecoder.decode(lines[0], "UTF-8"))
+                    assertEquals("{\"eventType\":\"test11\"}", lines[0])
                 } else {
                     assertEquals(3, lines.size)
-                    assertEquals("{\"eventType\":\"test${index * 2 + 1}\"}", URLDecoder.decode(lines[0], "UTF-8"))
-                    assertEquals("{\"eventType\":\"test${index * 2 + 2}\"}", URLDecoder.decode(lines[1], "UTF-8"))
+                    assertEquals("{\"eventType\":\"test${index * 2 + 1}\"}", lines[0])
+                    assertEquals("{\"eventType\":\"test${index * 2 + 2}\"}", lines[1])
                 }
 
                 val eventsString = eventsFileManager.getEventString(filePath)

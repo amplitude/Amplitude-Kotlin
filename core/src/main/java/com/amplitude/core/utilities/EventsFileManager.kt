@@ -15,8 +15,6 @@ import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.UnsupportedEncodingException
-import java.net.URLDecoder
-import java.net.URLEncoder
 import java.util.Collections
 import java.util.Random
 import java.util.concurrent.ConcurrentHashMap
@@ -35,6 +33,7 @@ class EventsFileManager(
 
     companion object {
         const val MAX_FILE_SIZE = 975_000 // 975KB
+        const val DELIMITER = "\u0000"
         val writeMutexMap = ConcurrentHashMap<String, Mutex>()
         val readMutexMap = ConcurrentHashMap<String, Mutex>()
     }
@@ -87,16 +86,8 @@ class EventsFileManager(
                     }
                 }
             }
-            try {
-                val contents = "${URLEncoder.encode(event, "UTF-8")}\n"
-                writeToFile(contents.toByteArray(), file, true)
-            } catch (e: UnsupportedEncodingException) {
-                diagnostics.addErrorLog("Failed to encode event: ${e.message}")
-                logger.error("Failed to encode event: ${e.message}")
-            } catch (e: Exception) {
-                diagnostics.addErrorLog("Failed to store event: ${e.message}")
-                logger.error("Failed to store event: ${e.message}")
-            }
+            val contents = event.replace(DELIMITER, "") + DELIMITER
+            writeToFile(contents.toByteArray(), file, true)
         }
 
     private fun incrementFileIndex(): Boolean {
@@ -171,18 +162,17 @@ class EventsFileManager(
             filePathSet.add(filePath)
             File(filePath).bufferedReader().use<BufferedReader, String> {
                 val content = it.readText()
-                val isCurrentVersion = content.endsWith("\n")
+                val isCurrentVersion = content.endsWith(DELIMITER)
                 if (isCurrentVersion) {
                     // handle current version
                     val events = JSONArray()
-                    content.split("\n").forEach {
+                    content.split(DELIMITER).forEach {
                         if (it.isNotEmpty()) {
-                            val currentContent = URLDecoder.decode(it, "UTF-8")
                             try {
-                                events.put(JSONObject(currentContent))
+                                events.put(JSONObject(it))
                             } catch (e: JSONException) {
-                                diagnostics.addMalformedEvent(currentContent)
-                                logger.error("Failed to parse event: $currentContent")
+                                diagnostics.addMalformedEvent(it)
+                                logger.error("Failed to parse event: $it")
                             }
                         }
                     }
@@ -293,7 +283,13 @@ class EventsFileManager(
         append: Boolean = true,
     ) {
         try {
-            val contents = events.joinToString(separator = "\n", postfix = "\n") { URLEncoder.encode(it.toString(), "UTF-8") }
+            val contents =
+                events.joinToString(separator = DELIMITER, postfix = DELIMITER) {
+                    it.toString().replace(
+                        DELIMITER,
+                        "",
+                    )
+                }
             file.createNewFile()
             writeToFile(contents.toByteArray(), file, append)
             rename(file)
@@ -327,7 +323,7 @@ class EventsFileManager(
                 } ?: emptyArray()
             unFinishedFiles.forEach {
                 val content = it.readText()
-                if (!content.endsWith("\n")) {
+                if (!content.endsWith(DELIMITER)) {
                     // handle earlier versions
                     val normalizedContent = "[${content.trimStart('[', ',').trimEnd(']', ',')}]"
                     try {

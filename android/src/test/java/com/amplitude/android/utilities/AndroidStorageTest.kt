@@ -130,7 +130,7 @@ class AndroidStorageTest {
         val prefix = "test"
         val storageDirectory = context.getDir("$prefix-disk-queue", Context.MODE_PRIVATE)
         val file0 = File(storageDirectory, "storageKey-0")
-        file0.writeText("{\"eventType\":\"test1\"}\n{\"eventType\":\"test2\"}\n{\"eventType\":\"test3\"\n")
+        file0.writeText("{\"eventType\":\"test1\"}\u0000{\"eventType\":\"test2\"}\u0000{\"eventType\":\"test3\"\u0000")
         val diagnostics = Diagnostics()
         val storage = AndroidStorage(context, storageKey, logger, prefix, diagnostics)
         runBlocking {
