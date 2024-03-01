@@ -33,7 +33,7 @@ open class Amplitude(
     }
 
     override fun createTimeline(): Timeline {
-        return Timeline().also { it.amplitude = this }
+        return Timeline(configuration.sessionId).also { it.amplitude = this }
     }
 
     override fun createIdentityConfiguration(): IdentityConfiguration {

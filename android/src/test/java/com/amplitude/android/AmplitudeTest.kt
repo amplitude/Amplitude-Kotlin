@@ -78,6 +78,7 @@ class AmplitudeTest {
         minTimeBetweenSessionsMillis: Long? = null,
         storageProvider: StorageProvider = InMemoryStorageProvider(),
         deviceId: String? = null,
+        sessionId: Long? = null,
     ): Configuration {
         val configuration = Configuration(
             apiKey = "api-key",
@@ -88,6 +89,7 @@ class AmplitudeTest {
             loggerProvider = ConsoleLoggerProvider(),
             identifyInterceptStorageProvider = InMemoryStorageProvider(),
             identityStorageProvider = IMIdentityStorageProvider(),
+            sessionId = sessionId,
         )
 
         if (deviceId != null) {
@@ -214,6 +216,18 @@ class AmplitudeTest {
         if (amplitude?.isBuilt!!.await()) {
             Assertions.assertEquals(testDeviceId, amplitude?.store?.deviceId)
             Assertions.assertEquals(testDeviceId, amplitude?.getDeviceId())
+        }
+    }
+
+    @Test
+    fun amplitude_should_set_sessionId_from_configuration() = runTest {
+        val testSessionId = 1337L
+        // set device Id in the config
+        amplitude = Amplitude(createConfiguration(sessionId = testSessionId))
+        setDispatcher(testScheduler)
+
+        if (amplitude?.isBuilt!!.await()) {
+            Assertions.assertEquals(testSessionId, amplitude?.sessionId)
         }
     }
 

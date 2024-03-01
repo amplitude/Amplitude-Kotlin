@@ -48,6 +48,7 @@ open class Configuration @JvmOverloads constructor(
     var migrateLegacyData: Boolean = true,
     override var offline: Boolean? = false,
     override var deviceId: String? = null,
+    override var sessionId: Long? = null,
 ) : Configuration(
     apiKey,
     flushQueueSize,
@@ -70,6 +71,7 @@ open class Configuration @JvmOverloads constructor(
     identityStorageProvider,
     offline,
     deviceId,
+    sessionId,
 ) {
     companion object {
         const val MIN_TIME_BETWEEN_SESSIONS_MILLIS: Long = 300000
