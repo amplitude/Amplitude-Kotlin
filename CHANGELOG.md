@@ -1,3 +1,10 @@
+# [1.16.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.15.0...v1.16.0) (2024-03-01)
+
+
+### Features
+
+* switch storage for better thread safety ([#181](https://github.com/amplitude/Amplitude-Kotlin/issues/181)) ([918d2d5](https://github.com/amplitude/Amplitude-Kotlin/commit/918d2d5de1a76f344a328c9f09abf86c4f6671b7))
+
 # [1.15.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.14.0...v1.15.0) (2024-03-01)
 
 
