@@ -1,3 +1,10 @@
+# [1.15.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.14.0...v1.15.0) (2024-03-01)
+
+
+### Features
+
+* allow setting sessionId in initial configuration ([#182](https://github.com/amplitude/Amplitude-Kotlin/issues/182)) ([81c5866](https://github.com/amplitude/Amplitude-Kotlin/commit/81c5866e57427f81c8deb327f336440c2b0ff157))
+
 # [1.14.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.13.0...v1.14.0) (2024-01-30)
 
 
