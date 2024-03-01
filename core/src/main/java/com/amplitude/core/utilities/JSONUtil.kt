@@ -9,7 +9,6 @@ import org.json.JSONException
 import org.json.JSONObject
 
 object JSONUtil {
-
     fun eventToJsonObject(event: BaseEvent): JSONObject {
         val eventJSON = JSONObject()
         eventJSON.put("event_type", event.eventType)
@@ -97,10 +96,7 @@ object JSONUtil {
                 }
             } catch (e: JSONException) {
                 throw IllegalArgumentException(
-                    (
-                        "JSON parsing error. Too long (>" +
-                            Constants.MAX_STRING_LENGTH
-                        ) + " chars) or invalid JSON"
+                    "JSON parsing error. Too long (> ${Constants.MAX_STRING_LENGTH} chars) or invalid JSON",
                 )
             }
         }
@@ -126,14 +122,21 @@ object JSONUtil {
     }
 
     private fun truncate(value: String): String {
-        return if (value.length <= Constants.MAX_STRING_LENGTH) value else value.substring(
-            0,
-            Constants.MAX_STRING_LENGTH
-        )
+        return if (value.length <= Constants.MAX_STRING_LENGTH) {
+            value
+        } else {
+            value.substring(
+                0,
+                Constants.MAX_STRING_LENGTH,
+            )
+        }
     }
 }
 
-internal fun JSONObject.getStringWithDefault(key: String, defaultValue: String): String {
+internal fun JSONObject.getStringWithDefault(
+    key: String,
+    defaultValue: String,
+): String {
     if (this.has(key)) {
         return this.getString(key)
     }
@@ -203,7 +206,15 @@ fun JSONObject.toBaseEvent(): BaseEvent {
     event.library = if (this.has("library")) this.getString("library") else null
     event.partnerId = this.optionalString("partner_id", null)
     event.plan = if (this.has("plan")) Plan.fromJSONObject(this.getJSONObject("plan")) else null
-    event.ingestionMetadata = if (this.has("ingestion_metadata")) IngestionMetadata.fromJSONObject(this.getJSONObject("ingestion_metadata")) else null
+    event.ingestionMetadata =
+        if (this.has(
+                "ingestion_metadata",
+            )
+        ) {
+            IngestionMetadata.fromJSONObject(this.getJSONObject("ingestion_metadata"))
+        } else {
+            null
+        }
     return event
 }
 
@@ -215,34 +226,51 @@ fun JSONArray.toEvents(): List<BaseEvent> {
     return events
 }
 
-internal fun JSONArray.split(): Pair<String, String> {
+internal fun JSONArray.split(): Pair<List<JSONObject>, List<JSONObject>> {
     val mid = this.length() / 2
-    val firstHalf = JSONArray()
-    val secondHalf = JSONArray()
-    (0 until this.length()).forEach { index, ->
+    val firstHalf = mutableListOf<JSONObject>()
+    val secondHalf = mutableListOf<JSONObject>()
+    (0 until this.length()).forEach { index ->
         if (index < mid) {
-            firstHalf.put(this.getJSONObject(index))
+            firstHalf.add(this.getJSONObject(index))
         } else {
-            secondHalf.put(this.getJSONObject(index))
+            secondHalf.add(this.getJSONObject(index))
         }
     }
-    return Pair(firstHalf.toString(), secondHalf.toString())
+    return Pair(firstHalf, secondHalf)
 }
 
-internal fun JSONObject.addValue(key: String, value: Any?) {
+internal fun JSONArray.toJSONObjectList(): List<JSONObject> {
+    val list = mutableListOf<JSONObject>()
+    (0 until this.length()).forEach {
+        list.add(this.getJSONObject(it))
+    }
+    return list
+}
+
+internal fun JSONObject.addValue(
+    key: String,
+    value: Any?,
+) {
     value?.let {
         this.put(key, value)
     }
 }
 
-fun JSONObject.optionalJSONObject(key: String, defaultValue: JSONObject?): JSONObject? {
+fun JSONObject.optionalJSONObject(
+    key: String,
+    defaultValue: JSONObject?,
+): JSONObject? {
     if (this.has(key)) {
         return this.getJSONObject(key)
     }
     return defaultValue
 }
 
-fun JSONObject.optionalString(key: String, defaultValue: String?): String? {
+fun JSONObject.optionalString(
+    key: String,
+    defaultValue: String?,
+): String? {
     if (this.has(key)) {
         return this.getString(key)
     }

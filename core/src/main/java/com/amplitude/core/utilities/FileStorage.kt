@@ -17,9 +17,9 @@ import java.io.File
 class FileStorage(
     storageKey: String,
     private val logger: Logger,
-    private val prefix: String?
+    private val prefix: String?,
+    private val diagnostics: Diagnostics,
 ) : Storage, EventsFileStorage {
-
     companion object {
         const val STORAGE_PREFIX = "amplitude-kotlin"
     }
@@ -28,7 +28,7 @@ class FileStorage(
     private val storageDirectoryEvents = File(storageDirectory, "events")
 
     private val propertiesFile = PropertiesFile(storageDirectory, storageKey, getPrefix(), null)
-    private val eventsFile = EventsFileManager(storageDirectoryEvents, storageKey, propertiesFile)
+    private val eventsFile = EventsFileManager(storageDirectoryEvents, storageKey, propertiesFile, logger, diagnostics)
     private val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
 
     init {
@@ -44,7 +44,10 @@ class FileStorage(
         }
     }
 
-    override suspend fun write(key: Storage.Constants, value: String) {
+    override suspend fun write(
+        key: Storage.Constants,
+        value: String,
+    ) {
         propertiesFile.putString(key.rawVal, value)
     }
 
@@ -86,7 +89,7 @@ class FileStorage(
             configuration,
             scope,
             dispatcher,
-            logger
+            logger,
         )
     }
 
@@ -102,7 +105,10 @@ class FileStorage(
         eventCallbacksMap.remove(insertId)
     }
 
-    override fun splitEventFile(filePath: String, events: JSONArray) {
+    override fun splitEventFile(
+        filePath: String,
+        events: JSONArray,
+    ) {
         eventsFile.splitFile(filePath, events)
     }
 
@@ -112,11 +118,15 @@ class FileStorage(
 }
 
 class FileStorageProvider : StorageProvider {
-    override fun getStorage(amplitude: Amplitude, prefix: String?): Storage {
+    override fun getStorage(
+        amplitude: Amplitude,
+        prefix: String?,
+    ): Storage {
         return FileStorage(
             amplitude.configuration.instanceName,
             amplitude.configuration.loggerProvider.getLogger(amplitude),
-            prefix
+            prefix,
+            amplitude.diagnostics,
         )
     }
 }
@@ -128,7 +138,10 @@ interface EventsFileStorage {
 
     fun removeEventCallback(insertId: String)
 
-    fun splitEventFile(filePath: String, events: JSONArray)
+    fun splitEventFile(
+        filePath: String,
+        events: JSONArray,
+    )
 
     fun readEventsContent(): List<Any>
 

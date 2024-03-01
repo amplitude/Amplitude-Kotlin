@@ -17,9 +17,8 @@ import java.util.Date
 import java.util.TimeZone
 
 internal class HttpClient(
-    private val configuration: Configuration
+    private val configuration: Configuration,
 ) {
-
     fun upload(): Connection {
         val connection: HttpURLConnection = getConnection(getApiHost())
         val outputStream: OutputStream = connection.outputStream
@@ -54,11 +53,12 @@ internal class HttpClient(
     }
 
     private fun getConnection(url: String): HttpURLConnection {
-        val requestedURL: URL = try {
-            URL(url)
-        } catch (e: MalformedURLException) {
-            throw IOException("Attempted to use malformed url: $url", e)
-        }
+        val requestedURL: URL =
+            try {
+                URL(url)
+            } catch (e: MalformedURLException) {
+                throw IOException("Attempted to use malformed url: $url", e)
+            }
         val connection = requestedURL.openConnection() as HttpURLConnection
         connection.requestMethod = "POST"
         connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
@@ -111,13 +111,13 @@ internal class HttpClient(
 abstract class Connection(
     val connection: HttpURLConnection,
     val inputStream: InputStream?,
-    val outputStream: OutputStream?
+    val outputStream: OutputStream?,
 ) : Closeable {
-
     private lateinit var apiKey: String
     private lateinit var clientUploadTime: String
     private lateinit var events: String
     private var minIdLength: Int? = null
+    private var diagnostics: Diagnostics? = null
     internal lateinit var response: Response
 
     @Throws(IOException::class)
@@ -141,6 +141,10 @@ abstract class Connection(
         this.events = events
     }
 
+    internal fun setDiagnostics(diagnostics: Diagnostics) {
+        this.diagnostics = diagnostics
+    }
+
     internal fun setBody() {
         this.outputStream?.let {
             val bodyString = getBodyStr()
@@ -150,10 +154,16 @@ abstract class Connection(
     }
 
     private fun getBodyStr(): String {
-        if (minIdLength == null) {
-            return "{\"api_key\":\"$apiKey\",\"client_upload_time\":\"$clientUploadTime\",\"events\":$events}"
+        return buildString {
+            append("{\"api_key\":\"$apiKey\",\"client_upload_time\":\"$clientUploadTime\",\"events\":$events")
+            if (minIdLength != null) {
+                append(",\"options\":{\"min_id_length\":$minIdLength}")
+            }
+            if (diagnostics != null && diagnostics!!.hasDiagnostics()) {
+                append(",\"request_metadata\":{\"sdk\":${diagnostics!!.extractDiagnostics()}}")
+            }
+            append("}")
         }
-        return "{\"api_key\":\"$apiKey\",\"client_upload_time\":\"$clientUploadTime\",\"events\":$events,\"options\":{\"min_id_length\":$minIdLength}}"
     }
 }
 
@@ -163,5 +173,5 @@ enum class HttpStatus(val code: Int) {
     TIMEOUT(408),
     PAYLOAD_TOO_LARGE(413),
     TOO_MANY_REQUESTS(429),
-    FAILED(500)
+    FAILED(500),
 }

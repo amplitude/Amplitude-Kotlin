@@ -16,9 +16,8 @@ import java.io.FileNotFoundException
 import java.util.concurrent.atomic.AtomicInteger
 
 class EventPipeline(
-    private val amplitude: Amplitude
+    private val amplitude: Amplitude,
 ) {
-
     private val writeChannel: Channel<WriteQueueMessage>
 
     private val uploadChannel: Channel<String>
@@ -59,12 +58,13 @@ class EventPipeline(
 
         registerShutdownHook()
 
-        responseHandler = storage.getResponseHandler(
-            this@EventPipeline,
-            amplitude.configuration,
-            scope,
-            amplitude.retryDispatcher,
-        )
+        responseHandler =
+            storage.getResponseHandler(
+                this@EventPipeline,
+                amplitude.configuration,
+                scope,
+                amplitude.retryDispatcher,
+            )
     }
 
     fun put(event: BaseEvent) {
@@ -88,67 +88,71 @@ class EventPipeline(
         running = false
     }
 
-    private fun write() = scope.launch(amplitude.storageIODispatcher) {
-        for (message in writeChannel) {
-            // write to storage
-            val triggerFlush = (message.type == WriteQueueMessageType.FLUSH)
-            if (!triggerFlush && message.event != null) try {
-                storage.writeEvent(message.event)
-            } catch (e: Exception) {
-                e.logWithStackTrace(amplitude.logger, "Error when writing event to pipeline")
-            }
-
-            // Skip flush when offline
-            if (amplitude.configuration.offline == true) {
-                continue
-            }
-
-            // if flush condition met, generate paths
-            if (eventCount.incrementAndGet() >= getFlushCount() || triggerFlush) {
-                eventCount.set(0)
-                uploadChannel.trySend(UPLOAD_SIG)
-            } else {
-                schedule()
-            }
-        }
-    }
-
-    private fun upload() = scope.launch(amplitude.networkIODispatcher) {
-        uploadChannel.consumeEach {
-
-            withContext(amplitude.storageIODispatcher) {
-                try {
-                    storage.rollover()
-                } catch (e: FileNotFoundException) {
-                    e.message?.let {
-                        amplitude.logger.warn("Event storage file not found: $it")
+    private fun write() =
+        scope.launch(amplitude.storageIODispatcher) {
+            for (message in writeChannel) {
+                // write to storage
+                val triggerFlush = (message.type == WriteQueueMessageType.FLUSH)
+                if (!triggerFlush && message.event != null) {
+                    try {
+                        storage.writeEvent(message.event)
+                    } catch (e: Exception) {
+                        e.logWithStackTrace(amplitude.logger, "Error when writing event to pipeline")
                     }
                 }
-            }
 
-            val eventsData = storage.readEventsContent()
-            for (events in eventsData) {
-                try {
-                    val eventsString = storage.getEventsString(events)
-                    if (eventsString.isEmpty()) continue
-                    val connection = httpClient.upload()
-                    connection.outputStream?.let {
-                        connection.setEvents(eventsString)
-                        // Upload the payloads.
-                        connection.close()
-                    }
+                // Skip flush when offline
+                if (amplitude.configuration.offline == true) {
+                    continue
+                }
 
-                    responseHandler.handle(connection.response, events, eventsString)
-                } catch (e: FileNotFoundException) {
-                    e.message?.let {
-                        amplitude.logger.warn("Event storage file not found: $it")
-                    }
-                } catch (e: Exception) {
-                    e.logWithStackTrace(amplitude.logger, "Error when uploading event")
+                // if flush condition met, generate paths
+                if (eventCount.incrementAndGet() >= getFlushCount() || triggerFlush) {
+                    eventCount.set(0)
+                    uploadChannel.trySend(UPLOAD_SIG)
+                } else {
+                    schedule()
                 }
             }
         }
-    }
+
+    private fun upload() =
+        scope.launch(amplitude.networkIODispatcher) {
+            uploadChannel.consumeEach {
+                withContext(amplitude.storageIODispatcher) {
+                    try {
+                        storage.rollover()
+                    } catch (e: FileNotFoundException) {
+                        e.message?.let {
+                            amplitude.logger.warn("Event storage file not found: $it")
+                        }
+                    }
+                }
+
+                val eventsData = storage.readEventsContent()
+                for (events in eventsData) {
+                    try {
+                        val eventsString = storage.getEventsString(events)
+                        if (eventsString.isEmpty()) continue
+                        val connection = httpClient.upload()
+                        connection.outputStream?.let {
+                            connection.setEvents(eventsString)
+                            connection.setDiagnostics(amplitude.diagnostics)
+                            // Upload the payloads.
+                            connection.close()
+                        }
+
+                        responseHandler.handle(connection.response, events, eventsString)
+                    } catch (e: FileNotFoundException) {
+                        e.message?.let {
+                            amplitude.logger.warn("Event storage file not found: $it")
+                        }
+                    } catch (e: Exception) {
+                        e.logWithStackTrace(amplitude.logger, "Error when uploading event")
+                    }
+                }
+            }
+        }
 
     private fun getFlushCount(): Int {
         val count = flushQueueSize / flushSizeDivider.get()
@@ -159,30 +163,34 @@ class EventPipeline(
         return flushInterval
     }
 
-    private fun schedule() = scope.launch(amplitude.storageIODispatcher) {
-        if (isActive && running && !scheduled && !exceededRetries) {
-            scheduled = true
-            delay(getFlushIntervalInMillis())
-            flush()
-            scheduled = false
+    private fun schedule() =
+        scope.launch(amplitude.storageIODispatcher) {
+            if (isActive && running && !scheduled && !exceededRetries) {
+                scheduled = true
+                delay(getFlushIntervalInMillis())
+                flush()
+                scheduled = false
+            }
         }
-    }
 
     private fun registerShutdownHook() {
         // close the stream if the app shuts down
-        Runtime.getRuntime().addShutdownHook(object : Thread() {
-            override fun run() {
-                this@EventPipeline.stop()
-            }
-        })
+        Runtime.getRuntime().addShutdownHook(
+            object : Thread() {
+                override fun run() {
+                    this@EventPipeline.stop()
+                }
+            },
+        )
     }
 }
 
 enum class WriteQueueMessageType {
-    EVENT, FLUSH
+    EVENT,
+    FLUSH,
 }
 
 data class WriteQueueMessage(
     val type: WriteQueueMessageType,
-    val event: BaseEvent?
+    val event: BaseEvent?,
 )

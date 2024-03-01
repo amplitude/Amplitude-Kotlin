@@ -10,6 +10,7 @@ import com.amplitude.core.Storage
 import com.amplitude.core.StorageProvider
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline
+import com.amplitude.core.utilities.Diagnostics
 import com.amplitude.core.utilities.EventsFileManager
 import com.amplitude.core.utilities.EventsFileStorage
 import com.amplitude.core.utilities.FileResponseHandler
@@ -24,9 +25,9 @@ class AndroidStorage(
     context: Context,
     val storageKey: String,
     private val logger: Logger,
-    internal val prefix: String?
+    internal val prefix: String?,
+    private val diagnostics: Diagnostics,
 ) : Storage, EventsFileStorage {
-
     companion object {
         const val STORAGE_PREFIX = "amplitude-android"
     }
@@ -35,7 +36,7 @@ class AndroidStorage(
         context.getSharedPreferences("${getPrefix()}-$storageKey", Context.MODE_PRIVATE)
     private val storageDirectory: File = context.getDir(getDir(), Context.MODE_PRIVATE)
     private val eventsFile =
-        EventsFileManager(storageDirectory, storageKey, AndroidKVS(sharedPreferences))
+        EventsFileManager(storageDirectory, storageKey, AndroidKVS(sharedPreferences), logger, diagnostics)
     private val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
 
     override suspend fun writeEvent(event: BaseEvent) {
@@ -47,7 +48,10 @@ class AndroidStorage(
         }
     }
 
-    override suspend fun write(key: Storage.Constants, value: String) {
+    override suspend fun write(
+        key: Storage.Constants,
+        value: String,
+    ) {
         sharedPreferences.edit().putString(key.rawVal, value).apply()
     }
 
@@ -87,7 +91,7 @@ class AndroidStorage(
             configuration,
             scope,
             dispatcher,
-            logger
+            logger,
         )
     }
 
@@ -103,7 +107,10 @@ class AndroidStorage(
         eventCallbacksMap.remove(insertId)
     }
 
-    override fun splitEventFile(filePath: String, events: JSONArray) {
+    override fun splitEventFile(
+        filePath: String,
+        events: JSONArray,
+    ) {
         eventsFile.splitFile(filePath, events)
     }
 
@@ -120,13 +127,17 @@ class AndroidStorage(
 }
 
 class AndroidStorageProvider : StorageProvider {
-    override fun getStorage(amplitude: Amplitude, prefix: String?): Storage {
+    override fun getStorage(
+        amplitude: Amplitude,
+        prefix: String?,
+    ): Storage {
         val configuration = amplitude.configuration as com.amplitude.android.Configuration
         return AndroidStorage(
             configuration.context,
             configuration.instanceName,
             configuration.loggerProvider.getLogger(amplitude),
-            prefix
+            prefix,
+            amplitude.diagnostics,
         )
     }
 }
