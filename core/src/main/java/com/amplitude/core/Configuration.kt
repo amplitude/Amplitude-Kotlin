@@ -32,6 +32,7 @@ open class Configuration @JvmOverloads constructor(
     open var identityStorageProvider: IdentityStorageProvider = IMIdentityStorageProvider(),
     open var offline: Boolean? = false,
     open var deviceId: String? = null,
+    open var sessionId: Long? = null,
 ) {
 
     companion object {
