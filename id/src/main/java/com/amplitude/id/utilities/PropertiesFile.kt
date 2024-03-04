@@ -22,7 +22,7 @@ class PropertiesFile(directory: File, key: String, prefix: String, logger: Logge
                     underlyingProperties.load(it)
                 }
                 return
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 propertiesFile.delete()
                 logger?.error("Failed to load property file with path ${propertiesFile.absolutePath}, error stacktrace: ${e.stackTraceToString()}")
             }
@@ -36,7 +36,9 @@ class PropertiesFile(directory: File, key: String, prefix: String, logger: Logge
             FileOutputStream(propertiesFile).use {
                 underlyingProperties.store(it, null)
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
+            // Note: we need to catch Throwable to handle both Exceptions and Errors
+            // Properties.store has an error in Android 8 that throws a AssertionError (vs Exception)
             logger?.error("Failed to save property file with path ${propertiesFile.absolutePath}, error stacktrace: ${e.stackTraceToString()}")
         }
     }
