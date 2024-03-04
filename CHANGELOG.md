@@ -1,3 +1,10 @@
+## [1.16.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.16.0...v1.16.1) (2024-03-04)
+
+
+### Bug Fixes
+
+* catch potential internal AssertionError from Properties.save() in Android 8 ([#183](https://github.com/amplitude/Amplitude-Kotlin/issues/183)) ([78e93a9](https://github.com/amplitude/Amplitude-Kotlin/commit/78e93a994886559ac03203759685dfd4c0e9cf35))
+
 # [1.16.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.15.0...v1.16.0) (2024-03-01)
 
 
