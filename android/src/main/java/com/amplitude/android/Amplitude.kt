@@ -15,6 +15,7 @@ import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
 import com.amplitude.core.utilities.FileStorage
 import com.amplitude.id.IdentityConfiguration
 import kotlinx.coroutines.launch
+import java.util.Date
 
 open class Amplitude(
     configuration: Configuration
@@ -95,10 +96,6 @@ open class Amplitude(
     fun onEnterForeground(timestamp: Long) {
         inForeground = true
 
-        if ((configuration as Configuration).optOut) {
-            return
-        }
-
         val dummyEnterForegroundEvent = BaseEvent()
         dummyEnterForegroundEvent.eventType = DUMMY_ENTER_FOREGROUND_EVENT
         dummyEnterForegroundEvent.timestamp = timestamp
@@ -119,6 +116,21 @@ open class Amplitude(
                 flush()
             }
         }
+    }
+
+    fun setSessionId(timestamp: Long): Amplitude {
+        val dummySetSessionEvent = BaseEvent()
+        dummySetSessionEvent.eventType = DUMMY_SET_SESSION_EVENT
+        dummySetSessionEvent.sessionId = timestamp
+        dummySetSessionEvent.timestamp = timestamp
+        timeline.process(dummySetSessionEvent)
+        return this
+    }
+
+    fun setSessionId(date: Date): Amplitude {
+        val timestamp = date.time
+        setSessionId(timestamp)
+        return this
     }
 
     private fun registerShutdownHook() {
@@ -147,6 +159,10 @@ open class Amplitude(
          * The event type for dummy exit foreground events.
          */
         internal const val DUMMY_EXIT_FOREGROUND_EVENT = "dummy_exit_foreground"
+        /**
+         * The event type for dummy "set session id" events.
+         */
+        internal const val DUMMY_SET_SESSION_EVENT = "dummy_set_session"
     }
 }
 /**
