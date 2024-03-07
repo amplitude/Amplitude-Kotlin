@@ -131,6 +131,39 @@ class HttpClientTest {
         )
     }
 
+    @Test
+    fun `test correct response when null or empty payload`() {
+        server.enqueue(MockResponse().setResponseCode(200))
+        server.enqueue(MockResponse().setResponseCode(200).setBody(""))
+
+        val config =
+            Configuration(
+                apiKey = apiKey,
+                serverUrl = server.url("/").toString(),
+            )
+        val event = BaseEvent()
+        event.eventType = "test"
+
+        val httpClient = spyk(HttpClient(config))
+        val diagnostics = Diagnostics()
+        diagnostics.addErrorLog("error")
+        diagnostics.addMalformedEvent("malformed-event")
+
+        val connection = httpClient.upload()
+        connection.outputStream?.let {
+            connection.setEvents(JSONUtil.eventsToString(listOf(event)))
+            connection.setDiagnostics(diagnostics)
+            // Upload the payloads.
+            connection.close()
+        }
+
+        runRequest()
+        assertEquals(200, connection.response.status.code)
+
+        runRequest()
+        assertEquals(200, connection.response.status.code)
+    }
+
     private fun runRequest(): RecordedRequest? {
         return try {
             server.takeRequest(5, TimeUnit.SECONDS)

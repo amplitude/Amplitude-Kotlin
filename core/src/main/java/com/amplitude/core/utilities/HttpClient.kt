@@ -38,7 +38,12 @@ internal class HttpClient(
                     try {
                         inputStream = getInputStream(this.connection)
                         responseBody = inputStream.bufferedReader().use(BufferedReader::readText)
-                        this.response = HttpResponse.createHttpResponse(responseCode, JSONObject(responseBody))
+                        val jsonResponse = if (responseBody.isNullOrEmpty()) {
+                            null
+                        } else {
+                            JSONObject(responseBody)
+                        }
+                        this.response = HttpResponse.createHttpResponse(responseCode, jsonResponse)
                     } catch (e: IOException) {
                         this.response = HttpResponse.createHttpResponse(408, null)
                     } finally {
