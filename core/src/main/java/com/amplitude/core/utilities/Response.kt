@@ -35,11 +35,10 @@ internal object HttpResponse {
         }
 
         return try {
-            val jsonObject = JSONObject(responseBody);
-            jsonObject;
+            JSONObject(responseBody)
         } catch (ignored: Exception) {
-            defaultObject.put("error", responseBody);
-            defaultObject;
+            defaultObject.put("error", responseBody)
+            defaultObject
         }
     }
 }

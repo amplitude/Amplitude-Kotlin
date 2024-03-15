@@ -188,7 +188,7 @@ class HttpClientTest {
         runRequest()
         // Error code 503 is converted to a 500 in the http client
         assertEquals(500, connection.response.status.code)
-        val responseBody = connection.response as FailedResponse;
+        val responseBody = connection.response as FailedResponse
         assertEquals("<html>Error occurred</html>", responseBody.error)
     }
 
