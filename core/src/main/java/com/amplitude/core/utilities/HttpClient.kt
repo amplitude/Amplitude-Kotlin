@@ -3,7 +3,6 @@ package com.amplitude.core.utilities
 import com.amplitude.core.Configuration
 import com.amplitude.core.Constants
 import com.amplitude.core.ServerZone
-import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.Closeable
 import java.io.IOException
