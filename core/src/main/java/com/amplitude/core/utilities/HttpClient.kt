@@ -38,7 +38,7 @@ internal class HttpClient(
                     try {
                         inputStream = getInputStream(this.connection)
                         responseBody = inputStream.bufferedReader().use(BufferedReader::readText)
-                        this.response = HttpResponse.createHttpResponse(responseCode, JSONObject(responseBody))
+                        this.response = HttpResponse.createHttpResponse(responseCode, responseBody)
                     } catch (e: IOException) {
                         this.response = HttpResponse.createHttpResponse(408, null)
                     } finally {
