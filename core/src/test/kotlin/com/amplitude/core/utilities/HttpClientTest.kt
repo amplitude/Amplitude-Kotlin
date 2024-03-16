@@ -131,6 +131,67 @@ class HttpClientTest {
         )
     }
 
+    @Test
+    fun `test correct response when null or empty payload`() {
+        server.enqueue(MockResponse().setResponseCode(200))
+        server.enqueue(MockResponse().setResponseCode(200).setBody(""))
+
+        val config =
+            Configuration(
+                apiKey = apiKey,
+                serverUrl = server.url("/").toString(),
+            )
+        val event = BaseEvent()
+        event.eventType = "test"
+
+        val httpClient = spyk(HttpClient(config))
+        val diagnostics = Diagnostics()
+        diagnostics.addErrorLog("error")
+        diagnostics.addMalformedEvent("malformed-event")
+
+        val connection = httpClient.upload()
+        connection.outputStream?.let {
+            connection.setEvents(JSONUtil.eventsToString(listOf(event)))
+            connection.setDiagnostics(diagnostics)
+            // Upload the payloads.
+            connection.close()
+        }
+
+        runRequest()
+        assertEquals(200, connection.response.status.code)
+
+        runRequest()
+        assertEquals(200, connection.response.status.code)
+    }
+
+    @Test
+    fun `test html error response is handled properly`() {
+        server.enqueue(MockResponse().setResponseCode(503).setBody("<html>Error occurred</html>"))
+
+        val config =
+            Configuration(
+                apiKey = apiKey,
+                serverUrl = server.url("/").toString(),
+            )
+        val event = BaseEvent()
+        event.eventType = "test"
+
+        val httpClient = spyk(HttpClient(config))
+
+        val connection = httpClient.upload()
+        connection.outputStream?.let {
+            connection.setEvents(JSONUtil.eventsToString(listOf(event)))
+            // Upload the payloads.
+            connection.close()
+        }
+
+        runRequest()
+        // Error code 503 is converted to a 500 in the http client
+        assertEquals(500, connection.response.status.code)
+        val responseBody = connection.response as FailedResponse
+        assertEquals("<html>Error occurred</html>", responseBody.error)
+    }
+
     private fun runRequest(): RecordedRequest? {
         return try {
             server.takeRequest(5, TimeUnit.SECONDS)

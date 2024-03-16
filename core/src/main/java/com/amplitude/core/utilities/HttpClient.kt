@@ -3,7 +3,6 @@ package com.amplitude.core.utilities
 import com.amplitude.core.Configuration
 import com.amplitude.core.Constants
 import com.amplitude.core.ServerZone
-import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.Closeable
 import java.io.IOException
@@ -38,7 +37,7 @@ internal class HttpClient(
                     try {
                         inputStream = getInputStream(this.connection)
                         responseBody = inputStream.bufferedReader().use(BufferedReader::readText)
-                        this.response = HttpResponse.createHttpResponse(responseCode, JSONObject(responseBody))
+                        this.response = HttpResponse.createHttpResponse(responseCode, responseBody)
                     } catch (e: IOException) {
                         this.response = HttpResponse.createHttpResponse(408, null)
                     } finally {

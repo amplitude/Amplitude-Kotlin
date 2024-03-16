@@ -2,28 +2,43 @@ package com.amplitude.core.utilities
 
 import com.amplitude.core.events.BaseEvent
 import org.json.JSONObject
+import java.lang.Exception
 
 internal object HttpResponse {
-    fun createHttpResponse(code: Int, responseBody: JSONObject?): Response {
+    fun createHttpResponse(code: Int, responseBody: String?): Response {
         when (code) {
             HttpStatus.SUCCESS.code -> {
                 return SuccessResponse()
             }
             HttpStatus.BAD_REQUEST.code -> {
-                return BadRequestResponse(responseBody!!)
+                return BadRequestResponse(JSONObject(responseBody))
             }
             HttpStatus.PAYLOAD_TOO_LARGE.code -> {
-                return PayloadTooLargeResponse(responseBody!!)
+                return PayloadTooLargeResponse(JSONObject(responseBody))
             }
             HttpStatus.TOO_MANY_REQUESTS.code -> {
-                return TooManyRequestsResponse(responseBody!!)
+                return TooManyRequestsResponse(JSONObject(responseBody))
             }
             HttpStatus.TIMEOUT.code -> {
                 return TimeoutResponse()
             }
             else -> {
-                return FailedResponse(responseBody!!)
+                return FailedResponse(parseResponseBodyOrGetDefault(responseBody))
             }
+        }
+    }
+
+    private fun parseResponseBodyOrGetDefault(responseBody: String?): JSONObject {
+        val defaultObject = JSONObject()
+        if (responseBody.isNullOrEmpty()) {
+            return defaultObject
+        }
+
+        return try {
+            JSONObject(responseBody)
+        } catch (ignored: Exception) {
+            defaultObject.put("error", responseBody)
+            defaultObject
         }
     }
 }
@@ -39,7 +54,6 @@ class SuccessResponse() : Response {
 class BadRequestResponse(response: JSONObject) : Response {
     override val status: HttpStatus = HttpStatus.BAD_REQUEST
     val error: String = response.getStringWithDefault("error", "")
-    val missingField: String = response.getStringWithDefault("missing_field", "")
     var eventsWithInvalidFields: Set<Int> = setOf()
     var eventsWithMissingFields: Set<Int> = setOf()
     var silencedEvents: Set<Int> = setOf()
@@ -87,7 +101,6 @@ class PayloadTooLargeResponse(response: JSONObject) : Response {
 class TooManyRequestsResponse(response: JSONObject) : Response {
     override val status: HttpStatus = HttpStatus.TOO_MANY_REQUESTS
     val error: String = response.getStringWithDefault("error", "")
-    val epsThreshold = response.getInt("eps_threshold")
     var exceededDailyQuotaUsers: Set<String> = setOf()
     var exceededDailyQuotaDevices: Set<String> = setOf()
     var throttledEvents: Set<Int> = setOf()
