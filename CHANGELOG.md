@@ -1,3 +1,10 @@
+## [1.16.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.16.1...v1.16.2) (2024-03-18)
+
+
+### Bug Fixes
+
+* Only parse response body when a body is expected ([#185](https://github.com/amplitude/Amplitude-Kotlin/issues/185)) ([cfd3bb8](https://github.com/amplitude/Amplitude-Kotlin/commit/cfd3bb8eeaa06aac3adf14570ad3ec322e63b18d))
+
 ## [1.16.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.16.0...v1.16.1) (2024-03-04)
 
 
