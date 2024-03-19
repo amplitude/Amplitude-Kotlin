@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.net.ConnectivityManager
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
+import com.amplitude.android.utilities.SystemTime
 import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.core.Storage
 import com.amplitude.core.StorageProvider
@@ -17,6 +18,7 @@ import com.amplitude.id.IdentityContainer
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkConstructor
+import io.mockk.mockkObject
 import io.mockk.mockkStatic
 import io.mockk.spyk
 import io.mockk.verify
@@ -33,6 +35,9 @@ import org.junit.jupiter.api.Test
 class AmplitudeSessionTest {
     @BeforeEach
     fun setUp() {
+        mockkObject(SystemTime)
+        every { SystemTime.getCurrentTimeMillis() } returns StartTime
+
         mockkStatic(AndroidLifecyclePlugin::class)
 
         mockkConstructor(AndroidContextProvider::class)
@@ -75,7 +80,7 @@ class AmplitudeSessionTest {
             instanceName = "testInstance",
             minTimeBetweenSessionsMillis = 100,
             storageProvider = storageProvider ?: InMemoryStorageProvider(),
-            trackingSessionEvents = true,
+            defaultTracking = DefaultTrackingOptions(sessions = true),
             loggerProvider = ConsoleLoggerProvider(),
             identifyInterceptStorageProvider = InMemoryStorageProvider(),
             identityStorageProvider = IMIdentityStorageProvider()
@@ -92,7 +97,7 @@ class AmplitudeSessionTest {
 
         amplitude.isBuilt.await()
 
-        amplitude.track(createEvent(1000, "test event 1"))
+        amplitude.track(createEvent(StartTime, "test event 1"))
         amplitude.track(createEvent(1050, "test event 2"))
 
         advanceUntilIdle()
@@ -110,17 +115,17 @@ class AmplitudeSessionTest {
 
         var event = tracks[0]
         Assertions.assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
-        Assertions.assertEquals(1000, event.timestamp)
+        Assertions.assertEquals(StartTime, event.sessionId)
+        Assertions.assertEquals(StartTime, event.timestamp)
 
         event = tracks[1]
         Assertions.assertEquals("test event 1", event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
-        Assertions.assertEquals(1000, event.timestamp)
+        Assertions.assertEquals(StartTime, event.sessionId)
+        Assertions.assertEquals(StartTime, event.timestamp)
 
         event = tracks[2]
         Assertions.assertEquals("test event 2", event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
+        Assertions.assertEquals(StartTime, event.sessionId)
         Assertions.assertEquals(1050, event.timestamp)
     }
 
@@ -134,7 +139,7 @@ class AmplitudeSessionTest {
 
         amplitude.isBuilt.await()
 
-        amplitude.track(createEvent(1000, "test event 1"))
+        amplitude.track(createEvent(StartTime, "test event 1"))
         amplitude.track(createEvent(2000, "test event 2"))
 
         advanceUntilIdle()
@@ -152,18 +157,18 @@ class AmplitudeSessionTest {
 
         var event = tracks[0]
         Assertions.assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
-        Assertions.assertEquals(1000, event.timestamp)
+        Assertions.assertEquals(StartTime, event.sessionId)
+        Assertions.assertEquals(StartTime, event.timestamp)
 
         event = tracks[1]
         Assertions.assertEquals("test event 1", event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
-        Assertions.assertEquals(1000, event.timestamp)
+        Assertions.assertEquals(StartTime, event.sessionId)
+        Assertions.assertEquals(StartTime, event.timestamp)
 
         event = tracks[2]
         Assertions.assertEquals(Amplitude.END_SESSION_EVENT, event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
-        Assertions.assertEquals(1000, event.timestamp)
+        Assertions.assertEquals(StartTime, event.sessionId)
+        Assertions.assertEquals(StartTime, event.timestamp)
 
         event = tracks[3]
         Assertions.assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
@@ -229,7 +234,7 @@ class AmplitudeSessionTest {
 
         amplitude.isBuilt.await()
 
-        amplitude.track(createEvent(1000, "test event 1"))
+        amplitude.track(createEvent(StartTime, "test event 1"))
         amplitude.onEnterForeground(1050)
         amplitude.track(createEvent(2000, "test event 2"))
 
@@ -248,17 +253,17 @@ class AmplitudeSessionTest {
 
         var event = tracks[0]
         Assertions.assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
-        Assertions.assertEquals(1000, event.timestamp)
+        Assertions.assertEquals(StartTime, event.sessionId)
+        Assertions.assertEquals(StartTime, event.timestamp)
 
         event = tracks[1]
         Assertions.assertEquals("test event 1", event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
-        Assertions.assertEquals(1000, event.timestamp)
+        Assertions.assertEquals(StartTime, event.sessionId)
+        Assertions.assertEquals(StartTime, event.timestamp)
 
         event = tracks[2]
         Assertions.assertEquals("test event 2", event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
+        Assertions.assertEquals(StartTime, event.sessionId)
         Assertions.assertEquals(2000, event.timestamp)
     }
 
@@ -272,7 +277,7 @@ class AmplitudeSessionTest {
 
         amplitude.isBuilt.await()
 
-        amplitude.track(createEvent(1000, "test event 1"))
+        amplitude.track(createEvent(StartTime, "test event 1"))
         amplitude.onEnterForeground(2000)
         amplitude.track(createEvent(3000, "test event 2"))
 
@@ -317,15 +322,17 @@ class AmplitudeSessionTest {
 
     @Test
     fun amplitude_closeForegroundBackgroundEventsShouldNotStartNewSession() = runTest {
-        val amplitude = Amplitude(createConfiguration())
-        setDispatcher(amplitude, testScheduler)
-
         val mockedPlugin = spyk(StubPlugin())
-        amplitude.add(mockedPlugin)
 
+        val config = createConfiguration()
+        config.plugins = listOf(mockedPlugin)
+
+        val amplitude = Amplitude(config)
+
+        setDispatcher(amplitude, testScheduler)
         amplitude.isBuilt.await()
 
-        amplitude.onEnterForeground(1000)
+        amplitude.onEnterForeground(StartTime)
         amplitude.track(createEvent(1500, "test event 1"))
         amplitude.onExitForeground(2000)
         amplitude.track(createEvent(2050, "test event 2"))
@@ -418,6 +425,7 @@ class AmplitudeSessionTest {
         val storageProvider = InstanceStorageProvider(InMemoryStorage())
 
         val amplitude1 = Amplitude(createConfiguration(storageProvider))
+        // amplitude1.logger.logMode = Logger.LogMode.DEBUG
         setDispatcher(amplitude1, testScheduler)
         amplitude1.isBuilt.await()
 
@@ -426,35 +434,35 @@ class AmplitudeSessionTest {
         advanceUntilIdle()
         Thread.sleep(100)
 
-        val timeline1 = amplitude1.timeline as Timeline
+        val session1 = amplitude1.session
 
-        Assertions.assertEquals(1000, amplitude1.sessionId)
-        Assertions.assertEquals(1000, timeline1.sessionId)
-        Assertions.assertEquals(1000, timeline1.lastEventTime)
-        Assertions.assertEquals(1, timeline1.lastEventId)
+        Assertions.assertEquals(1000, session1.sessionId)
+        Assertions.assertEquals(1000, session1.lastEventTime)
+        Assertions.assertEquals(1, session1.lastEventId)
 
+        every { SystemTime.getCurrentTimeMillis() } returns 1200
         amplitude1.track(createEvent(1200, "test event 1"))
 
         advanceUntilIdle()
         Thread.sleep(100)
 
-        Assertions.assertEquals(1000, amplitude1.sessionId)
-        Assertions.assertEquals(1000, timeline1.sessionId)
-        Assertions.assertEquals(1200, timeline1.lastEventTime)
-        Assertions.assertEquals(2, timeline1.lastEventId)
+        Assertions.assertEquals(1000, session1.sessionId)
+        Assertions.assertEquals(1200, session1.lastEventTime)
+        Assertions.assertEquals(2, session1.lastEventId)
 
+        // Inc time by 50ms
+        every { SystemTime.getCurrentTimeMillis() } returns 1250
+
+        // Create another instance (with same instance name, ie.e shared storage
         val amplitude2 = Amplitude(createConfiguration(storageProvider))
         setDispatcher(amplitude2, testScheduler)
         amplitude2.isBuilt.await()
 
-        advanceUntilIdle()
-        Thread.sleep(100)
-
-        val timeline2 = amplitude2.timeline as Timeline
-        Assertions.assertEquals(1000, amplitude2.sessionId)
-        Assertions.assertEquals(1000, timeline2.sessionId)
-        Assertions.assertEquals(1200, timeline2.lastEventTime)
-        Assertions.assertEquals(2, timeline2.lastEventId)
+        val session2 = amplitude2.session
+        Assertions.assertEquals(1000, session2.sessionId)
+        // Last event time is the SDK creation time (1250)
+        Assertions.assertEquals(1250, session2.lastEventTime)
+        Assertions.assertEquals(2, session2.lastEventId)
     }
 
     @Test
@@ -604,6 +612,74 @@ class AmplitudeSessionTest {
         Assertions.assertEquals(1, tracks.count())
     }
 
+    @Test
+    fun amplitude_shouldStartNewSessionOnInitializationInForegroundBasedOnSessionTimeout() = runTest {
+        val startTime: Long = 1000
+        var time: Long = startTime
+
+        every { SystemTime.getCurrentTimeMillis() } returns time
+
+        val storageProvider = InstanceStorageProvider(InMemoryStorage())
+        val config = createConfiguration(storageProvider)
+//        config.defaultTracking.sessions = false
+
+        // Create an instance in the background
+        val amplitude1 = Amplitude(config)
+        // amplitude1.logger.logMode = Logger.LogMode.DEBUG
+        setDispatcher(amplitude1, testScheduler)
+        amplitude1.isBuilt.await()
+
+        // enter foreground (will start a session)
+        amplitude1.onEnterForeground(time)
+
+        advanceUntilIdle()
+        Thread.sleep(100)
+
+        val session1 = amplitude1.session
+        Assertions.assertEquals(time, session1.sessionId)
+        Assertions.assertEquals(time, session1.lastEventTime)
+        Assertions.assertEquals(1, session1.lastEventId)
+
+        // track event (set last event time)
+        time = 1200
+        amplitude1.track(createEvent(time, "test event 1"))
+
+        advanceUntilIdle()
+        Thread.sleep(100)
+
+        // valid session and last event time
+        Assertions.assertEquals(startTime, session1.sessionId)
+        Assertions.assertEquals(time, session1.lastEventTime)
+        Assertions.assertEquals(2, session1.lastEventId)
+
+        // exit foreground
+        time = 1300
+        amplitude1.onExitForeground(time)
+
+        advanceUntilIdle()
+        Thread.sleep(100)
+
+        // advance to new session
+        time += config.minTimeBetweenSessionsMillis + 100
+
+        // Mock starting in foreground
+        every { SystemTime.getCurrentTimeMillis() } returns time
+
+        // Create a new instance to simulate recreation at startup in foreground
+        val amplitude2 = Amplitude(createConfiguration(storageProvider))
+        setDispatcher(amplitude2, testScheduler)
+        amplitude2.isBuilt.await()
+
+        advanceUntilIdle()
+        Thread.sleep(100)
+
+        val session2 = amplitude2.session
+        Assertions.assertEquals(time, session2.sessionId)
+        Assertions.assertEquals(time, session2.lastEventTime)
+        // 4 events = enter foreground, track, exit foreground,
+        Assertions.assertEquals(4, session2.lastEventId)
+    }
+
     private fun createEvent(timestamp: Long, eventType: String, sessionId: Long? = null): BaseEvent {
         val event = BaseEvent()
         event.userId = "user"
@@ -615,6 +691,7 @@ class AmplitudeSessionTest {
 
     companion object {
         const val instanceName = "testInstance"
+        private const val StartTime: Long = 1000
     }
 }
 

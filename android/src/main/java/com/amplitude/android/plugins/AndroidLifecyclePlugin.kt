@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import com.amplitude.android.Configuration
 import com.amplitude.android.utilities.DefaultEventUtils
+import com.amplitude.android.utilities.SystemTime
 import com.amplitude.core.Amplitude
 import com.amplitude.core.platform.Plugin
 import java.util.concurrent.atomic.AtomicBoolean
@@ -58,7 +59,7 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     }
 
     override fun onActivityResumed(activity: Activity) {
-        androidAmplitude.onEnterForeground(getCurrentTimeMillis())
+        androidAmplitude.onEnterForeground(SystemTime.getCurrentTimeMillis())
 
         // numberOfActivities makes sure it only fires after activity creation or activity stopped
         if (androidConfiguration.defaultTracking.appLifecycles && numberOfActivities.incrementAndGet() == 1) {
@@ -68,7 +69,7 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     }
 
     override fun onActivityPaused(activity: Activity) {
-        androidAmplitude.onExitForeground(getCurrentTimeMillis())
+        androidAmplitude.onExitForeground(SystemTime.getCurrentTimeMillis())
     }
 
     override fun onActivityStopped(activity: Activity) {
@@ -82,11 +83,5 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     }
 
     override fun onActivityDestroyed(activity: Activity) {
-    }
-
-    companion object {
-        fun getCurrentTimeMillis(): Long {
-            return System.currentTimeMillis()
-        }
     }
 }

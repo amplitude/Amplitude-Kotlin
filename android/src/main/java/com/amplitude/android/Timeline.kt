@@ -1,39 +1,25 @@
 package com.amplitude.android
 
+import com.amplitude.android.utilities.Session
+import com.amplitude.android.utilities.SystemTime
+import com.amplitude.common.Logger
 import com.amplitude.core.Storage
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Timeline
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
-import java.util.concurrent.atomic.AtomicLong
 
 class Timeline(
-    private val initialSessionId: Long? = null,
+    private val logger: Logger? = null,
 ) : Timeline() {
     private val eventMessageChannel: Channel<EventQueueMessage> = Channel(Channel.UNLIMITED)
+    private lateinit var session: Session
 
-    private val _sessionId = AtomicLong(initialSessionId ?: -1L)
-    val sessionId: Long
-        get() {
-            return _sessionId.get()
-        }
-
-    internal var lastEventId: Long = 0
-    var lastEventTime: Long = -1L
-
-    internal fun start() {
+    internal fun start(session: Session) {
+        this.session = session
         amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
             // Wait until build (including possible legacy data migration) is finished.
             amplitude.isBuilt.await()
-
-            if (initialSessionId == null) {
-                _sessionId.set(
-                    amplitude.storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLongOrNull()
-                        ?: -1
-                )
-            }
-            lastEventId = amplitude.storage.read(Storage.Constants.LAST_EVENT_ID)?.toLongOrNull() ?: 0
-            lastEventTime = amplitude.storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLongOrNull() ?: -1
 
             for (message in eventMessageChannel) {
                 processEventMessage(message)
@@ -47,10 +33,18 @@ class Timeline(
 
     override fun process(incomingEvent: BaseEvent) {
         if (incomingEvent.timestamp == null) {
-            incomingEvent.timestamp = System.currentTimeMillis()
+            incomingEvent.timestamp = SystemTime.getCurrentTimeMillis()
         }
 
         eventMessageChannel.trySend(EventQueueMessage(incomingEvent, (amplitude as Amplitude).inForeground))
+    }
+
+    internal suspend fun processImmediately(incomingEvent: BaseEvent) {
+        if (incomingEvent.timestamp == null) {
+            incomingEvent.timestamp = SystemTime.getCurrentTimeMillis()
+        }
+
+        processEventMessage(EventQueueMessage(incomingEvent, (amplitude as Amplitude).inForeground))
     }
 
     private suspend fun processEventMessage(message: EventQueueMessage) {
@@ -61,50 +55,50 @@ class Timeline(
         var skipEvent = false
 
         if (event.eventType == Amplitude.START_SESSION_EVENT) {
-            setSessionId(eventSessionId ?: eventTimestamp)
-            refreshSessionTime(eventTimestamp)
+            session.setSessionId(eventSessionId ?: eventTimestamp)
+            session.refreshSessionTime(eventTimestamp)
         } else if (event.eventType == Amplitude.END_SESSION_EVENT) {
             // do nothing
         } else if (event.eventType == Amplitude.DUMMY_ENTER_FOREGROUND_EVENT) {
             skipEvent = true
-            sessionEvents = startNewSessionIfNeeded(eventTimestamp)
+            sessionEvents = session.startNewSessionIfNeeded(eventTimestamp)
         } else if (event.eventType == Amplitude.DUMMY_EXIT_FOREGROUND_EVENT) {
             skipEvent = true
-            refreshSessionTime(eventTimestamp)
+            session.refreshSessionTime(eventTimestamp)
         } else {
             if (!message.inForeground) {
-                sessionEvents = startNewSessionIfNeeded(eventTimestamp)
+                sessionEvents = session.startNewSessionIfNeeded(eventTimestamp)
             } else {
-                refreshSessionTime(eventTimestamp)
+                session.refreshSessionTime(eventTimestamp)
             }
         }
 
         if (!skipEvent && event.sessionId == null) {
-            event.sessionId = sessionId
+            event.sessionId = session.sessionId
         }
 
-        val savedLastEventId = lastEventId
+        val savedLastEventId = session.lastEventId
 
         sessionEvents?.let {
             it.forEach { e ->
                 e.eventId ?: let {
-                    val newEventId = lastEventId + 1
+                    val newEventId = session.lastEventId + 1
                     e.eventId = newEventId
-                    lastEventId = newEventId
+                    session.lastEventId = newEventId
                 }
             }
         }
 
         if (!skipEvent) {
             event.eventId ?: let {
-                val newEventId = lastEventId + 1
+                val newEventId = session.lastEventId + 1
                 event.eventId = newEventId
-                lastEventId = newEventId
+                session?.lastEventId = newEventId
             }
         }
 
-        if (lastEventId > savedLastEventId) {
-            amplitude.storage.write(Storage.Constants.LAST_EVENT_ID, lastEventId.toString())
+        if (session.lastEventId > savedLastEventId) {
+            amplitude.storage.write(Storage.Constants.LAST_EVENT_ID, session.lastEventId.toString())
         }
 
         sessionEvents?.let {
@@ -116,66 +110,6 @@ class Timeline(
         if (!skipEvent) {
             super.process(event)
         }
-    }
-
-    private suspend fun startNewSessionIfNeeded(timestamp: Long): Iterable<BaseEvent>? {
-        if (inSession() && isWithinMinTimeBetweenSessions(timestamp)) {
-            refreshSessionTime(timestamp)
-            return null
-        }
-        return startNewSession(timestamp)
-    }
-
-    private suspend fun setSessionId(timestamp: Long) {
-        _sessionId.set(timestamp)
-        amplitude.storage.write(Storage.Constants.PREVIOUS_SESSION_ID, sessionId.toString())
-    }
-
-    private suspend fun startNewSession(timestamp: Long): Iterable<BaseEvent> {
-        val sessionEvents = mutableListOf<BaseEvent>()
-        val configuration = amplitude.configuration as Configuration
-        // If any trackingSessionEvents is false (default value is true), means it is manually set
-        @Suppress("DEPRECATION")
-        val trackingSessionEvents = configuration.trackingSessionEvents && configuration.defaultTracking.sessions
-
-        // end previous session
-        if (trackingSessionEvents && inSession()) {
-            val sessionEndEvent = BaseEvent()
-            sessionEndEvent.eventType = Amplitude.END_SESSION_EVENT
-            sessionEndEvent.timestamp = if (lastEventTime > 0) lastEventTime else null
-            sessionEndEvent.sessionId = sessionId
-            sessionEvents.add(sessionEndEvent)
-        }
-
-        // start new session
-        setSessionId(timestamp)
-        refreshSessionTime(timestamp)
-        if (trackingSessionEvents) {
-            val sessionStartEvent = BaseEvent()
-            sessionStartEvent.eventType = Amplitude.START_SESSION_EVENT
-            sessionStartEvent.timestamp = timestamp
-            sessionStartEvent.sessionId = sessionId
-            sessionEvents.add(sessionStartEvent)
-        }
-
-        return sessionEvents
-    }
-
-    private suspend fun refreshSessionTime(timestamp: Long) {
-        if (!inSession()) {
-            return
-        }
-        lastEventTime = timestamp
-        amplitude.storage.write(Storage.Constants.LAST_EVENT_TIME, lastEventTime.toString())
-    }
-
-    private fun isWithinMinTimeBetweenSessions(timestamp: Long): Boolean {
-        val sessionLimit: Long = (amplitude.configuration as Configuration).minTimeBetweenSessionsMillis
-        return timestamp - lastEventTime < sessionLimit
-    }
-
-    private fun inSession(): Boolean {
-        return sessionId >= 0
     }
 }
 

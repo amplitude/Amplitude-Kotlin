@@ -207,6 +207,16 @@ class AmplitudeTest {
     }
 
     @Test
+    fun amplitude_getSessionId_should_return_not_null_after_isBuilt() = runTest {
+        setDispatcher(testScheduler)
+        if (amplitude?.isBuilt!!.await()) {
+            Assertions.assertNotNull(amplitude?.store?.sessionId)
+            Assertions.assertNotNull(amplitude?.sessionId)
+            Assertions.assertNotNull(amplitude?.sessionId!! > 0L)
+        }
+    }
+
+    @Test
     fun amplitude_should_set_deviceId_from_configuration() = runTest {
         val testDeviceId = "test device id"
         // set device Id in the config

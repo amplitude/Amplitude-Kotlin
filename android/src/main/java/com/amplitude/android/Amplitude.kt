@@ -8,6 +8,8 @@ import com.amplitude.android.plugins.AnalyticsConnectorPlugin
 import com.amplitude.android.plugins.AndroidContextPlugin
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.android.plugins.AndroidNetworkConnectivityCheckerPlugin
+import com.amplitude.android.utilities.Session
+import com.amplitude.android.utilities.SystemTime
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.plugins.AmplitudeDestination
@@ -15,6 +17,7 @@ import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
 import com.amplitude.core.utilities.FileStorage
 import com.amplitude.id.IdentityConfiguration
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 open class Amplitude(
     configuration: Configuration
@@ -22,10 +25,11 @@ open class Amplitude(
 
     internal var inForeground = false
     private lateinit var androidContextPlugin: AndroidContextPlugin
+    internal val session: Session = Session(configuration)
 
     val sessionId: Long
         get() {
-            return (timeline as Timeline).sessionId
+            return session.sessionId
         }
 
     init {
@@ -33,7 +37,7 @@ open class Amplitude(
     }
 
     override fun createTimeline(): Timeline {
-        return Timeline(configuration.sessionId).also { it.amplitude = this }
+        return Timeline(logger = logger).also { it.amplitude = this }
     }
 
     override fun createIdentityConfiguration(): IdentityConfiguration {
@@ -50,11 +54,19 @@ open class Amplitude(
     }
 
     override suspend fun buildInternal(identityConfiguration: IdentityConfiguration) {
+        session.configure(configuration as Configuration, storage, store, logger)
+        logger.debug("Configured session. Session=$session")
+
         ApiKeyStorageMigration(this).execute()
 
         if ((this.configuration as Configuration).migrateLegacyData) {
             RemnantDataMigration(this).execute()
         }
+
+        // WARNING: Session events need to run after migrations as not to modify `lastEventTime`
+        // Check if we need to start a new session
+        val sessionEvents = session.startNewSessionIfNeeded(SystemTime.getCurrentTimeMillis())
+
         this.createIdentityContainer(identityConfiguration)
 
         if (this.configuration.offline != AndroidNetworkConnectivityCheckerPlugin.Disabled) {
@@ -72,8 +84,21 @@ open class Amplitude(
         add(AnalyticsConnectorIdentityPlugin())
         add(AnalyticsConnectorPlugin())
         add(AmplitudeDestination())
+        val plugins = configuration.plugins
+        if (plugins != null) {
+            for (plugin in plugins) {
+                add(plugin)
+            }
+        }
 
-        (timeline as Timeline).start()
+        val androidTimeline = timeline as Timeline
+        androidTimeline.start(session)
+
+        runBlocking {
+            sessionEvents?.forEach {
+                androidTimeline.processImmediately(it)
+            }
+        }
     }
 
     /**
