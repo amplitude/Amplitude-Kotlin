@@ -6,6 +6,7 @@ import android.net.ConnectivityManager
 import com.amplitude.analytics.connector.AnalyticsConnector
 import com.amplitude.analytics.connector.Identity
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
+import com.amplitude.android.utilities.SystemTime
 import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.core.StorageProvider
 import com.amplitude.core.events.BaseEvent
@@ -17,6 +18,7 @@ import com.amplitude.id.IMIdentityStorageProvider
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkConstructor
+import io.mockk.mockkObject
 import io.mockk.mockkStatic
 import io.mockk.slot
 import io.mockk.spyk
@@ -213,6 +215,19 @@ class AmplitudeTest {
             Assertions.assertNotNull(amplitude?.store?.sessionId)
             Assertions.assertNotNull(amplitude?.sessionId)
             Assertions.assertNotNull(amplitude?.sessionId!! > 0L)
+        }
+    }
+
+    @Test
+    fun amplitude_getSessionId_should_be_the_current_time_after_isBuilt() = runTest {
+        val time = 1000L
+        mockkObject(SystemTime)
+        every { SystemTime.getCurrentTimeMillis() } returns time
+
+        setDispatcher(testScheduler)
+        if (amplitude?.isBuilt!!.await()) {
+            Assertions.assertEquals(time, amplitude?.store?.sessionId)
+            Assertions.assertEquals(time, amplitude?.sessionId)
         }
     }
 
