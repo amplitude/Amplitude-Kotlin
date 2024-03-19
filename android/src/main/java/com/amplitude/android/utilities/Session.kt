@@ -12,7 +12,6 @@ class Session(
     private var configuration: Configuration,
     private var storage: Storage? = null,
     private var state: State? = null,
-    private var logger: Logger? = null,
 ) {
     private val _sessionId = AtomicLong(configuration.sessionId ?: -1L)
 

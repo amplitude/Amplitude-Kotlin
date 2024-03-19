@@ -54,7 +54,7 @@ open class Amplitude(
     }
 
     override suspend fun buildInternal(identityConfiguration: IdentityConfiguration) {
-        session = Session(configuration as Configuration, storage, store, logger)
+        session = Session(configuration as Configuration, storage, store)
         logger.debug("Configured session. Session=$session")
 
         ApiKeyStorageMigration(this).execute()
