@@ -25,29 +25,11 @@ class Session(
     var lastEventTime: Long = -1L
 
     init {
-        readAndSetInitialSessionInfo()
-    }
+        val currentSessionId = configuration.sessionId
+            ?: (storage?.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLongOrNull() ?: -1)
 
-    fun configure(
-        configuration: Configuration,
-        storage: Storage,
-        state: State? = null,
-        logger: Logger? = null,
-    ) {
-        this.configuration = configuration
-        this.storage = storage
-        this.state = state
-        this.logger = logger
-        readAndSetInitialSessionInfo()
-    }
-
-    fun readAndSetInitialSessionInfo() {
-        if (configuration.sessionId == null) {
-            _sessionId.set(
-                storage?.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLongOrNull() ?: -1
-            )
-            state?.sessionId = _sessionId.get()
-        }
+        _sessionId.set(currentSessionId)
+        state?.sessionId = currentSessionId
         lastEventId = storage?.read(Storage.Constants.LAST_EVENT_ID)?.toLongOrNull() ?: 0
         lastEventTime = storage?.read(Storage.Constants.LAST_EVENT_TIME)?.toLongOrNull() ?: -1
     }

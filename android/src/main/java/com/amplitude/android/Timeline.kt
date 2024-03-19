@@ -9,9 +9,7 @@ import com.amplitude.core.platform.Timeline
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 
-class Timeline(
-    private val logger: Logger? = null,
-) : Timeline() {
+class Timeline : Timeline() {
     private val eventMessageChannel: Channel<EventQueueMessage> = Channel(Channel.UNLIMITED)
     private lateinit var session: Session
 

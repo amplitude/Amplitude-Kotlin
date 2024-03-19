@@ -25,11 +25,11 @@ open class Amplitude(
 
     internal var inForeground = false
     private lateinit var androidContextPlugin: AndroidContextPlugin
-    internal val session: Session = Session(configuration)
+    internal lateinit var session: Session
 
     val sessionId: Long
         get() {
-            return session.sessionId
+            return if (session == null) -1 else session.sessionId
         }
 
     init {
@@ -37,7 +37,7 @@ open class Amplitude(
     }
 
     override fun createTimeline(): Timeline {
-        return Timeline(logger = logger).also { it.amplitude = this }
+        return Timeline().also { it.amplitude = this }
     }
 
     override fun createIdentityConfiguration(): IdentityConfiguration {
@@ -54,7 +54,7 @@ open class Amplitude(
     }
 
     override suspend fun buildInternal(identityConfiguration: IdentityConfiguration) {
-        session.configure(configuration as Configuration, storage, store, logger)
+        session = Session(configuration as Configuration, storage, store, logger)
         logger.debug("Configured session. Session=$session")
 
         ApiKeyStorageMigration(this).execute()

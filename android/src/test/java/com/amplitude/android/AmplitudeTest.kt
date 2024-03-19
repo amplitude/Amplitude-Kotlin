@@ -224,6 +224,8 @@ class AmplitudeTest {
         mockkObject(SystemTime)
         every { SystemTime.getCurrentTimeMillis() } returns time
 
+        amplitude = Amplitude(createConfiguration())
+
         setDispatcher(testScheduler)
         if (amplitude?.isBuilt!!.await()) {
             Assertions.assertEquals(time, amplitude?.store?.sessionId)

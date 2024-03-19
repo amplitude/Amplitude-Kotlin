@@ -98,7 +98,8 @@ class AmplitudeSessionTest {
         amplitude.isBuilt.await()
 
         amplitude.track(createEvent(StartTime, "test event 1"))
-        amplitude.track(createEvent(1050, "test event 2"))
+        val event2Time = StartTime + 50
+        amplitude.track(createEvent(event2Time, "test event 2"))
 
         advanceUntilIdle()
         Thread.sleep(100)
@@ -126,7 +127,7 @@ class AmplitudeSessionTest {
         event = tracks[2]
         Assertions.assertEquals("test event 2", event.eventType)
         Assertions.assertEquals(StartTime, event.sessionId)
-        Assertions.assertEquals(1050, event.timestamp)
+        Assertions.assertEquals(event2Time, event.timestamp)
     }
 
     @Test
@@ -140,7 +141,8 @@ class AmplitudeSessionTest {
         amplitude.isBuilt.await()
 
         amplitude.track(createEvent(StartTime, "test event 1"))
-        amplitude.track(createEvent(2000, "test event 2"))
+        val event2Time = StartTime + 1000
+        amplitude.track(createEvent(event2Time, "test event 2"))
 
         advanceUntilIdle()
         Thread.sleep(100)
@@ -172,13 +174,13 @@ class AmplitudeSessionTest {
 
         event = tracks[3]
         Assertions.assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
-        Assertions.assertEquals(2000, event.sessionId)
-        Assertions.assertEquals(2000, event.timestamp)
+        Assertions.assertEquals(event2Time, event.sessionId)
+        Assertions.assertEquals(event2Time, event.timestamp)
 
         event = tracks[4]
         Assertions.assertEquals("test event 2", event.eventType)
-        Assertions.assertEquals(2000, event.sessionId)
-        Assertions.assertEquals(2000, event.timestamp)
+        Assertions.assertEquals(event2Time, event.sessionId)
+        Assertions.assertEquals(event2Time, event.timestamp)
     }
 
     @Test
@@ -191,9 +193,11 @@ class AmplitudeSessionTest {
 
         amplitude.isBuilt.await()
 
-        amplitude.onEnterForeground(1000)
-        amplitude.track(createEvent(1050, "test event 1"))
-        amplitude.track(createEvent(2000, "test event 2"))
+        amplitude.onEnterForeground(StartTime)
+        val event1Time = StartTime + 50
+        amplitude.track(createEvent(event1Time, "test event 1"))
+        val event2Time = event1Time + 50
+        amplitude.track(createEvent(event2Time, "test event 2"))
 
         advanceUntilIdle()
         Thread.sleep(100)
@@ -210,18 +214,18 @@ class AmplitudeSessionTest {
 
         var event = tracks[0]
         Assertions.assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
-        Assertions.assertEquals(1000, event.timestamp)
+        Assertions.assertEquals(StartTime, event.sessionId)
+        Assertions.assertEquals(StartTime, event.timestamp)
 
         event = tracks[1]
         Assertions.assertEquals("test event 1", event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
-        Assertions.assertEquals(1050, event.timestamp)
+        Assertions.assertEquals(StartTime, event.sessionId)
+        Assertions.assertEquals(event1Time, event.timestamp)
 
         event = tracks[2]
         Assertions.assertEquals("test event 2", event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
-        Assertions.assertEquals(2000, event.timestamp)
+        Assertions.assertEquals(StartTime, event.sessionId)
+        Assertions.assertEquals(event2Time, event.timestamp)
     }
 
     @Test
@@ -236,7 +240,8 @@ class AmplitudeSessionTest {
 
         amplitude.track(createEvent(StartTime, "test event 1"))
         amplitude.onEnterForeground(1050)
-        amplitude.track(createEvent(2000, "test event 2"))
+        val event2Time = StartTime + 1000
+        amplitude.track(createEvent(event2Time, "test event 2"))
 
         advanceUntilIdle()
         Thread.sleep(100)
@@ -264,7 +269,7 @@ class AmplitudeSessionTest {
         event = tracks[2]
         Assertions.assertEquals("test event 2", event.eventType)
         Assertions.assertEquals(StartTime, event.sessionId)
-        Assertions.assertEquals(2000, event.timestamp)
+        Assertions.assertEquals(event2Time, event.timestamp)
     }
 
     @Test
@@ -277,9 +282,12 @@ class AmplitudeSessionTest {
 
         amplitude.isBuilt.await()
 
+        val enterForegroundTime = StartTime + 1000
+        val event2Time = StartTime + 2000
+
         amplitude.track(createEvent(StartTime, "test event 1"))
-        amplitude.onEnterForeground(2000)
-        amplitude.track(createEvent(3000, "test event 2"))
+        amplitude.onEnterForeground(enterForegroundTime)
+        amplitude.track(createEvent(event2Time, "test event 2"))
 
         advanceUntilIdle()
         Thread.sleep(100)
@@ -296,28 +304,28 @@ class AmplitudeSessionTest {
 
         var event = tracks[0]
         Assertions.assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
-        Assertions.assertEquals(1000, event.timestamp)
+        Assertions.assertEquals(StartTime, event.sessionId)
+        Assertions.assertEquals(StartTime, event.timestamp)
 
         event = tracks[1]
         Assertions.assertEquals("test event 1", event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
-        Assertions.assertEquals(1000, event.timestamp)
+        Assertions.assertEquals(StartTime, event.sessionId)
+        Assertions.assertEquals(StartTime, event.timestamp)
 
         event = tracks[2]
         Assertions.assertEquals(Amplitude.END_SESSION_EVENT, event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
-        Assertions.assertEquals(1000, event.timestamp)
+        Assertions.assertEquals(StartTime, event.sessionId)
+        Assertions.assertEquals(StartTime, event.timestamp)
 
         event = tracks[3]
         Assertions.assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
-        Assertions.assertEquals(2000, event.sessionId)
-        Assertions.assertEquals(2000, event.timestamp)
+        Assertions.assertEquals(enterForegroundTime, event.sessionId)
+        Assertions.assertEquals(enterForegroundTime, event.timestamp)
 
         event = tracks[4]
         Assertions.assertEquals("test event 2", event.eventType)
-        Assertions.assertEquals(2000, event.sessionId)
-        Assertions.assertEquals(3000, event.timestamp)
+        Assertions.assertEquals(enterForegroundTime, event.sessionId)
+        Assertions.assertEquals(event2Time, event.timestamp)
     }
 
     @Test
@@ -331,6 +339,10 @@ class AmplitudeSessionTest {
 
         setDispatcher(amplitude, testScheduler)
         amplitude.isBuilt.await()
+
+        val event1Time = StartTime + 500
+        val exitForegroundTime = StartTime + 1000
+        val event2Time = exitForegroundTime + 50
 
         amplitude.onEnterForeground(StartTime)
         amplitude.track(createEvent(1500, "test event 1"))
@@ -352,18 +364,18 @@ class AmplitudeSessionTest {
 
         var event = tracks[0]
         Assertions.assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
-        Assertions.assertEquals(1000, event.timestamp)
+        Assertions.assertEquals(StartTime, event.sessionId)
+        Assertions.assertEquals(StartTime, event.timestamp)
 
         event = tracks[1]
         Assertions.assertEquals("test event 1", event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
-        Assertions.assertEquals(1500, event.timestamp)
+        Assertions.assertEquals(StartTime, event.sessionId)
+        Assertions.assertEquals(event1Time, event.timestamp)
 
         event = tracks[2]
         Assertions.assertEquals("test event 2", event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
-        Assertions.assertEquals(2050, event.timestamp)
+        Assertions.assertEquals(StartTime, event.sessionId)
+        Assertions.assertEquals(event2Time, event.timestamp)
     }
 
     @Test
@@ -376,10 +388,14 @@ class AmplitudeSessionTest {
 
         amplitude.isBuilt.await()
 
-        amplitude.onEnterForeground(1000)
-        amplitude.track(createEvent(1500, "test event 1"))
-        amplitude.onExitForeground(2000)
-        amplitude.track(createEvent(3000, "test event 2"))
+        val event1Time = StartTime + 500
+        val exitForegroundTime = StartTime + 1000
+        val event2Time = exitForegroundTime + 1000
+
+        amplitude.onEnterForeground(StartTime)
+        amplitude.track(createEvent(event1Time, "test event 1"))
+        amplitude.onExitForeground(exitForegroundTime)
+        amplitude.track(createEvent(event2Time, "test event 2"))
 
         advanceUntilIdle()
         Thread.sleep(100)
@@ -396,28 +412,28 @@ class AmplitudeSessionTest {
 
         var event = tracks[0]
         Assertions.assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
-        Assertions.assertEquals(1000, event.timestamp)
+        Assertions.assertEquals(StartTime, event.sessionId)
+        Assertions.assertEquals(StartTime, event.timestamp)
 
         event = tracks[1]
         Assertions.assertEquals("test event 1", event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
-        Assertions.assertEquals(1500, event.timestamp)
+        Assertions.assertEquals(StartTime, event.sessionId)
+        Assertions.assertEquals(event1Time, event.timestamp)
 
         event = tracks[2]
         Assertions.assertEquals(Amplitude.END_SESSION_EVENT, event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
-        Assertions.assertEquals(2000, event.timestamp)
+        Assertions.assertEquals(StartTime, event.sessionId)
+        Assertions.assertEquals(exitForegroundTime, event.timestamp)
 
         event = tracks[3]
         Assertions.assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
-        Assertions.assertEquals(3000, event.sessionId)
-        Assertions.assertEquals(3000, event.timestamp)
+        Assertions.assertEquals(event2Time, event.sessionId)
+        Assertions.assertEquals(event2Time, event.timestamp)
 
         event = tracks[4]
         Assertions.assertEquals("test event 2", event.eventType)
-        Assertions.assertEquals(3000, event.sessionId)
-        Assertions.assertEquals(3000, event.timestamp)
+        Assertions.assertEquals(event2Time, event.sessionId)
+        Assertions.assertEquals(event2Time, event.timestamp)
     }
 
     @Test
@@ -425,33 +441,34 @@ class AmplitudeSessionTest {
         val storageProvider = InstanceStorageProvider(InMemoryStorage())
 
         val amplitude1 = Amplitude(createConfiguration(storageProvider))
-        // amplitude1.logger.logMode = Logger.LogMode.DEBUG
         setDispatcher(amplitude1, testScheduler)
         amplitude1.isBuilt.await()
 
-        amplitude1.onEnterForeground(1000)
+        amplitude1.onEnterForeground(StartTime)
 
         advanceUntilIdle()
         Thread.sleep(100)
 
         val session1 = amplitude1.session
 
-        Assertions.assertEquals(1000, session1.sessionId)
-        Assertions.assertEquals(1000, session1.lastEventTime)
+        Assertions.assertEquals(StartTime, session1.sessionId)
+        Assertions.assertEquals(StartTime, session1.lastEventTime)
         Assertions.assertEquals(1, session1.lastEventId)
 
-        every { SystemTime.getCurrentTimeMillis() } returns 1200
-        amplitude1.track(createEvent(1200, "test event 1"))
+        val event1Time = StartTime + 200
+        every { SystemTime.getCurrentTimeMillis() } returns event1Time
+        amplitude1.track(createEvent(event1Time, "test event 1"))
 
         advanceUntilIdle()
         Thread.sleep(100)
 
-        Assertions.assertEquals(1000, session1.sessionId)
-        Assertions.assertEquals(1200, session1.lastEventTime)
+        Assertions.assertEquals(StartTime, session1.sessionId)
+        Assertions.assertEquals(event1Time, session1.lastEventTime)
         Assertions.assertEquals(2, session1.lastEventId)
 
         // Inc time by 50ms
-        every { SystemTime.getCurrentTimeMillis() } returns 1250
+        val instance2CreationTime = StartTime + 250
+        every { SystemTime.getCurrentTimeMillis() } returns instance2CreationTime
 
         // Create another instance (with same instance name, ie.e shared storage
         val amplitude2 = Amplitude(createConfiguration(storageProvider))
@@ -459,9 +476,9 @@ class AmplitudeSessionTest {
         amplitude2.isBuilt.await()
 
         val session2 = amplitude2.session
-        Assertions.assertEquals(1000, session2.sessionId)
+        Assertions.assertEquals(StartTime, session2.sessionId)
         // Last event time is the SDK creation time (1250)
-        Assertions.assertEquals(1250, session2.lastEventTime)
+        Assertions.assertEquals(instance2CreationTime, session2.lastEventTime)
         Assertions.assertEquals(2, session2.lastEventId)
     }
 
@@ -475,9 +492,14 @@ class AmplitudeSessionTest {
 
         amplitude.isBuilt.await()
 
-        amplitude.track(createEvent(1000, "test event 1"))
-        amplitude.track(createEvent(1050, "test event 2", 3000))
-        amplitude.track(createEvent(1100, "test event 3"))
+        val event1Time = StartTime
+        val event2Time = StartTime + 50
+        val event2SessionId = 3000L
+        val event3Time = StartTime + 100
+
+        amplitude.track(createEvent(event1Time, "test event 1"))
+        amplitude.track(createEvent(event2Time, "test event 2", event2SessionId))
+        amplitude.track(createEvent(event3Time, "test event 3"))
 
         advanceUntilIdle()
         Thread.sleep(100)
@@ -494,23 +516,23 @@ class AmplitudeSessionTest {
 
         var event = tracks[0]
         Assertions.assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
-        Assertions.assertEquals(1000, event.timestamp)
+        Assertions.assertEquals(StartTime, event.sessionId)
+        Assertions.assertEquals(StartTime, event.timestamp)
 
         event = tracks[1]
         Assertions.assertEquals("test event 1", event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
-        Assertions.assertEquals(1000, event.timestamp)
+        Assertions.assertEquals(StartTime, event.sessionId)
+        Assertions.assertEquals(event1Time, event.timestamp)
 
         event = tracks[2]
         Assertions.assertEquals("test event 2", event.eventType)
-        Assertions.assertEquals(3000, event.sessionId)
-        Assertions.assertEquals(1050, event.timestamp)
+        Assertions.assertEquals(event2SessionId, event.sessionId)
+        Assertions.assertEquals(event2Time, event.timestamp)
 
         event = tracks[3]
         Assertions.assertEquals("test event 3", event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
-        Assertions.assertEquals(1100, event.timestamp)
+        Assertions.assertEquals(StartTime, event.sessionId)
+        Assertions.assertEquals(event3Time, event.timestamp)
     }
 
     @Test
@@ -523,9 +545,14 @@ class AmplitudeSessionTest {
 
         amplitude.isBuilt.await()
 
-        amplitude.track(createEvent(1000, "test event 1"))
-        amplitude.track(createEvent(1050, "test event 2", -1))
-        amplitude.track(createEvent(1100, "test event 3"))
+        val event1Time = StartTime
+        val event2Time = StartTime + 50
+        val event2SessionId = -1L
+        val event3Time = StartTime + 100
+
+        amplitude.track(createEvent(event1Time, "test event 1"))
+        amplitude.track(createEvent(event2Time, "test event 2", event2SessionId))
+        amplitude.track(createEvent(event3Time, "test event 3"))
 
         advanceUntilIdle()
         Thread.sleep(100)
@@ -542,23 +569,23 @@ class AmplitudeSessionTest {
 
         var event = tracks[0]
         Assertions.assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
-        Assertions.assertEquals(1000, event.timestamp)
+        Assertions.assertEquals(StartTime, event.sessionId)
+        Assertions.assertEquals(StartTime, event.timestamp)
 
         event = tracks[1]
         Assertions.assertEquals("test event 1", event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
-        Assertions.assertEquals(1000, event.timestamp)
+        Assertions.assertEquals(StartTime, event.sessionId)
+        Assertions.assertEquals(event1Time, event.timestamp)
 
         event = tracks[2]
         Assertions.assertEquals("test event 2", event.eventType)
-        Assertions.assertEquals(-1, event.sessionId)
-        Assertions.assertEquals(1050, event.timestamp)
+        Assertions.assertEquals(event2SessionId, event.sessionId)
+        Assertions.assertEquals(event2Time, event.timestamp)
 
         event = tracks[3]
         Assertions.assertEquals("test event 3", event.eventType)
-        Assertions.assertEquals(1000, event.sessionId)
-        Assertions.assertEquals(1100, event.timestamp)
+        Assertions.assertEquals(StartTime, event.sessionId)
+        Assertions.assertEquals(event3Time, event.timestamp)
     }
 
     @Suppress("DEPRECATION")
@@ -574,7 +601,7 @@ class AmplitudeSessionTest {
 
         amplitude.isBuilt.await()
 
-        amplitude.track(createEvent(1000, "test event"))
+        amplitude.track(createEvent(StartTime, "test event"))
 
         advanceUntilIdle()
         Thread.sleep(100)
@@ -599,7 +626,7 @@ class AmplitudeSessionTest {
 
         amplitude.isBuilt.await()
 
-        amplitude.track(createEvent(1000, "test event"))
+        amplitude.track(createEvent(StartTime, "test event"))
 
         advanceUntilIdle()
         Thread.sleep(100)
@@ -625,7 +652,6 @@ class AmplitudeSessionTest {
 
         // Create an instance in the background
         val amplitude1 = Amplitude(config)
-        // amplitude1.logger.logMode = Logger.LogMode.DEBUG
         setDispatcher(amplitude1, testScheduler)
         amplitude1.isBuilt.await()
 
