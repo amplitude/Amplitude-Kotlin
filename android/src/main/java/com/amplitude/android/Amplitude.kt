@@ -63,10 +63,6 @@ open class Amplitude(
             RemnantDataMigration(this).execute()
         }
 
-        // WARNING: Session events need to run after migrations as not to modify `lastEventTime`
-        // Check if we need to start a new session
-        val sessionEvents = session.startNewSessionIfNeeded(SystemTime.getCurrentTimeMillis(), configuration.sessionId)
-
         this.createIdentityContainer(identityConfiguration)
 
         if (this.configuration.offline != AndroidNetworkConnectivityCheckerPlugin.Disabled) {
@@ -90,6 +86,10 @@ open class Amplitude(
                 add(plugin)
             }
         }
+
+        // WARNING: Session events need to run after migrations as not to modify `lastEventTime`
+        // Check if we need to start a new session
+        val sessionEvents = session.startNewSessionIfNeeded(SystemTime.getCurrentTimeMillis(), configuration.sessionId)
 
         val androidTimeline = timeline as Timeline
         androidTimeline.start(session)

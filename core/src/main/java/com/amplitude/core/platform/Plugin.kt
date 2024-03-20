@@ -107,6 +107,11 @@ abstract class DestinationPlugin : EventPlugin {
 abstract class ObservePlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Observe
 
+    // ObservePlugin doesn't use the amplitude instance
+    // Override it here so it's not required by subclasses
+    override var amplitude: Amplitude
+        get() = null as Amplitude
+        set(value) {}
     /**
      * Called whenever the User Id changes
      */
