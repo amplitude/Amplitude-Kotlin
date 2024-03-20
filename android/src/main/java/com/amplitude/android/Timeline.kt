@@ -73,7 +73,6 @@ class Timeline : Timeline() {
             event.sessionId = session.sessionId
         }
 
-        val savedLastEventId = session.lastEventId
         sessionEvents?.let {
             it.forEach { e ->
                 e.eventId ?: let {
