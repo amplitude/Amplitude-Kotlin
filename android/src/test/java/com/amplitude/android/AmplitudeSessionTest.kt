@@ -4,7 +4,6 @@ import android.app.Application
 import android.content.Context
 import android.net.ConnectivityManager
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
-import com.amplitude.android.utilities.SystemTime
 import com.amplitude.android.utils.mockSystemTime
 import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.core.Storage
@@ -638,7 +637,7 @@ class AmplitudeSessionTest {
         val startTime: Long = 1000
         var time: Long = startTime
 
-        every { SystemTime.getCurrentTimeMillis() } returns time
+        mockSystemTime(time)
 
         val storageProvider = InstanceStorageProvider(InMemoryStorage())
         val config = createConfiguration(storageProvider)
@@ -682,7 +681,7 @@ class AmplitudeSessionTest {
         time += config.minTimeBetweenSessionsMillis + 100
 
         // Mock starting in foreground
-        every { SystemTime.getCurrentTimeMillis() } returns time
+        mockSystemTime(time)
 
         // Create a new instance to simulate recreation at startup in foreground
         val amplitude2 = Amplitude(createConfiguration(storageProvider))
