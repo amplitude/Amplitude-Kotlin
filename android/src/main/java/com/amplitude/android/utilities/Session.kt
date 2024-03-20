@@ -51,7 +51,7 @@ class Session(
      */
     suspend fun startNewSessionIfNeeded(timestamp: Long, sessionId: Long? = null): Iterable<BaseEvent>? {
         if (sessionId != null && this.sessionId != sessionId) {
-            return startNewSession(sessionId, timestamp)
+            return startNewSession(timestamp, sessionId)
         }
         if (inSession() && isWithinMinTimeBetweenSessions(timestamp)) {
             refreshSessionTime(timestamp)
