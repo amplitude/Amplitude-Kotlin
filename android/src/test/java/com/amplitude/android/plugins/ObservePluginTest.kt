@@ -132,7 +132,6 @@ class ObservePluginTest {
         Assertions.assertEquals(testSessionId, sessionIds[0])
     }
 
-
     @Test
     fun `test onSessionIdChanged is called on session end`() = runTest {
         val testStartTime: Long = 1000
