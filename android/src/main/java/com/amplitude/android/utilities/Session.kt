@@ -13,32 +13,52 @@ class Session(
     private var storage: Storage? = null,
     private var state: State? = null,
 ) {
-    private val _sessionId = AtomicLong(configuration.sessionId ?: -1L)
+    companion object {
+        const val EMPTY_SESSION_ID = -1L
+        const val DEFAULT_LAST_EVENT_TIME = -1L
+        const val DEFAULT_LAST_EVENT_ID = 0L
+    }
+
+    private val _sessionId = AtomicLong(EMPTY_SESSION_ID)
+    private val _lastEventId = AtomicLong(DEFAULT_LAST_EVENT_ID)
+    private val _lastEventTime = AtomicLong(DEFAULT_LAST_EVENT_TIME)
 
     val sessionId: Long
         get() {
             return _sessionId.get()
         }
 
-    internal var lastEventId: Long = 0
-    var lastEventTime: Long = -1L
+    internal var lastEventId: Long = DEFAULT_LAST_EVENT_ID
+        get() = _lastEventId.get()
+    var lastEventTime: Long = DEFAULT_LAST_EVENT_TIME
+        get() = _lastEventTime.get()
 
     init {
-        val currentSessionId = configuration.sessionId
-            ?: (storage?.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLongOrNull() ?: -1)
-
-        _sessionId.set(currentSessionId)
-        state?.sessionId = currentSessionId
-        lastEventId = storage?.read(Storage.Constants.LAST_EVENT_ID)?.toLongOrNull() ?: 0
-        lastEventTime = storage?.read(Storage.Constants.LAST_EVENT_TIME)?.toLongOrNull() ?: -1
+        loadFromStorage()
+        state?.sessionId = _sessionId.get()
     }
 
-    suspend fun startNewSessionIfNeeded(timestamp: Long): Iterable<BaseEvent>? {
+    private fun loadFromStorage() {
+        _sessionId.set(storage?.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLongOrNull() ?: EMPTY_SESSION_ID)
+        _lastEventId.set(storage?.read(Storage.Constants.LAST_EVENT_ID)?.toLongOrNull() ?: DEFAULT_LAST_EVENT_ID)
+        _lastEventTime.set(storage?.read(Storage.Constants.LAST_EVENT_TIME)?.toLongOrNull() ?: DEFAULT_LAST_EVENT_TIME)
+    }
+
+    /**
+     * startNewSessionIfNeeded
+     *
+     * @param timestamp By default this is used as both `sessionId` and `timestamp`
+     * @param sessionId If set, this is used as `sessionId`
+     */
+    suspend fun startNewSessionIfNeeded(timestamp: Long, sessionId: Long? = null): Iterable<BaseEvent>? {
+        if (sessionId != null && this.sessionId != sessionId) {
+            return startNewSession(sessionId, timestamp)
+        }
         if (inSession() && isWithinMinTimeBetweenSessions(timestamp)) {
             refreshSessionTime(timestamp)
             return null
         }
-        return startNewSession(timestamp)
+        return startNewSession(timestamp, sessionId)
     }
 
     suspend fun setSessionId(timestamp: Long) {
@@ -47,7 +67,20 @@ class Session(
         state?.sessionId = timestamp
     }
 
-    suspend fun startNewSession(timestamp: Long): Iterable<BaseEvent> {
+    suspend fun setLastEventId(lastEventId: Long) {
+        _lastEventId.set(lastEventId)
+        storage?.write(Storage.Constants.LAST_EVENT_ID, lastEventId.toString())
+    }
+
+    suspend fun getAndSetNextEventId(): Long {
+        val nextEventId = _lastEventId.incrementAndGet()
+        storage?.write(Storage.Constants.LAST_EVENT_ID, lastEventId.toString())
+
+        return nextEventId
+    }
+
+    private suspend fun startNewSession(timestamp: Long, sessionId: Long? = null): Iterable<BaseEvent> {
+        val _sessionId = sessionId ?: timestamp
         val sessionEvents = mutableListOf<BaseEvent>()
         // If any trackingSessionEvents is false (default value is true), means it is manually set
         @Suppress("DEPRECATION")
@@ -58,18 +91,18 @@ class Session(
             val sessionEndEvent = BaseEvent()
             sessionEndEvent.eventType = Amplitude.END_SESSION_EVENT
             sessionEndEvent.timestamp = if (lastEventTime > 0) lastEventTime else null
-            sessionEndEvent.sessionId = sessionId
+            sessionEndEvent.sessionId = this.sessionId
             sessionEvents.add(sessionEndEvent)
         }
 
         // start new session
-        setSessionId(timestamp)
+        setSessionId(_sessionId)
         refreshSessionTime(timestamp)
         if (trackingSessionEvents) {
             val sessionStartEvent = BaseEvent()
             sessionStartEvent.eventType = Amplitude.START_SESSION_EVENT
             sessionStartEvent.timestamp = timestamp
-            sessionStartEvent.sessionId = sessionId
+            sessionStartEvent.sessionId = _sessionId
             sessionEvents.add(sessionStartEvent)
         }
 
@@ -80,8 +113,8 @@ class Session(
         if (!inSession()) {
             return
         }
-        lastEventTime = timestamp
-        storage?.write(Storage.Constants.LAST_EVENT_TIME, lastEventTime.toString())
+        _lastEventTime.set(timestamp)
+        storage?.write(Storage.Constants.LAST_EVENT_TIME, timestamp.toString())
     }
 
     fun isWithinMinTimeBetweenSessions(timestamp: Long): Boolean {

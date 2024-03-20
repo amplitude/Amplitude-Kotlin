@@ -75,27 +75,18 @@ class Timeline : Timeline() {
         }
 
         val savedLastEventId = session.lastEventId
-
         sessionEvents?.let {
             it.forEach { e ->
                 e.eventId ?: let {
-                    val newEventId = session.lastEventId + 1
-                    e.eventId = newEventId
-                    session.lastEventId = newEventId
+                    e.eventId = session.getAndSetNextEventId()
                 }
             }
         }
 
         if (!skipEvent) {
             event.eventId ?: let {
-                val newEventId = session.lastEventId + 1
-                event.eventId = newEventId
-                session?.lastEventId = newEventId
+                event.eventId = session.getAndSetNextEventId()
             }
-        }
-
-        if (session.lastEventId > savedLastEventId) {
-            amplitude.storage.write(Storage.Constants.LAST_EVENT_ID, session.lastEventId.toString())
         }
 
         sessionEvents?.let {

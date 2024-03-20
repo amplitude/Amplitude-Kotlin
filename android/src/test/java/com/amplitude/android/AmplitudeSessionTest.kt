@@ -5,6 +5,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.android.utilities.SystemTime
+import com.amplitude.android.utils.mockSystemTime
 import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.core.Storage
 import com.amplitude.core.StorageProvider
@@ -35,8 +36,7 @@ import org.junit.jupiter.api.Test
 class AmplitudeSessionTest {
     @BeforeEach
     fun setUp() {
-        mockkObject(SystemTime)
-        every { SystemTime.getCurrentTimeMillis() } returns StartTime
+        mockSystemTime(StartTime)
 
         mockkStatic(AndroidLifecyclePlugin::class)
 
@@ -141,7 +141,7 @@ class AmplitudeSessionTest {
         amplitude.isBuilt.await()
 
         amplitude.track(createEvent(StartTime, "test event 1"))
-        val event2Time = StartTime + 1000
+        val event2Time = mockSystemTime(StartTime + 1000)
         amplitude.track(createEvent(event2Time, "test event 2"))
 
         advanceUntilIdle()
@@ -282,11 +282,10 @@ class AmplitudeSessionTest {
 
         amplitude.isBuilt.await()
 
-        val enterForegroundTime = StartTime + 1000
-        val event2Time = StartTime + 2000
-
         amplitude.track(createEvent(StartTime, "test event 1"))
+        val enterForegroundTime = mockSystemTime(StartTime + 1000)
         amplitude.onEnterForeground(enterForegroundTime)
+        val event2Time = mockSystemTime(StartTime + 2000)
         amplitude.track(createEvent(event2Time, "test event 2"))
 
         advanceUntilIdle()
@@ -388,13 +387,12 @@ class AmplitudeSessionTest {
 
         amplitude.isBuilt.await()
 
-        val event1Time = StartTime + 500
-        val exitForegroundTime = StartTime + 1000
-        val event2Time = exitForegroundTime + 1000
-
         amplitude.onEnterForeground(StartTime)
+        val event1Time = mockSystemTime(StartTime + 500)
         amplitude.track(createEvent(event1Time, "test event 1"))
+        val exitForegroundTime = mockSystemTime(StartTime + 1000)
         amplitude.onExitForeground(exitForegroundTime)
+        val event2Time = mockSystemTime(exitForegroundTime + 1000)
         amplitude.track(createEvent(event2Time, "test event 2"))
 
         advanceUntilIdle()
@@ -455,8 +453,7 @@ class AmplitudeSessionTest {
         Assertions.assertEquals(StartTime, session1.lastEventTime)
         Assertions.assertEquals(1, session1.lastEventId)
 
-        val event1Time = StartTime + 200
-        every { SystemTime.getCurrentTimeMillis() } returns event1Time
+        val event1Time = mockSystemTime(StartTime + 200)
         amplitude1.track(createEvent(event1Time, "test event 1"))
 
         advanceUntilIdle()
@@ -467,9 +464,7 @@ class AmplitudeSessionTest {
         Assertions.assertEquals(2, session1.lastEventId)
 
         // Inc time by 50ms
-        val instance2CreationTime = StartTime + 250
-        every { SystemTime.getCurrentTimeMillis() } returns instance2CreationTime
-
+        val instance2CreationTime = mockSystemTime(StartTime + 250)
         // Create another instance (with same instance name, ie.e shared storage
         val amplitude2 = Amplitude(createConfiguration(storageProvider))
         setDispatcher(amplitude2, testScheduler)
@@ -648,7 +643,6 @@ class AmplitudeSessionTest {
 
         val storageProvider = InstanceStorageProvider(InMemoryStorage())
         val config = createConfiguration(storageProvider)
-//        config.defaultTracking.sessions = false
 
         // Create an instance in the background
         val amplitude1 = Amplitude(config)

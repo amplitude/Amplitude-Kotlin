@@ -57,15 +57,15 @@ open class Amplitude(
         session = Session(configuration as Configuration, storage, store)
         logger.debug("Configured session. Session=$session")
 
+        // Migrations
         ApiKeyStorageMigration(this).execute()
-
         if ((this.configuration as Configuration).migrateLegacyData) {
             RemnantDataMigration(this).execute()
         }
 
         // WARNING: Session events need to run after migrations as not to modify `lastEventTime`
         // Check if we need to start a new session
-        val sessionEvents = session.startNewSessionIfNeeded(SystemTime.getCurrentTimeMillis())
+        val sessionEvents = session.startNewSessionIfNeeded(SystemTime.getCurrentTimeMillis(), configuration.sessionId)
 
         this.createIdentityContainer(identityConfiguration)
 

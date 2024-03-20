@@ -5,11 +5,9 @@ import androidx.test.core.app.ApplicationProvider
 import com.amplitude.android.Amplitude
 import com.amplitude.android.Configuration
 import com.amplitude.android.DefaultTrackingOptions
-import com.amplitude.android.utilities.SystemTime
+import com.amplitude.android.utils.mockSystemTime
 import com.amplitude.core.Storage
 import com.amplitude.core.utilities.ConsoleLoggerProvider
-import io.mockk.every
-import io.mockk.mockkObject
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.junit.Before
@@ -27,8 +25,7 @@ class RemnantDataMigrationTest {
 
     @Before
     fun setUp() {
-        mockkObject(SystemTime)
-        every { SystemTime.getCurrentTimeMillis() } returns defaultSessionId
+        mockSystemTime(defaultSessionId)
     }
 
     @Test
@@ -102,10 +99,8 @@ class RemnantDataMigrationTest {
 
             amplitude.storage.rollover()
             amplitude.identifyInterceptStorage.rollover()
-
             Thread.sleep(100)
 
-            amplitude.logger?.info("Checking DB values")
             if (isValidDbFile) {
                 // We never transfer session data, it is reset on new install
                 Assertions.assertEquals(defaultSessionId, amplitude.storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLongOrNull())
