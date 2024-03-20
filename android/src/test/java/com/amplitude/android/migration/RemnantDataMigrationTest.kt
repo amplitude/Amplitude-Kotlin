@@ -105,14 +105,13 @@ class RemnantDataMigrationTest {
                 // We never transfer session data, it is reset on new install
                 Assertions.assertEquals(defaultSessionId, amplitude.storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLongOrNull())
                 Assertions.assertEquals(defaultSessionId, amplitude.storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLongOrNull())
-                // Session start event has not been processed yet, so this is null
-                // FIXME: Uncomment this
                 if (enableSessionEvents) {
                     Assertions.assertEquals(
                         1,
                         amplitude.storage.read(Storage.Constants.LAST_EVENT_ID)?.toLongOrNull()
                     )
                 } else {
+                    // Session start event has not been processed yet, so this is null
                     Assertions.assertEquals(
                         null,
                         amplitude.storage.read(Storage.Constants.LAST_EVENT_ID)?.toLongOrNull()
@@ -161,8 +160,10 @@ class RemnantDataMigrationTest {
                 Assertions.assertEquals(userId, event4.getString("user_id"))
             } else {
                 // Session start event = 1
-                val expectedEventCount = if ((amplitude.configuration as Configuration).defaultTracking.sessions) 1 else 0
-//                Assertions.assertEquals(expectedEventCount, eventsData.size)
+                val expectedEventCount = if (
+                    (amplitude.configuration as Configuration).defaultTracking.sessions && isValidDbFile
+                ) 1 else 0
+                Assertions.assertEquals(expectedEventCount, eventsData.size)
             }
 
             val interceptedIdentifiesData = amplitude.identifyInterceptStorage.readEventsContent()
