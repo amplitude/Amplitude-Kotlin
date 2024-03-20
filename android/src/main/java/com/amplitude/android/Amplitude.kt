@@ -54,9 +54,6 @@ open class Amplitude(
     }
 
     override suspend fun buildInternal(identityConfiguration: IdentityConfiguration) {
-        session = Session(configuration as Configuration, storage, store)
-        logger.debug("Configured session. Session=$session")
-
         // Migrations
         ApiKeyStorageMigration(this).execute()
         if ((this.configuration as Configuration).migrateLegacyData) {
@@ -89,6 +86,8 @@ open class Amplitude(
 
         // WARNING: Session events need to run after migrations as not to modify `lastEventTime`
         // Check if we need to start a new session
+        session = Session(configuration as Configuration, storage, store)
+        logger.debug("Configured session. Session=$session")
         val sessionEvents = session.startNewSessionIfNeeded(SystemTime.getCurrentTimeMillis(), configuration.sessionId)
 
         val androidTimeline = timeline as Timeline

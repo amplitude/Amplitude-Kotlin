@@ -34,7 +34,6 @@ class Session(
 
     init {
         loadFromStorage()
-        state?.sessionId = _sessionId.get()
     }
 
     private fun loadFromStorage() {
