@@ -2,7 +2,6 @@ package com.amplitude.android
 
 import com.amplitude.android.utilities.Session
 import com.amplitude.android.utilities.SystemTime
-import com.amplitude.core.Storage
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Timeline
 import kotlinx.coroutines.channels.Channel

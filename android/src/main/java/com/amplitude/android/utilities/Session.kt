@@ -2,7 +2,6 @@ package com.amplitude.android.utilities
 
 import com.amplitude.android.Amplitude
 import com.amplitude.android.Configuration
-import com.amplitude.common.Logger
 import com.amplitude.core.State
 import com.amplitude.core.Storage
 import com.amplitude.core.events.BaseEvent
