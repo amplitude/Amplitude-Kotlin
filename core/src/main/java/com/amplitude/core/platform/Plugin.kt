@@ -109,9 +109,9 @@ abstract class ObservePlugin : Plugin {
 
     // ObservePlugin doesn't use the amplitude instance
     // Override it here so it's not required by subclasses
-    override var amplitude: Amplitude
-        get() = null as Amplitude
-        set(value) {}
+    // This will still be set in Plugin.setup()
+    override lateinit var amplitude: Amplitude
+
     /**
      * Called whenever the User Id changes
      */
