@@ -445,7 +445,7 @@ class AmplitudeSessionTest {
         advanceUntilIdle()
         Thread.sleep(100)
 
-        val session1 = amplitude1.session
+        val session1 = (amplitude1.timeline as Timeline).session
 
         Assertions.assertEquals(StartTime, session1.sessionId)
         Assertions.assertEquals(StartTime, session1.lastEventTime)
@@ -468,7 +468,7 @@ class AmplitudeSessionTest {
         setDispatcher(amplitude2, testScheduler)
         amplitude2.isBuilt.await()
 
-        val session2 = amplitude2.session
+        val session2 = (amplitude2.timeline as Timeline).session
         Assertions.assertEquals(StartTime, session2.sessionId)
         // Last event time is the SDK creation time (1250)
         Assertions.assertEquals(instance2CreationTime, session2.lastEventTime)
@@ -635,9 +635,8 @@ class AmplitudeSessionTest {
     @Test
     fun amplitude_shouldStartNewSessionOnInitializationInForegroundBasedOnSessionTimeout() = runTest {
         val startTime: Long = 1000
-        var time: Long = startTime
 
-        mockSystemTime(time)
+        mockSystemTime(startTime)
 
         val storageProvider = InstanceStorageProvider(InMemoryStorage())
         val config = createConfiguration(storageProvider)
@@ -648,41 +647,38 @@ class AmplitudeSessionTest {
         amplitude1.isBuilt.await()
 
         // enter foreground (will start a session)
-        amplitude1.onEnterForeground(time)
+        val enterForegroundTime = mockSystemTime(startTime)
+        amplitude1.onEnterForeground(enterForegroundTime)
 
         advanceUntilIdle()
         Thread.sleep(100)
 
-        val session1 = amplitude1.session
-        Assertions.assertEquals(time, session1.sessionId)
-        Assertions.assertEquals(time, session1.lastEventTime)
+        val session1 = (amplitude1.timeline as Timeline).session
+        Assertions.assertEquals(enterForegroundTime, session1.sessionId)
+        Assertions.assertEquals(enterForegroundTime, session1.lastEventTime)
         Assertions.assertEquals(1, session1.lastEventId)
 
         // track event (set last event time)
-        time = 1200
-        amplitude1.track(createEvent(time, "test event 1"))
+        val event1Time = mockSystemTime(enterForegroundTime + 200)
+        amplitude1.track(createEvent(event1Time, "test event 1"))
 
         advanceUntilIdle()
         Thread.sleep(100)
 
         // valid session and last event time
         Assertions.assertEquals(startTime, session1.sessionId)
-        Assertions.assertEquals(time, session1.lastEventTime)
+        Assertions.assertEquals(event1Time, session1.lastEventTime)
         Assertions.assertEquals(2, session1.lastEventId)
 
         // exit foreground
-        time = 1300
-        amplitude1.onExitForeground(time)
+        val exitForegroundTime = mockSystemTime(event1Time + 100)
+        amplitude1.onExitForeground(exitForegroundTime)
 
         advanceUntilIdle()
         Thread.sleep(100)
 
         // advance to new session
-        time += config.minTimeBetweenSessionsMillis + 100
-
-        // Mock starting in foreground
-        mockSystemTime(time)
-
+        val newSessionTime = mockSystemTime(exitForegroundTime + config.minTimeBetweenSessionsMillis + 100)
         // Create a new instance to simulate recreation at startup in foreground
         val amplitude2 = Amplitude(createConfiguration(storageProvider))
         setDispatcher(amplitude2, testScheduler)
@@ -691,9 +687,9 @@ class AmplitudeSessionTest {
         advanceUntilIdle()
         Thread.sleep(100)
 
-        val session2 = amplitude2.session
-        Assertions.assertEquals(time, session2.sessionId)
-        Assertions.assertEquals(time, session2.lastEventTime)
+        val session2 = (amplitude2.timeline as Timeline).session
+        Assertions.assertEquals(newSessionTime, session2.sessionId)
+        Assertions.assertEquals(newSessionTime, session2.lastEventTime)
         // 4 events = enter foreground, track, exit foreground,
         Assertions.assertEquals(4, session2.lastEventId)
     }

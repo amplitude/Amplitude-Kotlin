@@ -6,19 +6,39 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Timeline
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 class Timeline : Timeline() {
     private val eventMessageChannel: Channel<EventQueueMessage> = Channel(Channel.UNLIMITED)
-    private lateinit var session: Session
+    internal lateinit var session: Session
 
-    internal fun start(session: Session) {
-        this.session = session
+    internal var sessionId: Long = Session.EMPTY_SESSION_ID
+        get() = if (session == null) Session.EMPTY_SESSION_ID else session.sessionId
+
+    internal suspend fun start() {
+        this.session = Session(
+            amplitude.configuration as Configuration,
+            amplitude.storage,
+            amplitude.store
+        )
+
+        val sessionEvents = session.startNewSessionIfNeeded(
+            SystemTime.getCurrentTimeMillis(),
+            amplitude.configuration.sessionId
+        )
+
         amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
             // Wait until build (including possible legacy data migration) is finished.
             amplitude.isBuilt.await()
 
             for (message in eventMessageChannel) {
                 processEventMessage(message)
+            }
+        }
+
+        runBlocking {
+            sessionEvents?.forEach {
+                processImmediately(it)
             }
         }
     }
@@ -35,7 +55,7 @@ class Timeline : Timeline() {
         eventMessageChannel.trySend(EventQueueMessage(incomingEvent, (amplitude as Amplitude).inForeground))
     }
 
-    internal suspend fun processImmediately(incomingEvent: BaseEvent) {
+    private suspend fun processImmediately(incomingEvent: BaseEvent) {
         if (incomingEvent.timestamp == null) {
             incomingEvent.timestamp = SystemTime.getCurrentTimeMillis()
         }

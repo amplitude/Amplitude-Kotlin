@@ -9,7 +9,6 @@ import com.amplitude.android.plugins.AndroidContextPlugin
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.android.plugins.AndroidNetworkConnectivityCheckerPlugin
 import com.amplitude.android.utilities.Session
-import com.amplitude.android.utilities.SystemTime
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.plugins.AmplitudeDestination
@@ -17,7 +16,6 @@ import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
 import com.amplitude.core.utilities.FileStorage
 import com.amplitude.id.IdentityConfiguration
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 open class Amplitude(
     configuration: Configuration
@@ -25,11 +23,11 @@ open class Amplitude(
 
     internal var inForeground = false
     private lateinit var androidContextPlugin: AndroidContextPlugin
-    internal lateinit var session: Session
 
     val sessionId: Long
         get() {
-            return if (session == null) -1 else session.sessionId
+            return if (timeline == null) Session.EMPTY_SESSION_ID
+            else (timeline as Timeline).sessionId
         }
 
     init {
@@ -86,18 +84,8 @@ open class Amplitude(
 
         // WARNING: Session events need to run after migrations as not to modify `lastEventTime`
         // Check if we need to start a new session
-        session = Session(configuration as Configuration, storage, store)
-        logger.debug("Configured session. Session=$session")
-        val sessionEvents = session.startNewSessionIfNeeded(SystemTime.getCurrentTimeMillis(), configuration.sessionId)
-
         val androidTimeline = timeline as Timeline
-        androidTimeline.start(session)
-
-        runBlocking {
-            sessionEvents?.forEach {
-                androidTimeline.processImmediately(it)
-            }
-        }
+        androidTimeline.start()
     }
 
     /**
