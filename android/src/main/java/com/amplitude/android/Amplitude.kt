@@ -75,6 +75,8 @@ open class Amplitude(
         add(AnalyticsConnectorIdentityPlugin())
         add(AnalyticsConnectorPlugin())
         add(AmplitudeDestination())
+
+        // Add user plugins from config
         val plugins = configuration.plugins
         if (plugins != null) {
             for (plugin in plugins) {
@@ -82,8 +84,6 @@ open class Amplitude(
             }
         }
 
-        // WARNING: Session events need to run after migrations as not to modify `lastEventTime`
-        // Check if we need to start a new session
         val androidTimeline = timeline as Timeline
         androidTimeline.start()
     }
