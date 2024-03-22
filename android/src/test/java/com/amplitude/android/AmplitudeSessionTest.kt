@@ -5,7 +5,6 @@ import android.content.Context
 import android.net.ConnectivityManager
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.android.utils.mockSystemTime
-import com.amplitude.common.Logger
 import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.core.Storage
 import com.amplitude.core.StorageProvider
