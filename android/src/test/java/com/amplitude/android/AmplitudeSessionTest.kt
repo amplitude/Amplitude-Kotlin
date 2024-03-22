@@ -445,11 +445,10 @@ class AmplitudeSessionTest {
         advanceUntilIdle()
         Thread.sleep(100)
 
-        val session1 = (amplitude1.timeline as Timeline).session
-
-        Assertions.assertEquals(StartTime, session1.sessionId)
-        Assertions.assertEquals(StartTime, session1.lastEventTime)
-        Assertions.assertEquals(1, session1.lastEventId)
+        val timeline1 = getAndroidTimeline(amplitude1)
+        Assertions.assertEquals(StartTime, timeline1.session.sessionId)
+        Assertions.assertEquals(StartTime, timeline1.session.lastEventTime)
+        Assertions.assertEquals(1, timeline1.lastEventId)
 
         val event1Time = mockSystemTime(StartTime + 200)
         amplitude1.track(createEvent(event1Time, "test event 1"))
@@ -457,9 +456,9 @@ class AmplitudeSessionTest {
         advanceUntilIdle()
         Thread.sleep(100)
 
-        Assertions.assertEquals(StartTime, session1.sessionId)
-        Assertions.assertEquals(event1Time, session1.lastEventTime)
-        Assertions.assertEquals(2, session1.lastEventId)
+        Assertions.assertEquals(StartTime, timeline1.session.sessionId)
+        Assertions.assertEquals(event1Time, timeline1.session.lastEventTime)
+        Assertions.assertEquals(2, timeline1.lastEventId)
 
         // Inc time by 50ms
         val instance2CreationTime = mockSystemTime(StartTime + 250)
@@ -468,11 +467,11 @@ class AmplitudeSessionTest {
         setDispatcher(amplitude2, testScheduler)
         amplitude2.isBuilt.await()
 
-        val session2 = (amplitude2.timeline as Timeline).session
-        Assertions.assertEquals(StartTime, session2.sessionId)
+        val timeline2 = getAndroidTimeline(amplitude2)
+        Assertions.assertEquals(StartTime, timeline2.session.sessionId)
         // Last event time is the SDK creation time (1250)
-        Assertions.assertEquals(instance2CreationTime, session2.lastEventTime)
-        Assertions.assertEquals(2, session2.lastEventId)
+        Assertions.assertEquals(instance2CreationTime, timeline2.session.lastEventTime)
+        Assertions.assertEquals(2, timeline2.lastEventId)
     }
 
     @Test
@@ -653,10 +652,10 @@ class AmplitudeSessionTest {
         advanceUntilIdle()
         Thread.sleep(100)
 
-        val session1 = (amplitude1.timeline as Timeline).session
-        Assertions.assertEquals(enterForegroundTime, session1.sessionId)
-        Assertions.assertEquals(enterForegroundTime, session1.lastEventTime)
-        Assertions.assertEquals(1, session1.lastEventId)
+        val timeline1 = getAndroidTimeline(amplitude1)
+        Assertions.assertEquals(enterForegroundTime, timeline1.session.sessionId)
+        Assertions.assertEquals(enterForegroundTime, timeline1.session.lastEventTime)
+        Assertions.assertEquals(1, timeline1.lastEventId)
 
         // track event (set last event time) (3)
         val event1Time = mockSystemTime(enterForegroundTime + 200)
@@ -666,9 +665,9 @@ class AmplitudeSessionTest {
         Thread.sleep(100)
 
         // valid session and last event time
-        Assertions.assertEquals(startTime, session1.sessionId)
-        Assertions.assertEquals(event1Time, session1.lastEventTime)
-        Assertions.assertEquals(2, session1.lastEventId)
+        Assertions.assertEquals(startTime, timeline1.session.sessionId)
+        Assertions.assertEquals(event1Time, timeline1.session.lastEventTime)
+        Assertions.assertEquals(2, timeline1.lastEventId)
 
         // exit foreground (4)
         val exitForegroundTime = mockSystemTime(event1Time + 100)
@@ -689,11 +688,11 @@ class AmplitudeSessionTest {
         advanceUntilIdle()
         Thread.sleep(100)
 
-        val session2 = (amplitude2.timeline as Timeline).session
-        Assertions.assertEquals(newSessionTime, session2.sessionId)
-        Assertions.assertEquals(newSessionTime, session2.lastEventTime)
+        val timeline2 = getAndroidTimeline(amplitude2)
+        Assertions.assertEquals(newSessionTime, timeline2.session.sessionId)
+        Assertions.assertEquals(newSessionTime, timeline2.session.lastEventTime)
         // 6 events = session_start, enter foreground, track, exit foreground, session_end, session_start
-        Assertions.assertEquals(6, session2.lastEventId)
+        Assertions.assertEquals(6, timeline2.lastEventId)
     }
 
     private fun createEvent(timestamp: Long, eventType: String, sessionId: Long? = null): BaseEvent {
@@ -703,6 +702,10 @@ class AmplitudeSessionTest {
         event.eventType = eventType
         event.sessionId = sessionId
         return event
+    }
+
+    private fun getAndroidTimeline(amplitude: Amplitude): Timeline {
+        return amplitude.timeline as Timeline
     }
 
     companion object {

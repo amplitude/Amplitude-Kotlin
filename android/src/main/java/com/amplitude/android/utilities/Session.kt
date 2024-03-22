@@ -15,11 +15,9 @@ class Session(
     companion object {
         const val EMPTY_SESSION_ID = -1L
         const val DEFAULT_LAST_EVENT_TIME = -1L
-        const val DEFAULT_LAST_EVENT_ID = 0L
     }
 
     private val _sessionId = AtomicLong(EMPTY_SESSION_ID)
-    private val _lastEventId = AtomicLong(DEFAULT_LAST_EVENT_ID)
     private val _lastEventTime = AtomicLong(DEFAULT_LAST_EVENT_TIME)
 
     val sessionId: Long
@@ -27,8 +25,6 @@ class Session(
             return _sessionId.get()
         }
 
-    internal var lastEventId: Long = DEFAULT_LAST_EVENT_ID
-        get() = _lastEventId.get()
     var lastEventTime: Long = DEFAULT_LAST_EVENT_TIME
         get() = _lastEventTime.get()
 
@@ -38,7 +34,6 @@ class Session(
 
     private fun loadFromStorage() {
         _sessionId.set(storage?.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLongOrNull() ?: EMPTY_SESSION_ID)
-        _lastEventId.set(storage?.read(Storage.Constants.LAST_EVENT_ID)?.toLongOrNull() ?: DEFAULT_LAST_EVENT_ID)
         _lastEventTime.set(storage?.read(Storage.Constants.LAST_EVENT_TIME)?.toLongOrNull() ?: DEFAULT_LAST_EVENT_TIME)
     }
 
@@ -63,18 +58,6 @@ class Session(
         _sessionId.set(timestamp)
         storage?.write(Storage.Constants.PREVIOUS_SESSION_ID, timestamp.toString())
         state?.sessionId = timestamp
-    }
-
-    suspend fun setLastEventId(lastEventId: Long) {
-        _lastEventId.set(lastEventId)
-        storage?.write(Storage.Constants.LAST_EVENT_ID, lastEventId.toString())
-    }
-
-    suspend fun getAndSetNextEventId(): Long {
-        val nextEventId = _lastEventId.incrementAndGet()
-        storage?.write(Storage.Constants.LAST_EVENT_ID, lastEventId.toString())
-
-        return nextEventId
     }
 
     private suspend fun startNewSession(timestamp: Long, sessionId: Long? = null): Iterable<BaseEvent> {
@@ -125,6 +108,6 @@ class Session(
     }
 
     override fun toString(): String {
-        return "Session(sessionId=$sessionId, lastEventId=$lastEventId, lastEventTime=$lastEventTime)"
+        return "Session(sessionId=$sessionId, lastEventTime=$lastEventTime)"
     }
 }

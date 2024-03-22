@@ -2,15 +2,26 @@ package com.amplitude.android
 
 import com.amplitude.android.utilities.Session
 import com.amplitude.android.utilities.SystemTime
+import com.amplitude.core.Storage
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Timeline
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import java.util.concurrent.atomic.AtomicLong
 
 class Timeline : Timeline() {
+    companion object {
+        const val DEFAULT_LAST_EVENT_ID = 0L
+    }
+
     private val eventMessageChannel: Channel<EventQueueMessage> = Channel(Channel.UNLIMITED)
     internal lateinit var session: Session
+
+    private val _lastEventId = AtomicLong(DEFAULT_LAST_EVENT_ID)
+
+    internal var lastEventId: Long = DEFAULT_LAST_EVENT_ID
+        get() = _lastEventId.get()
 
     internal var sessionId: Long = Session.EMPTY_SESSION_ID
         get() = if (session == null) Session.EMPTY_SESSION_ID else session.sessionId
@@ -26,6 +37,8 @@ class Timeline : Timeline() {
             SystemTime.getCurrentTimeMillis(),
             amplitude.configuration.sessionId
         )
+
+        loadLastEventId()
 
         amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
             // Wait until build (including possible legacy data migration) is finished.
@@ -90,14 +103,14 @@ class Timeline : Timeline() {
         sessionEvents?.let {
             it.forEach { e ->
                 e.eventId ?: let {
-                    e.eventId = session.getAndSetNextEventId()
+                    e.eventId = getAndSetNextEventId()
                 }
             }
         }
 
         if (!skipEvent) {
             event.eventId ?: let {
-                event.eventId = session.getAndSetNextEventId()
+                event.eventId = getAndSetNextEventId()
             }
         }
 
@@ -110,6 +123,23 @@ class Timeline : Timeline() {
         if (!skipEvent) {
             super.process(event)
         }
+    }
+
+    private fun loadLastEventId() {
+        val lastEventId = amplitude.storage.read(Storage.Constants.LAST_EVENT_ID)?.toLongOrNull()
+            ?: DEFAULT_LAST_EVENT_ID
+        _lastEventId.set(lastEventId)
+    }
+
+    private suspend fun writeLastEventId(lastEventId: Long) {
+        amplitude.storage.write(Storage.Constants.LAST_EVENT_ID, lastEventId.toString())
+    }
+
+    private suspend fun getAndSetNextEventId(): Long {
+        val nextEventId = _lastEventId.incrementAndGet()
+        writeLastEventId(nextEventId)
+
+        return nextEventId
     }
 }
 
