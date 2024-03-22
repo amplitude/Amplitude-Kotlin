@@ -377,19 +377,25 @@ class AmplitudeSessionTest {
 
     @Test
     fun amplitude_distantForegroundBackgroundEventsShouldStartNewSession() = runTest {
-        val amplitude = Amplitude(createConfiguration())
-        setDispatcher(amplitude, testScheduler)
-
+        // set up config
+        val config = createConfiguration()
         val mockedPlugin = spyk(StubPlugin())
-        amplitude.add(mockedPlugin)
+        config.plugins = listOf(mockedPlugin)
 
+        // create instance (starts session) (1)
+        val amplitude = Amplitude(config)
+        setDispatcher(amplitude, testScheduler)
         amplitude.isBuilt.await()
 
+        // Enter FG (2)
         amplitude.onEnterForeground(StartTime)
         val event1Time = mockSystemTime(StartTime + 500)
+        // Track (3)
         amplitude.track(createEvent(event1Time, "test event 1"))
+        // Exit FG (4)
         val exitForegroundTime = mockSystemTime(StartTime + 1000)
         amplitude.onExitForeground(exitForegroundTime)
+        // Track (5)
         val event2Time = mockSystemTime(exitForegroundTime + 1000)
         amplitude.track(createEvent(event2Time, "test event 2"))
 
