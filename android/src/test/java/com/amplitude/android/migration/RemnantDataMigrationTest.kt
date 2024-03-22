@@ -30,7 +30,7 @@ class RemnantDataMigrationTest {
 
     @Test
     fun `legacy data version 4 should be migrated`() {
-        checkLegacyDataMigration("legacy_v4.sqlite", 4)
+        checkLegacyDataMigration("legacy_v4.sqlite", 4, true, false)
     }
 
     @Test
@@ -113,7 +113,7 @@ class RemnantDataMigrationTest {
                 } else {
                     // Session start event has not been processed yet, so this is null
                     Assertions.assertEquals(
-                        null,
+                        if (!migrateLegacyData) null else 2,
                         amplitude.storage.read(Storage.Constants.LAST_EVENT_ID)?.toLongOrNull()
                     )
                 }

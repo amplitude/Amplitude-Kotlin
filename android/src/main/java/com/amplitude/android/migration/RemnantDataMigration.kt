@@ -21,6 +21,7 @@ class RemnantDataMigration(
     companion object {
         const val DEVICE_ID_KEY = "device_id"
         const val USER_ID_KEY = "user_id"
+        const val LAST_EVENT_ID_KEY = "last_event_id"
     }
 
     lateinit var databaseStorage: DatabaseStorage
@@ -32,6 +33,7 @@ class RemnantDataMigration(
 
         // WARNING: We don't migrate session data as we want to reset on a new app install
         moveDeviceAndUserId()
+        moveTimelineData()
 
         if (firstRunSinceUpgrade) {
             moveInterceptedIdentifies()
@@ -60,6 +62,23 @@ class RemnantDataMigration(
         } catch (e: Exception) {
             LogcatLogger.logger.error(
                 "device/user id migration failed: ${e.message}"
+            )
+        }
+    }
+
+    private suspend fun moveTimelineData() {
+        try {
+            val currentLastEventId = amplitude.storage.read(Storage.Constants.LAST_EVENT_ID)?.toLongOrNull()
+
+            val lastEventId = databaseStorage.getLongValue(LAST_EVENT_ID_KEY)
+
+            if (currentLastEventId == null && lastEventId != null) {
+                amplitude.storage.write(Storage.Constants.LAST_EVENT_ID, lastEventId.toString())
+                databaseStorage.removeLongValue(LAST_EVENT_ID_KEY)
+            }
+        } catch (e: Exception) {
+            LogcatLogger.logger.error(
+                "timeline data migration failed: ${e.message}"
             )
         }
     }
