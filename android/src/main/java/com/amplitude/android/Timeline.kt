@@ -67,15 +67,9 @@ class Timeline : Timeline() {
         val event = message.event
         var sessionEvents: Iterable<BaseEvent>? = null
         val eventTimestamp = event.timestamp!!
-        val eventSessionId = event.sessionId
         var skipEvent = false
 
-        if (event.eventType == Amplitude.START_SESSION_EVENT) {
-            session.setSessionId(eventSessionId ?: eventTimestamp)
-            session.refreshSessionTime(eventTimestamp)
-        } else if (event.eventType == Amplitude.END_SESSION_EVENT) {
-            // do nothing
-        } else if (event.eventType == Amplitude.DUMMY_ENTER_FOREGROUND_EVENT) {
+        if (event.eventType == Amplitude.DUMMY_ENTER_FOREGROUND_EVENT) {
             skipEvent = true
             sessionEvents = session.startNewSessionIfNeeded(eventTimestamp)
         } else if (event.eventType == Amplitude.DUMMY_EXIT_FOREGROUND_EVENT) {
