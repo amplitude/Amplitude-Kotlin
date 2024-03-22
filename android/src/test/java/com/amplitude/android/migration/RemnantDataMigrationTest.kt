@@ -35,7 +35,7 @@ class RemnantDataMigrationTest {
 
     @Test
     fun `legacy data version 3 should be migrated`() {
-        checkLegacyDataMigration("legacy_v3.sqlite", 3)
+        checkLegacyDataMigration("legacy_v3.sqlite", 3, true, false)
     }
 
     @Test
