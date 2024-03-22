@@ -644,7 +644,6 @@ class AmplitudeSessionTest {
         // Create an instance in the background
         // This will start a new session (1)
         val amplitude1 = Amplitude(config)
-        amplitude1.logger.logMode = Logger.LogMode.DEBUG
         setDispatcher(amplitude1, testScheduler)
         amplitude1.isBuilt.await()
 
