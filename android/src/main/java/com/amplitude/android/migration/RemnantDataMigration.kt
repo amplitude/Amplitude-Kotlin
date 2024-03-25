@@ -21,9 +21,7 @@ class RemnantDataMigration(
     companion object {
         const val DEVICE_ID_KEY = "device_id"
         const val USER_ID_KEY = "user_id"
-        const val LAST_EVENT_TIME_KEY = "last_event_time"
         const val LAST_EVENT_ID_KEY = "last_event_id"
-        const val PREVIOUS_SESSION_ID_KEY = "previous_session_id"
     }
 
     lateinit var databaseStorage: DatabaseStorage
@@ -33,8 +31,9 @@ class RemnantDataMigration(
 
         val firstRunSinceUpgrade = amplitude.storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLongOrNull() == null
 
+        // WARNING: We don't migrate session data as we want to reset on a new app install
         moveDeviceAndUserId()
-        moveSessionData()
+        moveTimelineData()
 
         if (firstRunSinceUpgrade) {
             moveInterceptedIdentifies()
@@ -67,25 +66,11 @@ class RemnantDataMigration(
         }
     }
 
-    private suspend fun moveSessionData() {
+    private suspend fun moveTimelineData() {
         try {
-            val currentSessionId = amplitude.storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLongOrNull()
-            val currentLastEventTime = amplitude.storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLongOrNull()
             val currentLastEventId = amplitude.storage.read(Storage.Constants.LAST_EVENT_ID)?.toLongOrNull()
 
-            val previousSessionId = databaseStorage.getLongValue(PREVIOUS_SESSION_ID_KEY)
-            val lastEventTime = databaseStorage.getLongValue(LAST_EVENT_TIME_KEY)
             val lastEventId = databaseStorage.getLongValue(LAST_EVENT_ID_KEY)
-
-            if (currentSessionId == null && previousSessionId != null) {
-                amplitude.storage.write(Storage.Constants.PREVIOUS_SESSION_ID, previousSessionId.toString())
-                databaseStorage.removeLongValue(PREVIOUS_SESSION_ID_KEY)
-            }
-
-            if (currentLastEventTime == null && lastEventTime != null) {
-                amplitude.storage.write(Storage.Constants.LAST_EVENT_TIME, lastEventTime.toString())
-                databaseStorage.removeLongValue(LAST_EVENT_TIME_KEY)
-            }
 
             if (currentLastEventId == null && lastEventId != null) {
                 amplitude.storage.write(Storage.Constants.LAST_EVENT_ID, lastEventId.toString())
@@ -93,7 +78,7 @@ class RemnantDataMigration(
             }
         } catch (e: Exception) {
             LogcatLogger.logger.error(
-                "session data migration failed: ${e.message}"
+                "timeline data migration failed: ${e.message}"
             )
         }
     }

@@ -6,6 +6,7 @@ import android.net.ConnectivityManager
 import com.amplitude.analytics.connector.AnalyticsConnector
 import com.amplitude.analytics.connector.Identity
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
+import com.amplitude.android.utils.mockSystemTime
 import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.core.StorageProvider
 import com.amplitude.core.events.BaseEvent
@@ -207,27 +208,59 @@ class AmplitudeTest {
     }
 
     @Test
+    fun amplitude_getSessionId_should_return_not_null_after_isBuilt() = runTest {
+        setDispatcher(testScheduler)
+        if (amplitude?.isBuilt!!.await()) {
+            Assertions.assertNotNull(amplitude?.store?.sessionId)
+            Assertions.assertNotNull(amplitude?.sessionId)
+            Assertions.assertNotNull(amplitude?.sessionId!! > 0L)
+        }
+    }
+
+    @Test
+    fun amplitude_getSessionId_should_be_the_current_time_after_isBuilt() = runTest {
+        val time = 1000L
+        mockSystemTime(time)
+
+        amplitude = Amplitude(createConfiguration())
+
+        setDispatcher(testScheduler)
+        if (amplitude?.isBuilt!!.await()) {
+            Assertions.assertEquals(time, amplitude?.store?.sessionId)
+            Assertions.assertEquals(time, amplitude?.sessionId)
+        }
+    }
+
+    @Test
     fun amplitude_should_set_deviceId_from_configuration() = runTest {
         val testDeviceId = "test device id"
         // set device Id in the config
-        amplitude = Amplitude(createConfiguration(deviceId = testDeviceId))
+        val config = createConfiguration(deviceId = testDeviceId)
+        // isolate storage from other tests
+        config.instanceName = "set-device-id"
+        val amp = Amplitude(config)
         setDispatcher(testScheduler)
 
-        if (amplitude?.isBuilt!!.await()) {
-            Assertions.assertEquals(testDeviceId, amplitude?.store?.deviceId)
-            Assertions.assertEquals(testDeviceId, amplitude?.getDeviceId())
+        if (amp?.isBuilt!!.await()) {
+            Assertions.assertEquals(testDeviceId, amp?.store?.deviceId)
+            Assertions.assertEquals(testDeviceId, amp?.getDeviceId())
         }
     }
 
     @Test
     fun amplitude_should_set_sessionId_from_configuration() = runTest {
         val testSessionId = 1337L
-        // set device Id in the config
-        amplitude = Amplitude(createConfiguration(sessionId = testSessionId))
+
+        // set session Id in the config
+        val config = createConfiguration(sessionId = testSessionId)
+        // isolate storage from other tests
+        config.instanceName = "set-session-id"
+        val amp = Amplitude(config)
+
         setDispatcher(testScheduler)
 
-        if (amplitude?.isBuilt!!.await()) {
-            Assertions.assertEquals(testSessionId, amplitude?.sessionId)
+        if (amp?.isBuilt!!.await()) {
+            Assertions.assertEquals(testSessionId, amp?.sessionId)
         }
     }
 

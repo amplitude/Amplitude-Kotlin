@@ -8,6 +8,7 @@ import com.amplitude.android.plugins.AnalyticsConnectorPlugin
 import com.amplitude.android.plugins.AndroidContextPlugin
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.android.plugins.AndroidNetworkConnectivityCheckerPlugin
+import com.amplitude.android.utilities.Session
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.plugins.AmplitudeDestination
@@ -25,7 +26,8 @@ open class Amplitude(
 
     val sessionId: Long
         get() {
-            return (timeline as Timeline).sessionId
+            return if (timeline == null) Session.EMPTY_SESSION_ID
+            else (timeline as Timeline).sessionId
         }
 
     init {
@@ -33,7 +35,7 @@ open class Amplitude(
     }
 
     override fun createTimeline(): Timeline {
-        return Timeline(configuration.sessionId).also { it.amplitude = this }
+        return Timeline().also { it.amplitude = this }
     }
 
     override fun createIdentityConfiguration(): IdentityConfiguration {
@@ -50,11 +52,12 @@ open class Amplitude(
     }
 
     override suspend fun buildInternal(identityConfiguration: IdentityConfiguration) {
+        // Migrations
         ApiKeyStorageMigration(this).execute()
-
         if ((this.configuration as Configuration).migrateLegacyData) {
             RemnantDataMigration(this).execute()
         }
+
         this.createIdentityContainer(identityConfiguration)
 
         if (this.configuration.offline != AndroidNetworkConnectivityCheckerPlugin.Disabled) {
@@ -73,7 +76,16 @@ open class Amplitude(
         add(AnalyticsConnectorPlugin())
         add(AmplitudeDestination())
 
-        (timeline as Timeline).start()
+        // Add user plugins from config
+        val plugins = configuration.plugins
+        if (plugins != null) {
+            for (plugin in plugins) {
+                add(plugin)
+            }
+        }
+
+        val androidTimeline = timeline as Timeline
+        androidTimeline.start()
     }
 
     /**

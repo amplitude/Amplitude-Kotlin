@@ -19,6 +19,14 @@ class State {
             }
         }
 
+    var sessionId: Long? = null
+        set(value: Long?) {
+            field = value
+            plugins.forEach { plugin ->
+                plugin.onSessionIdChanged(value)
+            }
+        }
+
     val plugins: MutableList<ObservePlugin> = mutableListOf()
 
     fun add(plugin: ObservePlugin, amplitude: Amplitude) = synchronized(plugins) {

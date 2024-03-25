@@ -13,6 +13,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import org.json.JSONArray
 import java.io.File
+import java.util.concurrent.locks.ReentrantReadWriteLock
 
 class FileStorage(
     storageKey: String,
@@ -31,6 +32,8 @@ class FileStorage(
     private val eventsFile = EventsFileManager(storageDirectoryEvents, storageKey, propertiesFile, logger, diagnostics)
     private val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
 
+    val propertiesFileLock = ReentrantReadWriteLock()
+
     init {
         propertiesFile.load()
     }
@@ -48,11 +51,15 @@ class FileStorage(
         key: Storage.Constants,
         value: String,
     ) {
+        propertiesFileLock.writeLock().lock()
         propertiesFile.putString(key.rawVal, value)
+        propertiesFileLock.writeLock().unlock()
     }
 
     override suspend fun remove(key: Storage.Constants) {
+        propertiesFileLock.writeLock().lock()
         propertiesFile.remove(key.rawVal)
+        propertiesFileLock.writeLock().unlock()
     }
 
     override suspend fun rollover() {
@@ -60,7 +67,12 @@ class FileStorage(
     }
 
     override fun read(key: Storage.Constants): String? {
-        return propertiesFile.getString(key.rawVal, null)
+        var value: String? = null
+        propertiesFileLock.readLock().lock()
+        value = propertiesFile.getString(key.rawVal, null)
+        propertiesFileLock.readLock().unlock()
+
+        return value
     }
 
     override fun readEventsContent(): List<Any> {

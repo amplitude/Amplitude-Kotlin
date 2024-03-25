@@ -3,6 +3,7 @@ package com.amplitude.android.plugins
 import com.amplitude.android.BuildConfig
 import com.amplitude.android.Configuration
 import com.amplitude.android.TrackingOptions
+import com.amplitude.android.utilities.SystemTime
 import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
@@ -70,7 +71,7 @@ open class AndroidContextPlugin : Plugin {
     private fun applyContextData(event: BaseEvent) {
         val configuration = amplitude.configuration as Configuration
         event.timestamp ?: let {
-            val eventTime = System.currentTimeMillis()
+            val eventTime = SystemTime.getCurrentTimeMillis()
             event.timestamp = eventTime
         }
         event.insertId ?: let {
