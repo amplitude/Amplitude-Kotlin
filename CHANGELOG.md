@@ -1,3 +1,10 @@
+## [1.16.3](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.16.2...v1.16.3) (2024-03-25)
+
+
+### Bug Fixes
+
+* start tracking sessions at init for session replay ([#186](https://github.com/amplitude/Amplitude-Kotlin/issues/186)) ([7b69897](https://github.com/amplitude/Amplitude-Kotlin/commit/7b69897b6c670f9bf5a9a2112459620245b99b5e))
+
 ## [1.16.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.16.1...v1.16.2) (2024-03-18)
 
 
