@@ -1,3 +1,10 @@
+## [1.16.4](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.16.3...v1.16.4) (2024-03-26)
+
+
+### Bug Fixes
+
+* only take unique error logs and control limit ([#188](https://github.com/amplitude/Amplitude-Kotlin/issues/188)) ([cca7d79](https://github.com/amplitude/Amplitude-Kotlin/commit/cca7d797ddb8a91cde38d507ad23675015632287))
+
 ## [1.16.3](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.16.2...v1.16.3) (2024-03-25)
 
 
