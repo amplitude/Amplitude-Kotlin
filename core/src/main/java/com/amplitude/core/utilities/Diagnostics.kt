@@ -21,6 +21,9 @@ class Diagnostics() {
         if (errorLogs == null) {
             errorLogs = Collections.synchronizedSet(mutableSetOf())
         }
+        if (errorLogs!!.size >= MAX_ERROR_LOGS) {
+            return
+        }
         errorLogs?.add(log)
     }
 
@@ -41,13 +44,11 @@ class Diagnostics() {
             diagnostics["malformed_events"] = malformedEvents!!
         }
         if (errorLogs != null && errorLogs!!.isNotEmpty()) {
-            // pick the first MAX_ERROR_LOGS from the set and convert to list
-            val errorLogsToTake = errorLogs!!.take(MAX_ERROR_LOGS)
-            diagnostics["error_logs"] = errorLogsToTake
-            errorLogs?.removeAll(errorLogsToTake.toSet())
+            diagnostics["error_logs"] = errorLogs!!.toList()
         }
         val result = diagnostics.toJSONObject().toString()
         malformedEvents?.clear()
+        errorLogs?.clear()
         return result
     }
 }
