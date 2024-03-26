@@ -4,7 +4,11 @@ import java.util.Collections
 
 class Diagnostics() {
     private var malformedEvents: MutableList<String>? = null
-    private var errorLogs: MutableList<String>? = null
+    private var errorLogs: MutableSet<String> = Collections.synchronizedSet(mutableSetOf())
+
+    companion object {
+        private const val MAX_ERROR_LOGS = 10
+    }
 
     fun addMalformedEvent(event: String) {
         if (malformedEvents == null) {
@@ -14,14 +18,14 @@ class Diagnostics() {
     }
 
     fun addErrorLog(log: String) {
-        if (errorLogs == null) {
-            errorLogs = Collections.synchronizedList(mutableListOf())
+        errorLogs.add(log)
+        while (errorLogs.size > MAX_ERROR_LOGS) {
+            errorLogs.remove(errorLogs.first())
         }
-        errorLogs?.add(log)
     }
 
     fun hasDiagnostics(): Boolean {
-        return (malformedEvents != null && malformedEvents!!.isNotEmpty()) || (errorLogs != null && errorLogs!!.isNotEmpty())
+        return (malformedEvents != null && malformedEvents!!.isNotEmpty()) || errorLogs.isNotEmpty()
     }
 
     /**
@@ -36,12 +40,12 @@ class Diagnostics() {
         if (malformedEvents != null && malformedEvents!!.isNotEmpty()) {
             diagnostics["malformed_events"] = malformedEvents!!
         }
-        if (errorLogs != null && errorLogs!!.isNotEmpty()) {
-            diagnostics["error_logs"] = errorLogs!!
+        if (errorLogs.isNotEmpty()) {
+            diagnostics["error_logs"] = errorLogs.toList()
         }
         val result = diagnostics.toJSONObject().toString()
         malformedEvents?.clear()
-        errorLogs?.clear()
+        errorLogs.clear()
         return result
     }
 }
