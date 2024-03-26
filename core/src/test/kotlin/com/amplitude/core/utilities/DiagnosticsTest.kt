@@ -39,7 +39,7 @@ class DiagnosticsTest {
         }
         assertTrue(diagnostics.hasDiagnostics())
         assertEquals(
-            "{\"error_logs\":[\"log1\",\"log2\",\"log3\",\"log4\",\"log5\",\"log6\",\"log7\",\"log8\",\"log9\",\"log10\"]}",
+            "{\"error_logs\":[\"log6\",\"log7\",\"log8\",\"log9\",\"log10\",\"log11\",\"log12\",\"log13\",\"log14\",\"log15\"]}",
             diagnostics.extractDiagnostics(),
         )
         assertFalse(diagnostics.hasDiagnostics())
