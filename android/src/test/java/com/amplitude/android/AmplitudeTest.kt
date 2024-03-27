@@ -234,6 +234,8 @@ class AmplitudeTest {
 
     @Test
     fun amplitude_should_set_sessionId_before_plugin_setup() = runTest {
+        var setupSessionId: Long? = null
+
         class SessionIdPlugin() : DestinationPlugin() {
             override val type: Plugin.Type = Plugin.Type.Destination
 
@@ -244,9 +246,10 @@ class AmplitudeTest {
 
                 this.amplitude = amplitude
 
-                val sessionId = (amplitude as Amplitude).sessionId
+                setupSessionId = (amplitude as Amplitude).sessionId
 
-                Assertions.assertNotNull(sessionId)
+                Assertions.assertNotNull(setupSessionId)
+                Assertions.assertNotEquals(-1L, setupSessionId)
             }
         }
 
@@ -254,13 +257,15 @@ class AmplitudeTest {
         val config = createConfiguration()
         // isolate storage from other tests
         config.instanceName = "session-id-for-plugin-setup"
+        config.plugins = listOf(SessionIdPlugin())
         val amp = Amplitude(config)
-        amp.add(SessionIdPlugin())
 
         setDispatcher(testScheduler)
 
         if (amp?.isBuilt!!.await()) {
             Assertions.assertNotNull(amp?.sessionId)
+            Assertions.assertNotEquals(-1L, amp?.sessionId)
+            Assertions.assertEquals(setupSessionId, amp?.sessionId)
         }
     }
 
