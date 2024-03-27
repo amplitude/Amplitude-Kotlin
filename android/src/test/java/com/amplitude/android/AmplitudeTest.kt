@@ -10,6 +10,7 @@ import com.amplitude.android.utils.mockSystemTime
 import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.core.StorageProvider
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.platform.DestinationPlugin
 import com.amplitude.core.platform.EventPlugin
 import com.amplitude.core.platform.Plugin
 import com.amplitude.core.utilities.ConsoleLoggerProvider
@@ -228,6 +229,40 @@ class AmplitudeTest {
         if (amplitude?.isBuilt!!.await()) {
             Assertions.assertEquals(time, amplitude?.store?.sessionId)
             Assertions.assertEquals(time, amplitude?.sessionId)
+        }
+    }
+
+
+    @Test
+    fun amplitude_should_set_sessionId_before_plugin_setup() = runTest {
+        class SessionIdPlugin() : DestinationPlugin() {
+            override val type: Plugin.Type = Plugin.Type.Destination
+
+            override lateinit var amplitude: com.amplitude.core.Amplitude
+
+            override fun setup(amplitude: com.amplitude.core.Amplitude) {
+                super.setup(amplitude)
+
+                this.amplitude = amplitude
+
+                val sessionId = (amplitude as Amplitude).sessionId
+
+                Assertions.assertNotNull(sessionId)
+            }
+        }
+
+
+        // set session Id in the config
+        val config = createConfiguration()
+        // isolate storage from other tests
+        config.instanceName = "session-id-for-plugin-setup"
+        val amp = Amplitude(config)
+        amp.add(SessionIdPlugin())
+
+        setDispatcher(testScheduler)
+
+        if (amp?.isBuilt!!.await()) {
+            Assertions.assertNotNull(amp?.sessionId)
         }
     }
 
