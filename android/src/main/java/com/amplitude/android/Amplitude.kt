@@ -15,6 +15,7 @@ import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
 import com.amplitude.core.utilities.FileStorage
 import com.amplitude.id.IdentityConfiguration
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.launch
 
 open class Amplitude(
@@ -51,10 +52,19 @@ open class Amplitude(
         )
     }
 
+    override fun build(): Deferred<Boolean> {
+        val deferred = super.build()
+
+        // Start session before adding plugins
+        (timeline as Timeline).initSession()
+
+        return deferred
+    }
+
     override suspend fun buildInternal(identityConfiguration: IdentityConfiguration) {
         // Migrations
         ApiKeyStorageMigration(this).execute()
-        if ((this.configuration as Configuration).migrateLegacyData) {
+        if ((configuration as Configuration).migrateLegacyData) {
             RemnantDataMigration(this).execute()
         }
 
@@ -84,8 +94,7 @@ open class Amplitude(
             }
         }
 
-        val androidTimeline = timeline as Timeline
-        androidTimeline.start()
+        (timeline as Timeline).start()
     }
 
     /**
