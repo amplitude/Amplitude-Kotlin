@@ -1,3 +1,10 @@
+## [1.16.6](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.16.5...v1.16.6) (2024-03-27)
+
+
+### Bug Fixes
+
+* fix storage timing issue from last commit, set sessionId before plugin.setup ([#190](https://github.com/amplitude/Amplitude-Kotlin/issues/190)) ([84b4b9d](https://github.com/amplitude/Amplitude-Kotlin/commit/84b4b9d5686612971be9b057ac901af20bc54fe9))
+
 ## [1.16.5](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.16.4...v1.16.5) (2024-03-27)
 
 
