@@ -9,13 +9,13 @@ import com.amplitude.android.plugins.AndroidContextPlugin
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.android.plugins.AndroidNetworkConnectivityCheckerPlugin
 import com.amplitude.android.utilities.Session
+import com.amplitude.android.utilities.SystemTime
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
 import com.amplitude.core.utilities.FileStorage
 import com.amplitude.id.IdentityConfiguration
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.launch
 
 open class Amplitude(
@@ -25,10 +25,14 @@ open class Amplitude(
     internal var inForeground = false
     private lateinit var androidContextPlugin: AndroidContextPlugin
 
+    private var _initialSessionId = Session.EMPTY_SESSION_ID
     val sessionId: Long
         get() {
-            return if (timeline == null) Session.EMPTY_SESSION_ID
-            else (timeline as Timeline).sessionId
+            return try {
+                (timeline as Timeline).sessionId
+            } catch (e: Throwable) {
+                _initialSessionId
+            }
         }
 
     init {
@@ -52,16 +56,27 @@ open class Amplitude(
         )
     }
 
-    override fun build(): Deferred<Boolean> {
-        val deferred = super.build()
+    private suspend fun loadInitialSessionId(startTime: Long) {
+        // Load in existing session info
+        val session = Session(configuration as Configuration, storage, store)
 
-        // Start session before adding plugins
-        (timeline as Timeline).initSession()
+        // disconnect from storages
+        session.storage = null
+        session.state = null
 
-        return deferred
+        // Get the next session id without changing storage values
+        session.startNewSessionIfNeeded(startTime, configuration.sessionId)
+
+        // Set the initial sessionId before plugins are setup
+        _initialSessionId = session.sessionId
     }
 
     override suspend fun buildInternal(identityConfiguration: IdentityConfiguration) {
+        val startTime = SystemTime.getCurrentTimeMillis()
+
+        // Set the initial sessionId before plugins are setup
+        loadInitialSessionId(startTime)
+
         // Migrations
         ApiKeyStorageMigration(this).execute()
         if ((configuration as Configuration).migrateLegacyData) {
@@ -94,7 +109,8 @@ open class Amplitude(
             }
         }
 
-        (timeline as Timeline).start()
+        // Start session before adding plugins
+        (timeline as Timeline).start(startTime)
     }
 
     /**

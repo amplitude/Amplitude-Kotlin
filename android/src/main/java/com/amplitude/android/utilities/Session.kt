@@ -9,8 +9,8 @@ import java.util.concurrent.atomic.AtomicLong
 
 class Session(
     private var configuration: Configuration,
-    private var storage: Storage? = null,
-    private var state: State? = null,
+    internal var storage: Storage? = null,
+    internal var state: State? = null,
 ) {
     companion object {
         const val EMPTY_SESSION_ID = -1L

@@ -100,10 +100,9 @@ open class Amplitude internal constructor(
     protected open fun build(): Deferred<Boolean> {
         val amplitude = this
 
-        storage = configuration.storageProvider.getStorage(amplitude)
-
         val built =
             amplitudeScope.async(amplitudeDispatcher, CoroutineStart.LAZY) {
+                storage = configuration.storageProvider.getStorage(amplitude)
                 identifyInterceptStorage =
                     configuration.identifyInterceptStorageProvider.getStorage(
                         amplitude,

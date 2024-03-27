@@ -26,17 +26,15 @@ class Timeline : Timeline() {
     internal var sessionId: Long = Session.EMPTY_SESSION_ID
         get() = if (session == null) Session.EMPTY_SESSION_ID else session.sessionId
 
-    internal fun initSession() {
+    internal suspend fun start(timestamp: Long? = null) {
         this.session = Session(
             amplitude.configuration as Configuration,
             amplitude.storage,
             amplitude.store
         )
-    }
 
-    internal suspend fun start() {
         val sessionEvents = session.startNewSessionIfNeeded(
-            SystemTime.getCurrentTimeMillis(),
+            timestamp ?: SystemTime.getCurrentTimeMillis(),
             amplitude.configuration.sessionId
         )
 

@@ -482,11 +482,12 @@ class AmplitudeSessionTest {
 
     @Test
     fun amplitude_explicitSessionForEventShouldBePreserved() = runTest {
-        val amplitude = Amplitude(createConfiguration())
-        setDispatcher(amplitude, testScheduler)
-
+        val config = createConfiguration()
         val mockedPlugin = spyk(StubPlugin())
-        amplitude.add(mockedPlugin)
+        config.plugins = listOf(mockedPlugin)
+
+        val amplitude = Amplitude(config)
+        setDispatcher(amplitude, testScheduler)
 
         amplitude.isBuilt.await()
 
