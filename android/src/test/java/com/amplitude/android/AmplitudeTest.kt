@@ -232,7 +232,6 @@ class AmplitudeTest {
         }
     }
 
-
     @Test
     fun amplitude_should_set_sessionId_before_plugin_setup() = runTest {
         class SessionIdPlugin() : DestinationPlugin() {
@@ -250,7 +249,6 @@ class AmplitudeTest {
                 Assertions.assertNotNull(sessionId)
             }
         }
-
 
         // set session Id in the config
         val config = createConfiguration()
