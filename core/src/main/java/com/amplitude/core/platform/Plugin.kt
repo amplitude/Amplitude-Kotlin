@@ -107,25 +107,9 @@ abstract class DestinationPlugin : EventPlugin {
 abstract class ObservePlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Observe
 
-    // ObservePlugin doesn't use the amplitude instance
-    // Override it here so it's not required by subclasses
-    // This will still be set in Plugin.setup()
-    override lateinit var amplitude: Amplitude
+    abstract fun onUserIdChanged(userId: String?)
 
-    /**
-     * Called whenever the User Id changes
-     */
-    open fun onUserIdChanged(userId: String?) {}
-
-    /**
-     * Called whenever the Device Id changes
-     */
-    open fun onDeviceIdChanged(deviceId: String?) {}
-
-    /**
-     * Called whenever the Session Id changes
-     */
-    open fun onSessionIdChanged(sessionId: Long?) {}
+    abstract fun onDeviceIdChanged(deviceId: String?)
 
     final override fun execute(event: BaseEvent): BaseEvent? {
         return null

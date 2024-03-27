@@ -1,59 +1,42 @@
 package com.amplitude.android
 
-import com.amplitude.android.utilities.Session
-import com.amplitude.android.utilities.SystemTime
 import com.amplitude.core.Storage
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Timeline
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import java.util.concurrent.atomic.AtomicLong
 
-class Timeline : Timeline() {
-    companion object {
-        const val DEFAULT_LAST_EVENT_ID = 0L
-    }
-
+class Timeline(
+    private val initialSessionId: Long? = null,
+) : Timeline() {
     private val eventMessageChannel: Channel<EventQueueMessage> = Channel(Channel.UNLIMITED)
-    internal lateinit var session: Session
 
-    private val _lastEventId = AtomicLong(DEFAULT_LAST_EVENT_ID)
+    private val _sessionId = AtomicLong(initialSessionId ?: -1L)
+    val sessionId: Long
+        get() {
+            return _sessionId.get()
+        }
 
-    internal var lastEventId: Long = DEFAULT_LAST_EVENT_ID
-        get() = _lastEventId.get()
+    internal var lastEventId: Long = 0
+    var lastEventTime: Long = -1L
 
-    internal var sessionId: Long = Session.EMPTY_SESSION_ID
-        get() = if (session == null) Session.EMPTY_SESSION_ID else session.sessionId
-
-    internal suspend fun start(timestamp: Long? = null) {
-        this.session = Session(
-            amplitude.configuration as Configuration,
-            amplitude.storage,
-            amplitude.store
-        )
-
-        val sessionEvents = session.startNewSessionIfNeeded(
-            timestamp ?: SystemTime.getCurrentTimeMillis(),
-            amplitude.configuration.sessionId
-        )
-
-        loadLastEventId()
-
+    internal fun start() {
         amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
             // Wait until build (including possible legacy data migration) is finished.
             amplitude.isBuilt.await()
 
+            if (initialSessionId == null) {
+                _sessionId.set(
+                    amplitude.storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLongOrNull()
+                        ?: -1
+                )
+            }
+            lastEventId = amplitude.storage.read(Storage.Constants.LAST_EVENT_ID)?.toLongOrNull() ?: 0
+            lastEventTime = amplitude.storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLongOrNull() ?: -1
+
             for (message in eventMessageChannel) {
                 processEventMessage(message)
-            }
-        }
-
-        if (!amplitude.configuration.optOut) {
-            runBlocking {
-                sessionEvents?.forEach {
-                    processImmediately(it)
-                }
             }
         }
     }
@@ -64,56 +47,64 @@ class Timeline : Timeline() {
 
     override fun process(incomingEvent: BaseEvent) {
         if (incomingEvent.timestamp == null) {
-            incomingEvent.timestamp = SystemTime.getCurrentTimeMillis()
+            incomingEvent.timestamp = System.currentTimeMillis()
         }
 
         eventMessageChannel.trySend(EventQueueMessage(incomingEvent, (amplitude as Amplitude).inForeground))
-    }
-
-    private suspend fun processImmediately(incomingEvent: BaseEvent) {
-        if (incomingEvent.timestamp == null) {
-            incomingEvent.timestamp = SystemTime.getCurrentTimeMillis()
-        }
-
-        processEventMessage(EventQueueMessage(incomingEvent, (amplitude as Amplitude).inForeground))
     }
 
     private suspend fun processEventMessage(message: EventQueueMessage) {
         val event = message.event
         var sessionEvents: Iterable<BaseEvent>? = null
         val eventTimestamp = event.timestamp!!
+        val eventSessionId = event.sessionId
         var skipEvent = false
 
-        if (event.eventType == Amplitude.DUMMY_ENTER_FOREGROUND_EVENT) {
+        if (event.eventType == Amplitude.START_SESSION_EVENT) {
+            setSessionId(eventSessionId ?: eventTimestamp)
+            refreshSessionTime(eventTimestamp)
+        } else if (event.eventType == Amplitude.END_SESSION_EVENT) {
+            // do nothing
+        } else if (event.eventType == Amplitude.DUMMY_ENTER_FOREGROUND_EVENT) {
             skipEvent = true
-            sessionEvents = session.startNewSessionIfNeeded(eventTimestamp)
+            sessionEvents = startNewSessionIfNeeded(eventTimestamp)
         } else if (event.eventType == Amplitude.DUMMY_EXIT_FOREGROUND_EVENT) {
             skipEvent = true
-            session.refreshSessionTime(eventTimestamp)
+            refreshSessionTime(eventTimestamp)
         } else {
             if (!message.inForeground) {
-                sessionEvents = session.startNewSessionIfNeeded(eventTimestamp)
+                sessionEvents = startNewSessionIfNeeded(eventTimestamp)
             } else {
-                session.refreshSessionTime(eventTimestamp)
+                refreshSessionTime(eventTimestamp)
             }
         }
 
         if (!skipEvent && event.sessionId == null) {
-            event.sessionId = session.sessionId
+            event.sessionId = sessionId
         }
+
+        val savedLastEventId = lastEventId
 
         sessionEvents?.let {
             it.forEach { e ->
                 e.eventId ?: let {
-                    e.eventId = getAndSetNextEventId()
+                    val newEventId = lastEventId + 1
+                    e.eventId = newEventId
+                    lastEventId = newEventId
                 }
             }
         }
 
         if (!skipEvent) {
             event.eventId ?: let {
-                event.eventId = getAndSetNextEventId()
+                val newEventId = lastEventId + 1
+                event.eventId = newEventId
+                lastEventId = newEventId
             }
+        }
+
+        if (lastEventId > savedLastEventId) {
+            amplitude.storage.write(Storage.Constants.LAST_EVENT_ID, lastEventId.toString())
         }
 
         sessionEvents?.let {
@@ -127,21 +118,64 @@ class Timeline : Timeline() {
         }
     }
 
-    private fun loadLastEventId() {
-        val lastEventId = amplitude.storage.read(Storage.Constants.LAST_EVENT_ID)?.toLongOrNull()
-            ?: DEFAULT_LAST_EVENT_ID
-        _lastEventId.set(lastEventId)
+    private suspend fun startNewSessionIfNeeded(timestamp: Long): Iterable<BaseEvent>? {
+        if (inSession() && isWithinMinTimeBetweenSessions(timestamp)) {
+            refreshSessionTime(timestamp)
+            return null
+        }
+        return startNewSession(timestamp)
     }
 
-    private suspend fun writeLastEventId(lastEventId: Long) {
-        amplitude.storage.write(Storage.Constants.LAST_EVENT_ID, lastEventId.toString())
+    private suspend fun setSessionId(timestamp: Long) {
+        _sessionId.set(timestamp)
+        amplitude.storage.write(Storage.Constants.PREVIOUS_SESSION_ID, sessionId.toString())
     }
 
-    private suspend fun getAndSetNextEventId(): Long {
-        val nextEventId = _lastEventId.incrementAndGet()
-        writeLastEventId(nextEventId)
+    private suspend fun startNewSession(timestamp: Long): Iterable<BaseEvent> {
+        val sessionEvents = mutableListOf<BaseEvent>()
+        val configuration = amplitude.configuration as Configuration
+        // If any trackingSessionEvents is false (default value is true), means it is manually set
+        @Suppress("DEPRECATION")
+        val trackingSessionEvents = configuration.trackingSessionEvents && configuration.defaultTracking.sessions
 
-        return nextEventId
+        // end previous session
+        if (trackingSessionEvents && inSession()) {
+            val sessionEndEvent = BaseEvent()
+            sessionEndEvent.eventType = Amplitude.END_SESSION_EVENT
+            sessionEndEvent.timestamp = if (lastEventTime > 0) lastEventTime else null
+            sessionEndEvent.sessionId = sessionId
+            sessionEvents.add(sessionEndEvent)
+        }
+
+        // start new session
+        setSessionId(timestamp)
+        refreshSessionTime(timestamp)
+        if (trackingSessionEvents) {
+            val sessionStartEvent = BaseEvent()
+            sessionStartEvent.eventType = Amplitude.START_SESSION_EVENT
+            sessionStartEvent.timestamp = timestamp
+            sessionStartEvent.sessionId = sessionId
+            sessionEvents.add(sessionStartEvent)
+        }
+
+        return sessionEvents
+    }
+
+    private suspend fun refreshSessionTime(timestamp: Long) {
+        if (!inSession()) {
+            return
+        }
+        lastEventTime = timestamp
+        amplitude.storage.write(Storage.Constants.LAST_EVENT_TIME, lastEventTime.toString())
+    }
+
+    private fun isWithinMinTimeBetweenSessions(timestamp: Long): Boolean {
+        val sessionLimit: Long = (amplitude.configuration as Configuration).minTimeBetweenSessionsMillis
+        return timestamp - lastEventTime < sessionLimit
+    }
+
+    private fun inSession(): Boolean {
+        return sessionId >= 0
     }
 }
 

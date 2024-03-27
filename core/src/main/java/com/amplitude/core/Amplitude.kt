@@ -64,8 +64,8 @@ open class Amplitude internal constructor(
 
     init {
         require(configuration.isValid()) { "invalid configuration" }
-        logger = configuration.loggerProvider.getLogger(this)
         timeline = this.createTimeline()
+        logger = configuration.loggerProvider.getLogger(this)
         isBuilt = this.build()
         isBuilt.start()
     }
@@ -132,12 +132,6 @@ open class Amplitude internal constructor(
         )
         add(GetAmpliExtrasPlugin())
         add(AmplitudeDestination())
-        val plugins = configuration.plugins
-        if (plugins != null) {
-            for (plugin in plugins) {
-                add(plugin)
-            }
-        }
     }
 
     @Deprecated("Please use 'track' instead.", ReplaceWith("track"))
