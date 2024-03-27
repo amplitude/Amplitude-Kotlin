@@ -1,3 +1,10 @@
+## [1.16.5](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.16.4...v1.16.5) (2024-03-27)
+
+
+### Bug Fixes
+
+* session id not set before plugin setup ([#189](https://github.com/amplitude/Amplitude-Kotlin/issues/189)) ([42e4fef](https://github.com/amplitude/Amplitude-Kotlin/commit/42e4fef44d8d3b9b49f2e895c37d63f6b9805f03))
+
 ## [1.16.4](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.16.3...v1.16.4) (2024-03-26)
 
 
