@@ -1,3 +1,10 @@
+## [1.16.7](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.16.6...v1.16.7) (2024-03-28)
+
+
+### Bug Fixes
+
+* revert recent session changes from 1.16.3 to 1.16.6 ([#191](https://github.com/amplitude/Amplitude-Kotlin/issues/191)) ([8d7271f](https://github.com/amplitude/Amplitude-Kotlin/commit/8d7271feb93a007d4a416e01f137d0dd2761afcc))
+
 ## [1.16.6](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.16.5...v1.16.6) (2024-03-27)
 
 
