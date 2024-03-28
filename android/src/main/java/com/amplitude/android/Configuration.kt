@@ -10,7 +10,6 @@ import com.amplitude.core.ServerZone
 import com.amplitude.core.StorageProvider
 import com.amplitude.core.events.IngestionMetadata
 import com.amplitude.core.events.Plan
-import com.amplitude.core.platform.Plugin
 import com.amplitude.id.FileIdentityStorageProvider
 import com.amplitude.id.IdentityStorageProvider
 
@@ -50,7 +49,6 @@ open class Configuration @JvmOverloads constructor(
     override var offline: Boolean? = false,
     override var deviceId: String? = null,
     override var sessionId: Long? = null,
-    override var plugins: List<Plugin>? = null,
 ) : Configuration(
     apiKey,
     flushQueueSize,
@@ -74,7 +72,6 @@ open class Configuration @JvmOverloads constructor(
     offline,
     deviceId,
     sessionId,
-    plugins
 ) {
     companion object {
         const val MIN_TIME_BETWEEN_SESSIONS_MILLIS: Long = 300000

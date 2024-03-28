@@ -4,13 +4,10 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.amplitude.android.Amplitude
 import com.amplitude.android.Configuration
-import com.amplitude.android.DefaultTrackingOptions
-import com.amplitude.android.utils.mockSystemTime
 import com.amplitude.core.Storage
 import com.amplitude.core.utilities.ConsoleLoggerProvider
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
-import org.junit.Before
 import org.junit.Test
 import org.junit.jupiter.api.Assertions
 import org.junit.runner.RunWith
@@ -21,21 +18,14 @@ import java.io.InputStream
 
 @RunWith(RobolectricTestRunner::class)
 class RemnantDataMigrationTest {
-    private val defaultSessionId: Long = 1000
-
-    @Before
-    fun setUp() {
-        mockSystemTime(defaultSessionId)
-    }
-
     @Test
     fun `legacy data version 4 should be migrated`() {
-        checkLegacyDataMigration("legacy_v4.sqlite", 4, true, false)
+        checkLegacyDataMigration("legacy_v4.sqlite", 4)
     }
 
     @Test
     fun `legacy data version 3 should be migrated`() {
-        checkLegacyDataMigration("legacy_v3.sqlite", 3, true, false)
+        checkLegacyDataMigration("legacy_v3.sqlite", 3)
     }
 
     @Test
@@ -45,9 +35,7 @@ class RemnantDataMigrationTest {
 
     @Test
     fun `no data should be migrated if migrateLegacyData=false`() {
-        // note: session events are turned off to allow us to check the
-        // transferd intercepted identifies without them being flattened
-        checkLegacyDataMigration("legacy_v4.sqlite", 4, false, false)
+        checkLegacyDataMigration("legacy_v4.sqlite", 4, false)
     }
 
     @Test
@@ -55,12 +43,7 @@ class RemnantDataMigrationTest {
         checkLegacyDataMigration("not_db_file", 0)
     }
 
-    private fun checkLegacyDataMigration(
-        legacyDbName: String,
-        dbVersion: Int,
-        migrateLegacyData: Boolean = true,
-        enableSessionEvents: Boolean = true
-    ) {
+    private fun checkLegacyDataMigration(legacyDbName: String, dbVersion: Int, migrateLegacyData: Boolean = true) {
         val context = ApplicationProvider.getApplicationContext<Context>()
 
         val instanceName = "legacy_v${dbVersion}_$migrateLegacyData"
@@ -77,8 +60,7 @@ class RemnantDataMigrationTest {
                 context,
                 instanceName = instanceName,
                 migrateLegacyData = migrateLegacyData,
-                loggerProvider = ConsoleLoggerProvider(),
-                defaultTracking = if (enableSessionEvents) DefaultTrackingOptions() else DefaultTrackingOptions.NONE,
+                loggerProvider = ConsoleLoggerProvider()
             )
         )
 
@@ -99,24 +81,15 @@ class RemnantDataMigrationTest {
 
             amplitude.storage.rollover()
             amplitude.identifyInterceptStorage.rollover()
-            Thread.sleep(100)
 
-            if (isValidDbFile) {
-                // We never transfer session data, it is reset on new install
-                Assertions.assertEquals(defaultSessionId, amplitude.storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLongOrNull())
-                Assertions.assertEquals(defaultSessionId, amplitude.storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLongOrNull())
-                if (enableSessionEvents) {
-                    Assertions.assertEquals(
-                        1,
-                        amplitude.storage.read(Storage.Constants.LAST_EVENT_ID)?.toLongOrNull()
-                    )
-                } else {
-                    // Session start event has not been processed yet, so this is null
-                    Assertions.assertEquals(
-                        if (!migrateLegacyData) null else 2,
-                        amplitude.storage.read(Storage.Constants.LAST_EVENT_ID)?.toLongOrNull()
-                    )
-                }
+            if (isValidDbFile && migrateLegacyData) {
+                Assertions.assertEquals(1684219150343, amplitude.storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLongOrNull())
+                Assertions.assertEquals(1684219150344, amplitude.storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLongOrNull())
+                Assertions.assertEquals(2, amplitude.storage.read(Storage.Constants.LAST_EVENT_ID)?.toLongOrNull())
+            } else {
+                Assertions.assertNull(amplitude.storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLongOrNull())
+                Assertions.assertNull(amplitude.storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLongOrNull())
+                Assertions.assertNull(amplitude.storage.read(Storage.Constants.LAST_EVENT_ID)?.toLongOrNull())
             }
 
             val eventsData = amplitude.storage.readEventsContent()
@@ -159,18 +132,14 @@ class RemnantDataMigrationTest {
                 Assertions.assertEquals(deviceId, event4.getString("device_id"))
                 Assertions.assertEquals(userId, event4.getString("user_id"))
             } else {
-                // Session start event = 1
-//                val expectedEventCount = if (
-//                    (amplitude.configuration as Configuration).defaultTracking.sessions && isValidDbFile
-//                ) 1 else 0
-//                Assertions.assertEquals(expectedEventCount, eventsData.size)
+                Assertions.assertEquals(0, eventsData.size)
             }
 
             val interceptedIdentifiesData = amplitude.identifyInterceptStorage.readEventsContent()
-            if (isValidDbFile && dbVersion >= 4 && migrateLegacyData && !enableSessionEvents) {
+            if (isValidDbFile && dbVersion >= 4 && migrateLegacyData) {
                 val jsonInterceptedIdentifies = JSONArray()
                 for (eventsPath in interceptedIdentifiesData) {
-                    val eventsString = amplitude.identifyInterceptStorage.getEventsString(eventsPath)
+                    val eventsString = amplitude.storage.getEventsString(eventsPath)
                     val events = JSONArray(eventsString)
                     for (i in 0 until events.length()) {
                         jsonInterceptedIdentifies.put(events.get(i))

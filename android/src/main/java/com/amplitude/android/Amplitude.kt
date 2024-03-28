@@ -8,8 +8,6 @@ import com.amplitude.android.plugins.AnalyticsConnectorPlugin
 import com.amplitude.android.plugins.AndroidContextPlugin
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.android.plugins.AndroidNetworkConnectivityCheckerPlugin
-import com.amplitude.android.utilities.Session
-import com.amplitude.android.utilities.SystemTime
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.plugins.AmplitudeDestination
@@ -25,14 +23,9 @@ open class Amplitude(
     internal var inForeground = false
     private lateinit var androidContextPlugin: AndroidContextPlugin
 
-    private var _initialSessionId = Session.EMPTY_SESSION_ID
     val sessionId: Long
         get() {
-            return try {
-                (timeline as Timeline).sessionId
-            } catch (e: Throwable) {
-                _initialSessionId
-            }
+            return (timeline as Timeline).sessionId
         }
 
     init {
@@ -40,7 +33,7 @@ open class Amplitude(
     }
 
     override fun createTimeline(): Timeline {
-        return Timeline().also { it.amplitude = this }
+        return Timeline(configuration.sessionId).also { it.amplitude = this }
     }
 
     override fun createIdentityConfiguration(): IdentityConfiguration {
@@ -56,33 +49,12 @@ open class Amplitude(
         )
     }
 
-    private suspend fun loadInitialSessionId(startTime: Long) {
-        // Load in existing session info
-        val session = Session(configuration as Configuration, storage, store)
-
-        // disconnect from storages
-        session.storage = null
-        session.state = null
-
-        // Get the next session id without changing storage values
-        session.startNewSessionIfNeeded(startTime, configuration.sessionId)
-
-        // Set the initial sessionId before plugins are setup
-        _initialSessionId = session.sessionId
-    }
-
     override suspend fun buildInternal(identityConfiguration: IdentityConfiguration) {
-        val startTime = SystemTime.getCurrentTimeMillis()
-
-        // Set the initial sessionId before plugins are setup
-        loadInitialSessionId(startTime)
-
-        // Migrations
         ApiKeyStorageMigration(this).execute()
-        if ((configuration as Configuration).migrateLegacyData) {
+
+        if ((this.configuration as Configuration).migrateLegacyData) {
             RemnantDataMigration(this).execute()
         }
-
         this.createIdentityContainer(identityConfiguration)
 
         if (this.configuration.offline != AndroidNetworkConnectivityCheckerPlugin.Disabled) {
@@ -101,16 +73,7 @@ open class Amplitude(
         add(AnalyticsConnectorPlugin())
         add(AmplitudeDestination())
 
-        // Add user plugins from config
-        val plugins = configuration.plugins
-        if (plugins != null) {
-            for (plugin in plugins) {
-                add(plugin)
-            }
-        }
-
-        // Start session before adding plugins
-        (timeline as Timeline).start(startTime)
+        (timeline as Timeline).start()
     }
 
     /**
