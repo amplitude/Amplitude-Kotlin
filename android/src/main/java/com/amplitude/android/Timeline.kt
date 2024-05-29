@@ -1,5 +1,6 @@
 package com.amplitude.android
 
+import com.amplitude.android.managers.EventIdManager
 import com.amplitude.core.Storage
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Timeline
@@ -11,14 +12,13 @@ class Timeline(
     private val initialSessionId: Long? = null,
 ) : Timeline() {
     private val eventMessageChannel: Channel<EventQueueMessage> = Channel(Channel.UNLIMITED)
-
+    private lateinit var eventIdManager: EventIdManager
     private val _sessionId = AtomicLong(initialSessionId ?: -1L)
     val sessionId: Long
         get() {
             return _sessionId.get()
         }
 
-    internal var lastEventId: Long = 0
     var lastEventTime: Long = -1L
 
     internal fun start() {
@@ -26,13 +26,14 @@ class Timeline(
             // Wait until build (including possible legacy data migration) is finished.
             amplitude.isBuilt.await()
 
+            eventIdManager = EventIdManager(amplitude.storage)
+
             if (initialSessionId == null) {
                 _sessionId.set(
                     amplitude.storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLongOrNull()
                         ?: -1
                 )
             }
-            lastEventId = amplitude.storage.read(Storage.Constants.LAST_EVENT_ID)?.toLongOrNull() ?: 0
             lastEventTime = amplitude.storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLongOrNull() ?: -1
 
             for (message in eventMessageChannel) {
@@ -83,29 +84,21 @@ class Timeline(
             event.sessionId = sessionId
         }
 
-        val savedLastEventId = lastEventId
-
         sessionEvents?.let {
             it.forEach { e ->
                 e.eventId ?: let {
-                    val newEventId = lastEventId + 1
-                    e.eventId = newEventId
-                    lastEventId = newEventId
+                    e.eventId = eventIdManager.getNextEventId();
                 }
             }
         }
 
         if (!skipEvent) {
             event.eventId ?: let {
-                val newEventId = lastEventId + 1
-                event.eventId = newEventId
-                lastEventId = newEventId
+                event.eventId = eventIdManager.getNextEventId();
             }
         }
 
-        if (lastEventId > savedLastEventId) {
-            amplitude.storage.write(Storage.Constants.LAST_EVENT_ID, lastEventId.toString())
-        }
+        eventIdManager.persistLastEventId();
 
         sessionEvents?.let {
             it.forEach { e ->
