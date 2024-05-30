@@ -17,9 +17,11 @@ import com.amplitude.id.IMIdentityStorageProvider
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkConstructor
+import io.mockk.mockkObject
 import io.mockk.mockkStatic
 import io.mockk.slot
 import io.mockk.spyk
+import io.mockk.unmockkObject
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -29,6 +31,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import kotlin.concurrent.thread
 
 open class StubPlugin : EventPlugin {
     override val type: Plugin.Type = Plugin.Type.Before
@@ -228,6 +231,76 @@ class AmplitudeTest {
 
         if (amplitude?.isBuilt!!.await()) {
             Assertions.assertEquals(testSessionId, amplitude?.sessionId)
+        }
+    }
+
+    /**
+     * Here is what we want to test. In the older version of the SDK, we were unintentionally
+     * extending a session. Here's how enter foreground was being handled before.
+     *  - Application is entering foreground
+     *  - Amplitude.inForeground flag is set to true.
+     *  - Immediately after this, we expect the dummy foreground event to be processed and create
+     *    a new session if needed.
+     *
+     *  If another event is fired between 2 and 3 from a different thread, we would unintentionally
+     *  extend the session thinking that the app was in foreground.
+     *
+     *  The delay between foreground flag being set and the session being initialized was a problem.
+     *
+     *  We fix this by moving the foreground property inside the timeline. We expect every event
+     *  processed before foreground = true in Timeline to be considered a background fired event.
+     *
+     *  This test checks for that scenario
+     */
+    @Test
+    fun amplitude_should_correctly_start_new_session() = runTest {
+        val testSessionId = 1000L
+
+        // Creates a mocked timeline that waits for 500ms before processing the event. This
+        // is to create an artificial delay
+        val baseEventParam = slot<BaseEvent>()
+        val timeline = Timeline(testSessionId)
+        mockkObject(timeline)
+        every { timeline.process(incomingEvent = capture(baseEventParam)) } answers {
+            if (baseEventParam.captured.eventType == Amplitude.DUMMY_ENTER_FOREGROUND_EVENT) {
+                Thread.sleep(500)
+            }
+            callOriginal()
+        }
+
+        amplitude = object : Amplitude(createConfiguration(sessionId = testSessionId, minTimeBetweenSessionsMillis = 50)) {
+            override fun createTimeline(): Timeline {
+                timeline.amplitude = this
+                return timeline
+            }
+        }
+        setDispatcher(testScheduler)
+
+        if (amplitude?.isBuilt!!.await()) {
+            // Fire a foreground event. This is fired using the delayed timeline. The event is
+            // actually processed after 500ms
+            val thread1 = thread {
+                amplitude?.onEnterForeground(1120)
+            }
+            Thread.sleep(100)
+            // Un-mock the object so that there's no delay anymore
+            unmockkObject(timeline)
+
+            // Fire a test event that will be added to the queue before the foreground event.
+            val thread2 = thread {
+                val event = BaseEvent()
+                event.eventType = "test_event"
+                event.timestamp = 1100L
+                amplitude?.track(event)
+            }
+            thread1.join()
+            thread2.join()
+
+            // Wait for all events to have been processed
+            advanceUntilIdle()
+
+            // test_event should have created a new session and not extended an existing session
+            Assertions.assertEquals(1100, amplitude?.sessionId)
         }
     }
 

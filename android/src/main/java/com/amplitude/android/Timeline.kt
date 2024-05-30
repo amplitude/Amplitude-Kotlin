@@ -13,6 +13,7 @@ class Timeline(
     private val eventMessageChannel: Channel<EventQueueMessage> = Channel(Channel.UNLIMITED)
 
     private val _sessionId = AtomicLong(initialSessionId ?: -1L)
+    private var _foreground = false
     val sessionId: Long
         get() {
             return _sessionId.get()
@@ -50,7 +51,7 @@ class Timeline(
             incomingEvent.timestamp = System.currentTimeMillis()
         }
 
-        eventMessageChannel.trySend(EventQueueMessage(incomingEvent, (amplitude as Amplitude).inForeground))
+        eventMessageChannel.trySend(EventQueueMessage(incomingEvent))
     }
 
     private suspend fun processEventMessage(message: EventQueueMessage) {
@@ -68,11 +69,13 @@ class Timeline(
         } else if (event.eventType == Amplitude.DUMMY_ENTER_FOREGROUND_EVENT) {
             skipEvent = true
             sessionEvents = startNewSessionIfNeeded(eventTimestamp)
+            _foreground = true
         } else if (event.eventType == Amplitude.DUMMY_EXIT_FOREGROUND_EVENT) {
             skipEvent = true
             refreshSessionTime(eventTimestamp)
+            _foreground = false
         } else {
-            if (!message.inForeground) {
+            if (!_foreground) {
                 sessionEvents = startNewSessionIfNeeded(eventTimestamp)
             } else {
                 refreshSessionTime(eventTimestamp)
@@ -181,5 +184,4 @@ class Timeline(
 
 data class EventQueueMessage(
     val event: BaseEvent,
-    val inForeground: Boolean
 )

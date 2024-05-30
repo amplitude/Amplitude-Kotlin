@@ -13,6 +13,14 @@ open class Timeline {
     lateinit var amplitude: Amplitude
 
     open fun process(incomingEvent: BaseEvent) {
+        // Note for future reference:
+        // Checking for opt out within the timeline processing since events can be added to the
+        // timeline from various sources. For example, the session start and end events are fired
+        // from within the timeline.
+        if (amplitude.configuration.optOut) {
+            return
+        }
+
         val beforeResult = applyPlugins(Plugin.Type.Before, incomingEvent)
         val enrichmentResult = applyPlugins(Plugin.Type.Enrichment, beforeResult)
 
