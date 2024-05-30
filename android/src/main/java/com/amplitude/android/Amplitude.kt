@@ -19,8 +19,6 @@ import kotlinx.coroutines.launch
 open class Amplitude(
     configuration: Configuration
 ) : Amplitude(configuration) {
-
-    internal var inForeground = false
     private lateinit var androidContextPlugin: AndroidContextPlugin
 
     val sessionId: Long
@@ -93,12 +91,6 @@ open class Amplitude(
     }
 
     fun onEnterForeground(timestamp: Long) {
-        inForeground = true
-
-        if ((configuration as Configuration).optOut) {
-            return
-        }
-
         val dummyEnterForegroundEvent = BaseEvent()
         dummyEnterForegroundEvent.eventType = DUMMY_ENTER_FOREGROUND_EVENT
         dummyEnterForegroundEvent.timestamp = timestamp
@@ -106,8 +98,6 @@ open class Amplitude(
     }
 
     fun onExitForeground(timestamp: Long) {
-        inForeground = false
-
         val dummyExitForegroundEvent = BaseEvent()
         dummyExitForegroundEvent.eventType = DUMMY_EXIT_FOREGROUND_EVENT
         dummyExitForegroundEvent.timestamp = timestamp
