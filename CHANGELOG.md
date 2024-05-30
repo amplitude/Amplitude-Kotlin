@@ -1,3 +1,10 @@
+## [1.16.8](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.16.7...v1.16.8) (2024-05-30)
+
+
+### Bug Fixes
+
+* fix race condition where an event can be processed before a session gets extended ([#198](https://github.com/amplitude/Amplitude-Kotlin/issues/198)) ([c3627d0](https://github.com/amplitude/Amplitude-Kotlin/commit/c3627d0391a31db2d9383f66b56ffc62c795c958))
+
 ## [1.16.7](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.16.6...v1.16.7) (2024-03-28)
 
 
