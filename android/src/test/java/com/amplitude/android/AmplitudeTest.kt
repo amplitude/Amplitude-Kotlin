@@ -268,8 +268,7 @@ class AmplitudeTest {
             callOriginal()
         }
 
-
-        amplitude = object: Amplitude(createConfiguration(sessionId = testSessionId, minTimeBetweenSessionsMillis = 50)) {
+        amplitude = object : Amplitude(createConfiguration(sessionId = testSessionId, minTimeBetweenSessionsMillis = 50)) {
             override fun createTimeline(): Timeline {
                 timeline.amplitude = this
                 return timeline
