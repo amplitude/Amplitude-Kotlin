@@ -3,16 +3,16 @@ plugins {
 }
 
 ext {
-    AMPLITUDE_API_KEY = ""
+    AMPLITUDE_API_KEY = "38cce9a4ea8451cd9b1fba17a53812b2"
 }
 
 android {
-    compileSdk 31
+    compileSdk 34
 
     defaultConfig {
         applicationId "com.amplitude.android.sample"
-        minSdk 16
-        targetSdk 31
+        minSdk 23
+        targetSdk 34
         versionCode 1
         versionName "1.0"
         multiDexEnabled true

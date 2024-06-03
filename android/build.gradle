@@ -16,13 +16,13 @@ apply from: "${rootDir}/gradle/publish-module.gradle"
 version = PUBLISH_VERSION
 
 android {
-    compileSdk 31
+    compileSdk 34
 
     defaultConfig {
         multiDexEnabled true
 
-        minSdk 16
-        targetSdk 31
+        minSdk 23
+        targetSdk 34
         versionName PUBLISH_VERSION
         buildConfigField "String", "AMPLITUDE_VERSION", "\"${version}\""
 
@@ -61,6 +61,8 @@ dependencies {
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.2'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.5.2'
     implementation 'com.amplitude:analytics-connector:1.0.0'
+    implementation 'androidx.compose.ui:ui:1.6.7'
+    implementation "androidx.core:core-ktx:1.13.1"
 
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.5'
 
