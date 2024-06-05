@@ -3,7 +3,7 @@ plugins {
 }
 
 ext {
-    AMPLITUDE_API_KEY = "38cce9a4ea8451cd9b1fba17a53812b2"
+    AMPLITUDE_API_KEY = ""
 }
 
 android {
@@ -11,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId "com.amplitude.android.sample"
-        minSdk 23
+        minSdk 16
         targetSdk 34
         versionCode 1
         versionName "1.0"
