@@ -1,5 +1,6 @@
 package com.amplitude.android.internal.gestures
 
+import android.annotation.SuppressLint
 import android.view.ActionMode
 import android.view.KeyEvent
 import android.view.Menu
@@ -100,6 +101,7 @@ internal open class WindowCallbackAdapter(private val delegate: Window.Callback)
         return delegate.onSearchRequested()
     }
 
+    @SuppressLint("NewApi")
     override fun onSearchRequested(searchEvent: SearchEvent?): Boolean {
         return delegate.onSearchRequested(searchEvent)
     }
@@ -108,6 +110,7 @@ internal open class WindowCallbackAdapter(private val delegate: Window.Callback)
         return delegate.onWindowStartingActionMode(callback)
     }
 
+    @SuppressLint("NewApi")
     override fun onWindowStartingActionMode(
         callback: ActionMode.Callback?,
         type: Int,

@@ -3,7 +3,7 @@ plugins {
     id 'kotlin-android'
 }
 ext {
-    AMPLITUDE_API_KEY = ""
+    AMPLITUDE_API_KEY = "abf1207d2a71fcf8f608a2ca3a11c966"
     EXPERIMENT_API_KEY = ""
 }
 
@@ -12,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId "com.amplitude.android.sample"
-        minSdk 16
+        minSdk 19
         targetSdk 34
         versionCode 1
         versionName "1.0"

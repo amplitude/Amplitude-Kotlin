@@ -444,39 +444,6 @@ class AndroidLifecyclePluginTest {
         }
     }
 
-    @Config(sdk = [16])
-    @Test
-    fun `test deep link opened event is tracked when using sdk is lower than 17`() = runTest {
-        setDispatcher(testScheduler)
-        configuration.defaultTracking.deepLinks = true
-        amplitude.add(androidLifecyclePlugin)
-
-        val mockedPlugin = spyk(StubPlugin())
-        amplitude.add(mockedPlugin)
-        amplitude.isBuilt.await()
-
-        val mockedIntent = mockk<Intent>()
-        every { mockedIntent.data } returns Uri.parse("app://url.com/open")
-        every { mockedIntent.getParcelableExtra<Uri>(any()) } returns Uri.parse("android-app://com.android.chrome")
-        val mockedActivity = mockk<Activity>()
-        every { mockedActivity.intent } returns mockedIntent
-        val mockedBundle = mockk<Bundle>()
-        androidLifecyclePlugin.onActivityCreated(mockedActivity, mockedBundle)
-
-        advanceUntilIdle()
-        Thread.sleep(100)
-
-        val tracks = mutableListOf<BaseEvent>()
-        verify { mockedPlugin.track(capture(tracks)) }
-        Assertions.assertEquals(1, tracks.count())
-
-        with(tracks[0]) {
-            Assertions.assertEquals(DefaultEventUtils.EventTypes.DEEP_LINK_OPENED, eventType)
-            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.LINK_URL), "app://url.com/open")
-            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.LINK_REFERRER), null)
-        }
-    }
-
     @Test
     fun `test deep link opened event is not tracked when disabled`() = runTest {
         setDispatcher(testScheduler)
