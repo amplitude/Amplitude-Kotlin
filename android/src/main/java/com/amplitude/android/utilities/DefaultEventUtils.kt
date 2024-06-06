@@ -76,10 +76,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         }
     }
 
-    fun trackAppOpenedEvent(
-        packageInfo: PackageInfo,
-        isFromBackground: Boolean,
-    ) {
+    fun trackAppOpenedEvent(packageInfo: PackageInfo, isFromBackground: Boolean) {
         val currentVersion = packageInfo.versionName
         val currentBuild = packageInfo.getVersionCode().toString()
 
@@ -117,11 +114,10 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
     fun trackScreenViewedEvent(activity: Activity) {
         try {
             val packageManager = activity.packageManager
-            val info =
-                packageManager?.getActivityInfo(
-                    activity.componentName,
-                    PackageManager.GET_META_DATA,
-                )
+            val info = packageManager?.getActivityInfo(
+                activity.componentName,
+                PackageManager.GET_META_DATA,
+            )
             /* Get the label metadata in following order
               1. activity label
               2. if 1 is missing, fallback to parent application label
@@ -159,15 +155,14 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 referrerUri = intent.getParcelableExtra(Intent.EXTRA_REFERRER)
 
                 if (referrerUri == null) {
-                    referrerUri =
-                        intent.getStringExtra("android.intent.extra.REFERRER_NAME")?.let {
-                            try {
-                                Uri.parse(it)
-                            } catch (e: ParseException) {
-                                amplitude.logger.error("Failed to parse the referrer uri: $it")
-                                null
-                            }
+                    referrerUri = intent.getStringExtra("android.intent.extra.REFERRER_NAME")?.let {
+                        try {
+                            Uri.parse(it)
+                        } catch (e: ParseException) {
+                            amplitude.logger.error("Failed to parse the referrer uri: $it")
+                            null
                         }
+                    }
                 }
             }
             return referrerUri

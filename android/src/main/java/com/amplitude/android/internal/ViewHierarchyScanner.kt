@@ -18,7 +18,7 @@ internal object ViewHierarchyScanner {
     /**
      * Finds a target in the view hierarchy at the given position and returns a [ViewTarget].
      *
-     * If the found target is clickable and its [View] contains a non-clickable direct child in the
+     * If the found target is clickable and its [View] contains another clickable direct child in the
      * target position, the child will be returned.
      *
      * @param position the position (x, y) to find the target at

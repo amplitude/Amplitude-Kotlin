@@ -30,21 +30,17 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
 
         val application = androidConfiguration.context as Application
         val packageManager: PackageManager = application.packageManager
-        packageInfo =
-            try {
-                packageManager.getPackageInfo(application.packageName, 0)
-            } catch (e: PackageManager.NameNotFoundException) {
-                // This shouldn't happen, but in case it happens, fallback to empty package info.
-                amplitude.logger.error("Cannot find package with application.packageName: " + application.packageName)
-                PackageInfo()
-            }
+        packageInfo = try {
+            packageManager.getPackageInfo(application.packageName, 0)
+        } catch (e: PackageManager.NameNotFoundException) {
+            // This shouldn't happen, but in case it happens, fallback to empty package info.
+            amplitude.logger.error("Cannot find package with application.packageName: " + application.packageName)
+            PackageInfo()
+        }
         application.registerActivityLifecycleCallbacks(this)
     }
 
-    override fun onActivityCreated(
-        activity: Activity,
-        bundle: Bundle?,
-    ) {
+    override fun onActivityCreated(activity: Activity, bundle: Bundle?) {
         if (!hasTrackedApplicationLifecycleEvents.getAndSet(true) && androidConfiguration.defaultTracking.appLifecycles) {
             numberOfActivities.set(0)
             isFirstLaunch.set(true)
@@ -85,10 +81,7 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
         }
     }
 
-    override fun onActivitySaveInstanceState(
-        activity: Activity,
-        bundle: Bundle,
-    ) {
+    override fun onActivitySaveInstanceState(activity: Activity, bundle: Bundle) {
     }
 
     override fun onActivityDestroyed(activity: Activity) {
