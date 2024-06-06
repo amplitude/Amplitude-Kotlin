@@ -12,9 +12,8 @@ import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT
 import com.amplitude.android.utilities.DefaultEventUtils.EventTypes.ELEMENT_CLICKED
 import com.amplitude.common.Logger
 import java.lang.ref.WeakReference
-import kotlin.system.measureTimeMillis
 
-internal class AutocaptureGestureListener(
+class AutocaptureGestureListener(
     activity: Activity,
     private val track: (String, Map<String, Any?>) -> Unit,
     private val logger: Logger,
@@ -30,15 +29,10 @@ internal class AutocaptureGestureListener(
     override fun onSingleTapUp(e: MotionEvent): Boolean {
         val decorView =
             activityRef.get()?.window?.decorView
-                ?: logger.error("DecorView is null in onUp()").let { return false }
-
-        val target: ViewTarget
-        val executionTime =
-            measureTimeMillis {
-                target = decorView.findTarget(Pair(e.x, e.y), logger)
-                    ?: logger.error("Unable to find click target").let { return false }
-            }
-        logger.debug("Target found in $executionTime ms")
+                ?: logger.error("DecorView is null in onSingleTapUp()").let { return false }
+        val target: ViewTarget =
+            decorView.findTarget(Pair(e.x, e.y), logger)
+                ?: logger.error("Unable to find click target").let { return false }
 
         mapOf(
             ELEMENT_CLASS to target.className,

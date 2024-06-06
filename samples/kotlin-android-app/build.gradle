@@ -3,7 +3,7 @@ plugins {
     id 'kotlin-android'
 }
 ext {
-    AMPLITUDE_API_KEY = "abf1207d2a71fcf8f608a2ca3a11c966"
+    AMPLITUDE_API_KEY = ""
     EXPERIMENT_API_KEY = ""
 }
 

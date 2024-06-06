@@ -11,16 +11,15 @@ internal class AutocaptureWindowCallback(
     activity: Activity,
     track: (String, Map<String, Any?>) -> Unit,
     private val logger: Logger,
+    private val motionEventObtainer: MotionEventObtainer = object : MotionEventObtainer {},
+    private val gestureListener: AutocaptureGestureListener = AutocaptureGestureListener(activity, track, logger),
+    private val gestureDetector: GestureDetector = GestureDetector(activity, gestureListener),
 ) : WindowCallbackAdapter(delegate) {
-    private val gestureListener = AutocaptureGestureListener(activity, track, logger)
-
-    private val gestureDetector = GestureDetector(activity, gestureListener)
-
     override fun dispatchTouchEvent(event: MotionEvent?): Boolean {
         event?.let {
-            MotionEvent.obtain(event)?.let {
+            motionEventObtainer.obtain(event).let {
                 try {
-                    gestureDetector.onTouchEvent(event)
+                    gestureDetector.onTouchEvent(it)
                 } catch (e: Exception) {
                     logger.error("Error handling touch event: $e")
                 } finally {
@@ -29,5 +28,11 @@ internal class AutocaptureWindowCallback(
             }
         }
         return super.dispatchTouchEvent(event)
+    }
+
+    interface MotionEventObtainer {
+        fun obtain(origin: MotionEvent): MotionEvent {
+            return MotionEvent.obtain(origin)
+        }
     }
 }

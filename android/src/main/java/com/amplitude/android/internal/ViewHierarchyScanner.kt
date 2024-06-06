@@ -76,7 +76,7 @@ internal object ViewHierarchyScanner {
             }
 
             // Applies the locators until a target is found. If the target type is clickable, check
-            // the children from the view in case the target is a child of the view
+            // the children in case the target is a child which is also clickable.
             viewTargetLocators.any { locator ->
                 with(locator) {
                     view.locate(position, targetType)?.let { newTarget ->
