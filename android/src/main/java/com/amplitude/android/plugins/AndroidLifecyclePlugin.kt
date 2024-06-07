@@ -55,9 +55,6 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
         if (androidConfiguration.defaultTracking.screenViews) {
             DefaultEventUtils(androidAmplitude).trackScreenViewedEvent(activity)
         }
-        if (androidConfiguration.defaultTracking.userInteractions) {
-            DefaultEventUtils(androidAmplitude).trackUserInteractionEvent(activity)
-        }
     }
 
     override fun onActivityResumed(activity: Activity) {
@@ -68,10 +65,16 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
             val isFromBackground = !isFirstLaunch.getAndSet(false)
             DefaultEventUtils(androidAmplitude).trackAppOpenedEvent(packageInfo, isFromBackground)
         }
+        if (androidConfiguration.defaultTracking.userInteractions) {
+            DefaultEventUtils(androidAmplitude).startUserInteractionEventTracking(activity)
+        }
     }
 
     override fun onActivityPaused(activity: Activity) {
         androidAmplitude.onExitForeground(getCurrentTimeMillis())
+        if (androidConfiguration.defaultTracking.userInteractions) {
+            DefaultEventUtils(androidAmplitude).stopUserInteractionEventTracking(activity)
+        }
     }
 
     override fun onActivityStopped(activity: Activity) {

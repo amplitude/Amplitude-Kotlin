@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.net.ParseException
 import android.net.Uri
 import android.os.Build
+import android.util.Log
 import com.amplitude.android.Amplitude
 import com.amplitude.android.internal.gestures.AutocaptureWindowCallback
 import com.amplitude.android.internal.gestures.NoCaptureWindowCallback
@@ -21,7 +22,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         const val APPLICATION_BACKGROUNDED = "[Amplitude] Application Backgrounded"
         const val DEEP_LINK_OPENED = "[Amplitude] Deep Link Opened"
         const val SCREEN_VIEWED = "[Amplitude] Screen Viewed"
-        const val ELEMENT_CLICKED = "[Amplitude] Element Clicked"
+        const val ELEMENT_TAPPED = "[Amplitude] Element Tapped"
     }
 
     object EventProperties {
@@ -132,7 +133,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         }
     }
 
-    fun trackUserInteractionEvent(activity: Activity) {
+    fun startUserInteractionEventTracking(activity: Activity) {
         activity.window?.let { window ->
             val delegate = window.callback ?: NoCaptureWindowCallback()
             window.callback =
@@ -143,6 +144,14 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                     amplitude.logger,
                 )
         } ?: amplitude.logger.error("Failed to track user interaction event: Activity window is null")
+    }
+
+    fun stopUserInteractionEventTracking(activity: Activity) {
+        activity.window?.let { window ->
+            (window.callback as? AutocaptureWindowCallback)?.let { windowCallback ->
+                window.callback = windowCallback.delegate.takeUnless { it is NoCaptureWindowCallback }
+            }
+        } ?: amplitude.logger.error("Failed to stop user interaction event tracking: Activity window is null")
     }
 
     private fun getReferrer(activity: Activity): Uri? {

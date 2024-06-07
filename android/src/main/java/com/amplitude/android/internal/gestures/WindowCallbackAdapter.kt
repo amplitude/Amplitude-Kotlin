@@ -12,7 +12,7 @@ import android.view.Window
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 
-internal open class WindowCallbackAdapter(private val delegate: Window.Callback) : Window.Callback {
+internal open class WindowCallbackAdapter(val delegate: Window.Callback) : Window.Callback {
     override fun dispatchKeyEvent(event: KeyEvent?): Boolean {
         return delegate.dispatchKeyEvent(event)
     }
