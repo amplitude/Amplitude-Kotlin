@@ -7,10 +7,10 @@ import android.content.pm.PackageManager
 import android.net.ParseException
 import android.net.Uri
 import android.os.Build
-import android.util.Log
 import com.amplitude.android.Amplitude
 import com.amplitude.android.internal.gestures.AutocaptureWindowCallback
 import com.amplitude.android.internal.gestures.NoCaptureWindowCallback
+import com.amplitude.android.internal.locators.ViewTargetLocators.ALL
 import com.amplitude.core.Storage
 import kotlinx.coroutines.launch
 
@@ -141,6 +141,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                     delegate,
                     activity,
                     amplitude::track,
+                    ALL(amplitude.logger),
                     amplitude.logger,
                 )
         } ?: amplitude.logger.error("Failed to track user interaction event: Activity window is null")
@@ -151,6 +152,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             (window.callback as? AutocaptureWindowCallback)?.let { windowCallback ->
                 window.callback = windowCallback.delegate.takeUnless { it is NoCaptureWindowCallback }
             }
+            true
         } ?: amplitude.logger.error("Failed to stop user interaction event tracking: Activity window is null")
     }
 

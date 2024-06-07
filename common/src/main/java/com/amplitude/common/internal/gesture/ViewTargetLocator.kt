@@ -1,9 +1,6 @@
-package com.amplitude.android.internal.locators
+package com.amplitude.common.internal.gesture
 
-import android.view.View
-import com.amplitude.android.internal.ViewTarget
-
-internal fun interface ViewTargetLocator {
+fun interface ViewTargetLocator {
     /**
      * Locates a [ViewTarget] at the given position based on the [View] type.
      *

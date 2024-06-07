@@ -4,9 +4,9 @@ import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.children
-import com.amplitude.android.internal.locators.ViewTargetLocator
-import com.amplitude.android.internal.locators.ViewTargetLocators.ALL
 import com.amplitude.common.Logger
+import com.amplitude.common.internal.gesture.ViewTarget
+import com.amplitude.common.internal.gesture.ViewTargetLocator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -27,12 +27,11 @@ internal object ViewHierarchyScanner {
      * @return the [ViewTarget] at the given position, or null if none was found
      */
     @JvmStatic
-    @JvmOverloads
     fun View.findTarget(
         position: Pair<Float, Float>,
+        viewTargetLocators: List<ViewTargetLocator>,
+        targetType: ViewTarget.Type,
         logger: Logger,
-        targetType: ViewTarget.Type = ViewTarget.Type.Clickable,
-        viewTargetLocators: List<ViewTargetLocator> = ALL(logger),
     ): ViewTarget? =
         runBlocking {
             val viewLooper =

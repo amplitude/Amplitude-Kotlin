@@ -1,8 +1,15 @@
 package com.amplitude.android.internal.locators
 
+import com.amplitude.android.compose.ComposeViewTargetLocator
+import com.amplitude.android.utilities.LoadClass
 import com.amplitude.common.Logger
+import com.amplitude.common.internal.gesture.ViewTargetLocator
 
 internal object ViewTargetLocators {
+    private const val COMPOSE_CLASS_NAME = "androidx.compose.ui.node.Owner"
+    private const val COMPOSE_GESTURE_LOCATOR_CLASS_NAME =
+        "io.sentry.android.core.SentryComposeGestureIntegration"
+
     /**
      * A list [ViewTargetLocator]s for classic Android [View][android.view.View]s and Jetpack
      * Compose.
@@ -12,9 +19,17 @@ internal object ViewTargetLocators {
      */
     @JvmField
     val ALL: (Logger) -> List<ViewTargetLocator> = { logger ->
-        listOf(
-            ComposeViewTargetLocator(logger),
-            AndroidViewTargetLocator(),
-        )
+        mutableListOf<ViewTargetLocator>().apply {
+            val loadClass = LoadClass()
+            val isComposeUpstreamAvailable = loadClass.isClassAvailable(COMPOSE_CLASS_NAME, logger)
+            val isComposeAvailable =
+                isComposeUpstreamAvailable &&
+                    loadClass.isClassAvailable(COMPOSE_GESTURE_LOCATOR_CLASS_NAME, logger)
+
+            if (isComposeAvailable) {
+                add(ComposeViewTargetLocator(logger))
+            }
+            add(AndroidViewTargetLocator())
+        }
     }
 }

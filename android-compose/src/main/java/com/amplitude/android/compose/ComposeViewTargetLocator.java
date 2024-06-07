@@ -1,7 +1,5 @@
-package com.amplitude.android.internal.locators;
+package com.amplitude.android.compose;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.compose.ui.geometry.Rect;
 import androidx.compose.ui.layout.ModifierInfo;
 import androidx.compose.ui.node.LayoutNode;
@@ -10,11 +8,12 @@ import androidx.compose.ui.semantics.SemanticsConfiguration;
 import androidx.compose.ui.semantics.SemanticsModifier;
 import androidx.compose.ui.semantics.SemanticsPropertyKey;
 
-import com.amplitude.android.internal.ViewTarget;
 import com.amplitude.common.Logger;
+import com.amplitude.common.internal.gesture.ViewTarget;
+import com.amplitude.common.internal.gesture.ViewTargetLocator;
 
-import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayDeque;
 import java.util.List;
@@ -23,7 +22,6 @@ import java.util.Queue;
 
 import kotlin.Pair;
 
-@ApiStatus.Internal
 @SuppressWarnings("KotlinInternalInJava")
 public class ComposeViewTargetLocator implements ViewTargetLocator {
     private volatile @Nullable ComposeLayoutNodeBoundsHelper composeLayoutNodeBoundsHelper;
@@ -39,9 +37,9 @@ public class ComposeViewTargetLocator implements ViewTargetLocator {
     @Nullable
     @Override
     public ViewTarget locate(
-            @NonNull Object root,
-            @NonNull Pair<Float, Float> position,
-            @NonNull ViewTarget.Type targetType) {
+            @NotNull Object root,
+            @NotNull Pair<Float, Float> position,
+            @NotNull ViewTarget.Type targetType) {
 
         // lazy init composeHelper as it's using some reflection under the hood
         if (composeLayoutNodeBoundsHelper == null) {

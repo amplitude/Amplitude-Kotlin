@@ -1,6 +1,5 @@
-package com.amplitude.android.internal
+package com.amplitude.common.internal.gesture
 
-import android.view.View
 import java.lang.ref.WeakReference
 
 /**
@@ -10,16 +9,16 @@ import java.lang.ref.WeakReference
  * @property recourseName the resource name of the view.
  * @property tag the tag of the view.
  */
-internal data class ViewTarget(
-    private val _view: View?,
+data class ViewTarget(
+    private val _view: Any?,
     val className: String?,
     val recourseName: String?,
     val tag: String?,
     val source: String,
 ) {
-    private val viewRef: WeakReference<View> = WeakReference(_view)
+    private val viewRef: WeakReference<Any> = WeakReference(_view)
 
-    val view: View?
+    val view: Any?
         get() = viewRef.get()
 
     enum class Type { Clickable }

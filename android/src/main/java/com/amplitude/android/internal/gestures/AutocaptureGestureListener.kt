@@ -4,19 +4,21 @@ import android.app.Activity
 import android.view.GestureDetector
 import android.view.MotionEvent
 import com.amplitude.android.internal.ViewHierarchyScanner.findTarget
-import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_CLASS
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_RESOURCE
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_SOURCE
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_TAG
 import com.amplitude.android.utilities.DefaultEventUtils.EventTypes.ELEMENT_TAPPED
 import com.amplitude.common.Logger
+import com.amplitude.common.internal.gesture.ViewTarget
+import com.amplitude.common.internal.gesture.ViewTargetLocator
 import java.lang.ref.WeakReference
 
 class AutocaptureGestureListener(
     activity: Activity,
     private val track: (String, Map<String, Any?>) -> Unit,
     private val logger: Logger,
+    private val viewTargetLocators: List<ViewTargetLocator>,
 ) : GestureDetector.OnGestureListener {
     private val activityRef: WeakReference<Activity> = WeakReference(activity)
 
@@ -31,8 +33,12 @@ class AutocaptureGestureListener(
             activityRef.get()?.window?.decorView
                 ?: logger.error("DecorView is null in onSingleTapUp()").let { return false }
         val target: ViewTarget =
-            decorView.findTarget(Pair(e.x, e.y), logger)
-                ?: logger.error("Unable to find click target").let { return false }
+            decorView.findTarget(
+                Pair(e.x, e.y),
+                viewTargetLocators,
+                ViewTarget.Type.Clickable,
+                logger,
+            ) ?: logger.error("Unable to find click target").let { return false }
 
         mapOf(
             ELEMENT_CLASS to target.className,

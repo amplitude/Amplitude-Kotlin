@@ -1,15 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
     package="com.amplitude.android">
-    <uses-sdk
-        tools:overrideLibrary="
-        androidx.compose.ui.util,
-        androidx.compose.ui.unit,
-        androidx.compose.ui.text,
-        androidx.compose.ui.graphics,
-        androidx.compose.ui.geometry,
-        androidx.core.ktx,
-        androidx.compose.runtime.saveable,
-        androidx.annotation.experimental" />
 </manifest>
