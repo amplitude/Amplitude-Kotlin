@@ -13,7 +13,7 @@ import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_RESOURCE
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_SOURCE
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_TAG
-import com.amplitude.android.utilities.DefaultEventUtils.EventTypes.ELEMENT_CLICKED
+import com.amplitude.android.utilities.DefaultEventUtils.EventTypes.ELEMENT_TAPPED
 import com.amplitude.common.Logger
 import io.mockk.every
 import io.mockk.mockk
@@ -143,7 +143,7 @@ class AutocaptureGestureListenerClickTest {
 
         verify(exactly = 1) {
             fixture.track(
-                ELEMENT_CLICKED,
+                ELEMENT_TAPPED,
                 mapOf(
                     ELEMENT_CLASS to "android.view.View",
                     ELEMENT_RESOURCE to "test_button",
@@ -169,7 +169,7 @@ class AutocaptureGestureListenerClickTest {
 
         verify {
             fixture.track(
-                ELEMENT_CLICKED,
+                ELEMENT_TAPPED,
                 mapOf(
                     ELEMENT_CLASS to "android.widget.RadioButton",
                     ELEMENT_RESOURCE to "radio_button",
@@ -195,7 +195,7 @@ class AutocaptureGestureListenerClickTest {
 
         verify {
             fixture.track(
-                ELEMENT_CLICKED,
+                ELEMENT_TAPPED,
                 mapOf(
                     ELEMENT_CLASS to "android.widget.CheckBox",
                     ELEMENT_RESOURCE to "check_box",
@@ -247,7 +247,7 @@ class AutocaptureGestureListenerClickTest {
 
         verify {
             fixture.track(
-                ELEMENT_CLICKED,
+                ELEMENT_TAPPED,
                 mapOf(
                     ELEMENT_CLASS to decorView.javaClass.canonicalName,
                     ELEMENT_RESOURCE to "decor_view",
@@ -296,7 +296,7 @@ class AutocaptureGestureListenerClickTest {
 
         verify {
             fixture.track(
-                ELEMENT_CLICKED,
+                ELEMENT_TAPPED,
                 mapOf(
                     ELEMENT_CLASS to fixture.target.javaClass.simpleName,
                     ELEMENT_RESOURCE to "test_button",

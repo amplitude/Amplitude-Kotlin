@@ -9,7 +9,7 @@ import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_RESOURCE
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_SOURCE
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_TAG
-import com.amplitude.android.utilities.DefaultEventUtils.EventTypes.ELEMENT_CLICKED
+import com.amplitude.android.utilities.DefaultEventUtils.EventTypes.ELEMENT_TAPPED
 import com.amplitude.common.Logger
 import java.lang.ref.WeakReference
 
@@ -43,7 +43,7 @@ class AutocaptureGestureListener(
                     .replace("_", " ")
                     .split(" ")
                     .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } },
-        ).let { track(ELEMENT_CLICKED, it) }
+        ).let { track(ELEMENT_TAPPED, it) }
 
         return false
     }
