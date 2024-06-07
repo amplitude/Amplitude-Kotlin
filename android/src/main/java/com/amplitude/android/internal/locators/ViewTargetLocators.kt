@@ -8,7 +8,7 @@ import com.amplitude.common.internal.gesture.ViewTargetLocator
 internal object ViewTargetLocators {
     private const val COMPOSE_CLASS_NAME = "androidx.compose.ui.node.Owner"
     private const val COMPOSE_GESTURE_LOCATOR_CLASS_NAME =
-        "io.sentry.android.core.SentryComposeGestureIntegration"
+        "com.amplitude.android.compose.ComposeViewTargetLocator"
 
     /**
      * A list [ViewTargetLocator]s for classic Android [View][android.view.View]s and Jetpack
