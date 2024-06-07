@@ -4,6 +4,7 @@ import android.app.Activity
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.Window
+import com.amplitude.android.internal.locators.AndroidViewTargetLocator
 import com.amplitude.common.Logger
 import io.mockk.every
 import io.mockk.mockk
@@ -25,6 +26,7 @@ class AutocaptureWindowCallbackTest {
                 delegate,
                 activity,
                 track,
+                listOf(AndroidViewTargetLocator()),
                 logger,
                 object : AutocaptureWindowCallback.MotionEventObtainer {
                     override fun obtain(origin: MotionEvent): MotionEvent {

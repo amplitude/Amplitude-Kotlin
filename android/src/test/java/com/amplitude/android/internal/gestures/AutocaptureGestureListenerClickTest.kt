@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import android.view.Window
 import android.widget.CheckBox
 import android.widget.RadioButton
+import com.amplitude.android.internal.locators.AndroidViewTargetLocator
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_CLASS
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_RESOURCE
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_SOURCE
@@ -90,6 +91,7 @@ class AutocaptureGestureListenerClickTest {
                 activity,
                 track,
                 logger,
+                listOf(AndroidViewTargetLocator()),
             )
         }
     }

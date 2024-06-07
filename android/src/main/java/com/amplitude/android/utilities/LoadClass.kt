@@ -11,7 +11,7 @@ class LoadClass {
      * @param logger an instance of ILogger
      * @return a Class if it's available, or null
      */
-    fun loadClass(
+    private fun loadClass(
         clazz: String,
         logger: Logger?,
     ): Class<*>? {
