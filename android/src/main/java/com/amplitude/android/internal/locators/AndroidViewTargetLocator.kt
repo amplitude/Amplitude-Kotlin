@@ -21,14 +21,15 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
             ?.let { createViewTarget() }
     }
 
-    private fun View.createViewTarget(): ViewTarget? {
-        try {
-            val className = javaClass.canonicalName ?: javaClass.simpleName ?: null
-            val resourceName = context.resources.getResourceEntryName(id) ?: null
-            return ViewTarget(this, className, resourceName, null, SOURCE)
-        } catch (ignored: Resources.NotFoundException) {
-            return null
-        }
+    private fun View.createViewTarget(): ViewTarget {
+        val className = javaClass.canonicalName ?: javaClass.simpleName ?: null
+        val resourceName: String? =
+            try {
+                context.resources.getResourceEntryName(id)
+            } catch (ignored: Resources.NotFoundException) {
+                null
+            }
+        return ViewTarget(this, className, resourceName, null, SOURCE)
     }
 
     private fun View.touchWithinBounds(position: Pair<Float, Float>): Boolean {
