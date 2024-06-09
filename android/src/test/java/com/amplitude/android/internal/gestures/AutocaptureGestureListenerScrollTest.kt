@@ -44,7 +44,7 @@ class AutocaptureGestureListenerScrollTest {
                 mockk(relaxed = true),
             )
         val endEvent = eventsInBetween.last()
-        val directions = setOf("up", "down", "left", "right")
+        val directions = setOf("Up", "Down", "Left", "Right")
 
         lateinit var target: View
 
@@ -98,7 +98,7 @@ class AutocaptureGestureListenerScrollTest {
 
     @Test
     fun `captures a scroll event`() {
-        val sut = fixture.getSut(type = ScrollableListView::class, direction = "left")
+        val sut = fixture.getSut(type = ScrollableListView::class, direction = "Left")
 
         sut.onDown(fixture.firstEvent)
         fixture.eventsInBetween.forEach {
@@ -114,7 +114,7 @@ class AutocaptureGestureListenerScrollTest {
                     "[Amplitude] Element Resource" to "test_scroll_view",
                     "[Amplitude] Element Tag" to null,
                     "[Amplitude] Element Source" to "Android View",
-                    "[Amplitude] Direction" to "left",
+                    "[Amplitude] Direction" to "Left",
                 ),
             )
         }
@@ -141,7 +141,7 @@ class AutocaptureGestureListenerScrollTest {
             fixture.getSut(
                 type = ScrollableView::class,
                 resourceName = "pager",
-                direction = "down",
+                direction = "Down",
             )
 
         // first scroll down
@@ -152,7 +152,7 @@ class AutocaptureGestureListenerScrollTest {
         sut.onUp(fixture.endEvent)
 
         // second scroll up
-        fixture.endEvent.mockDirection(fixture.firstEvent, "up")
+        fixture.endEvent.mockDirection(fixture.firstEvent, "Up")
 
         sut.onDown(fixture.firstEvent)
         fixture.eventsInBetween
@@ -168,7 +168,7 @@ class AutocaptureGestureListenerScrollTest {
                     "[Amplitude] Element Resource" to "pager",
                     "[Amplitude] Element Tag" to null,
                     "[Amplitude] Element Source" to "Android View",
-                    "[Amplitude] Direction" to "down",
+                    "[Amplitude] Direction" to "Down",
                 ),
             )
             fixture.track(
@@ -178,7 +178,7 @@ class AutocaptureGestureListenerScrollTest {
                     "[Amplitude] Element Resource" to "pager",
                     "[Amplitude] Element Tag" to null,
                     "[Amplitude] Element Source" to "Android View",
-                    "[Amplitude] Direction" to "up",
+                    "[Amplitude] Direction" to "Up",
                 ),
             )
         }
@@ -239,19 +239,19 @@ class AutocaptureGestureListenerScrollTest {
             val initialStartX = firstEvent.x
             val initialStartY = firstEvent.y
             when (direction) {
-                "up" -> {
+                "Up" -> {
                     every { x } returns initialStartX
                     every { y } returns (initialStartY - 2)
                 }
-                "down" -> {
+                "Down" -> {
                     every { x } returns initialStartX
                     every { y } returns (initialStartY + 2)
                 }
-                "right" -> {
+                "Right" -> {
                     every { x } returns (initialStartX + 2)
                     every { y } returns initialStartY
                 }
-                "left" -> {
+                "Left" -> {
                     every { x } returns (initialStartX - 2)
                     every { y } returns initialStartY
                 }

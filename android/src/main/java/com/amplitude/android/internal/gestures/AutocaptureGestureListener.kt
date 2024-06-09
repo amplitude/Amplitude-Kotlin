@@ -11,9 +11,9 @@ import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_RESOURCE
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_SOURCE
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_TAG
+import com.amplitude.android.utilities.DefaultEventUtils.EventTypes.ELEMENT_CLICKED
 import com.amplitude.android.utilities.DefaultEventUtils.EventTypes.ELEMENT_SCROLLED
 import com.amplitude.android.utilities.DefaultEventUtils.EventTypes.ELEMENT_SWIPED
-import com.amplitude.android.utilities.DefaultEventUtils.EventTypes.ELEMENT_CLICKED
 import com.amplitude.common.Logger
 import com.amplitude.common.internal.gesture.ViewTarget
 import com.amplitude.common.internal.gesture.ViewTargetLocator
@@ -172,15 +172,15 @@ class AutocaptureGestureListener(
             val direction =
                 if (abs(diffX.toDouble()) > abs(diffY.toDouble())) {
                     if (diffX > 0f) {
-                        "right"
+                        "Right"
                     } else {
-                        "left"
+                        "Left"
                     }
                 } else {
                     if (diffY > 0) {
-                        "down"
+                        "Down"
                     } else {
-                        "up"
+                        "Up"
                     }
                 }
             return direction
