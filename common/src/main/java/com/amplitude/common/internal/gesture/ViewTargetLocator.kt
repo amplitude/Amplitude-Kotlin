@@ -2,7 +2,7 @@ package com.amplitude.common.internal.gesture
 
 fun interface ViewTargetLocator {
     /**
-     * Locates a [ViewTarget] at the given position based on the [View] type.
+     * Locates a [ViewTarget] at the given position based on the view type.
      *
      * @param targetPosition the position to locate the view target at.
      * @param targetType the type of the view target to locate.

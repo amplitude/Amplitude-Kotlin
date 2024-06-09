@@ -3,7 +3,7 @@ package com.amplitude.common.internal.gesture
 import java.lang.ref.WeakReference
 
 /**
- * Represents a UI element in the view hierarchy from [ViewHierarchyScanner].
+ * Represents a UI element in the view hierarchy from [ViewHierarchyScanner][com.amplitude.android.internal.ViewHierarchyScanner].
  *
  * @property className the class name of the view.
  * @property recourseName the resource name of the view.
