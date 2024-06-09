@@ -21,5 +21,8 @@ data class ViewTarget(
     val view: Any?
         get() = viewRef.get()
 
-    enum class Type { Clickable }
+    enum class Type {
+        Clickable,
+        Scrollable,
+    }
 }

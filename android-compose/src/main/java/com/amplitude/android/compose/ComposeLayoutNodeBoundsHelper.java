@@ -15,7 +15,6 @@ import java.lang.reflect.Field;
 @SuppressWarnings("KotlinInternalInJava")
 public class ComposeLayoutNodeBoundsHelper {
   private Field layoutDelegateField = null;
-
   private final @NotNull Logger logger;
 
   public ComposeLayoutNodeBoundsHelper(@NotNull Logger logger) {

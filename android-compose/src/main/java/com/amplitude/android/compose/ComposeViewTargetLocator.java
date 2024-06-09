@@ -24,10 +24,8 @@ import kotlin.Pair;
 
 @SuppressWarnings("KotlinInternalInJava")
 public class ComposeViewTargetLocator implements ViewTargetLocator {
-    private volatile @Nullable ComposeLayoutNodeBoundsHelper composeLayoutNodeBoundsHelper;
-
     private static final String SOURCE = "jetpack_compose";
-
+    private volatile @Nullable ComposeLayoutNodeBoundsHelper composeLayoutNodeBoundsHelper;
     private final @NotNull Logger logger;
 
     public ComposeViewTargetLocator(@NotNull Logger logger) {
@@ -38,7 +36,7 @@ public class ComposeViewTargetLocator implements ViewTargetLocator {
     @Override
     public ViewTarget locate(
             @NotNull Object root,
-            @NotNull Pair<Float, Float> position,
+            @NotNull Pair<Float, Float> targetPosition,
             @NotNull ViewTarget.Type targetType) {
 
         // lazy init composeHelper as it's using some reflection under the hood
@@ -68,8 +66,10 @@ public class ComposeViewTargetLocator implements ViewTargetLocator {
                 continue;
             }
 
-            if (node.isPlaced() && layoutNodeBoundsContain(composeLayoutNodeBoundsHelper, node, position.component1(), position.component2())) {
+            if (node.isPlaced() && layoutNodeBoundsContain(composeLayoutNodeBoundsHelper, node, targetPosition.component1(), targetPosition.component2())) {
                 boolean isClickable = false;
+                boolean isScrollable = false;
+
                 final List<ModifierInfo> modifiers = node.getModifierInfo();
                 for (ModifierInfo modifierInfo : modifiers) {
                     if (modifierInfo.getModifier() instanceof SemanticsModifier) {
@@ -79,12 +79,19 @@ public class ComposeViewTargetLocator implements ViewTargetLocator {
                                 semanticsModifierCore.getSemanticsConfiguration();
                         for (Map.Entry<? extends SemanticsPropertyKey<?>, ?> entry : semanticsConfiguration) {
                             final @Nullable String key = entry.getKey().getName();
-                            if ("OnClick".equals(key)) {
-                                isClickable = true;
-                            } else if ("TestTag".equals(key)) {
-                                if (entry.getValue() instanceof String) {
-                                    lastKnownTag = (String) entry.getValue();
-                                }
+                            switch (key) {
+                                case "ScrollBy":
+                                    isScrollable = true;
+                                    break;
+                                case "OnClick":
+                                    isClickable = true;
+                                    break;
+                                case "SentryTag":
+                                case "TestTag":
+                                    if (entry.getValue() instanceof String) {
+                                        lastKnownTag = (String) entry.getValue();
+                                    }
+                                    break;
                             }
                         }
                     } else {
@@ -93,12 +100,19 @@ public class ComposeViewTargetLocator implements ViewTargetLocator {
                         if ("androidx.compose.foundation.ClickableElement".equals(type)
                                 || "androidx.compose.foundation.CombinedClickableElement".equals(type)) {
                             isClickable = true;
+                        } else if ("androidx.compose.foundation.ScrollingLayoutElement".equals(type)) {
+                            isScrollable = true;
                         }
                     }
                 }
 
                 if (isClickable && targetType == ViewTarget.Type.Clickable) {
                     targetTag = lastKnownTag;
+                }
+                if (isScrollable && targetType == ViewTarget.Type.Scrollable) {
+                    targetTag = lastKnownTag;
+                    // skip any children for scrollable targets
+                    break;
                 }
             }
             queue.addAll(node.getZSortedChildren().asMutableList());
