@@ -142,7 +142,7 @@ class AutocaptureGestureListenerClickTest {
 
         verify(exactly = 1) {
             fixture.track(
-                "[Amplitude] Element Tapped",
+                "[Amplitude] Element Clicked",
                 mapOf(
                     "[Amplitude] Element Class" to "android.view.View",
                     "[Amplitude] Element Resource" to "test_button",
@@ -168,7 +168,7 @@ class AutocaptureGestureListenerClickTest {
 
         verify {
             fixture.track(
-                "[Amplitude] Element Tapped",
+                "[Amplitude] Element Clicked",
                 match {
                     it["[Amplitude] Element Class"] == "android.widget.RadioButton" &&
                         it["[Amplitude] Element Resource"] == "radio_button"
@@ -192,7 +192,7 @@ class AutocaptureGestureListenerClickTest {
 
         verify {
             fixture.track(
-                "[Amplitude] Element Tapped",
+                "[Amplitude] Element Clicked",
                 match {
                     it["[Amplitude] Element Class"] == "android.widget.CheckBox" &&
                         it["[Amplitude] Element Resource"] == "check_box"
@@ -242,7 +242,7 @@ class AutocaptureGestureListenerClickTest {
 
         verify {
             fixture.track(
-                "[Amplitude] Element Tapped",
+                "[Amplitude] Element Clicked",
                 match {
                     it["[Amplitude] Element Class"] == decorView.javaClass.canonicalName &&
                         it["[Amplitude] Element Resource"] == "decor_view"
@@ -289,7 +289,7 @@ class AutocaptureGestureListenerClickTest {
 
         verify {
             fixture.track(
-                "[Amplitude] Element Tapped",
+                "[Amplitude] Element Clicked",
                 match {
                     it[ELEMENT_CLASS] == fixture.target.javaClass.simpleName &&
                         it[ELEMENT_RESOURCE] == "test_button"

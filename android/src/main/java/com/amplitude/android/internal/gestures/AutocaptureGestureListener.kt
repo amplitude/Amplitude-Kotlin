@@ -13,7 +13,7 @@ import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_TAG
 import com.amplitude.android.utilities.DefaultEventUtils.EventTypes.ELEMENT_SCROLLED
 import com.amplitude.android.utilities.DefaultEventUtils.EventTypes.ELEMENT_SWIPED
-import com.amplitude.android.utilities.DefaultEventUtils.EventTypes.ELEMENT_TAPPED
+import com.amplitude.android.utilities.DefaultEventUtils.EventTypes.ELEMENT_CLICKED
 import com.amplitude.common.Logger
 import com.amplitude.common.internal.gesture.ViewTarget
 import com.amplitude.common.internal.gesture.ViewTargetLocator
@@ -47,7 +47,7 @@ class AutocaptureGestureListener(
                 logger,
             ) ?: logger.error("Unable to find click target. No event captured.").let { return false }
 
-        capture(target, ELEMENT_TAPPED)
+        capture(target, ELEMENT_CLICKED)
         return false
     }
 

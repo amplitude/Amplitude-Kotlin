@@ -22,7 +22,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         const val APPLICATION_BACKGROUNDED = "[Amplitude] Application Backgrounded"
         const val DEEP_LINK_OPENED = "[Amplitude] Deep Link Opened"
         const val SCREEN_VIEWED = "[Amplitude] Screen Viewed"
-        const val ELEMENT_TAPPED = "[Amplitude] Element Tapped"
+        const val ELEMENT_CLICKED = "[Amplitude] Element Clicked"
         const val ELEMENT_SCROLLED = "[Amplitude] Element Scrolled"
         const val ELEMENT_SWIPED = "[Amplitude] Element Swiped"
     }
