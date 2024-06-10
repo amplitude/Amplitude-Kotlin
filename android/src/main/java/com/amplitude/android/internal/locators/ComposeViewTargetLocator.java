@@ -1,4 +1,4 @@
-package com.amplitude.android.compose;
+package com.amplitude.android.internal.locators;
 
 import androidx.compose.ui.geometry.Rect;
 import androidx.compose.ui.layout.ModifierInfo;
@@ -8,9 +8,8 @@ import androidx.compose.ui.semantics.SemanticsConfiguration;
 import androidx.compose.ui.semantics.SemanticsModifier;
 import androidx.compose.ui.semantics.SemanticsPropertyKey;
 
+import com.amplitude.android.internal.ViewTarget;
 import com.amplitude.common.Logger;
-import com.amplitude.common.internal.gesture.ViewTarget;
-import com.amplitude.common.internal.gesture.ViewTargetLocator;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;

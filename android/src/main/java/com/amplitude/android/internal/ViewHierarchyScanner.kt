@@ -4,9 +4,8 @@ import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.children
+import com.amplitude.android.internal.locators.ViewTargetLocator
 import com.amplitude.common.Logger
-import com.amplitude.common.internal.gesture.ViewTarget
-import com.amplitude.common.internal.gesture.ViewTargetLocator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext

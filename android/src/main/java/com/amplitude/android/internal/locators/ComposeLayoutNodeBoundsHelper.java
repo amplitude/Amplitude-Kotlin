@@ -1,4 +1,4 @@
-package com.amplitude.android.compose;
+package com.amplitude.android.internal.locators;
 
 import androidx.compose.ui.geometry.Rect;
 import androidx.compose.ui.layout.LayoutCoordinatesKt;

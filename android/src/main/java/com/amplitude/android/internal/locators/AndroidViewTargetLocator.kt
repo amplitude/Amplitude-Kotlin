@@ -1,6 +1,8 @@
 package com.amplitude.android.internal.locators
 
 import android.view.View
+import com.amplitude.android.internal.ViewTarget
+import com.amplitude.android.internal.ViewTarget.Type
 import android.widget.AbsListView
 import android.widget.ScrollView
 import androidx.core.view.ScrollingView

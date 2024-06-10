@@ -1,4 +1,6 @@
-package com.amplitude.common.internal.gesture
+package com.amplitude.android.internal.locators
+
+import com.amplitude.android.internal.ViewTarget
 
 fun interface ViewTargetLocator {
     /**
