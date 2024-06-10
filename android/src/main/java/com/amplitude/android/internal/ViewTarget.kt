@@ -1,4 +1,4 @@
-package com.amplitude.common.internal.gesture
+package com.amplitude.android.internal
 
 import java.lang.ref.WeakReference
 

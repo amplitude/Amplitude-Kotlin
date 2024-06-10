@@ -4,8 +4,8 @@ import android.app.Activity
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.Window
+import com.amplitude.android.internal.locators.ViewTargetLocator
 import com.amplitude.common.Logger
-import com.amplitude.common.internal.gesture.ViewTargetLocator
 
 internal class AutocaptureWindowCallback(
     delegate: Window.Callback,

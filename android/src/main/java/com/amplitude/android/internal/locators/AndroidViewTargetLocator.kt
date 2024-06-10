@@ -2,9 +2,8 @@ package com.amplitude.android.internal.locators
 
 import android.content.res.Resources
 import android.view.View
-import com.amplitude.common.internal.gesture.ViewTarget
-import com.amplitude.common.internal.gesture.ViewTarget.Type
-import com.amplitude.common.internal.gesture.ViewTargetLocator
+import com.amplitude.android.internal.ViewTarget
+import com.amplitude.android.internal.ViewTarget.Type
 
 internal class AndroidViewTargetLocator : ViewTargetLocator {
     private val coordinates = IntArray(2)

@@ -1,14 +1,12 @@
 package com.amplitude.android.internal.locators
 
-import com.amplitude.android.compose.ComposeViewTargetLocator
 import com.amplitude.android.utilities.LoadClass
 import com.amplitude.common.Logger
-import com.amplitude.common.internal.gesture.ViewTargetLocator
 
 internal object ViewTargetLocators {
     private const val COMPOSE_CLASS_NAME = "androidx.compose.ui.node.Owner"
     private const val COMPOSE_GESTURE_LOCATOR_CLASS_NAME =
-        "com.amplitude.android.compose.ComposeViewTargetLocator"
+        "com.amplitude.android.internal.locators.ComposeViewTargetLocator"
 
     /**
      * A list [ViewTargetLocator]s for classic Android [View][android.view.View]s and Jetpack

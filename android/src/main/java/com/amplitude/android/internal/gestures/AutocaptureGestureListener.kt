@@ -3,17 +3,19 @@ package com.amplitude.android.internal.gestures
 import android.app.Activity
 import android.view.GestureDetector
 import android.view.MotionEvent
+import androidx.annotation.VisibleForTesting
 import com.amplitude.android.internal.ViewHierarchyScanner.findTarget
+import com.amplitude.android.internal.ViewTarget
+import com.amplitude.android.internal.locators.ViewTargetLocator
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_CLASS
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_RESOURCE
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_SOURCE
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_TAG
 import com.amplitude.android.utilities.DefaultEventUtils.EventTypes.ELEMENT_CLICKED
 import com.amplitude.common.Logger
-import com.amplitude.common.internal.gesture.ViewTarget
-import com.amplitude.common.internal.gesture.ViewTargetLocator
 import java.lang.ref.WeakReference
 
+@VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)
 class AutocaptureGestureListener(
     activity: Activity,
     private val track: (String, Map<String, Any?>) -> Unit,
