@@ -3,7 +3,6 @@ package com.amplitude.android.internal.gestures
 import android.app.Activity
 import android.view.GestureDetector
 import android.view.MotionEvent
-import androidx.annotation.VisibleForTesting
 import android.view.View
 import androidx.annotation.VisibleForTesting
 import com.amplitude.android.internal.ViewHierarchyScanner.findTarget
@@ -18,8 +17,6 @@ import com.amplitude.android.utilities.DefaultEventUtils.EventTypes.ELEMENT_CLIC
 import com.amplitude.android.utilities.DefaultEventUtils.EventTypes.ELEMENT_SCROLLED
 import com.amplitude.android.utilities.DefaultEventUtils.EventTypes.ELEMENT_SWIPED
 import com.amplitude.common.Logger
-import com.amplitude.common.internal.gesture.ViewTarget
-import com.amplitude.common.internal.gesture.ViewTargetLocator
 import java.lang.ref.WeakReference
 import kotlin.math.abs
 

@@ -1,15 +1,12 @@
 package com.amplitude.android.internal.locators
 
 import android.view.View
-import com.amplitude.android.internal.ViewTarget
-import com.amplitude.android.internal.ViewTarget.Type
 import android.widget.AbsListView
 import android.widget.ScrollView
 import androidx.core.view.ScrollingView
 import com.amplitude.android.internal.ViewResourceUtils.resourceIdWithFallback
-import com.amplitude.common.internal.gesture.ViewTarget
-import com.amplitude.common.internal.gesture.ViewTarget.Type
-import com.amplitude.common.internal.gesture.ViewTargetLocator
+import com.amplitude.android.internal.ViewTarget
+import com.amplitude.android.internal.ViewTarget.Type
 
 internal class AndroidViewTargetLocator(
     private val isAndroidXAvailable: Boolean,
