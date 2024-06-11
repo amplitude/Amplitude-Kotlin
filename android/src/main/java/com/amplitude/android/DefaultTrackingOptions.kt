@@ -7,8 +7,11 @@ open class DefaultTrackingOptions
         var appLifecycles: Boolean = false,
         var deepLinks: Boolean = false,
         var screenViews: Boolean = false,
-        var userInteractions: Boolean = false,
     ) {
+        var userInteractions = false
+            @ExperimentalAmplitudeFeature
+            set
+
         // Prebuilt options for easier usage
         companion object {
             @JvmField
@@ -18,7 +21,6 @@ open class DefaultTrackingOptions
                     appLifecycles = true,
                     deepLinks = true,
                     screenViews = true,
-                    userInteractions = true,
                 )
 
             @JvmField
@@ -28,7 +30,17 @@ open class DefaultTrackingOptions
                     appLifecycles = false,
                     deepLinks = false,
                     screenViews = false,
-                    userInteractions = false,
                 )
+        }
+
+        @ExperimentalAmplitudeFeature
+        constructor(
+            sessions: Boolean = true,
+            appLifecycles: Boolean = false,
+            deepLinks: Boolean = false,
+            screenViews: Boolean = false,
+            userInteractions: Boolean = false,
+        ) : this(sessions, appLifecycles, deepLinks, screenViews) {
+            this.userInteractions = userInteractions
         }
     }
