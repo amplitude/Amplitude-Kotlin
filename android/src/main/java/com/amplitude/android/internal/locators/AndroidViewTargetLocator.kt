@@ -65,9 +65,9 @@ internal class AndroidViewTargetLocator(
                 isJetpackScrollingView(isAndroidXAvailable) ||
                     AbsListView::class.java.isAssignableFrom(this.javaClass) ||
                     ScrollView::class.java.isAssignableFrom(this.javaClass)
-            ) &&
+                ) &&
                 visibility == View.VISIBLE
-        )
+            )
     }
 
     private fun View.isJetpackScrollingView(isAndroidXAvailable: Boolean): Boolean {
