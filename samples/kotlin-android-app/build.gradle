@@ -8,12 +8,12 @@ ext {
 }
 
 android {
-    compileSdk 31
+    compileSdk 34
 
     defaultConfig {
         applicationId "com.amplitude.android.sample"
-        minSdk 16
-        targetSdk 31
+        minSdk 19
+        targetSdk 34
         versionCode 1
         versionName "1.0"
         multiDexEnabled true

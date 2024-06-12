@@ -65,10 +65,16 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
             val isFromBackground = !isFirstLaunch.getAndSet(false)
             DefaultEventUtils(androidAmplitude).trackAppOpenedEvent(packageInfo, isFromBackground)
         }
+        if (androidConfiguration.defaultTracking.userInteractions) {
+            DefaultEventUtils(androidAmplitude).startUserInteractionEventTracking(activity)
+        }
     }
 
     override fun onActivityPaused(activity: Activity) {
         androidAmplitude.onExitForeground(getCurrentTimeMillis())
+        if (androidConfiguration.defaultTracking.userInteractions) {
+            DefaultEventUtils(androidAmplitude).stopUserInteractionEventTracking(activity)
+        }
     }
 
     override fun onActivityStopped(activity: Activity) {
@@ -84,7 +90,13 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     override fun onActivityDestroyed(activity: Activity) {
     }
 
+    override fun teardown() {
+        super.teardown()
+        (androidConfiguration.context as Application).unregisterActivityLifecycleCallbacks(this)
+    }
+
     companion object {
+        @JvmStatic
         fun getCurrentTimeMillis(): Long {
             return System.currentTimeMillis()
         }
