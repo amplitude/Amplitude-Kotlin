@@ -3,21 +3,41 @@ name: Test and Lint
 on: [pull_request]
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        java-version: [11, 17]
     steps:
       - uses: actions/checkout@v4
-      - name: Set up JDK 11
+
+      - name: Set up JDK ${{ matrix.java-version }}
         uses: actions/setup-java@v4
         with:
-          java-version: '11'
+          java-version: ${{ matrix.java-version }}
           distribution: 'temurin'
           cache: 'gradle'
 
       - name: Build
         run: ./gradlew build
 
+      - name: Upload build results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          # artifacts name
+          name: build-results-${{ matrix.java-version }}
+          # copy reports of all packages
+          path: '**/build/reports/**'
+          # artifact will expire in 7 days.
+          retention-days: 7
+
+  test-and-lint:
+    runs-on: ubuntu-20.04
+    needs: build
+    steps:
       - uses: actions/checkout@v4
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -25,24 +45,16 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
-      - name: Build
-        run: ./gradlew build
-
       - name: Unit Test
         run: ./gradlew testDebugUnitTest
 
       - name: Lint
         run: ./gradlew ktlintCheck
 
-      - name: Upload build results
+      - name: Upload test and lint results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          # artifacts name
-          name: build-results
-          # copy reports of all packages
+          name: test-and-lint-results
           path: '**/build/reports/**'
-          # artifact will expire in 7 days.
           retention-days: 7
-
-
