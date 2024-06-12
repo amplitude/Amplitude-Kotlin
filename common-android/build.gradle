@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    compileSdk 31
+    compileSdk 34
 
     defaultConfig {
-        minSdk 16
-        targetSdk 31
+        minSdk 19
+        targetSdk 34
         versionCode 1
         versionName "1.0"
 
@@ -49,7 +49,7 @@ dependencies {
     testImplementation 'com.google.android.gms:play-services-base:18.0.1'
     testImplementation 'com.google.android.gms:play-services-ads-identifier:18.0.1'
     testImplementation 'io.mockk:mockk:1.12.3'
-    testImplementation 'org.robolectric:robolectric:4.7.3'
+    testImplementation 'org.robolectric:robolectric:4.12.1'
     testImplementation 'androidx.test:core:1.4.0'
     testImplementation "org.junit.jupiter:junit-jupiter-api:5.7.2"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.7.2"
