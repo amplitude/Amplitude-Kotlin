@@ -1,5 +1,7 @@
 package com.amplitude.android.internal.locators;
 
+import androidx.annotation.OptIn;
+import androidx.compose.ui.InternalComposeUiApi;
 import androidx.compose.ui.geometry.Rect;
 import androidx.compose.ui.layout.ModifierInfo;
 import androidx.compose.ui.node.LayoutNode;
@@ -22,9 +24,10 @@ import java.util.Queue;
 import kotlin.Pair;
 
 @SuppressWarnings("KotlinInternalInJava")
+@OptIn(markerClass = InternalComposeUiApi.class)
 public class ComposeViewTargetLocator implements ViewTargetLocator {
-    private static final String SOURCE = "jetpack_compose";
     private volatile @Nullable ComposeLayoutNodeBoundsHelper composeLayoutNodeBoundsHelper;
+    private static final String SOURCE = "jetpack_compose";
     private final @NotNull Logger logger;
 
     public ComposeViewTargetLocator(@NotNull Logger logger) {

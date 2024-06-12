@@ -1,5 +1,7 @@
 package com.amplitude.android.internal.locators;
 
+import androidx.annotation.OptIn;
+import androidx.compose.ui.InternalComposeUiApi;
 import androidx.compose.ui.geometry.Rect;
 import androidx.compose.ui.layout.LayoutCoordinatesKt;
 import androidx.compose.ui.node.LayoutNode;
@@ -13,6 +15,7 @@ import org.jetbrains.annotations.Nullable;
 import java.lang.reflect.Field;
 
 @SuppressWarnings("KotlinInternalInJava")
+@OptIn(markerClass = InternalComposeUiApi.class)
 public class ComposeLayoutNodeBoundsHelper {
   private Field layoutDelegateField = null;
   private final @NotNull Logger logger;
