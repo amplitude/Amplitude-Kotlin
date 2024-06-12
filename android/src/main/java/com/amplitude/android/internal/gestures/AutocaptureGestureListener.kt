@@ -45,7 +45,7 @@ class AutocaptureGestureListener(
                 viewTargetLocators,
                 ViewTarget.Type.Clickable,
                 logger,
-            ) ?: logger.error("Unable to find click target. No event captured.").let { return false }
+            ) ?: logger.warn("Unable to find click target. No event captured.").let { return false }
 
         capture(target, ELEMENT_CLICKED)
         return false
@@ -75,7 +75,7 @@ class AutocaptureGestureListener(
                 viewTargetLocators,
                 ViewTarget.Type.Scrollable,
                 logger,
-            ) ?: logger.error("Unable to find scroll target. No event captured.").let { return false }
+            ) ?: logger.warn("Unable to find scroll target. No event captured.").let { return false }
 
         scrollState.setTarget(target)
         scrollState.type = MoveGestureType.Scroll
@@ -87,7 +87,7 @@ class AutocaptureGestureListener(
 
         val scrollTarget = scrollState.viewTarget ?: return
         if (scrollState.type == MoveGestureType.Unknown) {
-            logger.debug("Unable to define scroll type. No event captured.")
+            logger.warn("Unable to define scroll type. No event captured.")
             return
         }
 

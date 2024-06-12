@@ -42,7 +42,7 @@ public class ComposeLayoutNodeBoundsHelper {
         }
         return LayoutCoordinatesKt.boundsInWindow(delegate.getOuterCoordinator().getCoordinates());
     } catch (Exception e) {
-      logger.info("Could not fetch position for LayoutNode");
+      logger.warn("Could not fetch position for LayoutNode");
     }
     return null;
   }
