@@ -88,7 +88,6 @@ public class ComposeViewTargetLocator implements ViewTargetLocator {
                                 case "OnClick":
                                     isClickable = true;
                                     break;
-                                case "SentryTag":
                                 case "TestTag":
                                     if (entry.getValue() instanceof String) {
                                         lastKnownTag = (String) entry.getValue();
