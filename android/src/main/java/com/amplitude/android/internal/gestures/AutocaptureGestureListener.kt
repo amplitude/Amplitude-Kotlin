@@ -140,7 +140,7 @@ class AutocaptureGestureListener(
     ) {
         mapOf(
             ELEMENT_CLASS to target.className,
-            ELEMENT_RESOURCE to target.recourseName,
+            ELEMENT_RESOURCE to target.resourceName,
             ELEMENT_TAG to target.tag,
             ELEMENT_SOURCE to
                 target.source
