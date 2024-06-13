@@ -5,6 +5,7 @@ import com.amplitude.common.Logger
 
 internal object ViewTargetLocators {
     private const val COMPOSE_CLASS_NAME = "androidx.compose.ui.node.Owner"
+    private const val SCROLLING_VIEW_CLASS_NAME = "androidx.core.view.ScrollingView"
     private const val COMPOSE_GESTURE_LOCATOR_CLASS_NAME =
         "com.amplitude.android.internal.locators.ComposeViewTargetLocator"
 
@@ -15,19 +16,22 @@ internal object ViewTargetLocators {
      * @param logger the logger to use for logging.
      * @return a list of [ViewTargetLocator]s.
      */
-    @JvmField
-    val ALL: (Logger) -> List<ViewTargetLocator> = { logger ->
-        mutableListOf<ViewTargetLocator>().apply {
-            val loadClass = LoadClass()
-            val isComposeUpstreamAvailable = loadClass.isClassAvailable(COMPOSE_CLASS_NAME, logger)
-            val isComposeAvailable =
-                isComposeUpstreamAvailable &&
-                    loadClass.isClassAvailable(COMPOSE_GESTURE_LOCATOR_CLASS_NAME, logger)
+    val ALL: (Logger) -> List<ViewTargetLocator> by lazy {
+        { logger ->
+            mutableListOf<ViewTargetLocator>().apply {
+                val loadClass = LoadClass()
+                val isComposeUpstreamAvailable = loadClass.isClassAvailable(COMPOSE_CLASS_NAME, logger)
+                val isComposeAvailable =
+                    isComposeUpstreamAvailable &&
+                        loadClass.isClassAvailable(COMPOSE_GESTURE_LOCATOR_CLASS_NAME, logger)
+                val isAndroidXScrollViewAvailable =
+                    loadClass.isClassAvailable(SCROLLING_VIEW_CLASS_NAME, logger)
 
-            if (isComposeAvailable) {
-                add(ComposeViewTargetLocator(logger))
+                if (isComposeAvailable) {
+                    add(ComposeViewTargetLocator(logger))
+                }
+                add(AndroidViewTargetLocator(isAndroidXScrollViewAvailable))
             }
-            add(AndroidViewTargetLocator())
         }
     }
 }

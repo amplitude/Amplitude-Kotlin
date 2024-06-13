@@ -18,7 +18,6 @@ import java.lang.reflect.Field;
 @OptIn(markerClass = InternalComposeUiApi.class)
 public class ComposeLayoutNodeBoundsHelper {
   private Field layoutDelegateField = null;
-
   private final @NotNull Logger logger;
 
   public ComposeLayoutNodeBoundsHelper(@NotNull Logger logger) {
@@ -43,7 +42,7 @@ public class ComposeLayoutNodeBoundsHelper {
         }
         return LayoutCoordinatesKt.boundsInWindow(delegate.getOuterCoordinator().getCoordinates());
     } catch (Exception e) {
-      logger.info("Could not fetch position for LayoutNode");
+      logger.warn("Could not fetch position for LayoutNode");
     }
     return null;
   }

@@ -12,9 +12,6 @@ import android.widget.RadioButton
 import com.amplitude.android.internal.locators.AndroidViewTargetLocator
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_CLASS
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_RESOURCE
-import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_SOURCE
-import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_TAG
-import com.amplitude.android.utilities.DefaultEventUtils.EventTypes.ELEMENT_CLICKED
 import com.amplitude.common.Logger
 import io.mockk.every
 import io.mockk.mockk
@@ -91,7 +88,7 @@ class AutocaptureGestureListenerClickTest {
                 activity,
                 track,
                 logger,
-                listOf(AndroidViewTargetLocator()),
+                listOf(AndroidViewTargetLocator(true)),
             )
         }
     }
@@ -145,12 +142,12 @@ class AutocaptureGestureListenerClickTest {
 
         verify(exactly = 1) {
             fixture.track(
-                ELEMENT_CLICKED,
+                "[Amplitude] Element Clicked",
                 mapOf(
-                    ELEMENT_CLASS to "android.view.View",
-                    ELEMENT_RESOURCE to "test_button",
-                    ELEMENT_TAG to null,
-                    ELEMENT_SOURCE to "Android View",
+                    "[Amplitude] Element Class" to "android.view.View",
+                    "[Amplitude] Element Resource" to "test_button",
+                    "[Amplitude] Element Tag" to null,
+                    "[Amplitude] Element Source" to "Android View",
                 ),
             )
         }
@@ -171,13 +168,11 @@ class AutocaptureGestureListenerClickTest {
 
         verify {
             fixture.track(
-                ELEMENT_CLICKED,
-                mapOf(
-                    ELEMENT_CLASS to "android.widget.RadioButton",
-                    ELEMENT_RESOURCE to "radio_button",
-                    ELEMENT_TAG to null,
-                    ELEMENT_SOURCE to "Android View",
-                ),
+                "[Amplitude] Element Clicked",
+                match {
+                    it["[Amplitude] Element Class"] == "android.widget.RadioButton" &&
+                        it["[Amplitude] Element Resource"] == "radio_button"
+                },
             )
         }
     }
@@ -197,13 +192,11 @@ class AutocaptureGestureListenerClickTest {
 
         verify {
             fixture.track(
-                ELEMENT_CLICKED,
-                mapOf(
-                    ELEMENT_CLASS to "android.widget.CheckBox",
-                    ELEMENT_RESOURCE to "check_box",
-                    ELEMENT_TAG to null,
-                    ELEMENT_SOURCE to "Android View",
-                ),
+                "[Amplitude] Element Clicked",
+                match {
+                    it["[Amplitude] Element Class"] == "android.widget.CheckBox" &&
+                        it["[Amplitude] Element Resource"] == "check_box"
+                },
             )
         }
     }
@@ -249,13 +242,11 @@ class AutocaptureGestureListenerClickTest {
 
         verify {
             fixture.track(
-                ELEMENT_CLICKED,
-                mapOf(
-                    ELEMENT_CLASS to decorView.javaClass.canonicalName,
-                    ELEMENT_RESOURCE to "decor_view",
-                    ELEMENT_TAG to null,
-                    ELEMENT_SOURCE to "Android View",
-                ),
+                "[Amplitude] Element Clicked",
+                match {
+                    it["[Amplitude] Element Class"] == decorView.javaClass.canonicalName &&
+                        it["[Amplitude] Element Resource"] == "decor_view"
+                },
             )
         }
     }
@@ -298,13 +289,11 @@ class AutocaptureGestureListenerClickTest {
 
         verify {
             fixture.track(
-                ELEMENT_CLICKED,
-                mapOf(
-                    ELEMENT_CLASS to fixture.target.javaClass.simpleName,
-                    ELEMENT_RESOURCE to "test_button",
-                    ELEMENT_TAG to null,
-                    ELEMENT_SOURCE to "Android View",
-                ),
+                "[Amplitude] Element Clicked",
+                match {
+                    it[ELEMENT_CLASS] == fixture.target.javaClass.simpleName &&
+                        it[ELEMENT_RESOURCE] == "test_button"
+                },
             )
         }
     }

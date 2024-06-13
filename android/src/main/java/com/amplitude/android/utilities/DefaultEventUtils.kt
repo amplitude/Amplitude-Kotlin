@@ -23,6 +23,8 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         const val DEEP_LINK_OPENED = "[Amplitude] Deep Link Opened"
         const val SCREEN_VIEWED = "[Amplitude] Screen Viewed"
         const val ELEMENT_CLICKED = "[Amplitude] Element Clicked"
+        const val ELEMENT_SCROLLED = "[Amplitude] Element Scrolled"
+        const val ELEMENT_SWIPED = "[Amplitude] Element Swiped"
     }
 
     object EventProperties {
@@ -38,6 +40,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         const val ELEMENT_RESOURCE = "[Amplitude] Element Resource"
         const val ELEMENT_TAG = "[Amplitude] Element Tag"
         const val ELEMENT_SOURCE = "[Amplitude] Element Source"
+        const val DIRECTION = "[Amplitude] Direction"
     }
 
     fun trackAppUpdatedInstalledEvent(packageInfo: PackageInfo) {
