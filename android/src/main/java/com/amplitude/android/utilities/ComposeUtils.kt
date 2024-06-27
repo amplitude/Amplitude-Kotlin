@@ -12,7 +12,7 @@ class ComposeUtils {
 
         fun isComposeAvailable(logger: Logger? = null): Boolean {
             return loadClass.isClassAvailable(COMPOSE_CLASS_NAME, logger) &&
-                        loadClass.isClassAvailable(COMPOSE_GESTURE_LOCATOR_CLASS_NAME, logger)
+                loadClass.isClassAvailable(COMPOSE_GESTURE_LOCATOR_CLASS_NAME, logger)
         }
 
         fun isAndroidXScrollViewAvailable(logger: Logger? = null): Boolean {
