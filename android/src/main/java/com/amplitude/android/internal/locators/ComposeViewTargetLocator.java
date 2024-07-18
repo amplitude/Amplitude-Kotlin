@@ -70,8 +70,6 @@ public class ComposeViewTargetLocator implements ViewTargetLocator {
 
             if (node.isPlaced() && layoutNodeBoundsContain(composeLayoutNodeBoundsHelper, node, targetPosition.component1(), targetPosition.component2())) {
                 boolean isClickable = false;
-                boolean isScrollable = false;
-
                 final List<ModifierInfo> modifiers = node.getModifierInfo();
                 for (ModifierInfo modifierInfo : modifiers) {
                     if (modifierInfo.getModifier() instanceof SemanticsModifier) {
@@ -81,18 +79,12 @@ public class ComposeViewTargetLocator implements ViewTargetLocator {
                                 semanticsModifierCore.getSemanticsConfiguration();
                         for (Map.Entry<? extends SemanticsPropertyKey<?>, ?> entry : semanticsConfiguration) {
                             final @Nullable String key = entry.getKey().getName();
-                            switch (key) {
-                                case "ScrollBy":
-                                    isScrollable = true;
-                                    break;
-                                case "OnClick":
-                                    isClickable = true;
-                                    break;
-                                case "TestTag":
-                                    if (entry.getValue() instanceof String) {
-                                        lastKnownTag = (String) entry.getValue();
-                                    }
-                                    break;
+                            if ("OnClick".equals(key)) {
+                                isClickable = true;
+                            } else if ("TestTag".equals(key)) {
+                                if (entry.getValue() instanceof String) {
+                                    lastKnownTag = (String) entry.getValue();
+                                }
                             }
                         }
                     } else {
@@ -101,19 +93,12 @@ public class ComposeViewTargetLocator implements ViewTargetLocator {
                         if ("androidx.compose.foundation.ClickableElement".equals(type)
                                 || "androidx.compose.foundation.CombinedClickableElement".equals(type)) {
                             isClickable = true;
-                        } else if ("androidx.compose.foundation.ScrollingLayoutElement".equals(type)) {
-                            isScrollable = true;
                         }
                     }
                 }
 
                 if (isClickable && targetType == ViewTarget.Type.Clickable) {
                     targetTag = lastKnownTag;
-                }
-                if (isScrollable && targetType == ViewTarget.Type.Scrollable) {
-                    targetTag = lastKnownTag;
-                    // skip any children for scrollable targets
-                    break;
                 }
             }
             queue.addAll(node.getZSortedChildren().asMutableList());

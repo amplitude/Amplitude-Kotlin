@@ -88,7 +88,7 @@ class AutocaptureGestureListenerClickTest {
                 activity,
                 track,
                 logger,
-                listOf(AndroidViewTargetLocator(true)),
+                listOf(AndroidViewTargetLocator()),
             )
         }
     }
