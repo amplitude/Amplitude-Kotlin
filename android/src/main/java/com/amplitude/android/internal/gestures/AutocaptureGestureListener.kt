@@ -40,7 +40,7 @@ class AutocaptureGestureListener(
                 viewTargetLocators,
                 ViewTarget.Type.Clickable,
                 logger,
-            ) ?: logger.error("Unable to find click target").let { return false }
+            ) ?: logger.warn("Unable to find click target. No event captured.").let { return false }
 
         mapOf(
             ELEMENT_CLASS to target.className,
