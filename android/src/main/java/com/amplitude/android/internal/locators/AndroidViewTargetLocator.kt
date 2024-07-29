@@ -9,6 +9,8 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
     private val coordinates = IntArray(2)
 
     companion object {
+        private const val HIERARCHY_DELIMITER = " → "
+
         private const val SOURCE = "android_view"
     }
 
@@ -24,7 +26,8 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
     private fun View.createViewTarget(): ViewTarget {
         val className = javaClass.canonicalName ?: javaClass.simpleName ?: null
         val resourceName = resourceIdWithFallback
-        return ViewTarget(this, className, resourceName, null, SOURCE)
+        val hierarchy = hierarchy
+        return ViewTarget(this, className, resourceName, null, SOURCE, hierarchy)
     }
 
     private fun View.touchWithinBounds(position: Pair<Float, Float>): Boolean {
@@ -43,4 +46,15 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
     private fun View.isViewTappable(): Boolean {
         return isClickable && visibility == View.VISIBLE
     }
+
+    private val View.hierarchy: String
+        get() {
+            val hierarchy = mutableListOf<String>()
+            var currentView: View? = this
+            while (currentView != null) {
+                hierarchy.add(currentView.javaClass.simpleName)
+                currentView = currentView.parent as? View
+            }
+            return hierarchy.joinToString(separator = HIERARCHY_DELIMITER)
+        }
 }

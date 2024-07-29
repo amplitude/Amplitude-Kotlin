@@ -7,11 +7,13 @@ import androidx.annotation.VisibleForTesting
 import com.amplitude.android.internal.ViewHierarchyScanner.findTarget
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.locators.ViewTargetLocator
-import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_CLASS
-import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_RESOURCE
-import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_SOURCE
-import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ELEMENT_TAG
-import com.amplitude.android.utilities.DefaultEventUtils.EventTypes.ELEMENT_CLICKED
+import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ACTION
+import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.HIERARCHY
+import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.TARGET_CLASS
+import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.TARGET_RESOURCE
+import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.TARGET_SOURCE
+import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.TARGET_TAG
+import com.amplitude.android.utilities.DefaultEventUtils.EventTypes.ELEMENT_INTERACTED
 import com.amplitude.common.Logger
 import java.lang.ref.WeakReference
 
@@ -43,15 +45,17 @@ class AutocaptureGestureListener(
             ) ?: logger.warn("Unable to find click target. No event captured.").let { return false }
 
         mapOf(
-            ELEMENT_CLASS to target.className,
-            ELEMENT_RESOURCE to target.resourceName,
-            ELEMENT_TAG to target.tag,
-            ELEMENT_SOURCE to
+            ACTION to "tap",
+            TARGET_CLASS to target.className,
+            TARGET_RESOURCE to target.resourceName,
+            TARGET_TAG to target.tag,
+            TARGET_SOURCE to
                 target.source
                     .replace("_", " ")
                     .split(" ")
                     .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } },
-        ).let { track(ELEMENT_CLICKED, it) }
+            HIERARCHY to target.hierarchy,
+        ).let { track(ELEMENT_INTERACTED, it) }
 
         return false
     }
