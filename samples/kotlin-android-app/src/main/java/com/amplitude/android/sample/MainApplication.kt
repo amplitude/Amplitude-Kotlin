@@ -2,8 +2,8 @@ package com.amplitude.android.sample
 
 import android.app.Application
 import com.amplitude.android.Amplitude
+import com.amplitude.android.AutocaptureOptions
 import com.amplitude.android.Configuration
-import com.amplitude.android.DefaultTrackingOptions
 import com.amplitude.common.Logger
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
@@ -25,7 +25,12 @@ class MainApplication : Application() {
             Configuration(
                 apiKey = AMPLITUDE_API_KEY,
                 context = applicationContext,
-                defaultTracking = DefaultTrackingOptions.ALL
+                autocapture = AutocaptureOptions(
+                    appLifecycles = true,
+                    deepLinks = true,
+                    screenViews = true,
+                    elementInteractions = true
+                ),
             )
         )
 

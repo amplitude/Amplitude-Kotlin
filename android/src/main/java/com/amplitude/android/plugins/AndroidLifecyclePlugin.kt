@@ -41,18 +41,18 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     }
 
     override fun onActivityCreated(activity: Activity, bundle: Bundle?) {
-        if (!hasTrackedApplicationLifecycleEvents.getAndSet(true) && androidConfiguration.defaultTracking.appLifecycles) {
+        if (!hasTrackedApplicationLifecycleEvents.getAndSet(true) && androidConfiguration.autocapture.appLifecycles) {
             numberOfActivities.set(0)
             isFirstLaunch.set(true)
             DefaultEventUtils(androidAmplitude).trackAppUpdatedInstalledEvent(packageInfo)
         }
-        if (androidConfiguration.defaultTracking.deepLinks) {
+        if (androidConfiguration.autocapture.deepLinks) {
             DefaultEventUtils(androidAmplitude).trackDeepLinkOpenedEvent(activity)
         }
     }
 
     override fun onActivityStarted(activity: Activity) {
-        if (androidConfiguration.defaultTracking.screenViews) {
+        if (androidConfiguration.autocapture.screenViews) {
             DefaultEventUtils(androidAmplitude).trackScreenViewedEvent(activity)
         }
     }
@@ -61,25 +61,25 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
         androidAmplitude.onEnterForeground(getCurrentTimeMillis())
 
         // numberOfActivities makes sure it only fires after activity creation or activity stopped
-        if (androidConfiguration.defaultTracking.appLifecycles && numberOfActivities.incrementAndGet() == 1) {
+        if (androidConfiguration.autocapture.appLifecycles && numberOfActivities.incrementAndGet() == 1) {
             val isFromBackground = !isFirstLaunch.getAndSet(false)
             DefaultEventUtils(androidAmplitude).trackAppOpenedEvent(packageInfo, isFromBackground)
         }
-        if (androidConfiguration.defaultTracking.userInteractions) {
+        if (androidConfiguration.autocapture.elementInteractions) {
             DefaultEventUtils(androidAmplitude).startUserInteractionEventTracking(activity)
         }
     }
 
     override fun onActivityPaused(activity: Activity) {
         androidAmplitude.onExitForeground(getCurrentTimeMillis())
-        if (androidConfiguration.defaultTracking.userInteractions) {
+        if (androidConfiguration.autocapture.elementInteractions) {
             DefaultEventUtils(androidAmplitude).stopUserInteractionEventTracking(activity)
         }
     }
 
     override fun onActivityStopped(activity: Activity) {
         // numberOfActivities makes sure it only fires after setup or activity resumed
-        if (androidConfiguration.defaultTracking.appLifecycles && numberOfActivities.decrementAndGet() == 0) {
+        if (androidConfiguration.autocapture.appLifecycles && numberOfActivities.decrementAndGet() == 0) {
             DefaultEventUtils(androidAmplitude).trackAppBackgroundedEvent()
         }
     }

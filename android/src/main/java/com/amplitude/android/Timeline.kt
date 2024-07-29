@@ -137,12 +137,9 @@ class Timeline(
     private suspend fun startNewSession(timestamp: Long): Iterable<BaseEvent> {
         val sessionEvents = mutableListOf<BaseEvent>()
         val configuration = amplitude.configuration as Configuration
-        // If any trackingSessionEvents is false (default value is true), means it is manually set
-        @Suppress("DEPRECATION")
-        val trackingSessionEvents = configuration.trackingSessionEvents && configuration.defaultTracking.sessions
 
         // end previous session
-        if (trackingSessionEvents && inSession()) {
+        if (configuration.autocapture.sessions && inSession()) {
             val sessionEndEvent = BaseEvent()
             sessionEndEvent.eventType = Amplitude.END_SESSION_EVENT
             sessionEndEvent.timestamp = if (lastEventTime > 0) lastEventTime else null
@@ -153,7 +150,7 @@ class Timeline(
         // start new session
         setSessionId(timestamp)
         refreshSessionTime(timestamp)
-        if (trackingSessionEvents) {
+        if (configuration.autocapture.sessions) {
             val sessionStartEvent = BaseEvent()
             sessionStartEvent.eventType = Amplitude.START_SESSION_EVENT
             sessionStartEvent.timestamp = timestamp

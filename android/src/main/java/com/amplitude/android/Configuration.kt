@@ -39,9 +39,12 @@ open class Configuration @JvmOverloads constructor(
     var locationListening: Boolean = true,
     var flushEventsOnClose: Boolean = true,
     var minTimeBetweenSessionsMillis: Long = MIN_TIME_BETWEEN_SESSIONS_MILLIS,
-    @Deprecated("Please use 'defaultTracking.sessions' instead.", ReplaceWith("defaultTracking.sessions"))
+    @Deprecated("Please use 'autocapture.sessions' instead.", ReplaceWith("autocapture.sessions"))
     var trackingSessionEvents: Boolean = true,
+    @Suppress("DEPRECATION")
+    @Deprecated("Use autocapture instead", ReplaceWith("autocapture"))
     var defaultTracking: DefaultTrackingOptions = DefaultTrackingOptions(),
+    var autocapture: AutocaptureOptions = AutocaptureOptions(),
     override var identifyBatchIntervalMillis: Long = IDENTIFY_BATCH_INTERVAL_MILLIS,
     override var identifyInterceptStorageProvider: StorageProvider = AndroidStorageProvider(),
     override var identityStorageProvider: IdentityStorageProvider = FileIdentityStorageProvider(),
@@ -75,5 +78,17 @@ open class Configuration @JvmOverloads constructor(
 ) {
     companion object {
         const val MIN_TIME_BETWEEN_SESSIONS_MILLIS: Long = 300000
+    }
+
+    init {
+        @Suppress("DEPRECATION")
+        autocapture = AutocaptureOptions(
+            // If trackingSessionEvents or defaultTracking.sessions are false (default value is true), it means they are manually set
+            sessions = defaultTracking.sessions && trackingSessionEvents && autocapture.sessions,
+            appLifecycles = defaultTracking.appLifecycles || autocapture.appLifecycles,
+            deepLinks = defaultTracking.deepLinks || autocapture.deepLinks,
+            screenViews = defaultTracking.screenViews || autocapture.screenViews,
+            elementInteractions = autocapture.elementInteractions,
+        )
     }
 }

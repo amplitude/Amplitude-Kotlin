@@ -1,5 +1,6 @@
 package com.amplitude.android
 
+@Deprecated("Use AutocaptureOptions instead", ReplaceWith("AutocaptureOptions"))
 open class DefaultTrackingOptions
 @JvmOverloads
 constructor(
@@ -8,13 +9,11 @@ constructor(
     var deepLinks: Boolean = false,
     var screenViews: Boolean = false,
 ) {
-    var userInteractions = false
-        @ExperimentalAmplitudeFeature
-        set
-
     // Prebuilt options for easier usage
     companion object {
         @JvmField
+        @Suppress("DEPRECATION")
+        @Deprecated("Use AutocaptureOptions instead", ReplaceWith("AutocaptureOptions(appLifecycles = true, deepLinks = true, screenViews = true, elementInteractions = true)"))
         val ALL =
             DefaultTrackingOptions(
                 sessions = true,
@@ -24,6 +23,8 @@ constructor(
             )
 
         @JvmField
+        @Suppress("DEPRECATION")
+        @Deprecated("Use AutocaptureOptions instead", ReplaceWith("AutocaptureOptions(sessions = false)"))
         val NONE =
             DefaultTrackingOptions(
                 sessions = false,
@@ -31,16 +32,5 @@ constructor(
                 deepLinks = false,
                 screenViews = false,
             )
-    }
-
-    @ExperimentalAmplitudeFeature
-    constructor(
-        sessions: Boolean = true,
-        appLifecycles: Boolean = false,
-        deepLinks: Boolean = false,
-        screenViews: Boolean = false,
-        userInteractions: Boolean = false,
-    ) : this(sessions, appLifecycles, deepLinks, screenViews) {
-        this.userInteractions = userInteractions
     }
 }
