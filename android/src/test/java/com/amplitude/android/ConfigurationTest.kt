@@ -43,6 +43,11 @@ class ConfigurationTest {
         Assertions.assertTrue(configuration.defaultTracking.appLifecycles)
         Assertions.assertTrue(configuration.defaultTracking.deepLinks)
         Assertions.assertTrue(configuration.defaultTracking.screenViews)
+        Assertions.assertFalse(configuration.autocapture.sessions)
+        Assertions.assertTrue(configuration.autocapture.appLifecycles)
+        Assertions.assertTrue(configuration.autocapture.deepLinks)
+        Assertions.assertTrue(configuration.autocapture.screenViews)
+        Assertions.assertFalse(configuration.autocapture.elementInteractions)
     }
 
     @Test
@@ -50,17 +55,23 @@ class ConfigurationTest {
         val configuration = Configuration(
             "test-apikey",
             context!!,
-            defaultTracking = DefaultTrackingOptions.ALL
+            autocapture = AutocaptureOptions(
+                appLifecycles = true,
+                deepLinks = true,
+                screenViews = true,
+                elementInteractions = true
+            )
         )
-        Assertions.assertTrue(configuration.defaultTracking.sessions)
-        Assertions.assertTrue(configuration.defaultTracking.appLifecycles)
-        Assertions.assertTrue(configuration.defaultTracking.deepLinks)
-        Assertions.assertTrue(configuration.defaultTracking.screenViews)
+        Assertions.assertTrue(configuration.autocapture.sessions)
+        Assertions.assertTrue(configuration.autocapture.appLifecycles)
+        Assertions.assertTrue(configuration.autocapture.deepLinks)
+        Assertions.assertTrue(configuration.autocapture.screenViews)
+        Assertions.assertTrue(configuration.autocapture.elementInteractions)
 
-        configuration.defaultTracking = DefaultTrackingOptions.NONE
-        Assertions.assertFalse(configuration.defaultTracking.sessions)
-        Assertions.assertFalse(configuration.defaultTracking.appLifecycles)
-        Assertions.assertFalse(configuration.defaultTracking.deepLinks)
-        Assertions.assertFalse(configuration.defaultTracking.screenViews)
+        configuration.autocapture = AutocaptureOptions(sessions = false)
+        Assertions.assertFalse(configuration.autocapture.sessions)
+        Assertions.assertFalse(configuration.autocapture.appLifecycles)
+        Assertions.assertFalse(configuration.autocapture.deepLinks)
+        Assertions.assertFalse(configuration.autocapture.screenViews)
     }
 }
