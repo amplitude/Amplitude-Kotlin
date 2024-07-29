@@ -41,22 +41,18 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     }
 
     override fun onActivityCreated(activity: Activity, bundle: Bundle?) {
-        @Suppress("DEPRECATION")
-        val trackingAppLifecycle = androidConfiguration.defaultTracking.appLifecycles || androidConfiguration.autocapture.appLifecycles
-        if (!hasTrackedApplicationLifecycleEvents.getAndSet(true) && trackingAppLifecycle) {
+        if (!hasTrackedApplicationLifecycleEvents.getAndSet(true) && androidConfiguration.autocapture.appLifecycles) {
             numberOfActivities.set(0)
             isFirstLaunch.set(true)
             DefaultEventUtils(androidAmplitude).trackAppUpdatedInstalledEvent(packageInfo)
         }
-        @Suppress("DEPRECATION")
-        if (androidConfiguration.defaultTracking.deepLinks || androidConfiguration.autocapture.deepLinks) {
+        if (androidConfiguration.autocapture.deepLinks) {
             DefaultEventUtils(androidAmplitude).trackDeepLinkOpenedEvent(activity)
         }
     }
 
     override fun onActivityStarted(activity: Activity) {
-        @Suppress("DEPRECATION")
-        if (androidConfiguration.defaultTracking.screenViews || androidConfiguration.autocapture.screenViews) {
+        if (androidConfiguration.autocapture.screenViews) {
             DefaultEventUtils(androidAmplitude).trackScreenViewedEvent(activity)
         }
     }
@@ -65,9 +61,7 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
         androidAmplitude.onEnterForeground(getCurrentTimeMillis())
 
         // numberOfActivities makes sure it only fires after activity creation or activity stopped
-        @Suppress("DEPRECATION")
-        val trackingAppLifecycle = androidConfiguration.defaultTracking.appLifecycles || androidConfiguration.autocapture.appLifecycles
-        if (trackingAppLifecycle && numberOfActivities.incrementAndGet() == 1) {
+        if (androidConfiguration.autocapture.appLifecycles && numberOfActivities.incrementAndGet() == 1) {
             val isFromBackground = !isFirstLaunch.getAndSet(false)
             DefaultEventUtils(androidAmplitude).trackAppOpenedEvent(packageInfo, isFromBackground)
         }
@@ -85,9 +79,7 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
 
     override fun onActivityStopped(activity: Activity) {
         // numberOfActivities makes sure it only fires after setup or activity resumed
-        @Suppress("DEPRECATION")
-        val trackingAppLifecycle = androidConfiguration.defaultTracking.appLifecycles || androidConfiguration.autocapture.appLifecycles
-        if (trackingAppLifecycle && numberOfActivities.decrementAndGet() == 0) {
+        if (androidConfiguration.autocapture.appLifecycles && numberOfActivities.decrementAndGet() == 0) {
             DefaultEventUtils(androidAmplitude).trackAppBackgroundedEvent()
         }
     }
