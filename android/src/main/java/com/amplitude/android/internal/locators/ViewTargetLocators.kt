@@ -17,7 +17,7 @@ internal object ViewTargetLocators {
                 if (ComposeUtils.isComposeAvailable()) {
                     add(ComposeViewTargetLocator(logger))
                 }
-                add(AndroidViewTargetLocator(ComposeUtils.isAndroidXScrollViewAvailable(logger)))
+                add(AndroidViewTargetLocator())
             }
         }
     }

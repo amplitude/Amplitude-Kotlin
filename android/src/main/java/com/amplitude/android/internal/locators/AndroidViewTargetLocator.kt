@@ -1,16 +1,11 @@
 package com.amplitude.android.internal.locators
 
 import android.view.View
-import android.widget.AbsListView
-import android.widget.ScrollView
-import androidx.core.view.ScrollingView
 import com.amplitude.android.internal.ViewResourceUtils.resourceIdWithFallback
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.ViewTarget.Type
 
-internal class AndroidViewTargetLocator(
-    private val isAndroidXAvailable: Boolean,
-) : ViewTargetLocator {
+internal class AndroidViewTargetLocator : ViewTargetLocator {
     private val coordinates = IntArray(2)
 
     companion object {
@@ -21,19 +16,9 @@ internal class AndroidViewTargetLocator(
         targetPosition: Pair<Float, Float>,
         targetType: Type,
     ): ViewTarget? {
-        val view = this as? View ?: return null
-        with(view) {
-            if (!touchWithinBounds(targetPosition)) {
-                return null
-            }
-
-            if (targetType === Type.Clickable && isViewTappable()) {
-                return createViewTarget()
-            } else if (targetType === Type.Scrollable && isViewScrollable(isAndroidXAvailable)) {
-                return createViewTarget()
-            }
-        }
-        return null
+        return (this as? View)
+            ?.takeIf { touchWithinBounds(targetPosition) && targetType === Type.Clickable && isViewTappable() }
+            ?.let { createViewTarget() }
     }
 
     private fun View.createViewTarget(): ViewTarget {
@@ -57,23 +42,5 @@ internal class AndroidViewTargetLocator(
 
     private fun View.isViewTappable(): Boolean {
         return isClickable && visibility == View.VISIBLE
-    }
-
-    private fun View.isViewScrollable(isAndroidXAvailable: Boolean): Boolean {
-        return (
-            (
-                isJetpackScrollingView(isAndroidXAvailable) ||
-                    AbsListView::class.java.isAssignableFrom(this.javaClass) ||
-                    ScrollView::class.java.isAssignableFrom(this.javaClass)
-                ) &&
-                visibility == View.VISIBLE
-            )
-    }
-
-    private fun View.isJetpackScrollingView(isAndroidXAvailable: Boolean): Boolean {
-        if (!isAndroidXAvailable) {
-            return false
-        }
-        return ScrollingView::class.java.isAssignableFrom(this.javaClass)
     }
 }

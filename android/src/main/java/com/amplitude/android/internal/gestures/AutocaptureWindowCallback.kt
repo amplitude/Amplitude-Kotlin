@@ -22,7 +22,7 @@ internal class AutocaptureWindowCallback(
         event?.let {
             motionEventObtainer.obtain(event).let {
                 try {
-                    handleTouchEvent(it)
+                    gestureDetector.onTouchEvent(it)
                 } catch (e: Exception) {
                     logger.error("Error handling touch event: $e")
                 } finally {
@@ -31,13 +31,6 @@ internal class AutocaptureWindowCallback(
             }
         }
         return super.dispatchTouchEvent(event)
-    }
-
-    private fun handleTouchEvent(event: MotionEvent) {
-        gestureDetector.onTouchEvent(event)
-        if (event.actionMasked == MotionEvent.ACTION_UP) {
-            gestureListener.onUp(event)
-        }
     }
 
     interface MotionEventObtainer {
