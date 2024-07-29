@@ -103,7 +103,7 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test application installed event is tracked`() = runTest {
         setDispatcher(testScheduler)
-        configuration.defaultTracking.appLifecycles = true
+        configuration.autocapture.appLifecycles = true
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
@@ -131,7 +131,7 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test application installed event is not tracked when disabled`() = runTest {
         setDispatcher(testScheduler)
-        configuration.defaultTracking.appLifecycles = false
+        configuration.autocapture.appLifecycles = false
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
@@ -153,7 +153,7 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test application updated event is tracked`() = runTest {
         setDispatcher(testScheduler)
-        configuration.defaultTracking.appLifecycles = true
+        configuration.autocapture.appLifecycles = true
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
@@ -187,7 +187,7 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test application updated event is not tracked when disabled`() = runTest {
         setDispatcher(testScheduler)
-        configuration.defaultTracking.appLifecycles = false
+        configuration.autocapture.appLifecycles = false
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
@@ -213,7 +213,7 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test application opened event is tracked`() = runTest {
         setDispatcher(testScheduler)
-        configuration.defaultTracking.appLifecycles = true
+        configuration.autocapture.appLifecycles = true
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
@@ -247,7 +247,7 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test application opened event is not tracked when disabled`() = runTest {
         setDispatcher(testScheduler)
-        configuration.defaultTracking.appLifecycles = false
+        configuration.autocapture.appLifecycles = false
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
@@ -271,7 +271,7 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test application backgrounded event is tracked`() = runTest {
         setDispatcher(testScheduler)
-        configuration.defaultTracking.appLifecycles = true
+        configuration.autocapture.appLifecycles = true
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
@@ -298,7 +298,7 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test application backgrounded event is not tracked when disabled`() = runTest {
         setDispatcher(testScheduler)
-        (amplitude.configuration as Configuration).defaultTracking.appLifecycles = false
+        (amplitude.configuration as Configuration).autocapture.appLifecycles = false
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
@@ -321,7 +321,7 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test screen viewed event is tracked`() = runTest {
         setDispatcher(testScheduler)
-        configuration.defaultTracking.screenViews = true
+        configuration.autocapture.screenViews = true
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
@@ -354,7 +354,7 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test screen viewed event is not tracked when disabled`() = runTest {
         setDispatcher(testScheduler)
-        configuration.defaultTracking.screenViews = false
+        configuration.autocapture.screenViews = false
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
@@ -382,7 +382,7 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test deep link opened event is tracked`() = runTest {
         setDispatcher(testScheduler)
-        configuration.defaultTracking.deepLinks = true
+        configuration.autocapture.deepLinks = true
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
@@ -415,7 +415,7 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test deep link opened event is tracked when using sdk is between 17 and 21`() = runTest {
         setDispatcher(testScheduler)
-        configuration.defaultTracking.deepLinks = true
+        configuration.autocapture.deepLinks = true
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
@@ -447,7 +447,7 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test deep link opened event is not tracked when disabled`() = runTest {
         setDispatcher(testScheduler)
-        configuration.defaultTracking.deepLinks = false
+        configuration.autocapture.deepLinks = false
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
@@ -473,7 +473,7 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test deep link opened event is not tracked when URL is missing`() = runTest {
         setDispatcher(testScheduler)
-        configuration.defaultTracking.deepLinks = true
+        configuration.autocapture.deepLinks = true
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
