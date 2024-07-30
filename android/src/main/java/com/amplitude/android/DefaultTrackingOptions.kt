@@ -34,36 +34,24 @@ constructor(
     }
 
     var sessions: Boolean = sessions
-        get() {
-            return autocapture?.sessions ?: field
-        }
         set(value) {
             field = value
             autocapture?.sessions = value
         }
 
     var appLifecycles: Boolean = appLifecycles
-        get() {
-            return autocapture?.appLifecycles ?: field
-        }
         set(value) {
             field = value
             autocapture?.appLifecycles = value
         }
 
     var deepLinks: Boolean = deepLinks
-        get() {
-            return autocapture?.deepLinks ?: field
-        }
         set(value) {
             field = value
             autocapture?.deepLinks = value
         }
 
     var screenViews: Boolean = screenViews
-        get() {
-            return autocapture?.screenViews ?: field
-        }
         set(value) {
             field = value
             autocapture?.screenViews = value
