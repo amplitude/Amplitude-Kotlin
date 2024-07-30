@@ -99,6 +99,7 @@ open class Configuration @JvmOverloads constructor(
             autocapture.appLifecycles = value.appLifecycles
             autocapture.deepLinks = value.deepLinks
             autocapture.screenViews = value.screenViews
+            value.withAutocaptureOptions(autocapture)
         }
 
     init {
