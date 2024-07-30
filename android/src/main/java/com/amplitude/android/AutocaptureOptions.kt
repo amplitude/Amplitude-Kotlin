@@ -15,11 +15,11 @@ class AutocaptureOptionsBuilder {
         options.add(this)
     }
 
-    val sessions get() = AutocaptureOption.SESSIONS
-    val appLifecycles get() = AutocaptureOption.APP_LIFECYCLES
-    val deepLinks get() = AutocaptureOption.DEEP_LINKS
-    val screenViews get() = AutocaptureOption.SCREEN_VIEWS
-    val elementInteractions get() = AutocaptureOption.ELEMENT_INTERACTIONS
+    val sessions = AutocaptureOption.SESSIONS
+    val appLifecycles = AutocaptureOption.APP_LIFECYCLES
+    val deepLinks = AutocaptureOption.DEEP_LINKS
+    val screenViews = AutocaptureOption.SCREEN_VIEWS
+    val elementInteractions = AutocaptureOption.ELEMENT_INTERACTIONS
 
     fun build(): MutableSet<AutocaptureOption> = options.toMutableSet()
 }
