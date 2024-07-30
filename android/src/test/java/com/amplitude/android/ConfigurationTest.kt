@@ -43,11 +43,11 @@ class ConfigurationTest {
         Assertions.assertTrue(configuration.defaultTracking.appLifecycles)
         Assertions.assertTrue(configuration.defaultTracking.deepLinks)
         Assertions.assertTrue(configuration.defaultTracking.screenViews)
-        Assertions.assertFalse(configuration.autocapture.sessions)
-        Assertions.assertTrue(configuration.autocapture.appLifecycles)
-        Assertions.assertTrue(configuration.autocapture.deepLinks)
-        Assertions.assertTrue(configuration.autocapture.screenViews)
-        Assertions.assertFalse(configuration.autocapture.elementInteractions)
+        Assertions.assertFalse(AutocaptureOption.SESSIONS in configuration.autocapture)
+        Assertions.assertTrue(AutocaptureOption.APP_LIFECYCLES in configuration.autocapture)
+        Assertions.assertTrue(AutocaptureOption.DEEP_LINKS in configuration.autocapture)
+        Assertions.assertTrue(AutocaptureOption.SCREEN_VIEWS in configuration.autocapture)
+        Assertions.assertFalse(AutocaptureOption.ELEMENT_INTERACTIONS in configuration.autocapture)
     }
 
     @Test
@@ -55,23 +55,25 @@ class ConfigurationTest {
         val configuration = Configuration(
             "test-apikey",
             context!!,
-            autocapture = AutocaptureOptions(
-                appLifecycles = true,
-                deepLinks = true,
-                screenViews = true,
-                elementInteractions = true
-            )
+            autocapture = autocaptureOptions {
+                +sessions
+                +appLifecycles
+                +deepLinks
+                +screenViews
+                +elementInteractions
+            }
         )
-        Assertions.assertTrue(configuration.autocapture.sessions)
-        Assertions.assertTrue(configuration.autocapture.appLifecycles)
-        Assertions.assertTrue(configuration.autocapture.deepLinks)
-        Assertions.assertTrue(configuration.autocapture.screenViews)
-        Assertions.assertTrue(configuration.autocapture.elementInteractions)
+        Assertions.assertTrue(AutocaptureOption.SESSIONS in configuration.autocapture)
+        Assertions.assertTrue(AutocaptureOption.APP_LIFECYCLES in configuration.autocapture)
+        Assertions.assertTrue(AutocaptureOption.DEEP_LINKS in configuration.autocapture)
+        Assertions.assertTrue(AutocaptureOption.SCREEN_VIEWS in configuration.autocapture)
+        Assertions.assertTrue(AutocaptureOption.ELEMENT_INTERACTIONS in configuration.autocapture)
 
-        configuration.autocapture = AutocaptureOptions(sessions = false)
-        Assertions.assertFalse(configuration.autocapture.sessions)
-        Assertions.assertFalse(configuration.autocapture.appLifecycles)
-        Assertions.assertFalse(configuration.autocapture.deepLinks)
-        Assertions.assertFalse(configuration.autocapture.screenViews)
+        configuration.autocapture.clear()
+        Assertions.assertTrue(AutocaptureOption.SESSIONS !in configuration.autocapture)
+        Assertions.assertTrue(AutocaptureOption.APP_LIFECYCLES !in configuration.autocapture)
+        Assertions.assertTrue(AutocaptureOption.DEEP_LINKS !in configuration.autocapture)
+        Assertions.assertTrue(AutocaptureOption.SCREEN_VIEWS !in configuration.autocapture)
+        Assertions.assertTrue(AutocaptureOption.ELEMENT_INTERACTIONS !in configuration.autocapture)
     }
 }

@@ -140,7 +140,7 @@ class Timeline(
         // If any trackingSessionEvents is false (default value is true), means it is manually set
 
         // end previous session
-        if (configuration.autocapture.sessions && inSession()) {
+        if (AutocaptureOption.SESSIONS in configuration.autocapture && inSession()) {
             val sessionEndEvent = BaseEvent()
             sessionEndEvent.eventType = Amplitude.END_SESSION_EVENT
             sessionEndEvent.timestamp = if (lastEventTime > 0) lastEventTime else null
@@ -151,7 +151,7 @@ class Timeline(
         // start new session
         setSessionId(timestamp)
         refreshSessionTime(timestamp)
-        if (configuration.autocapture.sessions) {
+        if (AutocaptureOption.SESSIONS in configuration.autocapture) {
             val sessionStartEvent = BaseEvent()
             sessionStartEvent.eventType = Amplitude.START_SESSION_EVENT
             sessionStartEvent.timestamp = timestamp

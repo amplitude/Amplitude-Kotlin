@@ -42,7 +42,7 @@ open class Configuration @JvmOverloads constructor(
     trackingSessionEvents: Boolean = true,
     @Suppress("DEPRECATION")
     defaultTracking: DefaultTrackingOptions = DefaultTrackingOptions(),
-    var autocapture: AutocaptureOptions = AutocaptureOptions(),
+    val autocapture: MutableSet<AutocaptureOption> = mutableSetOf(AutocaptureOption.SESSIONS),
     override var identifyBatchIntervalMillis: Long = IDENTIFY_BATCH_INTERVAL_MILLIS,
     override var identifyInterceptStorageProvider: StorageProvider = AndroidStorageProvider(),
     override var identityStorageProvider: IdentityStorageProvider = FileIdentityStorageProvider(),
@@ -80,26 +80,36 @@ open class Configuration @JvmOverloads constructor(
 
     @Deprecated("Please use 'autocapture.sessions' instead.", ReplaceWith("autocapture.sessions"))
     var trackingSessionEvents: Boolean
-        get() = autocapture.sessions
+        get() = AutocaptureOption.SESSIONS in autocapture
         set(value) {
-            autocapture.sessions = value
+            if (value) autocapture += AutocaptureOption.SESSIONS else autocapture -= AutocaptureOption.SESSIONS
         }
 
     @Suppress("DEPRECATION")
     @Deprecated("Use autocapture instead", ReplaceWith("autocapture"))
     var defaultTracking: DefaultTrackingOptions = defaultTracking.withAutocaptureOptions(autocapture)
         set(value) {
-            autocapture.sessions = value.sessions
-            autocapture.appLifecycles = value.appLifecycles
-            autocapture.deepLinks = value.deepLinks
-            autocapture.screenViews = value.screenViews
+            if (value.sessions) autocapture += AutocaptureOption.SESSIONS else autocapture -= AutocaptureOption.SESSIONS
+            if (value.appLifecycles) autocapture += AutocaptureOption.APP_LIFECYCLES else autocapture -= AutocaptureOption.APP_LIFECYCLES
+            if (value.deepLinks) autocapture += AutocaptureOption.DEEP_LINKS else autocapture -= AutocaptureOption.DEEP_LINKS
+            if (value.screenViews) autocapture += AutocaptureOption.SCREEN_VIEWS else autocapture -= AutocaptureOption.SCREEN_VIEWS
             field = value.withAutocaptureOptions(autocapture)
         }
 
     init {
-        autocapture.sessions = trackingSessionEvents && defaultTracking.sessions && autocapture.sessions
-        autocapture.appLifecycles = defaultTracking.appLifecycles || autocapture.appLifecycles
-        autocapture.deepLinks = defaultTracking.deepLinks || autocapture.deepLinks
-        autocapture.screenViews = defaultTracking.screenViews || autocapture.screenViews
+        if (trackingSessionEvents && defaultTracking.sessions && AutocaptureOption.SESSIONS in autocapture) {
+            autocapture += AutocaptureOption.SESSIONS
+        } else {
+            autocapture -= AutocaptureOption.SESSIONS
+        }
+        if (defaultTracking.appLifecycles || AutocaptureOption.APP_LIFECYCLES in autocapture) {
+            autocapture += AutocaptureOption.APP_LIFECYCLES
+        }
+        if (defaultTracking.deepLinks || AutocaptureOption.DEEP_LINKS in autocapture) {
+            autocapture += AutocaptureOption.DEEP_LINKS
+        }
+        if (defaultTracking.screenViews || AutocaptureOption.SCREEN_VIEWS in autocapture) {
+            autocapture += AutocaptureOption.SCREEN_VIEWS
+        }
     }
 }

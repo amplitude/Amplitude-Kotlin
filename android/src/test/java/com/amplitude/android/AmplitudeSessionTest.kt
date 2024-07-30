@@ -579,10 +579,36 @@ class AmplitudeSessionTest {
         Assertions.assertEquals(1, tracks.count())
     }
 
+    @Suppress("DEPRECATION")
     @Test
     fun amplitude_noSessionEventsWhenDisabledWithDefaultTrackingOptions() = runTest {
         val configuration = createConfiguration()
         configuration.defaultTracking.sessions = false
+        val amplitude = Amplitude(configuration)
+        setDispatcher(amplitude, testScheduler)
+
+        val mockedPlugin = spyk(StubPlugin())
+        amplitude.add(mockedPlugin)
+
+        amplitude.isBuilt.await()
+
+        amplitude.track(createEvent(1000, "test event"))
+
+        advanceUntilIdle()
+        Thread.sleep(100)
+
+        val tracks = mutableListOf<BaseEvent>()
+
+        verify {
+            mockedPlugin.track(capture(tracks))
+        }
+        Assertions.assertEquals(1, tracks.count())
+    }
+
+    @Test
+    fun amplitude_noSessionEventsWhenDisabledWithAutocaptureOptions() = runTest {
+        val configuration = createConfiguration()
+        configuration.autocapture -= AutocaptureOption.SESSIONS
         val amplitude = Amplitude(configuration)
         setDispatcher(amplitude, testScheduler)
 
