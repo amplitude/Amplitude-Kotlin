@@ -45,7 +45,7 @@ class AutocaptureGestureListener(
             ) ?: logger.warn("Unable to find click target. No event captured.").let { return false }
 
         mapOf(
-            ACTION to "tap",
+            ACTION to "touch",
             TARGET_CLASS to target.className,
             TARGET_RESOURCE to target.resourceName,
             TARGET_TAG to target.tag,

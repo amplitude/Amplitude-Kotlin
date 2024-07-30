@@ -142,7 +142,7 @@ class AutocaptureGestureListenerClickTest {
             fixture.track(
                 "[Amplitude] Element Interacted",
                 mapOf(
-                    "[Amplitude] Action" to "tap",
+                    "[Amplitude] Action" to "touch",
                     "[Amplitude] Target Class" to "android.view.View",
                     "[Amplitude] Target Resource" to "test_button",
                     "[Amplitude] Target Tag" to null,

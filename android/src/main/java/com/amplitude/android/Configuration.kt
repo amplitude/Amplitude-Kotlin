@@ -87,19 +87,13 @@ open class Configuration @JvmOverloads constructor(
 
     @Suppress("DEPRECATION")
     @Deprecated("Use autocapture instead", ReplaceWith("autocapture"))
-    var defaultTracking: DefaultTrackingOptions
-        get() = DefaultTrackingOptions(
-            sessions = autocapture.sessions,
-            appLifecycles = autocapture.appLifecycles,
-            deepLinks = autocapture.deepLinks,
-            screenViews = autocapture.screenViews,
-        ).withAutocaptureOptions(autocapture)
+    var defaultTracking: DefaultTrackingOptions = defaultTracking.withAutocaptureOptions(autocapture)
         set(value) {
             autocapture.sessions = value.sessions
             autocapture.appLifecycles = value.appLifecycles
             autocapture.deepLinks = value.deepLinks
             autocapture.screenViews = value.screenViews
-            value.withAutocaptureOptions(autocapture)
+            field = value.withAutocaptureOptions(autocapture)
         }
 
     init {
