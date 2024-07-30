@@ -37,9 +37,9 @@ constructor(
         set(value) {
             field = value
             if (value) {
-                autocapture?.plusAssign(AutocaptureOption.SESSIONS)
+                autocapture?.add(AutocaptureOption.SESSIONS)
             } else {
-                autocapture?.minusAssign(AutocaptureOption.SESSIONS)
+                autocapture?.remove(AutocaptureOption.SESSIONS)
             }
         }
 
@@ -47,9 +47,9 @@ constructor(
         set(value) {
             field = value
             if (value) {
-                autocapture?.plusAssign(AutocaptureOption.APP_LIFECYCLES)
+                autocapture?.add(AutocaptureOption.APP_LIFECYCLES)
             } else {
-                autocapture?.minusAssign(AutocaptureOption.APP_LIFECYCLES)
+                autocapture?.remove(AutocaptureOption.APP_LIFECYCLES)
             }
         }
 
@@ -57,9 +57,9 @@ constructor(
         set(value) {
             field = value
             if (value) {
-                autocapture?.plusAssign(AutocaptureOption.DEEP_LINKS)
+                autocapture?.add(AutocaptureOption.DEEP_LINKS)
             } else {
-                autocapture?.minusAssign(AutocaptureOption.DEEP_LINKS)
+                autocapture?.remove(AutocaptureOption.DEEP_LINKS)
             }
         }
 
@@ -67,9 +67,9 @@ constructor(
         set(value) {
             field = value
             if (value) {
-                autocapture?.plusAssign(AutocaptureOption.SCREEN_VIEWS)
+                autocapture?.add(AutocaptureOption.SCREEN_VIEWS)
             } else {
-                autocapture?.minusAssign(AutocaptureOption.SCREEN_VIEWS)
+                autocapture?.remove(AutocaptureOption.SCREEN_VIEWS)
             }
         }
 
