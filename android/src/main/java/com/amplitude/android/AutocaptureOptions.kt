@@ -41,7 +41,7 @@ class AutocaptureOptionsBuilder {
     @ExperimentalAmplitudeFeature
     val elementInteractions = AutocaptureOption.ELEMENT_INTERACTIONS
 
-    fun build(): MutableSet<AutocaptureOption> = options.toMutableSet()
+    fun build(): Set<AutocaptureOption> = options.toSet()
 }
 
 /**
@@ -61,6 +61,6 @@ class AutocaptureOptionsBuilder {
  * @param init Function to build the set of autocapture options.
  * @return Set of autocapture options.
  */
-fun autocaptureOptions(init: AutocaptureOptionsBuilder.() -> Unit): MutableSet<AutocaptureOption> {
+fun autocaptureOptions(init: AutocaptureOptionsBuilder.() -> Unit): Set<AutocaptureOption> {
     return AutocaptureOptionsBuilder().apply(init).build()
 }

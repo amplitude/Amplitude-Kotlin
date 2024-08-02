@@ -13,6 +13,7 @@ import com.amplitude.core.events.Plan
 import com.amplitude.id.FileIdentityStorageProvider
 import com.amplitude.id.IdentityStorageProvider
 
+@OptIn(ExperimentalAmplitudeFeature::class)
 open class Configuration @JvmOverloads constructor(
     apiKey: String,
     val context: Context,
@@ -39,10 +40,14 @@ open class Configuration @JvmOverloads constructor(
     var locationListening: Boolean = true,
     var flushEventsOnClose: Boolean = true,
     var minTimeBetweenSessionsMillis: Long = MIN_TIME_BETWEEN_SESSIONS_MILLIS,
-    trackingSessionEvents: Boolean = true,
+    @Deprecated("Please use 'autocapture' instead and set 'AutocaptureOptions.SESSIONS' to enable the option.")
+    /** The SDK will no longer track changes to `trackingSessionEvents`'s value after initialization. */
+    var trackingSessionEvents: Boolean = true,
     @Suppress("DEPRECATION")
-    defaultTracking: DefaultTrackingOptions = DefaultTrackingOptions(),
-    val autocapture: MutableSet<AutocaptureOption> = mutableSetOf(AutocaptureOption.SESSIONS),
+    @Deprecated("Please use 'autocapture' instead", ReplaceWith("autocapture"))
+    /** The SDK will no longer track changes to the `defaultTracking` options after initialization. */
+    var defaultTracking: DefaultTrackingOptions = DefaultTrackingOptions(),
+    autocapture: Set<AutocaptureOption> = setOf(AutocaptureOption.SESSIONS),
     override var identifyBatchIntervalMillis: Long = IDENTIFY_BATCH_INTERVAL_MILLIS,
     override var identifyInterceptStorageProvider: StorageProvider = AndroidStorageProvider(),
     override var identityStorageProvider: IdentityStorageProvider = FileIdentityStorageProvider(),
@@ -78,38 +83,26 @@ open class Configuration @JvmOverloads constructor(
         const val MIN_TIME_BETWEEN_SESSIONS_MILLIS: Long = 300000
     }
 
-    @Deprecated("Please use 'autocapture.sessions' instead.", ReplaceWith("autocapture.sessions"))
-    var trackingSessionEvents: Boolean
-        get() = AutocaptureOption.SESSIONS in autocapture
-        set(value) {
-            if (value) autocapture += AutocaptureOption.SESSIONS else autocapture -= AutocaptureOption.SESSIONS
-        }
-
-    @Suppress("DEPRECATION")
-    @Deprecated("Use autocapture instead", ReplaceWith("autocapture"))
-    var defaultTracking: DefaultTrackingOptions = defaultTracking.withAutocaptureOptions(autocapture)
-        set(value) {
-            if (value.sessions) autocapture += AutocaptureOption.SESSIONS else autocapture -= AutocaptureOption.SESSIONS
-            if (value.appLifecycles) autocapture += AutocaptureOption.APP_LIFECYCLES else autocapture -= AutocaptureOption.APP_LIFECYCLES
-            if (value.deepLinks) autocapture += AutocaptureOption.DEEP_LINKS else autocapture -= AutocaptureOption.DEEP_LINKS
-            if (value.screenViews) autocapture += AutocaptureOption.SCREEN_VIEWS else autocapture -= AutocaptureOption.SCREEN_VIEWS
-            field = value.withAutocaptureOptions(autocapture)
-        }
+    val autocapture: Set<AutocaptureOption>
 
     init {
-        if (trackingSessionEvents && defaultTracking.sessions && AutocaptureOption.SESSIONS in autocapture) {
-            autocapture += AutocaptureOption.SESSIONS
-        } else {
-            autocapture -= AutocaptureOption.SESSIONS
-        }
-        if (defaultTracking.appLifecycles || AutocaptureOption.APP_LIFECYCLES in autocapture) {
-            autocapture += AutocaptureOption.APP_LIFECYCLES
-        }
-        if (defaultTracking.deepLinks || AutocaptureOption.DEEP_LINKS in autocapture) {
-            autocapture += AutocaptureOption.DEEP_LINKS
-        }
-        if (defaultTracking.screenViews || AutocaptureOption.SCREEN_VIEWS in autocapture) {
-            autocapture += AutocaptureOption.SCREEN_VIEWS
+        @Suppress("DEPRECATION")
+        this.autocapture = autocaptureOptions {
+            if (trackingSessionEvents && defaultTracking.sessions && AutocaptureOption.SESSIONS in autocapture) {
+                +sessions
+            }
+            if (defaultTracking.appLifecycles || AutocaptureOption.APP_LIFECYCLES in autocapture) {
+                +appLifecycles
+            }
+            if (defaultTracking.deepLinks || AutocaptureOption.DEEP_LINKS in autocapture) {
+                +deepLinks
+            }
+            if (defaultTracking.screenViews || AutocaptureOption.SCREEN_VIEWS in autocapture) {
+                +screenViews
+            }
+            if (AutocaptureOption.ELEMENT_INTERACTIONS in autocapture) {
+                +elementInteractions
+            }
         }
     }
 }
