@@ -1,10 +1,29 @@
 package com.amplitude.android
 
+/**
+ * Autocapture options to enable or disable specific types of autocapture events.
+ */
 enum class AutocaptureOption {
+    /**
+     * Enable session tracking.
+     */
     SESSIONS,
+    /**
+     * Enable app lifecycle tracking.
+     */
     APP_LIFECYCLES,
+    /**
+     * Enable deep link tracking.
+     */
     DEEP_LINKS,
+    /**
+     * Enable screen view tracking.
+     */
     SCREEN_VIEWS,
+    /**
+     * Enable element interaction tracking.
+     */
+    @ExperimentalAmplitudeFeature
     ELEMENT_INTERACTIONS
 }
 
@@ -19,6 +38,7 @@ class AutocaptureOptionsBuilder {
     val appLifecycles = AutocaptureOption.APP_LIFECYCLES
     val deepLinks = AutocaptureOption.DEEP_LINKS
     val screenViews = AutocaptureOption.SCREEN_VIEWS
+    @ExperimentalAmplitudeFeature
     val elementInteractions = AutocaptureOption.ELEMENT_INTERACTIONS
 
     fun build(): MutableSet<AutocaptureOption> = options.toMutableSet()

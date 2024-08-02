@@ -3,6 +3,7 @@ package com.amplitude.android.sample
 import android.app.Application
 import com.amplitude.android.Amplitude
 import com.amplitude.android.Configuration
+import com.amplitude.android.ExperimentalAmplitudeFeature
 import com.amplitude.android.autocaptureOptions
 import com.amplitude.common.Logger
 import com.amplitude.core.events.BaseEvent
@@ -17,6 +18,7 @@ class MainApplication : Application() {
         const val EXPERIMENT_API_KEY = BuildConfig.EXPERIMENT_API_KEY
     }
 
+    @OptIn(ExperimentalAmplitudeFeature::class)
     override fun onCreate() {
         super.onCreate()
 
