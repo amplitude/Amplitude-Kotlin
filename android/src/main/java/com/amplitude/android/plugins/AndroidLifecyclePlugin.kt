@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import com.amplitude.android.AutocaptureOption
 import com.amplitude.android.Configuration
+import com.amplitude.android.ExperimentalAmplitudeFeature
 import com.amplitude.android.utilities.DefaultEventUtils
 import com.amplitude.core.Amplitude
 import com.amplitude.core.platform.Plugin
@@ -66,6 +67,7 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
             val isFromBackground = !isFirstLaunch.getAndSet(false)
             DefaultEventUtils(androidAmplitude).trackAppOpenedEvent(packageInfo, isFromBackground)
         }
+        @OptIn(ExperimentalAmplitudeFeature::class)
         if (AutocaptureOption.ELEMENT_INTERACTIONS in androidConfiguration.autocapture) {
             DefaultEventUtils(androidAmplitude).startUserInteractionEventTracking(activity)
         }
@@ -73,6 +75,7 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
 
     override fun onActivityPaused(activity: Activity) {
         androidAmplitude.onExitForeground(getCurrentTimeMillis())
+        @OptIn(ExperimentalAmplitudeFeature::class)
         if (AutocaptureOption.ELEMENT_INTERACTIONS in androidConfiguration.autocapture) {
             DefaultEventUtils(androidAmplitude).stopUserInteractionEventTracking(activity)
         }

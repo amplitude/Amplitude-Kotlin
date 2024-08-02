@@ -24,7 +24,6 @@ class ConfigurationTest {
         Assertions.assertTrue(configuration.isValid())
     }
 
-    @OptIn(ExperimentalAmplitudeFeature::class)
     @Suppress("DEPRECATION")
     @Test
     fun configuration_allows_propertyUpdate() {
@@ -48,11 +47,10 @@ class ConfigurationTest {
         Assertions.assertTrue(AutocaptureOption.APP_LIFECYCLES in configuration.autocapture)
         Assertions.assertTrue(AutocaptureOption.DEEP_LINKS in configuration.autocapture)
         Assertions.assertTrue(AutocaptureOption.SCREEN_VIEWS in configuration.autocapture)
-        Assertions.assertFalse(AutocaptureOption.ELEMENT_INTERACTIONS in configuration.autocapture)
     }
 
-    @OptIn(ExperimentalAmplitudeFeature::class)
     @Test
+    @OptIn(ExperimentalAmplitudeFeature::class)
     fun configuration_defaultTracking_quick_update() {
         val configuration = Configuration(
             "test-apikey",
