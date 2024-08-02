@@ -50,6 +50,7 @@ class ConfigurationTest {
         Assertions.assertFalse(AutocaptureOption.ELEMENT_INTERACTIONS in configuration.autocapture)
     }
 
+    @OptIn(ExperimentalAmplitudeFeature::class)
     @Test
     fun configuration_defaultTracking_quick_update() {
         val configuration = Configuration(
