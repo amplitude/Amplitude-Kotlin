@@ -191,6 +191,7 @@ fun Amplitude(apiKey: String, context: Context, configs: Configuration.() -> Uni
         config.migrateLegacyData,
         config.offline,
         config.deviceId,
-        config.sessionId)
+        config.sessionId
+    )
     return com.amplitude.android.Amplitude(modifiedConfig)
 }
