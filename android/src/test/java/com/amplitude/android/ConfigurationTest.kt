@@ -24,6 +24,7 @@ class ConfigurationTest {
         Assertions.assertTrue(configuration.isValid())
     }
 
+    @OptIn(ExperimentalAmplitudeFeature::class)
     @Suppress("DEPRECATION")
     @Test
     fun configuration_allows_propertyUpdate() {
