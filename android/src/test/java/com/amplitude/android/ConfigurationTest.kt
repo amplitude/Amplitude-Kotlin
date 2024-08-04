@@ -34,17 +34,22 @@ class ConfigurationTest {
         Assertions.assertFalse(configuration.defaultTracking.deepLinks)
         Assertions.assertFalse(configuration.defaultTracking.screenViews)
 
-        // The SDK should not track changes to the default tracking options after initialization.
         configuration.trackingSessionEvents = false
         configuration.defaultTracking.sessions = false
         configuration.defaultTracking.appLifecycles = true
         configuration.defaultTracking.deepLinks = true
         configuration.defaultTracking.screenViews = true
 
-        Assertions.assertTrue(AutocaptureOption.SESSIONS in configuration.autocapture)
-        Assertions.assertFalse(AutocaptureOption.APP_LIFECYCLES in configuration.autocapture)
-        Assertions.assertFalse(AutocaptureOption.DEEP_LINKS in configuration.autocapture)
-        Assertions.assertFalse(AutocaptureOption.SCREEN_VIEWS in configuration.autocapture)
+        Assertions.assertFalse(configuration.trackingSessionEvents)
+        Assertions.assertFalse(configuration.defaultTracking.sessions)
+        Assertions.assertTrue(configuration.defaultTracking.appLifecycles)
+        Assertions.assertTrue(configuration.defaultTracking.deepLinks)
+        Assertions.assertTrue(configuration.defaultTracking.screenViews)
+
+        Assertions.assertFalse(AutocaptureOption.SESSIONS in configuration.autocapture)
+        Assertions.assertTrue(AutocaptureOption.APP_LIFECYCLES in configuration.autocapture)
+        Assertions.assertTrue(AutocaptureOption.DEEP_LINKS in configuration.autocapture)
+        Assertions.assertTrue(AutocaptureOption.SCREEN_VIEWS in configuration.autocapture)
     }
 
     @Test

@@ -155,42 +155,5 @@ open class Amplitude(
 fun Amplitude(apiKey: String, context: Context, configs: Configuration.() -> Unit): com.amplitude.android.Amplitude {
     val config = Configuration(apiKey, context)
     configs.invoke(config)
-    @Suppress("DEPRECATION")
-    val modifiedConfig = Configuration(
-        config.apiKey,
-        config.context,
-        config.flushQueueSize,
-        config.flushIntervalMillis,
-        config.instanceName,
-        config.optOut,
-        config.storageProvider,
-        config.loggerProvider,
-        config.minIdLength,
-        config.partnerId,
-        config.callback,
-        config.flushMaxRetries,
-        config.useBatch,
-        config.serverZone,
-        config.serverUrl,
-        config.plan,
-        config.ingestionMetadata,
-        config.useAdvertisingIdForDeviceId,
-        config.useAppSetIdForDeviceId,
-        config.newDeviceIdPerInstall,
-        config.trackingOptions,
-        config.enableCoppaControl,
-        config.locationListening,
-        config.flushEventsOnClose,
-        config.minTimeBetweenSessionsMillis,
-        config.trackingSessionEvents,
-        config.defaultTracking,
-        config.autocapture,
-        config.identifyBatchIntervalMillis,
-        config.identifyInterceptStorageProvider,
-        config.identityStorageProvider,
-        config.migrateLegacyData,
-        config.offline,
-        config.deviceId,
-        config.sessionId)
-    return com.amplitude.android.Amplitude(modifiedConfig)
+    return com.amplitude.android.Amplitude(config)
 }

@@ -41,11 +41,9 @@ open class Configuration @JvmOverloads constructor(
     var flushEventsOnClose: Boolean = true,
     var minTimeBetweenSessionsMillis: Long = MIN_TIME_BETWEEN_SESSIONS_MILLIS,
     @Deprecated("Please use 'autocapture' instead and set 'AutocaptureOptions.SESSIONS' to enable the option.")
-    /** The SDK will no longer track changes to `trackingSessionEvents`'s value after initialization. */
     var trackingSessionEvents: Boolean = true,
     @Suppress("DEPRECATION")
     @Deprecated("Please use 'autocapture' instead", ReplaceWith("autocapture"))
-    /** The SDK will no longer track changes to the `defaultTracking` options after initialization. */
     var defaultTracking: DefaultTrackingOptions = DefaultTrackingOptions(),
     autocapture: Set<AutocaptureOption> = setOf(AutocaptureOption.SESSIONS),
     override var identifyBatchIntervalMillis: Long = IDENTIFY_BATCH_INTERVAL_MILLIS,
@@ -83,26 +81,23 @@ open class Configuration @JvmOverloads constructor(
         const val MIN_TIME_BETWEEN_SESSIONS_MILLIS: Long = 300000
     }
 
-    val autocapture: Set<AutocaptureOption>
-
-    init {
+    val autocapture: Set<AutocaptureOption> = autocapture
         @Suppress("DEPRECATION")
-        this.autocapture = autocaptureOptions {
-            if (trackingSessionEvents && defaultTracking.sessions && AutocaptureOption.SESSIONS in autocapture) {
+        get() = autocaptureOptions {
+            if (trackingSessionEvents && defaultTracking.sessions && AutocaptureOption.SESSIONS in field) {
                 +sessions
             }
-            if (defaultTracking.appLifecycles || AutocaptureOption.APP_LIFECYCLES in autocapture) {
+            if (defaultTracking.appLifecycles || AutocaptureOption.APP_LIFECYCLES in field) {
                 +appLifecycles
             }
-            if (defaultTracking.deepLinks || AutocaptureOption.DEEP_LINKS in autocapture) {
+            if (defaultTracking.deepLinks || AutocaptureOption.DEEP_LINKS in field) {
                 +deepLinks
             }
-            if (defaultTracking.screenViews || AutocaptureOption.SCREEN_VIEWS in autocapture) {
+            if (defaultTracking.screenViews || AutocaptureOption.SCREEN_VIEWS in field) {
                 +screenViews
             }
-            if (AutocaptureOption.ELEMENT_INTERACTIONS in autocapture) {
+            if (AutocaptureOption.ELEMENT_INTERACTIONS in field) {
                 +elementInteractions
             }
         }
-    }
 }

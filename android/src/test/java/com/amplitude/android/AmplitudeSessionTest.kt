@@ -554,8 +554,10 @@ class AmplitudeSessionTest {
     }
 
     @Test
-    fun amplitude_noSessionEventsWhenDisabledWithAutocaptureOptions() = runTest {
-        val configuration = createConfiguration(shouldTrackSessions = false)
+    @Suppress("DEPRECATION")
+    fun amplitude_noSessionEventsWhenDisabledWithTrackingSessionEvents() = runTest {
+        val configuration = createConfiguration()
+        configuration.trackingSessionEvents = false
         val amplitude = Amplitude(configuration)
         setDispatcher(amplitude, testScheduler)
 
@@ -580,17 +582,32 @@ class AmplitudeSessionTest {
     @Test
     @Suppress("DEPRECATION")
     fun amplitude_noSessionEventsWhenDisabledWithDefaultTrackingOptions() = runTest {
-        val configuration = Configuration(
-            apiKey = "api-key",
-            context = mockk<Application>(relaxed = true),
-            instanceName = "testInstance",
-            minTimeBetweenSessionsMillis = 100,
-            defaultTracking = DefaultTrackingOptions(sessions = false),
-            loggerProvider = ConsoleLoggerProvider(),
-            identifyInterceptStorageProvider = InMemoryStorageProvider(),
-            identityStorageProvider = IMIdentityStorageProvider()
-        )
+        val configuration = createConfiguration()
+        configuration.defaultTracking.sessions = false
+        val amplitude = Amplitude(configuration)
+        setDispatcher(amplitude, testScheduler)
 
+        val mockedPlugin = spyk(StubPlugin())
+        amplitude.add(mockedPlugin)
+
+        amplitude.isBuilt.await()
+
+        amplitude.track(createEvent(1000, "test event"))
+
+        advanceUntilIdle()
+        Thread.sleep(100)
+
+        val tracks = mutableListOf<BaseEvent>()
+
+        verify {
+            mockedPlugin.track(capture(tracks))
+        }
+        Assertions.assertEquals(1, tracks.count())
+    }
+
+    @Test
+    fun amplitude_noSessionEventsWhenDisabledWithAutocaptureOptions() = runTest {
+        val configuration = createConfiguration(shouldTrackSessions = false)
         val amplitude = Amplitude(configuration)
         setDispatcher(amplitude, testScheduler)
 
