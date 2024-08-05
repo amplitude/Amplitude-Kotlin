@@ -31,7 +31,7 @@ class AndroidNetworkConnectivityCheckerPluginTest {
                 loggerProvider = ConsoleLoggerProvider(),
                 identifyInterceptStorageProvider = InMemoryStorageProvider(),
                 identityStorageProvider = IMIdentityStorageProvider(),
-                trackingSessionEvents = false,
+                autocapture = setOf()
             )
         )
         plugin = AndroidNetworkConnectivityCheckerPlugin()
