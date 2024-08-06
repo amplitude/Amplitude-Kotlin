@@ -178,6 +178,7 @@ open class Configuration(
         set(value) {
             field = value
             _autocapture.clear()
-            _autocapture.addAll(value.autocaptureOptions)
+            _autocapture.addAll(field.autocaptureOptions)
+            field.autocaptureOptions = _autocapture
         }
 }
