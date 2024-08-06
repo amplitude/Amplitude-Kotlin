@@ -75,7 +75,7 @@ open class Configuration(
         const val MIN_TIME_BETWEEN_SESSIONS_MILLIS: Long = 300000
     }
 
-    @Deprecated("Please use 'autocapture' instead.")
+    @Deprecated("Please use the 'autocapture' parameter instead.")
     @JvmOverloads
     constructor(
         apiKey: String,
@@ -148,7 +148,6 @@ open class Configuration(
         sessionId,
     ) {
         if (!trackingSessionEvents) {
-            _autocapture.remove(AutocaptureOption.SESSIONS)
             defaultTracking.sessions = false
         }
         @Suppress("DEPRECATION")
