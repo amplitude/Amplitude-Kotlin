@@ -157,7 +157,7 @@ open class Configuration(
 
     // A backing property to store the autocapture options. Any changes to `trackingSessionEvents`
     // or the `defaultTracking` options will be reflected in this property.
-    private var _autocapture: MutableSet<AutocaptureOption> = autocapture.toMutableSet()
+    private val _autocapture: MutableSet<AutocaptureOption> = autocapture.toMutableSet()
 
     val autocapture: Set<AutocaptureOption> = _autocapture
 
@@ -177,6 +177,7 @@ open class Configuration(
     var defaultTracking: DefaultTrackingOptions = DefaultTrackingOptions(_autocapture)
         set(value) {
             field = value
-            _autocapture = field.autocaptureOptions
+            _autocapture.clear()
+            _autocapture.addAll(value.autocaptureOptions)
         }
 }
