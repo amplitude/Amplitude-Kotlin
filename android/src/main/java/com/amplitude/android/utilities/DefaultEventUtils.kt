@@ -126,9 +126,9 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 )
             )
         } catch (e: PackageManager.NameNotFoundException) {
-            amplitude.logger.error("Failed to get activity info: ${e.message}")
+            amplitude.logger.error("Failed to get activity info: $e")
         } catch (e: Exception) {
-            amplitude.logger.error("Failed to track screen viewed event: ${e.message}")
+            amplitude.logger.error("Failed to track screen viewed event: $e")
         }
     }
 
