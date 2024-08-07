@@ -156,28 +156,29 @@ open class Configuration(
 
     // A backing property to store the autocapture options. Any changes to `trackingSessionEvents`
     // or the `defaultTracking` options will be reflected in this property.
-    private val _autocapture: MutableSet<AutocaptureOption> = autocapture.toMutableSet()
-
-    val autocapture: Set<AutocaptureOption> = _autocapture
+    private var _autocapture: MutableSet<AutocaptureOption> = autocapture.toMutableSet()
+    val autocapture: Set<AutocaptureOption> get() = _autocapture
 
     @Deprecated("Please use 'autocapture' instead and set 'AutocaptureOptions.SESSIONS' to enable the option.")
     var trackingSessionEvents: Boolean
         get() = AutocaptureOption.SESSIONS in _autocapture
         set(value) {
-            if (!value) {
-                _autocapture.remove(AutocaptureOption.SESSIONS)
-            } else if (AutocaptureOption.SESSIONS !in _autocapture) {
-                _autocapture.add(AutocaptureOption.SESSIONS)
-            }
+            if (value) _autocapture.add(AutocaptureOption.SESSIONS)
+            else _autocapture.remove(AutocaptureOption.SESSIONS)
         }
 
     @Suppress("DEPRECATION")
     @Deprecated("Please use 'autocapture' instead", ReplaceWith("autocapture"))
-    var defaultTracking: DefaultTrackingOptions = DefaultTrackingOptions(_autocapture)
+    // Any changes to the default tracking options replace the recent autocapture options entirely.
+    var defaultTracking: DefaultTrackingOptions = DefaultTrackingOptions { updateAutocaptureOnPropertyChange() }
         set(value) {
             field = value
-            _autocapture.clear()
-            _autocapture.addAll(field.autocaptureOptions)
-            field.autocaptureOptions = _autocapture
+            _autocapture = value.autocaptureOptions
+            value.addPropertyChangeListener { updateAutocaptureOnPropertyChange() }
         }
+
+    @Suppress("DEPRECATION")
+    private fun DefaultTrackingOptions.updateAutocaptureOnPropertyChange() {
+        _autocapture = autocaptureOptions
+    }
 }

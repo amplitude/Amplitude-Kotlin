@@ -33,56 +33,49 @@ constructor(
             )
     }
 
-    var sessions: Boolean
-        get() = AutocaptureOption.SESSIONS in autocaptureOptions
+    var sessions: Boolean = sessions
         set(value) {
-            if (value) {
-                autocaptureOptions += AutocaptureOption.SESSIONS
-            } else {
-                autocaptureOptions -= AutocaptureOption.SESSIONS
-            }
+            field = value
+            notifyChanged()
         }
 
-    var appLifecycles: Boolean
-        get() = AutocaptureOption.APP_LIFECYCLES in autocaptureOptions
+    var appLifecycles: Boolean = appLifecycles
         set(value) {
-            if (value) {
-                autocaptureOptions += AutocaptureOption.APP_LIFECYCLES
-            } else {
-                autocaptureOptions -= AutocaptureOption.APP_LIFECYCLES
-            }
+            field = value
+            notifyChanged()
         }
 
-    var deepLinks: Boolean
-        get() = AutocaptureOption.DEEP_LINKS in autocaptureOptions
+    var deepLinks: Boolean = deepLinks
         set(value) {
-            if (value) {
-                autocaptureOptions += AutocaptureOption.DEEP_LINKS
-            } else {
-                autocaptureOptions -= AutocaptureOption.DEEP_LINKS
-            }
+            field = value
+            notifyChanged()
         }
 
-    var screenViews: Boolean
-        get() = AutocaptureOption.SCREEN_VIEWS in autocaptureOptions
+    var screenViews: Boolean = screenViews
         set(value) {
-            if (value) {
-                autocaptureOptions += AutocaptureOption.SCREEN_VIEWS
-            } else {
-                autocaptureOptions -= AutocaptureOption.SCREEN_VIEWS
-            }
+            field = value
+            notifyChanged()
         }
 
-    internal var autocaptureOptions: MutableSet<AutocaptureOption> = mutableSetOf()
+    private val propertyChangeListeners: MutableList<DefaultTrackingOptions.() -> Unit> = mutableListOf()
 
-    internal constructor(autocaptureOptions: MutableSet<AutocaptureOption>) : this() {
-        this.autocaptureOptions = autocaptureOptions
+    internal val autocaptureOptions: MutableSet<AutocaptureOption>
+        get() = mutableSetOf<AutocaptureOption>().apply {
+            if (sessions) add(AutocaptureOption.SESSIONS)
+            if (appLifecycles) add(AutocaptureOption.APP_LIFECYCLES)
+            if (deepLinks) add(AutocaptureOption.DEEP_LINKS)
+            if (screenViews) add(AutocaptureOption.SCREEN_VIEWS)
+        }
+
+    private fun notifyChanged() {
+        propertyChangeListeners.forEach { this.it() }
     }
 
-    init {
-        this.sessions = sessions
-        this.appLifecycles = appLifecycles
-        this.deepLinks = deepLinks
-        this.screenViews = screenViews
+    internal constructor(listener: (DefaultTrackingOptions.() -> Unit)) : this() {
+        propertyChangeListeners.add(listener)
+    }
+
+    internal fun addPropertyChangeListener(listener: DefaultTrackingOptions.() -> Unit) {
+        propertyChangeListeners.add(listener)
     }
 }
