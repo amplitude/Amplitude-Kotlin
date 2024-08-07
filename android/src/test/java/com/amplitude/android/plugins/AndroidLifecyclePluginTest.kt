@@ -11,6 +11,7 @@ import android.net.ConnectivityManager
 import android.net.Uri
 import android.os.Bundle
 import com.amplitude.android.Amplitude
+import com.amplitude.android.AutocaptureOption
 import com.amplitude.android.Configuration
 import com.amplitude.android.StubPlugin
 import com.amplitude.android.utilities.DefaultEventUtils
@@ -95,15 +96,25 @@ class AndroidLifecyclePluginTest {
             loggerProvider = ConsoleLoggerProvider(),
             identifyInterceptStorageProvider = InMemoryStorageProvider(),
             identityStorageProvider = IMIdentityStorageProvider(),
-            trackingSessionEvents = false,
+            autocapture = setOf()
         )
         amplitude = Amplitude(configuration)
     }
 
     @Test
     fun `test application installed event is tracked`() = runTest {
+        configuration = Configuration(
+            apiKey = "api-key",
+            context = mockedContext,
+            storageProvider = InMemoryStorageProvider(),
+            loggerProvider = ConsoleLoggerProvider(),
+            identifyInterceptStorageProvider = InMemoryStorageProvider(),
+            identityStorageProvider = IMIdentityStorageProvider(),
+            autocapture = setOf(AutocaptureOption.APP_LIFECYCLES)
+        )
+        amplitude = Amplitude(configuration)
+
         setDispatcher(testScheduler)
-        configuration.defaultTracking.appLifecycles = true
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
@@ -131,7 +142,6 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test application installed event is not tracked when disabled`() = runTest {
         setDispatcher(testScheduler)
-        configuration.defaultTracking.appLifecycles = false
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
@@ -152,8 +162,18 @@ class AndroidLifecyclePluginTest {
 
     @Test
     fun `test application updated event is tracked`() = runTest {
+        configuration = Configuration(
+            apiKey = "api-key",
+            context = mockedContext,
+            storageProvider = InMemoryStorageProvider(),
+            loggerProvider = ConsoleLoggerProvider(),
+            identifyInterceptStorageProvider = InMemoryStorageProvider(),
+            identityStorageProvider = IMIdentityStorageProvider(),
+            autocapture = setOf(AutocaptureOption.APP_LIFECYCLES)
+        )
+        amplitude = Amplitude(configuration)
+
         setDispatcher(testScheduler)
-        configuration.defaultTracking.appLifecycles = true
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
@@ -187,7 +207,6 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test application updated event is not tracked when disabled`() = runTest {
         setDispatcher(testScheduler)
-        configuration.defaultTracking.appLifecycles = false
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
@@ -212,8 +231,18 @@ class AndroidLifecyclePluginTest {
 
     @Test
     fun `test application opened event is tracked`() = runTest {
+        configuration = Configuration(
+            apiKey = "api-key",
+            context = mockedContext,
+            storageProvider = InMemoryStorageProvider(),
+            loggerProvider = ConsoleLoggerProvider(),
+            identifyInterceptStorageProvider = InMemoryStorageProvider(),
+            identityStorageProvider = IMIdentityStorageProvider(),
+            autocapture = setOf(AutocaptureOption.APP_LIFECYCLES)
+        )
+        amplitude = Amplitude(configuration)
+
         setDispatcher(testScheduler)
-        configuration.defaultTracking.appLifecycles = true
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
@@ -247,7 +276,6 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test application opened event is not tracked when disabled`() = runTest {
         setDispatcher(testScheduler)
-        configuration.defaultTracking.appLifecycles = false
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
@@ -270,8 +298,18 @@ class AndroidLifecyclePluginTest {
 
     @Test
     fun `test application backgrounded event is tracked`() = runTest {
+        configuration = Configuration(
+            apiKey = "api-key",
+            context = mockedContext,
+            storageProvider = InMemoryStorageProvider(),
+            loggerProvider = ConsoleLoggerProvider(),
+            identifyInterceptStorageProvider = InMemoryStorageProvider(),
+            identityStorageProvider = IMIdentityStorageProvider(),
+            autocapture = setOf(AutocaptureOption.APP_LIFECYCLES)
+        )
+        amplitude = Amplitude(configuration)
+
         setDispatcher(testScheduler)
-        configuration.defaultTracking.appLifecycles = true
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
@@ -298,7 +336,6 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test application backgrounded event is not tracked when disabled`() = runTest {
         setDispatcher(testScheduler)
-        (amplitude.configuration as Configuration).defaultTracking.appLifecycles = false
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
@@ -320,8 +357,18 @@ class AndroidLifecyclePluginTest {
 
     @Test
     fun `test screen viewed event is tracked`() = runTest {
+        configuration = Configuration(
+            apiKey = "api-key",
+            context = mockedContext,
+            storageProvider = InMemoryStorageProvider(),
+            loggerProvider = ConsoleLoggerProvider(),
+            identifyInterceptStorageProvider = InMemoryStorageProvider(),
+            identityStorageProvider = IMIdentityStorageProvider(),
+            autocapture = setOf(AutocaptureOption.SCREEN_VIEWS)
+        )
+        amplitude = Amplitude(configuration)
+
         setDispatcher(testScheduler)
-        configuration.defaultTracking.screenViews = true
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
@@ -354,7 +401,6 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test screen viewed event is not tracked when disabled`() = runTest {
         setDispatcher(testScheduler)
-        configuration.defaultTracking.screenViews = false
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
@@ -381,8 +427,18 @@ class AndroidLifecyclePluginTest {
 
     @Test
     fun `test deep link opened event is tracked`() = runTest {
+        configuration = Configuration(
+            apiKey = "api-key",
+            context = mockedContext,
+            storageProvider = InMemoryStorageProvider(),
+            loggerProvider = ConsoleLoggerProvider(),
+            identifyInterceptStorageProvider = InMemoryStorageProvider(),
+            identityStorageProvider = IMIdentityStorageProvider(),
+            autocapture = setOf(AutocaptureOption.DEEP_LINKS)
+        )
+        amplitude = Amplitude(configuration)
+
         setDispatcher(testScheduler)
-        configuration.defaultTracking.deepLinks = true
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
@@ -414,8 +470,18 @@ class AndroidLifecyclePluginTest {
     @Config(sdk = [21])
     @Test
     fun `test deep link opened event is tracked when using sdk is between 17 and 21`() = runTest {
+        configuration = Configuration(
+            apiKey = "api-key",
+            context = mockedContext,
+            storageProvider = InMemoryStorageProvider(),
+            loggerProvider = ConsoleLoggerProvider(),
+            identifyInterceptStorageProvider = InMemoryStorageProvider(),
+            identityStorageProvider = IMIdentityStorageProvider(),
+            autocapture = setOf(AutocaptureOption.DEEP_LINKS)
+        )
+        amplitude = Amplitude(configuration)
+
         setDispatcher(testScheduler)
-        configuration.defaultTracking.deepLinks = true
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
@@ -447,7 +513,6 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test deep link opened event is not tracked when disabled`() = runTest {
         setDispatcher(testScheduler)
-        configuration.defaultTracking.deepLinks = false
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
@@ -472,8 +537,18 @@ class AndroidLifecyclePluginTest {
 
     @Test
     fun `test deep link opened event is not tracked when URL is missing`() = runTest {
+        configuration = Configuration(
+            apiKey = "api-key",
+            context = mockedContext,
+            storageProvider = InMemoryStorageProvider(),
+            loggerProvider = ConsoleLoggerProvider(),
+            identifyInterceptStorageProvider = InMemoryStorageProvider(),
+            identityStorageProvider = IMIdentityStorageProvider(),
+            autocapture = setOf(AutocaptureOption.DEEP_LINKS)
+        )
+        amplitude = Amplitude(configuration)
+
         setDispatcher(testScheduler)
-        configuration.defaultTracking.deepLinks = true
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())

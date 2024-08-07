@@ -88,7 +88,7 @@ class AmplitudeTest {
             context = context!!,
             instanceName = instanceName,
             storageProvider = storageProvider,
-            trackingSessionEvents = minTimeBetweenSessionsMillis != null,
+            autocapture = if (minTimeBetweenSessionsMillis != null) setOf(AutocaptureOption.SESSIONS) else setOf(),
             loggerProvider = ConsoleLoggerProvider(),
             identifyInterceptStorageProvider = InMemoryStorageProvider(),
             identityStorageProvider = IMIdentityStorageProvider(),

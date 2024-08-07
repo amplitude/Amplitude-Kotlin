@@ -45,7 +45,7 @@ class ResponseHandlerTest {
                 apiKey = apiKey,
                 context = context,
                 serverUrl = server.url("/").toString(),
-                trackingSessionEvents = false,
+                autocapture = setOf(),
                 flushIntervalMillis = 150,
                 identifyBatchIntervalMillis = 1000,
                 flushMaxRetries = 3,

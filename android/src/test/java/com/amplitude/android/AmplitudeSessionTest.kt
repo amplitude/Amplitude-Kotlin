@@ -64,7 +64,7 @@ class AmplitudeSessionTest {
         amplitudeDispatcherField.set(amplitude, dispatcher)
     }
 
-    private fun createConfiguration(storageProvider: StorageProvider? = null): Configuration {
+    private fun createConfiguration(storageProvider: StorageProvider? = null, shouldTrackSessions: Boolean = true): Configuration {
         val context = mockk<Application>(relaxed = true)
         var connectivityManager = mockk<ConnectivityManager>(relaxed = true)
         every { context!!.getSystemService(Context.CONNECTIVITY_SERVICE) } returns connectivityManager
@@ -75,7 +75,7 @@ class AmplitudeSessionTest {
             instanceName = "testInstance",
             minTimeBetweenSessionsMillis = 100,
             storageProvider = storageProvider ?: InMemoryStorageProvider(),
-            trackingSessionEvents = true,
+            autocapture = autocaptureOptions { if (shouldTrackSessions) { +sessions } },
             loggerProvider = ConsoleLoggerProvider(),
             identifyInterceptStorageProvider = InMemoryStorageProvider(),
             identityStorageProvider = IMIdentityStorageProvider()
@@ -553,8 +553,8 @@ class AmplitudeSessionTest {
         Assertions.assertEquals(1100, event.timestamp)
     }
 
-    @Suppress("DEPRECATION")
     @Test
+    @Suppress("DEPRECATION")
     fun amplitude_noSessionEventsWhenDisabledWithTrackingSessionEvents() = runTest {
         val configuration = createConfiguration()
         configuration.trackingSessionEvents = false
@@ -580,9 +580,34 @@ class AmplitudeSessionTest {
     }
 
     @Test
+    @Suppress("DEPRECATION")
     fun amplitude_noSessionEventsWhenDisabledWithDefaultTrackingOptions() = runTest {
         val configuration = createConfiguration()
         configuration.defaultTracking.sessions = false
+        val amplitude = Amplitude(configuration)
+        setDispatcher(amplitude, testScheduler)
+
+        val mockedPlugin = spyk(StubPlugin())
+        amplitude.add(mockedPlugin)
+
+        amplitude.isBuilt.await()
+
+        amplitude.track(createEvent(1000, "test event"))
+
+        advanceUntilIdle()
+        Thread.sleep(100)
+
+        val tracks = mutableListOf<BaseEvent>()
+
+        verify {
+            mockedPlugin.track(capture(tracks))
+        }
+        Assertions.assertEquals(1, tracks.count())
+    }
+
+    @Test
+    fun amplitude_noSessionEventsWhenDisabledWithAutocaptureOptions() = runTest {
+        val configuration = createConfiguration(shouldTrackSessions = false)
         val amplitude = Amplitude(configuration)
         setDispatcher(amplitude, testScheduler)
 

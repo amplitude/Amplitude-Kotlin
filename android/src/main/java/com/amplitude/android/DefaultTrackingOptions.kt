@@ -1,20 +1,19 @@
 package com.amplitude.android
 
+@Suppress("DEPRECATION")
+@Deprecated("Use AutocaptureOption instead")
 open class DefaultTrackingOptions
 @JvmOverloads
 constructor(
-    var sessions: Boolean = true,
-    var appLifecycles: Boolean = false,
-    var deepLinks: Boolean = false,
-    var screenViews: Boolean = false,
+    sessions: Boolean = true,
+    appLifecycles: Boolean = false,
+    deepLinks: Boolean = false,
+    screenViews: Boolean = false,
 ) {
-    var userInteractions = false
-        @ExperimentalAmplitudeFeature
-        set
-
     // Prebuilt options for easier usage
     companion object {
         @JvmField
+        @Deprecated("Use AutocaptureOption instead.")
         val ALL =
             DefaultTrackingOptions(
                 sessions = true,
@@ -24,6 +23,7 @@ constructor(
             )
 
         @JvmField
+        @Deprecated("Use AutocaptureOption instead.")
         val NONE =
             DefaultTrackingOptions(
                 sessions = false,
@@ -33,14 +33,51 @@ constructor(
             )
     }
 
-    @ExperimentalAmplitudeFeature
-    constructor(
-        sessions: Boolean = true,
-        appLifecycles: Boolean = false,
-        deepLinks: Boolean = false,
-        screenViews: Boolean = false,
-        userInteractions: Boolean = false,
-    ) : this(sessions, appLifecycles, deepLinks, screenViews) {
-        this.userInteractions = userInteractions
+    var sessions: Boolean = sessions
+        set(value) {
+            field = value
+            notifyChanged()
+        }
+
+    var appLifecycles: Boolean = appLifecycles
+        set(value) {
+            field = value
+            notifyChanged()
+        }
+
+    var deepLinks: Boolean = deepLinks
+        set(value) {
+            field = value
+            notifyChanged()
+        }
+
+    var screenViews: Boolean = screenViews
+        set(value) {
+            field = value
+            notifyChanged()
+        }
+
+    private val propertyChangeListeners: MutableList<DefaultTrackingOptions.() -> Unit> = mutableListOf()
+
+    internal val autocaptureOptions: MutableSet<AutocaptureOption>
+        get() = mutableSetOf<AutocaptureOption>().apply {
+            if (sessions) add(AutocaptureOption.SESSIONS)
+            if (appLifecycles) add(AutocaptureOption.APP_LIFECYCLES)
+            if (deepLinks) add(AutocaptureOption.DEEP_LINKS)
+            if (screenViews) add(AutocaptureOption.SCREEN_VIEWS)
+        }
+
+    private fun notifyChanged() {
+        for (listener in propertyChangeListeners) {
+            this.listener()
+        }
+    }
+
+    internal constructor(listener: (DefaultTrackingOptions.() -> Unit)) : this() {
+        propertyChangeListeners.add(listener)
+    }
+
+    internal fun addPropertyChangeListener(listener: DefaultTrackingOptions.() -> Unit) {
+        propertyChangeListeners.add(listener)
     }
 }

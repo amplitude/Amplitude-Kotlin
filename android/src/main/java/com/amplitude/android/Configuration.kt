@@ -13,7 +13,7 @@ import com.amplitude.core.events.Plan
 import com.amplitude.id.FileIdentityStorageProvider
 import com.amplitude.id.IdentityStorageProvider
 
-open class Configuration @JvmOverloads constructor(
+open class Configuration(
     apiKey: String,
     val context: Context,
     override var flushQueueSize: Int = FLUSH_QUEUE_SIZE,
@@ -39,9 +39,7 @@ open class Configuration @JvmOverloads constructor(
     var locationListening: Boolean = true,
     var flushEventsOnClose: Boolean = true,
     var minTimeBetweenSessionsMillis: Long = MIN_TIME_BETWEEN_SESSIONS_MILLIS,
-    @Deprecated("Please use 'defaultTracking.sessions' instead.", ReplaceWith("defaultTracking.sessions"))
-    var trackingSessionEvents: Boolean = true,
-    var defaultTracking: DefaultTrackingOptions = DefaultTrackingOptions(),
+    autocapture: Set<AutocaptureOption> = setOf(AutocaptureOption.SESSIONS),
     override var identifyBatchIntervalMillis: Long = IDENTIFY_BATCH_INTERVAL_MILLIS,
     override var identifyInterceptStorageProvider: StorageProvider = AndroidStorageProvider(),
     override var identityStorageProvider: IdentityStorageProvider = FileIdentityStorageProvider(),
@@ -75,5 +73,112 @@ open class Configuration @JvmOverloads constructor(
 ) {
     companion object {
         const val MIN_TIME_BETWEEN_SESSIONS_MILLIS: Long = 300000
+    }
+
+    @Deprecated("Please use the 'autocapture' parameter instead.")
+    @JvmOverloads
+    constructor(
+        apiKey: String,
+        context: Context,
+        flushQueueSize: Int = FLUSH_QUEUE_SIZE,
+        flushIntervalMillis: Int = FLUSH_INTERVAL_MILLIS,
+        instanceName: String = DEFAULT_INSTANCE,
+        optOut: Boolean = false,
+        storageProvider: StorageProvider = AndroidStorageProvider(),
+        loggerProvider: LoggerProvider = AndroidLoggerProvider(),
+        minIdLength: Int? = null,
+        partnerId: String? = null,
+        callback: EventCallBack? = null,
+        flushMaxRetries: Int = FLUSH_MAX_RETRIES,
+        useBatch: Boolean = false,
+        serverZone: ServerZone = ServerZone.US,
+        serverUrl: String? = null,
+        plan: Plan? = null,
+        ingestionMetadata: IngestionMetadata? = null,
+        useAdvertisingIdForDeviceId: Boolean = false,
+        useAppSetIdForDeviceId: Boolean = false,
+        newDeviceIdPerInstall: Boolean = false,
+        trackingOptions: TrackingOptions = TrackingOptions(),
+        enableCoppaControl: Boolean = false,
+        locationListening: Boolean = true,
+        flushEventsOnClose: Boolean = true,
+        minTimeBetweenSessionsMillis: Long = MIN_TIME_BETWEEN_SESSIONS_MILLIS,
+        trackingSessionEvents: Boolean = true,
+        @Suppress("DEPRECATION") defaultTracking: DefaultTrackingOptions = DefaultTrackingOptions(),
+        identifyBatchIntervalMillis: Long = IDENTIFY_BATCH_INTERVAL_MILLIS,
+        identifyInterceptStorageProvider: StorageProvider = AndroidStorageProvider(),
+        identityStorageProvider: IdentityStorageProvider = FileIdentityStorageProvider(),
+        migrateLegacyData: Boolean = true,
+        offline: Boolean? = false,
+        deviceId: String? = null,
+        sessionId: Long? = null,
+    ) : this(
+        apiKey,
+        context,
+        flushQueueSize,
+        flushIntervalMillis,
+        instanceName,
+        optOut,
+        storageProvider,
+        loggerProvider,
+        minIdLength,
+        partnerId,
+        callback,
+        flushMaxRetries,
+        useBatch,
+        serverZone,
+        serverUrl,
+        plan,
+        ingestionMetadata,
+        useAdvertisingIdForDeviceId,
+        useAppSetIdForDeviceId,
+        newDeviceIdPerInstall,
+        trackingOptions,
+        enableCoppaControl,
+        locationListening,
+        flushEventsOnClose,
+        minTimeBetweenSessionsMillis,
+        defaultTracking.autocaptureOptions,
+        identifyBatchIntervalMillis,
+        identifyInterceptStorageProvider,
+        identityStorageProvider,
+        migrateLegacyData,
+        offline,
+        deviceId,
+        sessionId,
+    ) {
+        if (!trackingSessionEvents) {
+            defaultTracking.sessions = false
+        }
+        @Suppress("DEPRECATION")
+        this.defaultTracking = defaultTracking
+    }
+
+    // A backing property to store the autocapture options. Any changes to `trackingSessionEvents`
+    // or the `defaultTracking` options will be reflected in this property.
+    private var _autocapture: MutableSet<AutocaptureOption> = autocapture.toMutableSet()
+    val autocapture: Set<AutocaptureOption> get() = _autocapture
+
+    @Deprecated("Please use 'autocapture' instead and set 'AutocaptureOptions.SESSIONS' to enable the option.")
+    var trackingSessionEvents: Boolean
+        get() = AutocaptureOption.SESSIONS in _autocapture
+        set(value) {
+            if (value) _autocapture.add(AutocaptureOption.SESSIONS)
+            else _autocapture.remove(AutocaptureOption.SESSIONS)
+        }
+
+    @Suppress("DEPRECATION")
+    @Deprecated("Please use 'autocapture' instead", ReplaceWith("autocapture"))
+    // Any changes to the default tracking options replace the recent autocapture options entirely.
+    var defaultTracking: DefaultTrackingOptions = DefaultTrackingOptions { updateAutocaptureOnPropertyChange() }
+        set(value) {
+            field = value
+            _autocapture = value.autocaptureOptions
+            value.addPropertyChangeListener { updateAutocaptureOnPropertyChange() }
+        }
+
+    @Suppress("DEPRECATION")
+    private fun DefaultTrackingOptions.updateAutocaptureOnPropertyChange() {
+        _autocapture = autocaptureOptions
     }
 }

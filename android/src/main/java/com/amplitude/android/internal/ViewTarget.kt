@@ -15,6 +15,7 @@ data class ViewTarget(
     val resourceName: String?,
     val tag: String?,
     val source: String,
+    val hierarchy: String?,
 ) {
     private val viewRef: WeakReference<Any> = WeakReference(_view)
 

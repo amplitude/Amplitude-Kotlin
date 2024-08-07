@@ -48,6 +48,7 @@ class IdentifyInterceptorTest {
         val apiKey = "test-api-key"
         amplitude = Amplitude(apiKey, context) {
             this.serverUrl = server.url("/").toString()
+            @Suppress("DEPRECATION")
             this.trackingSessionEvents = false
             this.flushIntervalMillis = 1000
             this.identifyBatchIntervalMillis = 1000
