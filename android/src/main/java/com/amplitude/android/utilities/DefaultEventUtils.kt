@@ -118,9 +118,18 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
     }
 
     fun trackScreenViewedEvent(activity: Activity) {
-        activity.screenName?.let {
-            amplitude.track(EventTypes.SCREEN_VIEWED, mapOf(EventProperties.SCREEN_NAME to it))
-        } ?: amplitude.logger.error("Failed to track screen viewed event")
+        try {
+            amplitude.track(
+                EventTypes.SCREEN_VIEWED,
+                mapOf(
+                    EventProperties.SCREEN_NAME to activity.screenName
+                )
+            )
+        } catch (e: PackageManager.NameNotFoundException) {
+            amplitude.logger.error("Failed to get activity info: ${e.message}")
+        } catch (e: Exception) {
+            amplitude.logger.error("Failed to track screen viewed event: ${e.message}")
+        }
     }
 
     fun startUserInteractionEventTracking(activity: Activity) {
@@ -148,23 +157,20 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
 
     companion object {
         internal val Activity.screenName: String?
+            @Throws(PackageManager.NameNotFoundException::class, Exception::class)
             get() {
-                try {
-                    val packageManager = packageManager
-                    val info =
-                        packageManager?.getActivityInfo(
-                            componentName,
-                            PackageManager.GET_META_DATA,
-                        )
-                    /* Get the label metadata in following order
-                      1. activity label
-                      2. if 1 is missing, fallback to parent application label
-                      3. if 2 is missing, use the activity name
-                     */
-                    return info?.loadLabel(packageManager)?.toString() ?: info?.name
-                } catch (e: Exception) {
-                    return null
-                }
+                val packageManager = packageManager
+                val info =
+                    packageManager?.getActivityInfo(
+                        componentName,
+                        PackageManager.GET_META_DATA,
+                    )
+                /* Get the label metadata in following order
+                  1. activity label
+                  2. if 1 is missing, fallback to parent application label
+                  3. if 2 is missing, use the activity name
+                 */
+                return info?.loadLabel(packageManager)?.toString() ?: info?.name
             }
     }
 
