@@ -68,7 +68,9 @@ constructor(
         }
 
     private fun notifyChanged() {
-        propertyChangeListeners.forEach { this.it() }
+        for (listener in propertyChangeListeners) {
+            this.listener()
+        }
     }
 
     internal constructor(listener: (DefaultTrackingOptions.() -> Unit)) : this() {
