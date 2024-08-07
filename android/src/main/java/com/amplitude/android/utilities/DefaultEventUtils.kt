@@ -119,19 +119,12 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
 
     fun trackScreenViewedEvent(activity: Activity) {
         try {
-            val packageManager = activity.packageManager
-            val info =
-                packageManager?.getActivityInfo(
-                    activity.componentName,
-                    PackageManager.GET_META_DATA,
+            amplitude.track(
+                EventTypes.SCREEN_VIEWED,
+                mapOf(
+                    EventProperties.SCREEN_NAME to activity.screenName
                 )
-            /* Get the label metadata in following order
-              1. activity label
-              2. if 1 is missing, fallback to parent application label
-              3. if 2 is missing, use the activity name
-             */
-            val activityLabel = info?.loadLabel(packageManager)?.toString() ?: info?.name
-            amplitude.track(EventTypes.SCREEN_VIEWED, mapOf(EventProperties.SCREEN_NAME to activityLabel))
+            )
         } catch (e: PackageManager.NameNotFoundException) {
             amplitude.logger.error("Failed to get activity info: $e")
         } catch (e: Exception) {
@@ -160,6 +153,25 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             }
             true
         } ?: amplitude.logger.error("Failed to stop user interaction event tracking: Activity window is null")
+    }
+
+    companion object {
+        internal val Activity.screenName: String?
+            @Throws(PackageManager.NameNotFoundException::class, Exception::class)
+            get() {
+                val packageManager = packageManager
+                val info =
+                    packageManager?.getActivityInfo(
+                        componentName,
+                        PackageManager.GET_META_DATA,
+                    )
+                /* Get the label metadata in following order
+                  1. activity label
+                  2. if 1 is missing, fallback to parent application label
+                  3. if 2 is missing, use the activity name
+                 */
+                return info?.loadLabel(packageManager)?.toString() ?: info?.name
+            }
     }
 
     private fun getReferrer(activity: Activity): Uri? {

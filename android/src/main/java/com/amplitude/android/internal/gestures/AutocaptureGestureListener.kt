@@ -7,8 +7,10 @@ import androidx.annotation.VisibleForTesting
 import com.amplitude.android.internal.ViewHierarchyScanner.findTarget
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.locators.ViewTargetLocator
+import com.amplitude.android.utilities.DefaultEventUtils.Companion.screenName
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.ACTION
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.HIERARCHY
+import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.SCREEN_NAME
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.TARGET_CLASS
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.TARGET_RESOURCE
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.TARGET_SOURCE
@@ -55,6 +57,12 @@ class AutocaptureGestureListener(
                     .split(" ")
                     .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } },
             HIERARCHY to target.hierarchy,
+            SCREEN_NAME to try {
+                activityRef.get()?.screenName
+            } catch (e: Exception) {
+                logger.error("Error getting screen name: $e")
+                null
+            }
         ).let { track(ELEMENT_INTERACTED, it) }
 
         return false
