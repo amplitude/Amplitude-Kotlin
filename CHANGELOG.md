@@ -1,3 +1,20 @@
+# [1.17.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.16.8...v1.17.0) (2024-08-08)
+
+
+### Bug Fixes
+
+* extract ComposeUtils to share with plugins ([#202](https://github.com/amplitude/Amplitude-Kotlin/issues/202)) ([c239bba](https://github.com/amplitude/Amplitude-Kotlin/commit/c239bbab9e67c7cd5eea942c379de852fbc2a290))
+* fix release pipeline ([#211](https://github.com/amplitude/Amplitude-Kotlin/issues/211)) ([816599f](https://github.com/amplitude/Amplitude-Kotlin/commit/816599faee3cf7f098fe95c2236da8d799723e8f))
+* revert autocapture scroll and swipe ([#206](https://github.com/amplitude/Amplitude-Kotlin/issues/206)) ([4b834bd](https://github.com/amplitude/Amplitude-Kotlin/commit/4b834bd366b6cef05d362973cc03075a48e7b1aa))
+
+
+### Features
+
+* add autocapture for element clicks ([#199](https://github.com/amplitude/Amplitude-Kotlin/issues/199)) ([7f0a500](https://github.com/amplitude/Amplitude-Kotlin/commit/7f0a50043f824b625b0273f4c69b4ab792353a56))
+* add autocapture in configs ([#207](https://github.com/amplitude/Amplitude-Kotlin/issues/207)) ([dcb9393](https://github.com/amplitude/Amplitude-Kotlin/commit/dcb93933d2da464dd7eec1bc530b251c3ffd7e34))
+* add screen name to elementInteractions properties for autocapture ([#209](https://github.com/amplitude/Amplitude-Kotlin/issues/209)) ([8044122](https://github.com/amplitude/Amplitude-Kotlin/commit/8044122fafbb055a116d4c2fb42e0e4383229c26))
+* add scroll and swipe autocapture ([#201](https://github.com/amplitude/Amplitude-Kotlin/issues/201)) ([1a5a392](https://github.com/amplitude/Amplitude-Kotlin/commit/1a5a39256a16307fba0316dba2c6a4c28b4b97fd))
+
 ## [1.16.8](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.16.7...v1.16.8) (2024-05-30)
 
 
