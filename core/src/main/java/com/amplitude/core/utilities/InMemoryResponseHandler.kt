@@ -25,7 +25,7 @@ internal class InMemoryResponseHandler(
 
     override fun handleBadRequestResponse(badRequestResponse: BadRequestResponse, events: Any, eventsString: String) {
         val eventsList = events as List<BaseEvent>
-        if (eventsList.size == 1) {
+        if (eventsList.size == 1 || badRequestResponse.isInvalidApiKeyResponse()) {
             triggerEventsCallback(eventsList, HttpStatus.BAD_REQUEST.code, badRequestResponse.error)
             return
         }

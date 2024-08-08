@@ -65,7 +65,7 @@ class FileResponseHandler(
             removeCallbackByInsertId(eventsString)
             throw e
         }
-        if (eventsList.size == 1) {
+        if (eventsList.size == 1 || badRequestResponse.isInvalidApiKeyResponse()) {
             triggerEventsCallback(eventsList, HttpStatus.BAD_REQUEST.code, badRequestResponse.error)
             storage.removeFile(eventFilePath)
             return
