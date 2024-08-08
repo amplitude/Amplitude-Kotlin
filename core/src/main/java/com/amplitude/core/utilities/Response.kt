@@ -91,6 +91,10 @@ class BadRequestResponse(response: JSONObject) : Response {
             return false
         }
     }
+
+    fun isInvalidApiKeyResponse(): Boolean {
+        return error.lowercase().contains("invalid api key")
+    }
 }
 
 class PayloadTooLargeResponse(response: JSONObject) : Response {
