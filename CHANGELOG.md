@@ -1,3 +1,10 @@
+## [1.17.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.17.0...v1.17.1) (2024-08-09)
+
+
+### Bug Fixes
+
+* Fix OOM error when a bad api key is passed ([#210](https://github.com/amplitude/Amplitude-Kotlin/issues/210)) ([8f1c047](https://github.com/amplitude/Amplitude-Kotlin/commit/8f1c047cfe698d996e73e86a226127a14e503c9a))
+
 # [1.17.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.16.8...v1.17.0) (2024-08-08)
 
 
