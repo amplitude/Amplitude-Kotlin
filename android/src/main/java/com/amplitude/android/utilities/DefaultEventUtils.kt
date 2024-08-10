@@ -22,6 +22,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         const val APPLICATION_BACKGROUNDED = "[Amplitude] Application Backgrounded"
         const val DEEP_LINK_OPENED = "[Amplitude] Deep Link Opened"
         const val SCREEN_VIEWED = "[Amplitude] Screen Viewed"
+        const val FRAGMENT_VIEWED = "[Amplitude] Fragment Viewed"
         const val ELEMENT_INTERACTED = "[Amplitude] Element Interacted"
     }
 
@@ -34,6 +35,9 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         const val LINK_URL = "[Amplitude] Link URL"
         const val LINK_REFERRER = "[Amplitude] Link Referrer"
         const val SCREEN_NAME = "[Amplitude] Screen Name"
+        const val FRAGMENT_CLASS = "[Amplitude] Fragment Class"
+        const val FRAGMENT_IDENTIFIER = "[Amplitude] Fragment Identifier"
+        const val FRAGMENT_TAG = "[Amplitude] Fragment Tag"
         const val ACTION = "[Amplitude] Action"
         const val TARGET_CLASS = "[Amplitude] Target Class"
         const val TARGET_RESOURCE = "[Amplitude] Target Resource"
