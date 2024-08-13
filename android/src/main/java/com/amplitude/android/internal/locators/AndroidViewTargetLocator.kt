@@ -28,7 +28,9 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
         val className = javaClass.canonicalName ?: javaClass.simpleName ?: null
         val resourceName = resourceIdWithFallback
         val hierarchy = hierarchy
-        val tag = tag?.toString()
+        val tag = tag
+            ?.takeIf { it is String || it is Number || it is Boolean || it is Char }
+            ?.toString()
         val text = (this as? TextView)?.text?.toString()
         return ViewTarget(this, className, resourceName, tag, text, SOURCE, hierarchy)
     }
