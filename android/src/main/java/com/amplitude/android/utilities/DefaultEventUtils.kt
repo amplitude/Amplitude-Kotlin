@@ -38,6 +38,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         const val TARGET_CLASS = "[Amplitude] Target Class"
         const val TARGET_RESOURCE = "[Amplitude] Target Resource"
         const val TARGET_TAG = "[Amplitude] Target Tag"
+        const val TARGET_TEXT = "[Amplitude] Target Text"
         const val TARGET_SOURCE = "[Amplitude] Target Source"
         const val HIERARCHY = "[Amplitude] Hierarchy"
     }
