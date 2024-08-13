@@ -1,7 +1,7 @@
 package com.amplitude.android.internal.locators
 
 import android.view.View
-import android.widget.TextView
+import android.widget.Button
 import com.amplitude.android.internal.ViewResourceUtils.resourceIdWithFallback
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.ViewTarget.Type
@@ -31,7 +31,7 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
         val tag = tag
             ?.takeIf { it is String || it is Number || it is Boolean || it is Char }
             ?.toString()
-        val text = (this as? TextView)?.text?.toString()
+        val text = (this as? Button)?.text?.toString()
         return ViewTarget(this, className, resourceName, tag, text, SOURCE, hierarchy)
     }
 
