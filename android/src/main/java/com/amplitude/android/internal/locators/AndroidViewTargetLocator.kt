@@ -1,6 +1,7 @@
 package com.amplitude.android.internal.locators
 
 import android.view.View
+import android.widget.TextView
 import com.amplitude.android.internal.ViewResourceUtils.resourceIdWithFallback
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.ViewTarget.Type
@@ -27,7 +28,8 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
         val className = javaClass.canonicalName ?: javaClass.simpleName ?: null
         val resourceName = resourceIdWithFallback
         val hierarchy = hierarchy
-        return ViewTarget(this, className, resourceName, null, SOURCE, hierarchy)
+        val text = (this as? TextView)?.text?.toString()
+        return ViewTarget(this, className, resourceName, tag as? String, text, SOURCE, hierarchy)
     }
 
     private fun View.touchWithinBounds(position: Pair<Float, Float>): Boolean {
