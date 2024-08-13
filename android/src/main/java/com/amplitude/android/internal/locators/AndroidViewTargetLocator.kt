@@ -28,8 +28,9 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
         val className = javaClass.canonicalName ?: javaClass.simpleName ?: null
         val resourceName = resourceIdWithFallback
         val hierarchy = hierarchy
+        val tag = tag?.toString()
         val text = (this as? TextView)?.text?.toString()
-        return ViewTarget(this, className, resourceName, tag as? String, text, SOURCE, hierarchy)
+        return ViewTarget(this, className, resourceName, tag, text, SOURCE, hierarchy)
     }
 
     private fun View.touchWithinBounds(position: Pair<Float, Float>): Boolean {
