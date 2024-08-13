@@ -1,3 +1,10 @@
+## [1.17.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.17.1...v1.17.2) (2024-08-13)
+
+
+### Bug Fixes
+
+* Add target text capture for Android Views in Autocapture ([#218](https://github.com/amplitude/Amplitude-Kotlin/issues/218)) ([7617f88](https://github.com/amplitude/Amplitude-Kotlin/commit/7617f884a93cfd74847f209714a7fcdc7ce16697))
+
 ## [1.17.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.17.0...v1.17.1) (2024-08-09)
 
 
