@@ -15,6 +15,7 @@ import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.TARGET_
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.TARGET_RESOURCE
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.TARGET_SOURCE
 import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.TARGET_TAG
+import com.amplitude.android.utilities.DefaultEventUtils.EventProperties.TARGET_TEXT
 import com.amplitude.android.utilities.DefaultEventUtils.EventTypes.ELEMENT_INTERACTED
 import com.amplitude.common.Logger
 import java.lang.ref.WeakReference
@@ -51,6 +52,7 @@ class AutocaptureGestureListener(
             TARGET_CLASS to target.className,
             TARGET_RESOURCE to target.resourceName,
             TARGET_TAG to target.tag,
+            TARGET_TEXT to target.text,
             TARGET_SOURCE to
                 target.source
                     .replace("_", " ")

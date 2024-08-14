@@ -1,3 +1,17 @@
+## [1.17.3](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.17.2...v1.17.3) (2024-08-13)
+
+
+### Bug Fixes
+
+* only track button text for the elementInteraction option of autocapture ([#219](https://github.com/amplitude/Amplitude-Kotlin/issues/219)) ([d566c74](https://github.com/amplitude/Amplitude-Kotlin/commit/d566c7421c648e52efecd976204bb30d8e2e61f3))
+
+## [1.17.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.17.1...v1.17.2) (2024-08-13)
+
+
+### Bug Fixes
+
+* Add target text capture for Android Views in Autocapture ([#218](https://github.com/amplitude/Amplitude-Kotlin/issues/218)) ([7617f88](https://github.com/amplitude/Amplitude-Kotlin/commit/7617f884a93cfd74847f209714a7fcdc7ce16697))
+
 ## [1.17.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.17.0...v1.17.1) (2024-08-09)
 
 

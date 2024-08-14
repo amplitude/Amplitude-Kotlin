@@ -14,6 +14,7 @@ data class ViewTarget(
     val className: String?,
     val resourceName: String?,
     val tag: String?,
+    val text: String?,
     val source: String,
     val hierarchy: String?,
 ) {

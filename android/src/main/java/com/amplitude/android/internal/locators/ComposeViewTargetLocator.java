@@ -107,7 +107,7 @@ public class ComposeViewTargetLocator implements ViewTargetLocator {
         if (targetTag == null) {
             return null;
         } else {
-            return new ViewTarget(null, null, null, targetTag, SOURCE, null);
+            return new ViewTarget(null, null, null, targetTag, null, SOURCE, null);
         }
     }
 
