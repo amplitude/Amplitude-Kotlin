@@ -7,8 +7,8 @@ import com.amplitude.android.utilities.DefaultEventUtils.EventProperties
 import com.amplitude.android.utilities.DefaultEventUtils.EventTypes
 import com.amplitude.common.Logger
 
-class AutocaptureFragmentLifecycleCallbacks(
-    private val track: (String, Map<String, Any?>) -> Unit,
+internal class AutocaptureFragmentLifecycleCallbacks(
+    private val track: TrackEventCallback,
     private val logger: Logger
 ) : FragmentManager.FragmentLifecycleCallbacks() {
     override fun onFragmentResumed(fm: FragmentManager, f: Fragment) {

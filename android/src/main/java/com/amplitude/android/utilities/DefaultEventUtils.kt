@@ -8,6 +8,8 @@ import android.net.ParseException
 import android.net.Uri
 import android.os.Build
 import com.amplitude.android.Amplitude
+import com.amplitude.android.internal.fragments.FragmentActivityHandler.registerFragmentLifecycleCallbacks
+import com.amplitude.android.internal.fragments.FragmentActivityHandler.unregisterFragmentLifecycleCallbacks
 import com.amplitude.android.internal.gestures.AutocaptureWindowCallback
 import com.amplitude.android.internal.gestures.NoCaptureWindowCallback
 import com.amplitude.android.internal.locators.ViewTargetLocators.ALL
@@ -160,7 +162,20 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         } ?: amplitude.logger.error("Failed to stop user interaction event tracking: Activity window is null")
     }
 
+    fun startFragmentViewedEventTracking(activity: Activity) {
+        if (isFragmentActivityAvailable) {
+            activity.registerFragmentLifecycleCallbacks(amplitude::track, amplitude.logger)
+        }
+    }
+
+    fun stopFragmentViewedEventTracking(activity: Activity) {
+        if (isFragmentActivityAvailable) {
+            activity.unregisterFragmentLifecycleCallbacks()
+        }
+    }
+
     companion object {
+        private const val FRAGMENT_ACTIVITY_CLASS_NAME = "androidx.fragment.app.FragmentActivity"
         internal val Activity.screenName: String?
             @Throws(PackageManager.NameNotFoundException::class, Exception::class)
             get() {
@@ -178,6 +193,10 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 return info?.loadLabel(packageManager)?.toString() ?: info?.name
             }
     }
+
+    private val isFragmentActivityAvailable: Boolean =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP &&
+            LoadClass.isClassAvailable(FRAGMENT_ACTIVITY_CLASS_NAME, amplitude.logger)
 
     private fun getReferrer(activity: Activity): Uri? {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {

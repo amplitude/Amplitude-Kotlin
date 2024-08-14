@@ -4,14 +4,11 @@ import android.app.Activity
 import android.app.Application
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
 import com.amplitude.android.AutocaptureOption
 import com.amplitude.android.Configuration
 import com.amplitude.android.ExperimentalAmplitudeFeature
-import com.amplitude.android.internal.fragments.FragmentActivityHandler.attachFragmentLifecycleCallbacks
 import com.amplitude.android.utilities.DefaultEventUtils
-import com.amplitude.android.utilities.LoadClass
 import com.amplitude.core.Amplitude
 import com.amplitude.core.platform.Plugin
 import java.util.concurrent.atomic.AtomicBoolean
@@ -54,11 +51,8 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
         if (AutocaptureOption.DEEP_LINKS in androidConfiguration.autocapture) {
             DefaultEventUtils(androidAmplitude).trackDeepLinkOpenedEvent(activity)
         }
-        if (AutocaptureOption.SCREEN_VIEWS in androidConfiguration.autocapture &&
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP &&
-            LoadClass().isClassAvailable(FRAGMENT_ACTIVITY_CLASS_NAME, amplitude.logger)
-        ) {
-            activity.attachFragmentLifecycleCallbacks(amplitude)
+        if (AutocaptureOption.SCREEN_VIEWS in androidConfiguration.autocapture) {
+            DefaultEventUtils(androidAmplitude).startFragmentViewedEventTracking(activity)
         }
     }
 
@@ -101,6 +95,9 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     }
 
     override fun onActivityDestroyed(activity: Activity) {
+        if (AutocaptureOption.SCREEN_VIEWS in androidConfiguration.autocapture) {
+            DefaultEventUtils(androidAmplitude).stopFragmentViewedEventTracking(activity)
+        }
     }
 
     override fun teardown() {
@@ -109,7 +106,6 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     }
 
     companion object {
-        private const val FRAGMENT_ACTIVITY_CLASS_NAME = "androidx.fragment.app.FragmentActivity"
         @JvmStatic
         fun getCurrentTimeMillis(): Long {
             return System.currentTimeMillis()
