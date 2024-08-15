@@ -9,23 +9,20 @@ internal typealias TrackEventCallback = (String, Map<String, Any?>) -> Unit
 
 internal object FragmentActivityHandler {
     private val callbacksMap =
-        WeakHashMap<FragmentActivity, AutocaptureFragmentLifecycleCallbacks>()
+        WeakHashMap<FragmentActivity, MutableList<AutocaptureFragmentLifecycleCallbacks>>()
 
     fun Activity.registerFragmentLifecycleCallbacks(track: TrackEventCallback, logger: Logger) {
-        (this as? FragmentActivity)?.let { fragmentActivity ->
+        (this as? FragmentActivity)?.apply {
             val callback = AutocaptureFragmentLifecycleCallbacks(track, logger)
-            fragmentActivity.supportFragmentManager
-                .registerFragmentLifecycleCallbacks(callback, false)
-            callbacksMap[fragmentActivity] = callback
+            supportFragmentManager.registerFragmentLifecycleCallbacks(callback, false)
+            callbacksMap.getOrPut(this) { mutableListOf() }.add(callback)
         }
     }
 
     fun Activity.unregisterFragmentLifecycleCallbacks() {
         (this as? FragmentActivity)?.let { fragmentActivity ->
-            callbacksMap[fragmentActivity]?.let { callback ->
-                fragmentActivity.supportFragmentManager
-                    .unregisterFragmentLifecycleCallbacks(callback)
-                callbacksMap.remove(fragmentActivity)
+            callbacksMap.remove(fragmentActivity)?.forEach {
+                fragmentActivity.supportFragmentManager.unregisterFragmentLifecycleCallbacks(it)
             }
         }
     }
