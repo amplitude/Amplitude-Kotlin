@@ -20,9 +20,11 @@ internal object FragmentActivityHandler {
     }
 
     fun Activity.unregisterFragmentLifecycleCallbacks() {
-        (this as? FragmentActivity)?.let { fragmentActivity ->
-            callbacksMap.remove(fragmentActivity)?.forEach {
-                fragmentActivity.supportFragmentManager.unregisterFragmentLifecycleCallbacks(it)
+        (this as? FragmentActivity)?.apply {
+            callbacksMap.remove(this)?.let { callbacks ->
+                for (callback in callbacks) {
+                    supportFragmentManager.unregisterFragmentLifecycleCallbacks(callback)
+                }
             }
         }
     }
