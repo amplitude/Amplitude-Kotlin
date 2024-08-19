@@ -163,13 +163,17 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
     }
 
     fun startFragmentViewedEventTracking(activity: Activity) {
-        if (isFragmentActivityAvailable) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP &&
+            LoadClass.isClassAvailable(FRAGMENT_ACTIVITY_CLASS_NAME, amplitude.logger)
+        ) {
             activity.registerFragmentLifecycleCallbacks(amplitude::track, amplitude.logger)
         }
     }
 
     fun stopFragmentViewedEventTracking(activity: Activity) {
-        if (isFragmentActivityAvailable) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP &&
+            LoadClass.isClassAvailable(FRAGMENT_ACTIVITY_CLASS_NAME, amplitude.logger)
+        ) {
             activity.unregisterFragmentLifecycleCallbacks()
         }
     }
@@ -193,10 +197,6 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 return info?.loadLabel(packageManager)?.toString() ?: info?.name
             }
     }
-
-    private val isFragmentActivityAvailable: Boolean =
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP &&
-            LoadClass.isClassAvailable(FRAGMENT_ACTIVITY_CLASS_NAME, amplitude.logger)
 
     private fun getReferrer(activity: Activity): Uri? {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP_MR1) {

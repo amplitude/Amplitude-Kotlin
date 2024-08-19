@@ -1,5 +1,7 @@
 package com.amplitude.android.internal.fragments
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import com.amplitude.android.utilities.DefaultEventUtils.Companion.screenName
@@ -7,6 +9,7 @@ import com.amplitude.android.utilities.DefaultEventUtils.EventProperties
 import com.amplitude.android.utilities.DefaultEventUtils.EventTypes
 import com.amplitude.common.Logger
 
+@RequiresApi(Build.VERSION_CODES.LOLLIPOP)
 internal class AutocaptureFragmentLifecycleCallbacks(
     private val track: TrackEventCallback,
     private val logger: Logger
