@@ -7,6 +7,7 @@ object ExceptionUtils {
     fun <T> safeInvoke(action: () -> T?): T? {
         return safeInvoke(null, action)
     }
+
     fun <T> safeInvoke(logger: Logger?, action: () -> T?): T? {
         try {
             return action()
