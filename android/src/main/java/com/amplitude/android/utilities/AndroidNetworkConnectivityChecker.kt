@@ -35,23 +35,28 @@ class AndroidNetworkConnectivityChecker(private val context: Context, private va
             return true
         }
 
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE)
-        if (cm is ConnectivityManager) {
-            if (isMarshmallowAndAbove) {
-                val network = cm.activeNetwork ?: return false
-                val capabilities = cm.getNetworkCapabilities(network) ?: return false
+        val result = ExceptionUtils.safeInvoke(logger) {
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE)
+            if (cm is ConnectivityManager) {
+                if (isMarshmallowAndAbove) {
+                    val network = cm.activeNetwork ?: return@safeInvoke false
+                    val capabilities = cm.getNetworkCapabilities(network) ?: return@safeInvoke false
 
-                return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-                    capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+                    return@safeInvoke capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+                } else {
+                    @SuppressLint("MissingPermission")
+                    val networkInfo = cm.activeNetworkInfo
+                    return@safeInvoke networkInfo != null && networkInfo.isConnectedOrConnecting
+                }
             } else {
-                @SuppressLint("MissingPermission")
-                val networkInfo = cm.activeNetworkInfo
-                return networkInfo != null && networkInfo.isConnectedOrConnecting
+                logger.debug("Service is not an instance of ConnectivityManager. Offline mode is not supported")
+                return@safeInvoke true
             }
-        } else {
-            logger.debug("Service is not an instance of ConnectivityManager. Offline mode is not supported")
-            return true
         }
+
+        // In case of any errors, default to online
+        return result ?: true
     }
 
     private fun hasPermission(

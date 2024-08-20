@@ -10,9 +10,9 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.os.Build
-import java.lang.IllegalArgumentException
+import com.amplitude.common.Logger
 
-class AndroidNetworkListener(private val context: Context) {
+class AndroidNetworkListener(private val context: Context, private val logger: Logger) {
     private var networkCallback: NetworkChangeCallback? = null
     private var networkCallbackForLowerApiLevels: BroadcastReceiver? = null
     private var networkCallbackForHigherApiLevels: ConnectivityManager.NetworkCallback? = null
@@ -28,10 +28,12 @@ class AndroidNetworkListener(private val context: Context) {
     }
 
     fun startListening() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            setupNetworkCallback()
-        } else {
-            setupBroadcastReceiver()
+        ExceptionUtils.safeInvoke(logger) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                setupNetworkCallback()
+            } else {
+                setupBroadcastReceiver()
+            }
         }
     }
 
@@ -86,17 +88,19 @@ class AndroidNetworkListener(private val context: Context) {
     }
 
     fun stopListening() {
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-                networkCallbackForHigherApiLevels?.let { connectivityManager.unregisterNetworkCallback(it) }
-            } else {
-                networkCallbackForLowerApiLevels?.let { context.unregisterReceiver(it) }
+        ExceptionUtils.safeInvoke(logger) {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                    networkCallbackForHigherApiLevels?.let { connectivityManager.unregisterNetworkCallback(it) }
+                } else {
+                    networkCallbackForLowerApiLevels?.let { context.unregisterReceiver(it) }
+                }
+            } catch (e: IllegalArgumentException) {
+                // callback was already unregistered.
+            } catch (e: IllegalStateException) {
+                // shutdown process is in progress and certain operations are not allowed.
             }
-        } catch (e: IllegalArgumentException) {
-            // callback was already unregistered.
-        } catch (e: IllegalStateException) {
-            // shutdown process is in progress and certain operations are not allowed.
         }
     }
 }
