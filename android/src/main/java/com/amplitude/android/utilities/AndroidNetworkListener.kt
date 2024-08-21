@@ -49,7 +49,8 @@ class AndroidNetworkListener(private val context: Context, private val logger: L
     // startListening() checks API level
     // ACCESS_NETWORK_STATE permission should be added manually by users to enable this feature
     private fun setupNetworkCallback() {
-        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val connectivityManager =
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val networkRequest =
             NetworkRequest.Builder()
                 .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
@@ -66,7 +67,10 @@ class AndroidNetworkListener(private val context: Context, private val logger: L
                 }
             }
 
-        connectivityManager.registerNetworkCallback(networkRequest, networkCallbackForHigherApiLevels!!)
+        connectivityManager.registerNetworkCallback(
+            networkRequest,
+            networkCallbackForHigherApiLevels!!
+        )
     }
 
     private fun setupBroadcastReceiver() {
@@ -78,7 +82,8 @@ class AndroidNetworkListener(private val context: Context, private val logger: L
                     intent: Intent,
                 ) {
                     if (ConnectivityManager.CONNECTIVITY_ACTION == intent.action) {
-                        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                        val connectivityManager =
+                            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
                         val activeNetwork = connectivityManager.activeNetworkInfo
                         val isConnected = activeNetwork?.isConnectedOrConnecting == true
 
@@ -96,26 +101,30 @@ class AndroidNetworkListener(private val context: Context, private val logger: L
     }
 
     fun stopListening() {
-            try {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-                    networkCallbackForHigherApiLevels?.let { connectivityManager.unregisterNetworkCallback(it) }
-                } else {
-                    networkCallbackForLowerApiLevels?.let { context.unregisterReceiver(it) }
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                val connectivityManager =
+                    context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                networkCallbackForHigherApiLevels?.let {
+                    connectivityManager.unregisterNetworkCallback(
+                        it
+                    )
                 }
-            } catch (e: IllegalArgumentException) {
-                // callback was already unregistered.
-            } catch (e: IllegalStateException) {
-                // shutdown process is in progress and certain operations are not allowed.
-            } catch (throwable: Throwable) {
-                // We've seen issues where we see exceptions being thrown by connectivity manager
-                // which crashes an app. Its safe to ignore these exceptions since we try our best
-                // to mark a device as offline
-                // Github Issues:
-                // https://github.com/amplitude/Amplitude-Kotlin/issues/220
-                // https://github.com/amplitude/Amplitude-Kotlin/issues/197
-                logger.warn("Error stopping network listener: ${throwable.message}")
+            } else {
+                networkCallbackForLowerApiLevels?.let { context.unregisterReceiver(it) }
             }
+        } catch (e: IllegalArgumentException) {
+            // callback was already unregistered.
+        } catch (e: IllegalStateException) {
+            // shutdown process is in progress and certain operations are not allowed.
+        } catch (throwable: Throwable) {
+            // We've seen issues where we see exceptions being thrown by connectivity manager
+            // which crashes an app. Its safe to ignore these exceptions since we try our best
+            // to mark a device as offline
+            // Github Issues:
+            // https://github.com/amplitude/Amplitude-Kotlin/issues/220
+            // https://github.com/amplitude/Amplitude-Kotlin/issues/197
+            logger.warn("Error stopping network listener: ${throwable.message}")
         }
-
+    }
 }

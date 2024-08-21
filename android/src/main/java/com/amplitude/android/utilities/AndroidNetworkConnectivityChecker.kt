@@ -43,7 +43,7 @@ class AndroidNetworkConnectivityChecker(private val context: Context, private va
                     val capabilities = cm.getNetworkCapabilities(network) ?: return false
 
                     return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-                            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+                        capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
                 } else {
                     @SuppressLint("MissingPermission")
                     val networkInfo = cm.activeNetworkInfo
