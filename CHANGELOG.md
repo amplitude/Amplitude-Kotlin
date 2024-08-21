@@ -1,3 +1,10 @@
+## [1.17.4](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.17.3...v1.17.4) (2024-08-21)
+
+
+### Bug Fixes
+
+* Catch network connectivity exceptions ([#221](https://github.com/amplitude/Amplitude-Kotlin/issues/221)) ([1ed787b](https://github.com/amplitude/Amplitude-Kotlin/commit/1ed787bcdd02f701b694afb8e4e688a0e2dd9af4))
+
 ## [1.17.3](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.17.2...v1.17.3) (2024-08-13)
 
 
