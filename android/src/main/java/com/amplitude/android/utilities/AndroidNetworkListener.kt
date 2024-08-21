@@ -28,12 +28,20 @@ class AndroidNetworkListener(private val context: Context, private val logger: L
     }
 
     fun startListening() {
-        ExceptionUtils.safeInvoke(logger) {
+        try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                 setupNetworkCallback()
             } else {
                 setupBroadcastReceiver()
             }
+        } catch (throwable: Throwable) {
+            // We've seen issues where we see exceptions being thrown by connectivity manager
+            // which crashes an app. Its safe to ignore these exceptions since we try our best
+            // to mark a device as offline
+            // Github Issues:
+            // https://github.com/amplitude/Amplitude-Kotlin/issues/220
+            // https://github.com/amplitude/Amplitude-Kotlin/issues/197
+            logger.warn("Error starting network listener: ${throwable.message}")
         }
     }
 
@@ -88,7 +96,6 @@ class AndroidNetworkListener(private val context: Context, private val logger: L
     }
 
     fun stopListening() {
-        ExceptionUtils.safeInvoke(logger) {
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                     val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -100,7 +107,15 @@ class AndroidNetworkListener(private val context: Context, private val logger: L
                 // callback was already unregistered.
             } catch (e: IllegalStateException) {
                 // shutdown process is in progress and certain operations are not allowed.
+            } catch (throwable: Throwable) {
+                // We've seen issues where we see exceptions being thrown by connectivity manager
+                // which crashes an app. Its safe to ignore these exceptions since we try our best
+                // to mark a device as offline
+                // Github Issues:
+                // https://github.com/amplitude/Amplitude-Kotlin/issues/220
+                // https://github.com/amplitude/Amplitude-Kotlin/issues/197
+                logger.warn("Error stopping network listener: ${throwable.message}")
             }
         }
-    }
+
 }

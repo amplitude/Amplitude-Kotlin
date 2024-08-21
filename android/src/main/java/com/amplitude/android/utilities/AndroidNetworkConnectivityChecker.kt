@@ -35,28 +35,35 @@ class AndroidNetworkConnectivityChecker(private val context: Context, private va
             return true
         }
 
-        val result = ExceptionUtils.safeInvoke(logger) {
+        try {
             val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE)
             if (cm is ConnectivityManager) {
                 if (isMarshmallowAndAbove) {
-                    val network = cm.activeNetwork ?: return@safeInvoke false
-                    val capabilities = cm.getNetworkCapabilities(network) ?: return@safeInvoke false
+                    val network = cm.activeNetwork ?: return false
+                    val capabilities = cm.getNetworkCapabilities(network) ?: return false
 
-                    return@safeInvoke capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                    return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
                             capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
                 } else {
                     @SuppressLint("MissingPermission")
                     val networkInfo = cm.activeNetworkInfo
-                    return@safeInvoke networkInfo != null && networkInfo.isConnectedOrConnecting
+                    return networkInfo != null && networkInfo.isConnectedOrConnecting
                 }
             } else {
                 logger.debug("Service is not an instance of ConnectivityManager. Offline mode is not supported")
-                return@safeInvoke true
+                return true
             }
+        } catch (throwable: Throwable) {
+            // We've seen issues where we see exceptions being thrown by connectivity manager
+            // which crashes an app. Its safe to ignore these exceptions since we try our best
+            // to mark a device as offline
+            // Github Issues:
+            // https://github.com/amplitude/Amplitude-Kotlin/issues/220
+            // https://github.com/amplitude/Amplitude-Kotlin/issues/197
+            logger.warn("Error checking network connectivity: ${throwable.message}")
+            logger.warn(throwable.stackTraceToString())
+            return true
         }
-
-        // In case of any errors, default to online
-        return result ?: true
     }
 
     private fun hasPermission(
