@@ -1,3 +1,10 @@
+# [1.18.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.17.4...v1.18.0) (2024-08-22)
+
+
+### Features
+
+* Capture top-level Fragments with Autocapture ([#216](https://github.com/amplitude/Amplitude-Kotlin/issues/216)) ([e16b97a](https://github.com/amplitude/Amplitude-Kotlin/commit/e16b97ad25c1d865947856c20e2e475a5733f161))
+
 ## [1.17.4](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.17.3...v1.17.4) (2024-08-21)
 
 
