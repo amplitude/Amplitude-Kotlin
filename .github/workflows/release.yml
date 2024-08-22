@@ -20,10 +20,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  run-tests:
+    name: Run Tests
+    uses: ./.github/workflows/pull-request-test.yml
+
   release:
     name: Release
     runs-on: ubuntu-20.04
-    needs: [authorize]
+    needs: [authorize, run-tests]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,15 +38,6 @@ jobs:
           java-version: '17'
           distribution: 'zulu'
           cache: 'gradle'
-
-      - name: Build
-        run: ./gradlew build
-
-      - name: Lint
-        run: ./gradlew ktlintCheck
-
-      - name: Test
-        run: ./gradlew test --info
 
       - name: Configure GPG
         env:
