@@ -51,6 +51,9 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
         if (AutocaptureOption.DEEP_LINKS in androidConfiguration.autocapture) {
             DefaultEventUtils(androidAmplitude).trackDeepLinkOpenedEvent(activity)
         }
+        if (AutocaptureOption.SCREEN_VIEWS in androidConfiguration.autocapture) {
+            DefaultEventUtils(androidAmplitude).startFragmentViewedEventTracking(activity)
+        }
     }
 
     override fun onActivityStarted(activity: Activity) {
@@ -92,6 +95,9 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     }
 
     override fun onActivityDestroyed(activity: Activity) {
+        if (AutocaptureOption.SCREEN_VIEWS in androidConfiguration.autocapture) {
+            DefaultEventUtils(androidAmplitude).stopFragmentViewedEventTracking(activity)
+        }
     }
 
     override fun teardown() {

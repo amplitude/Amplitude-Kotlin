@@ -8,6 +8,8 @@ import android.net.ParseException
 import android.net.Uri
 import android.os.Build
 import com.amplitude.android.Amplitude
+import com.amplitude.android.internal.fragments.FragmentActivityHandler.registerFragmentLifecycleCallbacks
+import com.amplitude.android.internal.fragments.FragmentActivityHandler.unregisterFragmentLifecycleCallbacks
 import com.amplitude.android.internal.gestures.AutocaptureWindowCallback
 import com.amplitude.android.internal.gestures.NoCaptureWindowCallback
 import com.amplitude.android.internal.locators.ViewTargetLocators.ALL
@@ -22,6 +24,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         const val APPLICATION_BACKGROUNDED = "[Amplitude] Application Backgrounded"
         const val DEEP_LINK_OPENED = "[Amplitude] Deep Link Opened"
         const val SCREEN_VIEWED = "[Amplitude] Screen Viewed"
+        const val FRAGMENT_VIEWED = "[Amplitude] Fragment Viewed"
         const val ELEMENT_INTERACTED = "[Amplitude] Element Interacted"
     }
 
@@ -34,6 +37,9 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         const val LINK_URL = "[Amplitude] Link URL"
         const val LINK_REFERRER = "[Amplitude] Link Referrer"
         const val SCREEN_NAME = "[Amplitude] Screen Name"
+        const val FRAGMENT_CLASS = "[Amplitude] Fragment Class"
+        const val FRAGMENT_IDENTIFIER = "[Amplitude] Fragment Identifier"
+        const val FRAGMENT_TAG = "[Amplitude] Fragment Tag"
         const val ACTION = "[Amplitude] Action"
         const val TARGET_CLASS = "[Amplitude] Target Class"
         const val TARGET_RESOURCE = "[Amplitude] Target Resource"
@@ -156,7 +162,24 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         } ?: amplitude.logger.error("Failed to stop user interaction event tracking: Activity window is null")
     }
 
+    fun startFragmentViewedEventTracking(activity: Activity) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP &&
+            LoadClass.isClassAvailable(FRAGMENT_ACTIVITY_CLASS_NAME, amplitude.logger)
+        ) {
+            activity.registerFragmentLifecycleCallbacks(amplitude::track, amplitude.logger)
+        }
+    }
+
+    fun stopFragmentViewedEventTracking(activity: Activity) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP &&
+            LoadClass.isClassAvailable(FRAGMENT_ACTIVITY_CLASS_NAME, amplitude.logger)
+        ) {
+            activity.unregisterFragmentLifecycleCallbacks(amplitude.logger)
+        }
+    }
+
     companion object {
+        private const val FRAGMENT_ACTIVITY_CLASS_NAME = "androidx.fragment.app.FragmentActivity"
         internal val Activity.screenName: String?
             @Throws(PackageManager.NameNotFoundException::class, Exception::class)
             get() {
