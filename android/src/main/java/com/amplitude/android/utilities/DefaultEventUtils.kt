@@ -174,7 +174,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP &&
             LoadClass.isClassAvailable(FRAGMENT_ACTIVITY_CLASS_NAME, amplitude.logger)
         ) {
-            activity.unregisterFragmentLifecycleCallbacks()
+            activity.unregisterFragmentLifecycleCallbacks(amplitude.logger)
         }
     }
 

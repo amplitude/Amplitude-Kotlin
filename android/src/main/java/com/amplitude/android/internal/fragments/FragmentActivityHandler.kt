@@ -19,16 +19,16 @@ internal object FragmentActivityHandler {
             val callback = AutocaptureFragmentLifecycleCallbacks(track, logger)
             supportFragmentManager.registerFragmentLifecycleCallbacks(callback, false)
             callbacksMap.getOrPut(this) { mutableListOf() }.add(callback)
-        }
+        } ?: logger.debug("Activity is not a FragmentActivity")
     }
 
-    fun Activity.unregisterFragmentLifecycleCallbacks() {
+    fun Activity.unregisterFragmentLifecycleCallbacks(logger: Logger) {
         (this as? FragmentActivity)?.apply {
             callbacksMap.remove(this)?.let { callbacks ->
                 for (callback in callbacks) {
                     supportFragmentManager.unregisterFragmentLifecycleCallbacks(callback)
                 }
             }
-        }
+        } ?: logger.debug("Activity is not a FragmentActivity")
     }
 }
