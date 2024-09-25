@@ -14,7 +14,7 @@ import java.io.File
 /**
  * Data is stored in storage in the following format
  * /app_amplitude-kotlin-{api_key}
- *   /amplitude-identify-{api_key}.properties (this stores the user id, device id and api key)
+ *   /amplitude-identity-{api_key}.properties (this stores the user id, device id and api key)
  * /app_amplitude-disk-queue (this stores the events)
  *   /{instance_name}-0
  *   /{instance_name}-1.tmp
@@ -99,7 +99,7 @@ internal class AndroidStorageContextV1(
             identityStorageProvider = configuration.identityStorageProvider,
             storageDirectory = storageDirectory,
             logger = configuration.loggerProvider.getLogger(amplitude),
-            fileName = "amplitude-identify-${configuration.apiKey}"
+            fileName = "amplitude-identity-${configuration.apiKey}"
         )
     }
 

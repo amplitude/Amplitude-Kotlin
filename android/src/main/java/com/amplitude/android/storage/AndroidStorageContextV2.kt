@@ -15,7 +15,7 @@ import java.io.File
 /**
  * Data is stored in storage in the following format
  * /app_amplitude-kotlin-{instance_name}
- *   /amplitude-identify-{instance_name}.properties (this stores the user id, device id and api key)
+ *   /amplitude-identity-{instance_name}.properties (this stores the user id, device id and api key)
  * /app_amplitude-disk-queue (this stores the events)
  *   /{instance_name}-0
  *   /{instance_name}-1.tmp

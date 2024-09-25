@@ -87,7 +87,7 @@ open class Amplitude internal constructor(
             identityStorageProvider = configuration.identityStorageProvider,
             logger = logger,
             storageDirectory = File("/tmp/amplitude-identity/${configuration.instanceName}"),
-            fileName = "amplitude-identify-${configuration.instanceName}",
+            fileName = "amplitude-identity-${configuration.instanceName}",
         )
     }
 
