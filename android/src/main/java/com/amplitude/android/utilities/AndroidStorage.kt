@@ -117,5 +117,3 @@ class AndroidStorage(
         return "amplitude-disk-queue"
     }
 }
-
-
