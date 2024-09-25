@@ -2,81 +2,80 @@ package com.amplitude.android.utilities
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.amplitude.android.storage.AndroidStorageV2
 import com.amplitude.common.Logger
-import com.amplitude.core.Amplitude
 import com.amplitude.core.Configuration
 import com.amplitude.core.EventCallBack
 import com.amplitude.core.Storage
-import com.amplitude.core.StorageProvider
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline
 import com.amplitude.core.utilities.Diagnostics
-import com.amplitude.core.utilities.EventsFileManager
 import com.amplitude.core.utilities.EventsFileStorage
-import com.amplitude.core.utilities.FileResponseHandler
-import com.amplitude.core.utilities.JSONUtil
 import com.amplitude.core.utilities.ResponseHandler
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import org.json.JSONArray
-import java.io.File
 
 class AndroidStorage(
     context: Context,
     val storageKey: String,
-    private val logger: Logger,
+    logger: Logger,
     internal val prefix: String?,
-    private val diagnostics: Diagnostics,
+    diagnostics: Diagnostics,
 ) : Storage, EventsFileStorage {
     companion object {
         const val STORAGE_PREFIX = "amplitude-android"
     }
 
-    internal val sharedPreferences: SharedPreferences =
-        context.getSharedPreferences("${getPrefix()}-$storageKey", Context.MODE_PRIVATE)
-    private val storageDirectory: File = context.getDir(getDir(), Context.MODE_PRIVATE)
-    private val eventsFile =
-        EventsFileManager(storageDirectory, storageKey, AndroidKVS(sharedPreferences), logger, diagnostics)
-    private val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
+    val sharedPreferences: SharedPreferences
+    internal val storageV2: AndroidStorageV2
+
+    init {
+        val sharedPreferencesFile = "${getPrefix()}-$storageKey"
+        sharedPreferences = context.getSharedPreferences(sharedPreferencesFile, Context.MODE_PRIVATE)
+        val storageDirectory = context.getDir(getDir(), Context.MODE_PRIVATE)
+        storageV2 = AndroidStorageV2(
+            storageKey,
+            logger,
+            sharedPreferences,
+            storageDirectory,
+            diagnostics,
+        )
+    }
 
     override suspend fun writeEvent(event: BaseEvent) {
-        eventsFile.storeEvent(JSONUtil.eventToString(event))
-        event.callback?.let { callback ->
-            event.insertId?.let {
-                eventCallbacksMap.put(it, callback)
-            }
-        }
+        storageV2.writeEvent(event)
     }
 
     override suspend fun write(
         key: Storage.Constants,
         value: String,
     ) {
-        sharedPreferences.edit().putString(key.rawVal, value).apply()
+        storageV2.write(key, value)
     }
 
     override suspend fun remove(key: Storage.Constants) {
-        sharedPreferences.edit().remove(key.rawVal).apply()
+        storageV2.remove(key)
     }
 
     override suspend fun rollover() {
-        eventsFile.rollover()
+        storageV2.rollover()
     }
 
     override fun read(key: Storage.Constants): String? {
-        return sharedPreferences.getString(key.rawVal, null)
+        return storageV2.read(key)
     }
 
     override fun readEventsContent(): List<Any> {
-        return eventsFile.read()
+        return storageV2.readEventsContent()
     }
 
     override fun releaseFile(filePath: String) {
-        eventsFile.release(filePath)
+        storageV2.releaseFile(filePath)
     }
 
     override suspend fun getEventsString(content: Any): String {
-        return eventsFile.getEventString(content as String)
+        return storageV2.getEventsString(content)
     }
 
     override fun getResponseHandler(
@@ -85,33 +84,26 @@ class AndroidStorage(
         scope: CoroutineScope,
         dispatcher: CoroutineDispatcher,
     ): ResponseHandler {
-        return FileResponseHandler(
-            this,
-            eventPipeline,
-            configuration,
-            scope,
-            dispatcher,
-            logger,
-        )
+        return storageV2.getResponseHandler(eventPipeline, configuration, scope, dispatcher)
     }
 
     override fun removeFile(filePath: String): Boolean {
-        return eventsFile.remove(filePath)
+        return storageV2.removeFile(filePath)
     }
 
     override fun getEventCallback(insertId: String): EventCallBack? {
-        return eventCallbacksMap[insertId]
+        return storageV2.getEventCallback(insertId)
     }
 
     override fun removeEventCallback(insertId: String) {
-        eventCallbacksMap.remove(insertId)
+        return storageV2.removeEventCallback(insertId)
     }
 
     override fun splitEventFile(
         filePath: String,
         events: JSONArray,
     ) {
-        eventsFile.splitFile(filePath, events)
+        return storageV2.splitEventFile(filePath, events)
     }
 
     private fun getPrefix(): String {
@@ -126,18 +118,4 @@ class AndroidStorage(
     }
 }
 
-class AndroidStorageProvider : StorageProvider {
-    override fun getStorage(
-        amplitude: Amplitude,
-        prefix: String?,
-    ): Storage {
-        val configuration = amplitude.configuration as com.amplitude.android.Configuration
-        return AndroidStorage(
-            configuration.context,
-            configuration.instanceName,
-            configuration.loggerProvider.getLogger(amplitude),
-            prefix,
-            amplitude.diagnostics,
-        )
-    }
-}
+

@@ -1,18 +1,18 @@
 package com.amplitude.android
 
 import android.content.Context
-import com.amplitude.android.migration.ApiKeyStorageMigration
-import com.amplitude.android.migration.RemnantDataMigration
+import com.amplitude.android.migration.MigrationManager
 import com.amplitude.android.plugins.AnalyticsConnectorIdentityPlugin
 import com.amplitude.android.plugins.AnalyticsConnectorPlugin
 import com.amplitude.android.plugins.AndroidContextPlugin
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.android.plugins.AndroidNetworkConnectivityCheckerPlugin
+import com.amplitude.android.storage.AndroidStorageContextV3
+import com.amplitude.android.storage.LegacySdkStorageContext
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
-import com.amplitude.core.utilities.FileStorage
 import com.amplitude.id.IdentityConfiguration
 import kotlinx.coroutines.launch
 
@@ -36,22 +36,24 @@ open class Amplitude(
 
     override fun createIdentityConfiguration(): IdentityConfiguration {
         val configuration = configuration as Configuration
-        val storageDirectory = configuration.context.getDir("${FileStorage.STORAGE_PREFIX}-${configuration.instanceName}", Context.MODE_PRIVATE)
 
         return IdentityConfiguration(
             instanceName = configuration.instanceName,
             apiKey = configuration.apiKey,
             identityStorageProvider = configuration.identityStorageProvider,
-            storageDirectory = storageDirectory,
-            logger = configuration.loggerProvider.getLogger(this)
+            storageDirectory = AndroidStorageContextV3.getIdentityStorageDirectory(configuration),
+            logger = configuration.loggerProvider.getLogger(this),
+            fileName = AndroidStorageContextV3.getIdentityStorageFileName()
         )
     }
 
     override suspend fun buildInternal(identityConfiguration: IdentityConfiguration) {
-        ApiKeyStorageMigration(this).execute()
+        val migrationManager = MigrationManager(this)
+        migrationManager.migrateOldStorage()
 
         if ((this.configuration as Configuration).migrateLegacyData) {
-            RemnantDataMigration(this).execute()
+            val legacySdkStorageContext = LegacySdkStorageContext(this)
+            legacySdkStorageContext.migrateToLatestVersion()
         }
         this.createIdentityContainer(identityConfiguration)
 

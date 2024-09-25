@@ -16,7 +16,7 @@ import java.io.File
 import java.util.UUID
 
 @RunWith(RobolectricTestRunner::class)
-class StorageKeyMigrationTest {
+class AndroidStorageMigrationTest {
     private val testDiagnostics = Diagnostics()
 
     @Test
@@ -46,7 +46,7 @@ class StorageKeyMigrationTest {
         Assertions.assertNull(destinationLastEventId)
         Assertions.assertEquals(-1, destinationFileIndex)
 
-        val migration = StorageKeyMigration(source, destination, logger)
+        val migration = AndroidStorageMigration(source.storageV2, destination.storageV2, logger)
         runBlocking {
             migration.execute()
         }
@@ -98,7 +98,7 @@ class StorageKeyMigrationTest {
         var destinationEventFiles = destination.readEventsContent() as List<String>
         Assertions.assertEquals(0, destinationEventFiles.size)
 
-        val migration = StorageKeyMigration(source, destination, logger)
+        val migration = AndroidStorageMigration(source.storageV2, destination.storageV2, logger)
         runBlocking {
             migration.execute()
         }
@@ -131,7 +131,7 @@ class StorageKeyMigrationTest {
         Assertions.assertNull(destinationLastEventTime)
         Assertions.assertNull(destinationLastEventId)
 
-        val migration = StorageKeyMigration(source, destination, logger)
+        val migration = AndroidStorageMigration(source.storageV2, destination.storageV2, logger)
         runBlocking {
             migration.execute()
         }
@@ -178,7 +178,7 @@ class StorageKeyMigrationTest {
 
         val destinationFileSizes = destinationEventFiles.map { File(it).length() }
 
-        val migration = StorageKeyMigration(source, destination, logger)
+        val migration = AndroidStorageMigration(source.storageV2, destination.storageV2, logger)
         runBlocking {
             migration.execute()
         }

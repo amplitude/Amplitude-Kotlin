@@ -18,6 +18,11 @@ class IMIdentityStorage : IdentityStorage {
     override fun saveDeviceId(deviceId: String?) {
         this.deviceId = deviceId
     }
+
+    override fun delete() {
+        userId = null
+        deviceId = null
+    }
 }
 
 /**

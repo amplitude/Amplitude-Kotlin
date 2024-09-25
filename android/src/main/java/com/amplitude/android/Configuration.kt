@@ -1,8 +1,8 @@
 package com.amplitude.android
 
 import android.content.Context
+import com.amplitude.android.storage.AndroidStorageContextV3
 import com.amplitude.android.utilities.AndroidLoggerProvider
-import com.amplitude.android.utilities.AndroidStorageProvider
 import com.amplitude.core.Configuration
 import com.amplitude.core.EventCallBack
 import com.amplitude.core.LoggerProvider
@@ -10,8 +10,8 @@ import com.amplitude.core.ServerZone
 import com.amplitude.core.StorageProvider
 import com.amplitude.core.events.IngestionMetadata
 import com.amplitude.core.events.Plan
-import com.amplitude.id.FileIdentityStorageProvider
 import com.amplitude.id.IdentityStorageProvider
+import java.io.File
 
 open class Configuration(
     apiKey: String,
@@ -20,7 +20,7 @@ open class Configuration(
     override var flushIntervalMillis: Int = FLUSH_INTERVAL_MILLIS,
     override var instanceName: String = DEFAULT_INSTANCE,
     override var optOut: Boolean = false,
-    override var storageProvider: StorageProvider = AndroidStorageProvider(),
+    override var storageProvider: StorageProvider = AndroidStorageContextV3.eventsStorageProvider,
     override var loggerProvider: LoggerProvider = AndroidLoggerProvider(),
     override var minIdLength: Int? = null,
     override var partnerId: String? = null,
@@ -41,8 +41,8 @@ open class Configuration(
     var minTimeBetweenSessionsMillis: Long = MIN_TIME_BETWEEN_SESSIONS_MILLIS,
     autocapture: Set<AutocaptureOption> = setOf(AutocaptureOption.SESSIONS),
     override var identifyBatchIntervalMillis: Long = IDENTIFY_BATCH_INTERVAL_MILLIS,
-    override var identifyInterceptStorageProvider: StorageProvider = AndroidStorageProvider(),
-    override var identityStorageProvider: IdentityStorageProvider = FileIdentityStorageProvider(),
+    override var identifyInterceptStorageProvider: StorageProvider = AndroidStorageContextV3.identifyInterceptStorageProvider,
+    override var identityStorageProvider: IdentityStorageProvider = AndroidStorageContextV3.identityStorageProvider,
     var migrateLegacyData: Boolean = true,
     override var offline: Boolean? = false,
     override var deviceId: String? = null,
@@ -84,7 +84,7 @@ open class Configuration(
         flushIntervalMillis: Int = FLUSH_INTERVAL_MILLIS,
         instanceName: String = DEFAULT_INSTANCE,
         optOut: Boolean = false,
-        storageProvider: StorageProvider = AndroidStorageProvider(),
+        storageProvider: StorageProvider = AndroidStorageContextV3.eventsStorageProvider,
         loggerProvider: LoggerProvider = AndroidLoggerProvider(),
         minIdLength: Int? = null,
         partnerId: String? = null,
@@ -106,8 +106,8 @@ open class Configuration(
         trackingSessionEvents: Boolean = true,
         @Suppress("DEPRECATION") defaultTracking: DefaultTrackingOptions = DefaultTrackingOptions(),
         identifyBatchIntervalMillis: Long = IDENTIFY_BATCH_INTERVAL_MILLIS,
-        identifyInterceptStorageProvider: StorageProvider = AndroidStorageProvider(),
-        identityStorageProvider: IdentityStorageProvider = FileIdentityStorageProvider(),
+        identifyInterceptStorageProvider: StorageProvider = AndroidStorageContextV3.identifyInterceptStorageProvider,
+        identityStorageProvider: IdentityStorageProvider = AndroidStorageContextV3.identityStorageProvider,
         migrateLegacyData: Boolean = true,
         offline: Boolean? = false,
         deviceId: String? = null,
@@ -154,6 +154,8 @@ open class Configuration(
         this.defaultTracking = defaultTracking
     }
 
+    private var storageDirectory: File? = null
+
     // A backing property to store the autocapture options. Any changes to `trackingSessionEvents`
     // or the `defaultTracking` options will be reflected in this property.
     private var _autocapture: MutableSet<AutocaptureOption> = autocapture.toMutableSet()
@@ -180,5 +182,14 @@ open class Configuration(
     @Suppress("DEPRECATION")
     private fun DefaultTrackingOptions.updateAutocaptureOnPropertyChange() {
         _autocapture = autocaptureOptions
+    }
+
+    internal fun getStorageDirectory(): File {
+        if (storageDirectory == null) {
+            val dir = context.getDir("amplitude", Context.MODE_PRIVATE)
+            storageDirectory = File(dir, "${context.packageName}/$instanceName/analytics/")
+            storageDirectory?.mkdirs()
+        }
+        return storageDirectory!!
     }
 }

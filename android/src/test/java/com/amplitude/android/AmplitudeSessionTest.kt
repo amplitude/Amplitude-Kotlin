@@ -28,6 +28,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.io.File
 
 @ExperimentalCoroutinesApi
 class AmplitudeSessionTest {
@@ -51,7 +52,9 @@ class AmplitudeSessionTest {
 
         val configuration = IdentityConfiguration(
             instanceName,
-            identityStorageProvider = IMIdentityStorageProvider()
+            identityStorageProvider = IMIdentityStorageProvider(),
+            storageDirectory = File("/tmp/amplitude-kotlin-identity-test"),
+            fileName = "identity",
         )
         IdentityContainer.getInstance(configuration)
     }

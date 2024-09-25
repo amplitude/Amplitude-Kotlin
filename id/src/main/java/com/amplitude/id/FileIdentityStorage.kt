@@ -8,7 +8,6 @@ class FileIdentityStorage(val configuration: IdentityConfiguration) : IdentitySt
     private val propertiesFile: PropertiesFile
 
     companion object {
-        const val STORAGE_PREFIX = "amplitude-identity"
         const val USER_ID_KEY = "user_id"
         const val DEVICE_ID_KEY = "device_id"
         const val API_KEY = "api_key"
@@ -16,10 +15,9 @@ class FileIdentityStorage(val configuration: IdentityConfiguration) : IdentitySt
     }
 
     init {
-        val instanceName = configuration.instanceName
-        val storageDirectory = configuration.storageDirectory ?: File("/tmp/$STORAGE_PREFIX/$instanceName")
+        val storageDirectory = configuration.storageDirectory
         createDirectory(storageDirectory)
-        propertiesFile = PropertiesFile(storageDirectory, instanceName, STORAGE_PREFIX, configuration.logger)
+        propertiesFile = PropertiesFile(storageDirectory, configuration.fileName, configuration.logger)
         propertiesFile.load()
         safetyCheck()
     }
@@ -63,6 +61,10 @@ class FileIdentityStorage(val configuration: IdentityConfiguration) : IdentitySt
         }
         val savedApiKey = propertiesFile.getString(apiKey, null) ?: return true
         return savedApiKey == configValue
+    }
+
+    override fun delete() {
+        propertiesFile.deletePropertiesFile()
     }
 }
 

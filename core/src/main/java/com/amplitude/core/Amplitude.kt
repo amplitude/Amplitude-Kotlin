@@ -32,6 +32,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import java.io.File
 import java.util.UUID
 import java.util.concurrent.Executors
 
@@ -85,6 +86,8 @@ open class Amplitude internal constructor(
             apiKey = configuration.apiKey,
             identityStorageProvider = configuration.identityStorageProvider,
             logger = logger,
+            storageDirectory = File("/tmp/amplitude-identity/${configuration.instanceName}"),
+            fileName = "amplitude-identify-${configuration.instanceName}",
         )
     }
 
