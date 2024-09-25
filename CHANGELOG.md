@@ -1,3 +1,31 @@
+# [1.18.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.17.4...v1.18.0) (2024-08-22)
+
+
+### Features
+
+* Capture top-level Fragments with Autocapture ([#216](https://github.com/amplitude/Amplitude-Kotlin/issues/216)) ([e16b97a](https://github.com/amplitude/Amplitude-Kotlin/commit/e16b97ad25c1d865947856c20e2e475a5733f161))
+
+## [1.17.4](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.17.3...v1.17.4) (2024-08-21)
+
+
+### Bug Fixes
+
+* Catch network connectivity exceptions ([#221](https://github.com/amplitude/Amplitude-Kotlin/issues/221)) ([1ed787b](https://github.com/amplitude/Amplitude-Kotlin/commit/1ed787bcdd02f701b694afb8e4e688a0e2dd9af4))
+
+## [1.17.3](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.17.2...v1.17.3) (2024-08-13)
+
+
+### Bug Fixes
+
+* only track button text for the elementInteraction option of autocapture ([#219](https://github.com/amplitude/Amplitude-Kotlin/issues/219)) ([d566c74](https://github.com/amplitude/Amplitude-Kotlin/commit/d566c7421c648e52efecd976204bb30d8e2e61f3))
+
+## [1.17.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.17.1...v1.17.2) (2024-08-13)
+
+
+### Bug Fixes
+
+* Add target text capture for Android Views in Autocapture ([#218](https://github.com/amplitude/Amplitude-Kotlin/issues/218)) ([7617f88](https://github.com/amplitude/Amplitude-Kotlin/commit/7617f884a93cfd74847f209714a7fcdc7ce16697))
+
 ## [1.17.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.17.0...v1.17.1) (2024-08-09)
 
 

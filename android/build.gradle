@@ -8,7 +8,7 @@ ext {
     PUBLISH_NAME = 'Amplitude Android Kotlin SDK'
     PUBLISH_DESCRIPTION = 'Amplitude Kotlin client-side SDK for Android'
     PUBLISH_GROUP_ID = 'com.amplitude'
-    PUBLISH_VERSION = '1.17.1'
+    PUBLISH_VERSION = '1.18.0'
     PUBLISH_ARTIFACT_ID = 'analytics-android'
 }
 
@@ -63,7 +63,9 @@ dependencies {
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.5.2'
     implementation 'com.amplitude:analytics-connector:1.0.0'
     implementation 'androidx.core:core-ktx:1.7.0'
-    compileOnly 'androidx.compose.ui:ui:1.6.7'
+    implementation 'androidx.activity:activity-ktx:1.9.1'
+    compileOnly 'androidx.fragment:fragment-ktx:1.8.2'
+    compileOnly 'androidx.compose.ui:ui:1.6.8'
 
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.5'
 

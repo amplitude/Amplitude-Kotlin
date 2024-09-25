@@ -37,7 +37,10 @@ class AndroidNetworkConnectivityCheckerPlugin : Plugin {
                     amplitude.configuration.offline = true
                 }
             }
-        networkListener = AndroidNetworkListener((amplitude.configuration as Configuration).context)
+        networkListener = AndroidNetworkListener(
+            (amplitude.configuration as Configuration).context,
+            amplitude.logger
+        )
         networkListener.setNetworkChangeCallback(networkChangeHandler)
         networkListener.startListening()
     }
