@@ -77,7 +77,7 @@ internal class AndroidStorageContextV2(
             identityStorageProvider = configuration.identityStorageProvider,
             storageDirectory = storageDirectory,
             logger = configuration.loggerProvider.getLogger(amplitude),
-            fileName = "amplitude-identify-${configuration.instanceName}"
+            fileName = "amplitude-identity-${configuration.instanceName}"
         )
     }
 
