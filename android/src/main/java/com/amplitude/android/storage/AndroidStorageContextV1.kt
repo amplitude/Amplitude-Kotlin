@@ -1,7 +1,6 @@
 package com.amplitude.android.storage
 
 import android.content.Context
-import android.content.SharedPreferences
 import com.amplitude.android.Amplitude
 import com.amplitude.android.Configuration
 import com.amplitude.android.migration.AndroidStorageMigration

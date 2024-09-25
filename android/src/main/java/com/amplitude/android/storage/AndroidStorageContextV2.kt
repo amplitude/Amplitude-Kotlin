@@ -1,12 +1,10 @@
 package com.amplitude.android.storage
 
 import android.content.Context
-import android.content.SharedPreferences
 import com.amplitude.android.Amplitude
 import com.amplitude.android.Configuration
 import com.amplitude.android.migration.AndroidStorageMigration
 import com.amplitude.android.migration.IdentityStorageMigration
-import com.amplitude.android.utilities.AndroidStorage
 import com.amplitude.core.utilities.FileStorage
 import com.amplitude.id.FileIdentityStorage
 import com.amplitude.id.IdentityConfiguration
@@ -50,12 +48,14 @@ internal class AndroidStorageContextV2(
         eventsStorage = createAndroidStorage(
             configuration,
             "amplitude-disk-queue",
-            "amplitude-android-${configuration.instanceName}")
+            "amplitude-android-${configuration.instanceName}"
+        )
 
         identifyInterceptStorage = createAndroidStorage(
             configuration,
             "amplitude-identify-intercept-disk-queue",
-            "amplitude-identify-intercept-${configuration.instanceName}")
+            "amplitude-identify-intercept-${configuration.instanceName}"
+        )
 
         val identityConfiguration = generateIdentityConfiguration(amplitude, configuration)
         storageDirectories.add(identityConfiguration.storageDirectory)
@@ -80,7 +80,6 @@ internal class AndroidStorageContextV2(
             fileName = "amplitude-identity-${configuration.instanceName}"
         )
     }
-
 
     private fun createAndroidStorage(
         configuration: Configuration,

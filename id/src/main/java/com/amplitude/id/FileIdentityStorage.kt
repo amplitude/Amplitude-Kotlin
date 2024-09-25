@@ -2,7 +2,6 @@ package com.amplitude.id
 
 import com.amplitude.id.utilities.PropertiesFile
 import com.amplitude.id.utilities.createDirectory
-import java.io.File
 
 class FileIdentityStorage(val configuration: IdentityConfiguration) : IdentityStorage {
     private val propertiesFile: PropertiesFile

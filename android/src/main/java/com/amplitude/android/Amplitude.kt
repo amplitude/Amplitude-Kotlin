@@ -8,7 +8,6 @@ import com.amplitude.android.plugins.AndroidContextPlugin
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.android.plugins.AndroidNetworkConnectivityCheckerPlugin
 import com.amplitude.android.storage.AndroidStorageContextV3
-import com.amplitude.android.storage.LegacySdkStorageContext
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.plugins.AmplitudeDestination
