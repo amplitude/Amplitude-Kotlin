@@ -3,8 +3,8 @@ package com.amplitude.android.migration
 import com.amplitude.android.storage.AndroidStorageV2
 import com.amplitude.common.Logger
 import com.amplitude.core.Storage
-import com.amplitude.core.utilities.toBaseEvent
-import org.json.JSONObject
+import com.amplitude.core.utilities.toEvents
+import org.json.JSONArray
 
 class AndroidStorageMigration(
     private val source: AndroidStorageV2,
@@ -21,23 +21,27 @@ class AndroidStorageMigration(
             source.rollover()
             val sourceEventFiles = source.readEventsContent() as List<String>
             if (sourceEventFiles.isEmpty()) {
+                source.cleanupMetadata()
                 return
             }
 
             for (sourceEventFilePath in sourceEventFiles) {
-                val events = source.readEventsContent() as List<String>
+                val events = source.getEventsString(sourceEventFilePath)
                 var count = 0
-                for (event in events) {
+                val baseEvents = JSONArray(events).toEvents()
+                for (event in baseEvents) {
                     try {
                         count++
-                        destination.writeEvent(JSONObject(event).toBaseEvent())
+                        destination.writeEvent(event)
                     } catch (e: Exception) {
                         logger.error("can't move event ($event) from file $sourceEventFilePath: ${e.message}")
                     }
                 }
-                logger.debug("Migrated $count/${events.size} events from $sourceEventFilePath")
+                logger.debug("Migrated $count/${baseEvents.size} events from $sourceEventFilePath")
                 source.removeFile(sourceEventFilePath)
             }
+            source.cleanupMetadata()
+            destination.rollover()
         } catch (e: Exception) {
             logger.error("can't move event files: ${e.message}")
         }

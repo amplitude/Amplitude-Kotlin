@@ -11,4 +11,8 @@ class AndroidKVS(private val sharedPreferences: SharedPreferences) : KeyValueSto
     override fun putLong(key: String, value: Long): Boolean {
         return sharedPreferences.edit().putLong(key, value).commit()
     }
+
+    override fun deleteKey(key: String) {
+        sharedPreferences.edit().remove(key).commit()
+    }
 }

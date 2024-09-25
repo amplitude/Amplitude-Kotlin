@@ -1,14 +1,15 @@
 package com.amplitude.android.storage
 
 import android.content.Context
+import android.content.SharedPreferences
 import com.amplitude.android.Amplitude
 import com.amplitude.android.Configuration
 import com.amplitude.android.migration.AndroidStorageMigration
 import com.amplitude.android.migration.IdentityStorageMigration
-import com.amplitude.android.utilities.AndroidStorage
 import com.amplitude.core.utilities.FileStorage
 import com.amplitude.id.FileIdentityStorage
 import com.amplitude.id.IdentityConfiguration
+import java.io.File
 
 /**
  * Data is stored in storage in the following format
@@ -30,7 +31,7 @@ internal class AndroidStorageContextV1(
     /**
      * Stores all event data in storage
      */
-    private val eventsStorage: AndroidStorage
+    private val eventsStorage: AndroidStorageV2
 
     /**
      * Stores all identity data in storage (user id, device id etc)
@@ -40,26 +41,45 @@ internal class AndroidStorageContextV1(
     /**
      * Stores identifies intercepted by the SDK to reduce data sent over to the server
      */
-    private val identifyInterceptStorage: AndroidStorage
+    private val identifyInterceptStorage: AndroidStorageV2
+
+    private val storageDirectories = mutableListOf<File>()
 
     init {
-        eventsStorage = AndroidStorage(
-            configuration.context,
+        eventsStorage = createAndroidStorage(
+            configuration,
+            "amplitude-disk-queue",
+            "amplitude-android-${configuration.apiKey}"
+        )
+
+        identifyInterceptStorage = createAndroidStorage(
+            configuration,
+            "amplitude-identify-intercept-disk-queue",
+            "amplitude-identify-intercept-${configuration.apiKey}"
+        )
+
+        val identityConfig = generateIdentityConfiguration(amplitude, configuration)
+        storageDirectories.add(identityConfig.storageDirectory)
+        identityStorage = FileIdentityStorage(
+            identityConfig
+        )
+    }
+
+    private fun createAndroidStorage(
+        configuration: Configuration,
+        storageDirName: String,
+        sharedPreferencesName: String
+    ): AndroidStorageV2 {
+        val storageDirectory = configuration.context.getDir(storageDirName, Context.MODE_PRIVATE)
+        storageDirectories.add(storageDirectory)
+
+        val sharedPreferences =
+            configuration.context.getSharedPreferences(sharedPreferencesName, Context.MODE_PRIVATE)
+        return AndroidStorageV2(
             configuration.apiKey,
             configuration.loggerProvider.getLogger(amplitude),
-            null,
-            amplitude.diagnostics
-        )
-
-        identityStorage = FileIdentityStorage(
-            generateIdentityConfiguration(amplitude, configuration)
-        )
-
-        identifyInterceptStorage = AndroidStorage(
-            configuration.context,
-            configuration.instanceName,
-            configuration.loggerProvider.getLogger(amplitude),
-            "amplitude-identify-intercept",
+            sharedPreferences,
+            storageDirectory,
             amplitude.diagnostics
         )
     }
@@ -89,14 +109,20 @@ internal class AndroidStorageContextV1(
         identityMigration.execute()
 
         (amplitude.storage as? AndroidStorageV2)?.let {
-            val migrator = AndroidStorageMigration(eventsStorage.storageV2, it, amplitude.logger)
+            val migrator = AndroidStorageMigration(eventsStorage, it, amplitude.logger)
             migrator.execute()
         }
 
         (amplitude.identifyInterceptStorage as? AndroidStorageV2)?.let {
             val migrator =
-                AndroidStorageMigration(identifyInterceptStorage.storageV2, it, amplitude.logger)
+                AndroidStorageMigration(identifyInterceptStorage, it, amplitude.logger)
             migrator.execute()
+        }
+
+        for (dir in storageDirectories) {
+            if (dir.list()?.isEmpty() == true) {
+                dir.delete()
+            }
         }
     }
 }

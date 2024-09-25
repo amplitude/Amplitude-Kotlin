@@ -26,7 +26,7 @@ class AndroidStorageV2(
     /**
      * A generic key to differentiate multiple storage instances.
      */
-    val storageKey: String,
+    storageKey: String,
     private val logger: Logger,
     /**
      * A place where the storage stores some metadata to manage this storage
@@ -123,6 +123,10 @@ class AndroidStorageV2(
     ) {
         eventsFile.splitFile(filePath, events)
     }
+
+    fun cleanupMetadata() {
+        eventsFile.cleanupMetadata()
+    }
 }
 
 class AndroidEventsStorageProviderV2 : StorageProvider {
@@ -131,7 +135,7 @@ class AndroidEventsStorageProviderV2 : StorageProvider {
         prefix: String?,
     ): Storage {
         val configuration = amplitude.configuration as com.amplitude.android.Configuration
-        val sharedPreferencesName = "amplitude-events-${configuration.context.packageName}-${configuration.instanceName}"
+        val sharedPreferencesName = "amplitude-events-${configuration.instanceName}"
         val sharedPreferences = configuration.context.getSharedPreferences(sharedPreferencesName, Context.MODE_PRIVATE)
         return AndroidStorageV2(
             configuration.instanceName,
@@ -150,7 +154,7 @@ class AndroidIdentifyInterceptStorageProviderV2 : StorageProvider {
     ): Storage {
         val configuration = amplitude.configuration as com.amplitude.android.Configuration
         val sharedPreferences = configuration.context.getSharedPreferences(
-            "amplitude-id-intercept-${configuration.context.packageName}-${configuration.instanceName}",
+            "amplitude-identify-intercept-${configuration.instanceName}",
             Context.MODE_PRIVATE
         )
         return AndroidStorageV2(

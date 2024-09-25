@@ -55,6 +55,11 @@ class PropertiesFile(
         return true
     }
 
+    override fun deleteKey(key: String) {
+        underlyingProperties.remove(key)
+        save()
+    }
+
     fun putString(key: String, value: String): Boolean {
         underlyingProperties.setProperty(key, value)
         save()
@@ -89,4 +94,5 @@ class PropertiesFile(
 interface KeyValueStore {
     fun getLong(key: String, defaultVal: Long): Long
     fun putLong(key: String, value: Long): Boolean
+    fun deleteKey(key: String)
 }
