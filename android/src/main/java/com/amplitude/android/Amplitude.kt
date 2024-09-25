@@ -51,10 +51,6 @@ open class Amplitude(
         val migrationManager = MigrationManager(this)
         migrationManager.migrateOldStorage()
 
-        if ((this.configuration as Configuration).migrateLegacyData) {
-            val legacySdkStorageContext = LegacySdkStorageContext(this)
-            legacySdkStorageContext.migrateToLatestVersion()
-        }
         this.createIdentityContainer(identityConfiguration)
 
         if (this.configuration.offline != AndroidNetworkConnectivityCheckerPlugin.Disabled) {
