@@ -33,12 +33,13 @@ class MigrationManagerTest {
     @Before
     fun init() {
         context = ApplicationProvider.getApplicationContext()
+        IdentityContainer.clearInstanceCache()
     }
 
     @Test
     fun `test migration from legacy SDK`() {
         val databaseName = "legacy_v4.sqlite"
-        val instanceName = "test-instance"
+        val instanceName = "test-instance-legacy"
         val apiKey = "test-api-key"
         val inputStream = javaClass.classLoader?.getResourceAsStream(databaseName)!!
         val dbPath = context.getDatabasePath("com.amplitude.api_$instanceName")
