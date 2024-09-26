@@ -88,7 +88,7 @@ internal class AndroidStorageContextV1(
         configuration: Configuration
     ): IdentityConfiguration {
         val storageDirectory = configuration.context.getDir(
-            "${FileStorage.STORAGE_PREFIX}-${configuration.apiKey}",
+            "${FileStorage.STORAGE_PREFIX}-${configuration.instanceName}",
             Context.MODE_PRIVATE
         )
 
@@ -98,7 +98,7 @@ internal class AndroidStorageContextV1(
             identityStorageProvider = configuration.identityStorageProvider,
             storageDirectory = storageDirectory,
             logger = configuration.loggerProvider.getLogger(amplitude),
-            fileName = "amplitude-identity-${configuration.apiKey}"
+            fileName = "amplitude-identity-${configuration.instanceName}"
         )
     }
 

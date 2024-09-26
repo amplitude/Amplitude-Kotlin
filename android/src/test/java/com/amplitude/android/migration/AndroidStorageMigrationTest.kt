@@ -15,7 +15,6 @@ import org.junit.Test
 import org.junit.jupiter.api.Assertions
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import java.io.File
 import java.util.UUID
 
 @RunWith(RobolectricTestRunner::class)
@@ -186,7 +185,6 @@ class AndroidStorageMigrationTest {
             Assert.assertEquals("event-1", events[1].eventType)
             Assert.assertEquals("event-22", events[2].eventType)
         }
-
     }
 
     private suspend fun getEventsFromStorage(storage: Storage): List<BaseEvent> {
