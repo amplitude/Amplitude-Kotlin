@@ -22,6 +22,11 @@ class IdentityContainer private constructor(val configuration: IdentityConfigura
                 }
             }
         }
+
+        @JvmStatic
+        fun clearInstanceCache() {
+            instances.clear()
+        }
     }
 
     init {

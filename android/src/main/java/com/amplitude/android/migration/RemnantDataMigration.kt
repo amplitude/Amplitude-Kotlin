@@ -35,6 +35,8 @@ class RemnantDataMigration(val amplitude: Amplitude, private val databaseStorage
             moveIdentifies()
         }
         moveEvents()
+        amplitude.storage.rollover()
+        amplitude.identifyInterceptStorage.rollover()
     }
 
     private fun moveDeviceAndUserId() {

@@ -12,11 +12,11 @@ class AndroidStorageMigration(
     private val logger: Logger
 ) {
     suspend fun execute() {
-        moveSourceEventFilesToDestination()
+        moveEventsToDestination()
         moveSimpleValues()
     }
 
-    private suspend fun moveSourceEventFilesToDestination() {
+    private suspend fun moveEventsToDestination() {
         try {
             source.rollover()
             val sourceEventFiles = source.readEventsContent() as List<String>

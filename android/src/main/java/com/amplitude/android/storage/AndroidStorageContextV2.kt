@@ -30,17 +30,17 @@ internal class AndroidStorageContextV2(
     /**
      * Stores all event data in storage
      */
-    private val eventsStorage: AndroidStorageV2
+    val eventsStorage: AndroidStorageV2
 
     /**
      * Stores all identity data in storage (user id, device id etc)
      */
-    private val identityStorage: FileIdentityStorage
+    val identityStorage: FileIdentityStorage
 
     /**
      * Stores identifies intercepted by the SDK to reduce data sent over to the server
      */
-    private val identifyInterceptStorage: AndroidStorageV2
+    val identifyInterceptStorage: AndroidStorageV2
 
     private val storageDirectories = mutableListOf<File>()
 
@@ -105,15 +105,20 @@ internal class AndroidStorageContextV2(
             IdentityStorageMigration(identityStorage, amplitude.identityStorage, amplitude.logger)
         identityMigration.execute()
 
-        (amplitude.storage as? AndroidStorageV2)?.let {
-            val migrator = AndroidStorageMigration(eventsStorage, it, amplitude.logger)
-            migrator.execute()
-        }
+        if (amplitude.configuration.instanceName == com.amplitude.core.Configuration.DEFAULT_INSTANCE) {
+            // We only migrate events from the previous storage if instance name is the default instance
+            // When instance names are substrings of each other, we run into data access issues
+            //
+            (amplitude.storage as? AndroidStorageV2)?.let {
+                val migrator = AndroidStorageMigration(eventsStorage, it, amplitude.logger)
+                migrator.execute()
+            }
 
-        (amplitude.identifyInterceptStorage as? AndroidStorageV2)?.let {
-            val migrator =
-                AndroidStorageMigration(identifyInterceptStorage, it, amplitude.logger)
-            migrator.execute()
+            (amplitude.identifyInterceptStorage as? AndroidStorageV2)?.let {
+                val migrator =
+                    AndroidStorageMigration(identifyInterceptStorage, it, amplitude.logger)
+                migrator.execute()
+            }
         }
 
         for (dir in storageDirectories) {

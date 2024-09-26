@@ -30,17 +30,17 @@ internal class AndroidStorageContextV1(
     /**
      * Stores all event data in storage
      */
-    private val eventsStorage: AndroidStorageV2
+    val eventsStorage: AndroidStorageV2
 
     /**
      * Stores all identity data in storage (user id, device id etc)
      */
-    private val identityStorage: FileIdentityStorage
+    val identityStorage: FileIdentityStorage
 
     /**
      * Stores identifies intercepted by the SDK to reduce data sent over to the server
      */
-    private val identifyInterceptStorage: AndroidStorageV2
+    val identifyInterceptStorage: AndroidStorageV2
 
     private val storageDirectories = mutableListOf<File>()
 
@@ -84,7 +84,7 @@ internal class AndroidStorageContextV1(
     }
 
     private fun generateIdentityConfiguration(
-        amplitude: Amplitude,
+        amplitude: Amplitude?,
         configuration: Configuration
     ): IdentityConfiguration {
         val storageDirectory = configuration.context.getDir(
@@ -97,7 +97,7 @@ internal class AndroidStorageContextV1(
             apiKey = configuration.apiKey,
             identityStorageProvider = configuration.identityStorageProvider,
             storageDirectory = storageDirectory,
-            logger = configuration.loggerProvider.getLogger(amplitude),
+            logger = if (amplitude != null) configuration.loggerProvider.getLogger(amplitude) else null,
             fileName = "amplitude-identity-${configuration.instanceName}"
         )
     }
