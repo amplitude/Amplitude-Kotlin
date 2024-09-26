@@ -31,6 +31,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.io.File
 import kotlin.concurrent.thread
 
 open class StubPlugin : EventPlugin {
@@ -49,6 +50,7 @@ class AmplitudeTest {
         context = mockk<Application>(relaxed = true)
         connectivityManager = mockk<ConnectivityManager>(relaxed = true)
         every { context!!.getSystemService(Context.CONNECTIVITY_SERVICE) } returns connectivityManager
+        every { context!!.getDir(any(), any()) } returns File("/tmp/amplitude-kotlin-test")
 
         mockkStatic(AndroidLifecyclePlugin::class)
 

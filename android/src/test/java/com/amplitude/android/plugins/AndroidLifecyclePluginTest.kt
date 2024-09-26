@@ -37,6 +37,7 @@ import org.junit.jupiter.api.Assertions
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import java.io.File
 
 @ExperimentalCoroutinesApi
 @RunWith(RobolectricTestRunner::class)
@@ -88,6 +89,7 @@ class AndroidLifecyclePluginTest {
 
         connectivityManager = mockk<ConnectivityManager>(relaxed = true)
         every { mockedContext!!.getSystemService(Context.CONNECTIVITY_SERVICE) } returns connectivityManager
+        every { mockedContext!!.getDir(any(), any()) } returns File("/tmp/amplitude-kotlin-test")
 
         configuration = Configuration(
             apiKey = "api-key",

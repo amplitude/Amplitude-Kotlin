@@ -70,7 +70,8 @@ class AmplitudeSessionTest {
     private fun createConfiguration(storageProvider: StorageProvider? = null, shouldTrackSessions: Boolean = true): Configuration {
         val context = mockk<Application>(relaxed = true)
         var connectivityManager = mockk<ConnectivityManager>(relaxed = true)
-        every { context!!.getSystemService(Context.CONNECTIVITY_SERVICE) } returns connectivityManager
+        every { context.getSystemService(Context.CONNECTIVITY_SERVICE) } returns connectivityManager
+        every { context.getDir(any(), any()) } returns File("/tmp/amplitude-kotlin-test")
 
         return Configuration(
             apiKey = "api-key",
