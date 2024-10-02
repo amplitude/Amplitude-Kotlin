@@ -7,16 +7,18 @@ import com.amplitude.common.jvm.ConsoleLogger
 import com.amplitude.core.Storage
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.Diagnostics
+import com.amplitude.core.utilities.toEvents
 import kotlinx.coroutines.runBlocking
+import org.json.JSONArray
+import org.junit.Assert
 import org.junit.Test
 import org.junit.jupiter.api.Assertions
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import java.io.File
 import java.util.UUID
 
 @RunWith(RobolectricTestRunner::class)
-class StorageKeyMigrationTest {
+class AndroidStorageMigrationTest {
     private val testDiagnostics = Diagnostics()
 
     @Test
@@ -46,7 +48,7 @@ class StorageKeyMigrationTest {
         Assertions.assertNull(destinationLastEventId)
         Assertions.assertEquals(-1, destinationFileIndex)
 
-        val migration = StorageKeyMigration(source, destination, logger)
+        val migration = AndroidStorageMigration(source.storageV2, destination.storageV2, logger)
         runBlocking {
             migration.execute()
         }
@@ -64,12 +66,10 @@ class StorageKeyMigrationTest {
         destinationPreviousSessionId = destination.read(Storage.Constants.PREVIOUS_SESSION_ID)
         destinationLastEventTime = destination.read(Storage.Constants.LAST_EVENT_TIME)
         destinationLastEventId = destination.read(Storage.Constants.LAST_EVENT_ID)
-        destinationFileIndex = destination.sharedPreferences.getLong(destinationFileIndexKey, -1)
 
         Assertions.assertEquals("123", destinationPreviousSessionId)
         Assertions.assertEquals("456", destinationLastEventTime)
         Assertions.assertEquals("789", destinationLastEventId)
-        Assertions.assertEquals(1234567, destinationFileIndex)
     }
 
     @Test
@@ -93,12 +93,10 @@ class StorageKeyMigrationTest {
         var sourceEventFiles = source.readEventsContent() as List<String>
         Assertions.assertEquals(3, sourceEventFiles.size)
 
-        val sourceFileSizes = sourceEventFiles.map { File(it).length() }
-
         var destinationEventFiles = destination.readEventsContent() as List<String>
         Assertions.assertEquals(0, destinationEventFiles.size)
 
-        val migration = StorageKeyMigration(source, destination, logger)
+        val migration = AndroidStorageMigration(source.storageV2, destination.storageV2, logger)
         runBlocking {
             migration.execute()
         }
@@ -106,12 +104,13 @@ class StorageKeyMigrationTest {
         sourceEventFiles = source.readEventsContent() as List<String>
         Assertions.assertEquals(0, sourceEventFiles.size)
 
-        destinationEventFiles = destination.readEventsContent() as List<String>
-        Assertions.assertEquals(3, destinationEventFiles.size)
-
-        for ((index, destinationEventFile) in destinationEventFiles.withIndex()) {
-            val fileSize = File(destinationEventFile).length()
-            Assertions.assertEquals(sourceFileSizes[index], fileSize)
+        runBlocking {
+            val events = getEventsFromStorage(destination)
+            Assertions.assertEquals(4, events.size)
+            Assert.assertEquals("event-1", events[0].eventType)
+            Assert.assertEquals("event-22", events[1].eventType)
+            Assert.assertEquals("event-333", events[2].eventType)
+            Assert.assertEquals("event-4444", events[3].eventType)
         }
     }
 
@@ -131,7 +130,7 @@ class StorageKeyMigrationTest {
         Assertions.assertNull(destinationLastEventTime)
         Assertions.assertNull(destinationLastEventId)
 
-        val migration = StorageKeyMigration(source, destination, logger)
+        val migration = AndroidStorageMigration(source.storageV2, destination.storageV2, logger)
         runBlocking {
             migration.execute()
         }
@@ -166,8 +165,6 @@ class StorageKeyMigrationTest {
         val sourceEventFiles = source.readEventsContent() as List<String>
         Assertions.assertEquals(2, sourceEventFiles.size)
 
-        val sourceFileSizes = sourceEventFiles.map { File(it).length() }
-
         runBlocking {
             destination.writeEvent(createEvent(333))
             destination.rollover()
@@ -176,20 +173,28 @@ class StorageKeyMigrationTest {
         var destinationEventFiles = destination.readEventsContent() as List<String>
         Assertions.assertEquals(1, destinationEventFiles.size)
 
-        val destinationFileSizes = destinationEventFiles.map { File(it).length() }
-
-        val migration = StorageKeyMigration(source, destination, logger)
+        val migration = AndroidStorageMigration(source.storageV2, destination.storageV2, logger)
         runBlocking {
             migration.execute()
         }
 
-        destinationEventFiles = destination.readEventsContent() as List<String>
-        Assertions.assertEquals("-0", destinationEventFiles[0].substring(destinationEventFiles[0].length - 2))
-        Assertions.assertTrue(destinationEventFiles[1].contains("-0-"))
-        Assertions.assertEquals("-1", destinationEventFiles[2].substring(destinationEventFiles[0].length - 2))
-        Assertions.assertEquals(destinationFileSizes[0], File(destinationEventFiles[0]).length())
-        Assertions.assertEquals(sourceFileSizes[0], File(destinationEventFiles[1]).length())
-        Assertions.assertEquals(sourceFileSizes[1], File(destinationEventFiles[2]).length())
+        runBlocking {
+            val events = getEventsFromStorage(destination)
+            Assertions.assertEquals(3, events.size)
+            Assert.assertEquals("event-333", events[0].eventType)
+            Assert.assertEquals("event-1", events[1].eventType)
+            Assert.assertEquals("event-22", events[2].eventType)
+        }
+    }
+
+    private suspend fun getEventsFromStorage(storage: Storage): List<BaseEvent> {
+        val files = storage.readEventsContent() as List<String>
+        val events = mutableListOf<BaseEvent>()
+        for (file in files) {
+            val content = JSONArray(storage.getEventsString(file))
+            events.addAll(content.toEvents())
+        }
+        return events
     }
 
     private fun createEvent(eventIndex: Int): BaseEvent {

@@ -11,6 +11,7 @@ data class IdentityConfiguration(
     val apiKey: String? = null,
     val experimentApiKey: String? = null,
     val identityStorageProvider: IdentityStorageProvider,
-    val storageDirectory: File? = null,
+    val storageDirectory: File,
+    val fileName: String,
     val logger: Logger? = null
 )

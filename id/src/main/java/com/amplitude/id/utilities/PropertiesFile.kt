@@ -6,11 +6,14 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.util.Properties
 
-class PropertiesFile(directory: File, key: String, prefix: String, logger: Logger?) : KeyValueStore {
+class PropertiesFile(
+    directory: File,
+    fileNameWithoutExtension: String,
+    private val logger: Logger?
+) : KeyValueStore {
     internal var underlyingProperties: Properties = Properties()
-    private val propertiesFileName = "$prefix-$key.properties"
+    private val propertiesFileName = "$fileNameWithoutExtension.properties"
     private val propertiesFile = File(directory, propertiesFileName)
-    private val logger = logger
 
     /**
      * Check if underlying file exists, and load properties if true
@@ -52,6 +55,11 @@ class PropertiesFile(directory: File, key: String, prefix: String, logger: Logge
         return true
     }
 
+    override fun deleteKey(key: String) {
+        underlyingProperties.remove(key)
+        save()
+    }
+
     fun putString(key: String, value: String): Boolean {
         underlyingProperties.setProperty(key, value)
         save()
@@ -74,6 +82,10 @@ class PropertiesFile(directory: File, key: String, prefix: String, logger: Logge
         save()
         return true
     }
+
+    fun deletePropertiesFile() {
+        propertiesFile.delete()
+    }
 }
 
 /**
@@ -82,4 +94,5 @@ class PropertiesFile(directory: File, key: String, prefix: String, logger: Logge
 interface KeyValueStore {
     fun getLong(key: String, defaultVal: Long): Long
     fun putLong(key: String, value: Long): Boolean
+    fun deleteKey(key: String)
 }

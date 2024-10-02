@@ -28,7 +28,7 @@ class EventsFileManager(
 ) {
     private val fileIndexKey = "amplitude.events.file.index.$storageKey"
     private val storageVersionKey = "amplitude.events.file.version.$storageKey"
-    val filePathSet: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
+    val filePathSet: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap())
     val curFile: MutableMap<String, File> = ConcurrentHashMap<String, File>()
 
     companion object {
@@ -199,6 +199,11 @@ class EventsFileManager(
 
     fun release(filePath: String) {
         filePathSet.remove(filePath)
+    }
+
+    fun cleanupMetadata() {
+        kvs.deleteKey(fileIndexKey)
+        kvs.deleteKey(storageVersionKey)
     }
 
     private fun finish(file: File?) {

@@ -22,7 +22,7 @@ class EventsFileManagerTest {
     fun `test store event and read`() {
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
-        val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
+        val propertiesFile = PropertiesFile(tempDir, "test-prefix-$storageKey", logger)
         val eventsFileManager =
             EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
         runBlocking {
@@ -67,7 +67,7 @@ class EventsFileManagerTest {
     fun `rollover should finish current non-empty temp file`() {
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
-        val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
+        val propertiesFile = PropertiesFile(tempDir, "test-prefix-$storageKey", logger)
         val eventsFileManager =
             EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
         runBlocking {
@@ -98,7 +98,7 @@ class EventsFileManagerTest {
     fun `rollover should ignore current empty temp file`() {
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
-        val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
+        val propertiesFile = PropertiesFile(tempDir, "test-prefix-$storageKey", logger)
         val eventsFileManager =
             EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
         runBlocking {
@@ -112,7 +112,7 @@ class EventsFileManagerTest {
     fun `remove should delete a file`() {
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
-        val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
+        val propertiesFile = PropertiesFile(tempDir, "test-prefix-$storageKey", logger)
         val eventsFileManager =
             EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
         runBlocking {
@@ -130,7 +130,7 @@ class EventsFileManagerTest {
     fun `test split`() {
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
-        val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
+        val propertiesFile = PropertiesFile(tempDir, "test-prefix-$storageKey", logger)
         val eventsFileManager =
             EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
         runBlocking {
@@ -168,7 +168,7 @@ class EventsFileManagerTest {
         file0.writeText("{\"eventType\":\"test1\"}\u0000{\"eventType\":\"test2\"}\u0000")
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
-        val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
+        val propertiesFile = PropertiesFile(tempDir, "test-prefix-$storageKey", logger)
         val eventsFileManager =
             EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
         runBlocking {
@@ -188,7 +188,7 @@ class EventsFileManagerTest {
         file0.writeText("{\"eventType\":\"test1\"}\u0000{\"eventType\":\"test2\"}\u0000{\"eventType\":\"test3\"\u0000")
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
-        val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
+        val propertiesFile = PropertiesFile(tempDir, "test-prefix-$storageKey", logger)
         val diagnostics = Diagnostics()
         val eventsFileManager =
             EventsFileManager(tempDir, storageKey, propertiesFile, logger, diagnostics)
@@ -208,7 +208,7 @@ class EventsFileManagerTest {
     fun `verify delimiter in event names`() {
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
-        val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
+        val propertiesFile = PropertiesFile(tempDir, "test-prefix-$storageKey", logger)
         val eventsFileManager =
             EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
         runBlocking {
@@ -230,7 +230,7 @@ class EventsFileManagerTest {
         createEarlierVersionEventFiles()
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
-        val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
+        val propertiesFile = PropertiesFile(tempDir, "test-prefix-$storageKey", logger)
         val eventsFileManager =
             EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
         val filePaths = eventsFileManager.read()
@@ -277,7 +277,7 @@ class EventsFileManagerTest {
         file.writeText("{\"eventType\":\"test15\"},{\"eventType\":\"test16\"}]")
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
-        val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
+        val propertiesFile = PropertiesFile(tempDir, "test-prefix-$storageKey", logger)
         val eventsFileManager =
             EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
         runBlocking {
@@ -303,7 +303,7 @@ class EventsFileManagerTest {
         file.writeText("{\"eventType\":\"test15\"},{\"eventType\":\"test16\\nsuffix\"}]")
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
-        val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
+        val propertiesFile = PropertiesFile(tempDir, "test-prefix-$storageKey", logger)
         val eventsFileManager =
             EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
         runBlocking {
@@ -321,7 +321,7 @@ class EventsFileManagerTest {
     fun `concurrent writes to the same event file manager instance`() {
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
-        val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
+        val propertiesFile = PropertiesFile(tempDir, "test-prefix-$storageKey", logger)
         val eventsFileManager =
             EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
         runBlocking {
@@ -363,7 +363,7 @@ class EventsFileManagerTest {
     fun `concurrent write from multiple threads`() {
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
-        val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
+        val propertiesFile = PropertiesFile(tempDir, "test-prefix-$storageKey", logger)
         val eventsFileManager =
             EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
         for (i in 0..100) {
@@ -394,8 +394,8 @@ class EventsFileManagerTest {
     fun `concurrent write to two instances with same configuration`() {
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
-        val propertiesFile1 = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
-        val propertiesFile2 = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
+        val propertiesFile1 = PropertiesFile(tempDir, "test-prefix-$storageKey", logger)
+        val propertiesFile2 = PropertiesFile(tempDir, "test-prefix-$storageKey", logger)
         val eventsFileManager1 =
             EventsFileManager(tempDir, storageKey, propertiesFile1, logger, testDiagnostics)
         val eventsFileManager2 =
@@ -446,7 +446,7 @@ class EventsFileManagerTest {
     fun `concurrent write from multiple threads on multiple instances`() {
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
-        val propertiesFile = PropertiesFile(tempDir, storageKey, "test-prefix", logger)
+        val propertiesFile = PropertiesFile(tempDir, "test-prefix-$storageKey", logger)
         for (i in 0..100) {
             val eventsFileManager =
                 EventsFileManager(tempDir, storageKey, propertiesFile, logger, testDiagnostics)
