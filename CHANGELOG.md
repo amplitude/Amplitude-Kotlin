@@ -1,3 +1,10 @@
+# [1.19.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.18.0...v1.19.0) (2024-10-02)
+
+
+### Features
+
+* migrating storage to version v3 ([#226](https://github.com/amplitude/Amplitude-Kotlin/issues/226)) ([3be476b](https://github.com/amplitude/Amplitude-Kotlin/commit/3be476b6d9dcaa328334d8f9b82a9ca0727c232e))
+
 # [1.18.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.17.4...v1.18.0) (2024-08-22)
 
 
