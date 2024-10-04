@@ -1,3 +1,10 @@
+## [1.19.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.19.0...v1.19.1) (2024-10-04)
+
+
+### Bug Fixes
+
+* don't delete old profile file for backwards compatibility ([#227](https://github.com/amplitude/Amplitude-Kotlin/issues/227)) ([4e6957c](https://github.com/amplitude/Amplitude-Kotlin/commit/4e6957c2c7a1449469fb8b4a833a8f6f76ff7200))
+
 # [1.19.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.18.0...v1.19.0) (2024-10-02)
 
 
