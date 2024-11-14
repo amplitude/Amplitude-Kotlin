@@ -1,3 +1,10 @@
+## [1.19.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.19.1...v1.19.2) (2024-11-14)
+
+
+### Bug Fixes
+
+* type mismatch on `queryDb` ([#228](https://github.com/amplitude/Amplitude-Kotlin/issues/228)) ([1a708c6](https://github.com/amplitude/Amplitude-Kotlin/commit/1a708c60d5889ae6787c3a0842ae981c7e5becb0))
+
 ## [1.19.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.19.0...v1.19.1) (2024-10-04)
 
 
