@@ -54,6 +54,16 @@ open class Configuration @JvmOverloads constructor(
             true
         }
     }
+
+    internal fun getApiHost(): String {
+        if (!this.serverUrl.isNullOrEmpty()) {
+            return this.serverUrl!!
+        }
+        if (this.serverZone == ServerZone.EU) {
+            return if (this.useBatch) Constants.EU_BATCH_API_HOST else Constants.EU_DEFAULT_API_HOST
+        }
+        return if (this.useBatch) Constants.BATCH_API_HOST else Constants.DEFAULT_API_HOST
+    }
 }
 
 enum class ServerZone {

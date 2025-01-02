@@ -10,18 +10,23 @@ internal object HttpResponse {
             HttpStatus.SUCCESS.code -> {
                 return SuccessResponse()
             }
+
             HttpStatus.BAD_REQUEST.code -> {
                 return BadRequestResponse(JSONObject(responseBody))
             }
+
             HttpStatus.PAYLOAD_TOO_LARGE.code -> {
                 return PayloadTooLargeResponse(JSONObject(responseBody))
             }
+
             HttpStatus.TOO_MANY_REQUESTS.code -> {
                 return TooManyRequestsResponse(JSONObject(responseBody))
             }
+
             HttpStatus.TIMEOUT.code -> {
                 return TimeoutResponse()
             }
+
             else -> {
                 return FailedResponse(parseResponseBodyOrGetDefault(responseBody))
             }
@@ -45,6 +50,12 @@ internal object HttpResponse {
 
 interface Response {
     val status: HttpStatus
+
+    companion object {
+        fun create(responseCode: Int, responseBody: String?): Response {
+            return HttpResponse.createHttpResponse(responseCode, responseBody)
+        }
+    }
 }
 
 class SuccessResponse() : Response {
@@ -132,7 +143,7 @@ class TooManyRequestsResponse(response: JSONObject) : Response {
 
     fun isEventExceedDailyQuota(event: BaseEvent): Boolean {
         return (event.userId != null && exceededDailyQuotaUsers.contains(event.userId)) ||
-            (event.deviceId != null && exceededDailyQuotaDevices.contains(event.deviceId))
+                (event.deviceId != null && exceededDailyQuotaDevices.contains(event.deviceId))
     }
 }
 
@@ -151,18 +162,23 @@ interface ResponseHandler {
             is SuccessResponse -> {
                 handleSuccessResponse(response, events, eventsString)
             }
+
             is BadRequestResponse -> {
                 handleBadRequestResponse(response, events, eventsString)
             }
+
             is PayloadTooLargeResponse -> {
                 handlePayloadTooLargeResponse(response, events, eventsString)
             }
+
             is TooManyRequestsResponse -> {
                 handleTooManyRequestsResponse(response, events, eventsString)
             }
+
             is TimeoutResponse -> {
                 handleTimeoutResponse(response, events, eventsString)
             }
+
             else -> {
                 handleFailedResponse(response as FailedResponse, events, eventsString)
             }
@@ -170,9 +186,24 @@ interface ResponseHandler {
     }
 
     fun handleSuccessResponse(successResponse: SuccessResponse, events: Any, eventsString: String)
-    fun handleBadRequestResponse(badRequestResponse: BadRequestResponse, events: Any, eventsString: String)
-    fun handlePayloadTooLargeResponse(payloadTooLargeResponse: PayloadTooLargeResponse, events: Any, eventsString: String)
-    fun handleTooManyRequestsResponse(tooManyRequestsResponse: TooManyRequestsResponse, events: Any, eventsString: String)
+    fun handleBadRequestResponse(
+        badRequestResponse: BadRequestResponse,
+        events: Any,
+        eventsString: String
+    )
+
+    fun handlePayloadTooLargeResponse(
+        payloadTooLargeResponse: PayloadTooLargeResponse,
+        events: Any,
+        eventsString: String
+    )
+
+    fun handleTooManyRequestsResponse(
+        tooManyRequestsResponse: TooManyRequestsResponse,
+        events: Any,
+        eventsString: String
+    )
+
     fun handleTimeoutResponse(timeoutResponse: TimeoutResponse, events: Any, eventsString: String)
     fun handleFailedResponse(failedResponse: FailedResponse, events: Any, eventsString: String)
 }
