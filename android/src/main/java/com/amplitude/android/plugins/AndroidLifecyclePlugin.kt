@@ -60,6 +60,10 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     }
 
     override fun onActivityStarted(activity: Activity) {
+        if (!created.contains(activity.hashCode())) {
+            // We check for On Create in case if sdk was initialised in Main Activity
+            onActivityCreated(activity, activity.intent.extras)
+        }
         started.add(activity.hashCode())
 
         if (AutocaptureOption.APP_LIFECYCLES in androidConfiguration.autocapture && started.size == 1) {

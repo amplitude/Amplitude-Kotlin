@@ -7,6 +7,8 @@ import com.amplitude.android.autocaptureOptions
 import com.amplitude.common.Logger
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
+import com.amplitude.experiment.Experiment
+import com.amplitude.experiment.ExperimentConfig
 
 class MainApplication : Application() {
     companion object {
@@ -33,7 +35,7 @@ class MainApplication : Application() {
         )
 
         // Sample for Experiment Integration
-        /*val experimentConfig = ExperimentConfig.builder()
+        val experimentConfig = ExperimentConfig.builder()
             .debug(true)
             .build()
 
@@ -43,7 +45,7 @@ class MainApplication : Application() {
             experimentClient.fetch(null).get()
         } catch (e: Exception) {
             e.printStackTrace()
-        }*/
+        }
 
         // set app to debug mode
         amplitude.logger.logMode = Logger.LogMode.DEBUG
