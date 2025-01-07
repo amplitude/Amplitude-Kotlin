@@ -176,15 +176,16 @@ class AndroidLifecyclePluginTest {
         amplitude = Amplitude(configuration)
 
         setDispatcher(testScheduler)
+
+        // Stored previous version/build
+        amplitude.storage.write(Storage.Constants.APP_BUILD, "55")
+        amplitude.storage.write(Storage.Constants.APP_VERSION, "5.0.0")
+
         amplitude.add(androidLifecyclePlugin)
 
         val mockedPlugin = spyk(StubPlugin())
         amplitude.add(mockedPlugin)
         amplitude.isBuilt.await()
-
-        // Stored previous version/build
-        amplitude.storage.write(Storage.Constants.APP_BUILD, "55")
-        amplitude.storage.write(Storage.Constants.APP_VERSION, "5.0.0")
 
         val mockedActivity = mockk<Activity>()
         val mockedBundle = mockk<Bundle>()
@@ -328,9 +329,12 @@ class AndroidLifecyclePluginTest {
 
         val tracks = mutableListOf<BaseEvent>()
         verify { mockedPlugin.track(capture(tracks)) }
-        Assertions.assertEquals(1, tracks.count())
+        Assertions.assertEquals(2, tracks.count())
 
         with(tracks[0]) {
+            Assertions.assertEquals(DefaultEventUtils.EventTypes.APPLICATION_INSTALLED, eventType)
+        }
+        with(tracks[1]) {
             Assertions.assertEquals(DefaultEventUtils.EventTypes.APPLICATION_BACKGROUNDED, eventType)
         }
     }
