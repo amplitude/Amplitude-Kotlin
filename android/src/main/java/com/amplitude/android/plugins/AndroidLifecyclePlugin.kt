@@ -5,49 +5,52 @@ import android.app.Application
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Bundle
+import com.amplitude.android.Amplitude as AndroidAmplitude
 import com.amplitude.android.AutocaptureOption
 import com.amplitude.android.Configuration
 import com.amplitude.android.ExperimentalAmplitudeFeature
 import com.amplitude.android.utilities.DefaultEventUtils
 import com.amplitude.core.Amplitude
 import com.amplitude.core.platform.Plugin
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicInteger
 
 class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     override val type: Plugin.Type = Plugin.Type.Utility
     override lateinit var amplitude: Amplitude
     private lateinit var packageInfo: PackageInfo
-    private lateinit var androidAmplitude: com.amplitude.android.Amplitude
+    private lateinit var androidAmplitude: AndroidAmplitude
     private lateinit var androidConfiguration: Configuration
 
-    private val hasTrackedApplicationLifecycleEvents = AtomicBoolean(false)
-    private val numberOfActivities = AtomicInteger(1)
-    private val isFirstLaunch = AtomicBoolean(false)
+    private val created: MutableSet<Int> = mutableSetOf()
+    private val started: MutableSet<Int> = mutableSetOf()
+    private val resumed: MutableSet<Int> = mutableSetOf()
+
+    private var appInBackground = false
 
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
-        androidAmplitude = amplitude as com.amplitude.android.Amplitude
+        androidAmplitude = amplitude as AndroidAmplitude
         androidConfiguration = amplitude.configuration as Configuration
 
         val application = androidConfiguration.context as Application
-        val packageManager: PackageManager = application.packageManager
-        packageInfo = try {
-            packageManager.getPackageInfo(application.packageName, 0)
-        } catch (e: PackageManager.NameNotFoundException) {
-            // This shouldn't happen, but in case it happens, fallback to empty package info.
-            amplitude.logger.error("Cannot find package with application.packageName: " + application.packageName)
-            PackageInfo()
+
+        if (AutocaptureOption.APP_LIFECYCLES in androidConfiguration.autocapture) {
+            packageInfo = try {
+                application.packageManager.getPackageInfo(application.packageName, 0)
+            } catch (e: PackageManager.NameNotFoundException) {
+                // This shouldn't happen, but in case it happens, fallback to empty package info.
+                amplitude.logger.error("Cannot find package with application.packageName: " + application.packageName)
+                PackageInfo()
+            }
+
+            DefaultEventUtils(androidAmplitude).trackAppUpdatedInstalledEvent(packageInfo)
+
+            application.registerActivityLifecycleCallbacks(this)
         }
-        application.registerActivityLifecycleCallbacks(this)
     }
 
     override fun onActivityCreated(activity: Activity, bundle: Bundle?) {
-        if (!hasTrackedApplicationLifecycleEvents.getAndSet(true) && AutocaptureOption.APP_LIFECYCLES in androidConfiguration.autocapture) {
-            numberOfActivities.set(0)
-            isFirstLaunch.set(true)
-            DefaultEventUtils(androidAmplitude).trackAppUpdatedInstalledEvent(packageInfo)
-        }
+        created.add(activity.hashCode())
+
         if (AutocaptureOption.DEEP_LINKS in androidConfiguration.autocapture) {
             DefaultEventUtils(androidAmplitude).trackDeepLinkOpenedEvent(activity)
         }
@@ -57,19 +60,32 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     }
 
     override fun onActivityStarted(activity: Activity) {
+        if (!created.contains(activity.hashCode())) {
+            onActivityCreated(activity, null)
+        }
+        started.add(activity.hashCode())
+
+        if (AutocaptureOption.APP_LIFECYCLES in androidConfiguration.autocapture && started.size == 1) {
+            DefaultEventUtils(androidAmplitude).trackAppOpenedEvent(
+                packageInfo = packageInfo,
+                isFromBackground = appInBackground
+            )
+            appInBackground = false
+        }
+
         if (AutocaptureOption.SCREEN_VIEWS in androidConfiguration.autocapture) {
             DefaultEventUtils(androidAmplitude).trackScreenViewedEvent(activity)
         }
     }
 
     override fun onActivityResumed(activity: Activity) {
+        if (!started.contains(activity.hashCode())) {
+            onActivityStarted(activity)
+        }
+        resumed.add(activity.hashCode())
+
         androidAmplitude.onEnterForeground(getCurrentTimeMillis())
 
-        // numberOfActivities makes sure it only fires after activity creation or activity stopped
-        if (AutocaptureOption.APP_LIFECYCLES in androidConfiguration.autocapture && numberOfActivities.incrementAndGet() == 1) {
-            val isFromBackground = !isFirstLaunch.getAndSet(false)
-            DefaultEventUtils(androidAmplitude).trackAppOpenedEvent(packageInfo, isFromBackground)
-        }
         @OptIn(ExperimentalAmplitudeFeature::class)
         if (AutocaptureOption.ELEMENT_INTERACTIONS in androidConfiguration.autocapture) {
             DefaultEventUtils(androidAmplitude).startUserInteractionEventTracking(activity)
@@ -77,6 +93,11 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     }
 
     override fun onActivityPaused(activity: Activity) {
+        if (!resumed.contains(activity.hashCode())) {
+            onActivityResumed(activity)
+        }
+        resumed.remove(activity.hashCode())
+
         androidAmplitude.onExitForeground(getCurrentTimeMillis())
         @OptIn(ExperimentalAmplitudeFeature::class)
         if (AutocaptureOption.ELEMENT_INTERACTIONS in androidConfiguration.autocapture) {
@@ -85,9 +106,14 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     }
 
     override fun onActivityStopped(activity: Activity) {
-        // numberOfActivities makes sure it only fires after setup or activity resumed
-        if (AutocaptureOption.APP_LIFECYCLES in androidConfiguration.autocapture && numberOfActivities.decrementAndGet() == 0) {
+        if (!started.contains(activity.hashCode())) {
+            onActivityStarted(activity)
+        }
+        started.remove(activity.hashCode())
+
+        if (AutocaptureOption.APP_LIFECYCLES in androidConfiguration.autocapture && started.isEmpty()) {
             DefaultEventUtils(androidAmplitude).trackAppBackgroundedEvent()
+            appInBackground = true
         }
     }
 
@@ -95,6 +121,11 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     }
 
     override fun onActivityDestroyed(activity: Activity) {
+        if (!created.contains(activity.hashCode())) {
+            onActivityCreated(activity, null)
+        }
+        created.remove(activity.hashCode())
+
         if (AutocaptureOption.SCREEN_VIEWS in androidConfiguration.autocapture) {
             DefaultEventUtils(androidAmplitude).stopFragmentViewedEventTracking(activity)
         }
