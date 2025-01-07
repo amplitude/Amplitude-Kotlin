@@ -1,9 +1,12 @@
 package com.amplitude.android.plugins
 
 import android.app.Activity
+import android.app.ActivityManager
 import android.app.Application
+import android.content.Context
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import com.amplitude.android.Amplitude as AndroidAmplitude
 import com.amplitude.android.AutocaptureOption
@@ -60,9 +63,6 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     }
 
     override fun onActivityStarted(activity: Activity) {
-        if (!created.contains(activity.hashCode())) {
-            onActivityCreated(activity, null)
-        }
         started.add(activity.hashCode())
 
         if (AutocaptureOption.APP_LIFECYCLES in androidConfiguration.autocapture && started.size == 1) {
@@ -79,9 +79,6 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     }
 
     override fun onActivityResumed(activity: Activity) {
-        if (!started.contains(activity.hashCode())) {
-            onActivityStarted(activity)
-        }
         resumed.add(activity.hashCode())
 
         androidAmplitude.onEnterForeground(getCurrentTimeMillis())
@@ -93,9 +90,6 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     }
 
     override fun onActivityPaused(activity: Activity) {
-        if (!resumed.contains(activity.hashCode())) {
-            onActivityResumed(activity)
-        }
         resumed.remove(activity.hashCode())
 
         androidAmplitude.onExitForeground(getCurrentTimeMillis())
@@ -106,9 +100,6 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     }
 
     override fun onActivityStopped(activity: Activity) {
-        if (!started.contains(activity.hashCode())) {
-            onActivityStarted(activity)
-        }
         started.remove(activity.hashCode())
 
         if (AutocaptureOption.APP_LIFECYCLES in androidConfiguration.autocapture && started.isEmpty()) {
@@ -121,9 +112,6 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     }
 
     override fun onActivityDestroyed(activity: Activity) {
-        if (!created.contains(activity.hashCode())) {
-            onActivityCreated(activity, null)
-        }
         created.remove(activity.hashCode())
 
         if (AutocaptureOption.SCREEN_VIEWS in androidConfiguration.autocapture) {
