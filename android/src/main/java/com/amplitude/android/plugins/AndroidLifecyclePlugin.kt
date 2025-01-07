@@ -1,20 +1,17 @@
 package com.amplitude.android.plugins
 
 import android.app.Activity
-import android.app.ActivityManager
 import android.app.Application
-import android.content.Context
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
-import android.os.Build
 import android.os.Bundle
-import com.amplitude.android.Amplitude as AndroidAmplitude
 import com.amplitude.android.AutocaptureOption
 import com.amplitude.android.Configuration
 import com.amplitude.android.ExperimentalAmplitudeFeature
 import com.amplitude.android.utilities.DefaultEventUtils
 import com.amplitude.core.Amplitude
 import com.amplitude.core.platform.Plugin
+import com.amplitude.android.Amplitude as AndroidAmplitude
 
 class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     override val type: Plugin.Type = Plugin.Type.Utility
