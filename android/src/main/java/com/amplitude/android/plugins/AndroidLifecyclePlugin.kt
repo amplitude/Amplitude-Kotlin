@@ -22,7 +22,6 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
 
     private val created: MutableSet<Int> = mutableSetOf()
     private val started: MutableSet<Int> = mutableSetOf()
-    private val resumed: MutableSet<Int> = mutableSetOf()
 
     private var appInBackground = false
 
@@ -80,8 +79,6 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     }
 
     override fun onActivityResumed(activity: Activity) {
-        resumed.add(activity.hashCode())
-
         androidAmplitude.onEnterForeground(getCurrentTimeMillis())
 
         @OptIn(ExperimentalAmplitudeFeature::class)
@@ -91,9 +88,8 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     }
 
     override fun onActivityPaused(activity: Activity) {
-        resumed.remove(activity.hashCode())
-
         androidAmplitude.onExitForeground(getCurrentTimeMillis())
+
         @OptIn(ExperimentalAmplitudeFeature::class)
         if (AutocaptureOption.ELEMENT_INTERACTIONS in androidConfiguration.autocapture) {
             DefaultEventUtils(androidAmplitude).stopUserInteractionEventTracking(activity)
