@@ -31,8 +31,10 @@ open class Amplitude(
 
     init {
         registerShutdownHook()
-        with(configuration.context as Application) {
-            registerActivityLifecycleCallbacks(activityLifecycleCallbacks)
+        if (AutocaptureOption.APP_LIFECYCLES in configuration.autocapture) {
+            with(configuration.context as Application) {
+                registerActivityLifecycleCallbacks(activityLifecycleCallbacks)
+            }
         }
     }
 

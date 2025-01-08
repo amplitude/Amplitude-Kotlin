@@ -50,11 +50,9 @@ class AndroidLifecyclePlugin(
             }
 
             DefaultEventUtils(androidAmplitude).trackAppUpdatedInstalledEvent(packageInfo)
-        }
-        // We want to consume events to prevent memory growth in channel
-        eventJob = amplitude.amplitudeScope.launch {
-            for (event in activityLifecycleObserver.eventChannel) {
-                if (AutocaptureOption.APP_LIFECYCLES in androidConfiguration.autocapture) {
+
+            eventJob = amplitude.amplitudeScope.launch {
+                for (event in activityLifecycleObserver.eventChannel) {
                     event.activity.get()?.let { activity ->
                         when (event.type) {
                             ActivityCallbackType.Created -> onActivityCreated(
