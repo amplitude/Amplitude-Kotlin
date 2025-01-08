@@ -42,7 +42,7 @@ import java.io.File
 @ExperimentalCoroutinesApi
 @RunWith(RobolectricTestRunner::class)
 class AndroidLifecyclePluginTest {
-    private val androidLifecyclePlugin = AndroidLifecyclePlugin()
+    private val androidLifecyclePlugin = AndroidLifecyclePlugin(mockk(relaxed = true))
     private lateinit var amplitude: Amplitude
     private lateinit var configuration: Configuration
 

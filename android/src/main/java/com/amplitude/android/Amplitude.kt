@@ -1,5 +1,6 @@
 package com.amplitude.android
 
+import android.app.Application
 import android.content.Context
 import com.amplitude.android.migration.MigrationManager
 import com.amplitude.android.plugins.AnalyticsConnectorIdentityPlugin
@@ -8,6 +9,7 @@ import com.amplitude.android.plugins.AndroidContextPlugin
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.android.plugins.AndroidNetworkConnectivityCheckerPlugin
 import com.amplitude.android.storage.AndroidStorageContextV3
+import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.plugins.AmplitudeDestination
@@ -25,8 +27,13 @@ open class Amplitude(
             return (timeline as Timeline).sessionId
         }
 
+    private val activityLifecycleCallbacks = ActivityLifecycleObserver()
+
     init {
         registerShutdownHook()
+        with(configuration.context as Application) {
+            registerActivityLifecycleCallbacks(activityLifecycleCallbacks)
+        }
     }
 
     override fun createTimeline(): Timeline {
@@ -63,7 +70,7 @@ open class Amplitude(
         }
         add(androidContextPlugin)
         add(GetAmpliExtrasPlugin())
-        add(AndroidLifecyclePlugin())
+        add(AndroidLifecyclePlugin(activityLifecycleCallbacks))
         add(AnalyticsConnectorIdentityPlugin())
         add(AnalyticsConnectorPlugin())
         add(AmplitudeDestination())

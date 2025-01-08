@@ -8,12 +8,18 @@ import android.os.Bundle
 import com.amplitude.android.AutocaptureOption
 import com.amplitude.android.Configuration
 import com.amplitude.android.ExperimentalAmplitudeFeature
+import com.amplitude.android.utilities.ActivityCallbackType
+import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.android.utilities.DefaultEventUtils
 import com.amplitude.core.Amplitude
 import com.amplitude.core.platform.Plugin
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import com.amplitude.android.Amplitude as AndroidAmplitude
 
-class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
+class AndroidLifecyclePlugin(
+    private val activityLifecycleObserver: ActivityLifecycleObserver
+) : Application.ActivityLifecycleCallbacks, Plugin {
     override val type: Plugin.Type = Plugin.Type.Utility
     override lateinit var amplitude: Amplitude
     private lateinit var packageInfo: PackageInfo
@@ -24,6 +30,8 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
     private val started: MutableSet<Int> = mutableSetOf()
 
     private var appInBackground = false
+
+    private var eventJob: Job? = null
 
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
@@ -42,8 +50,26 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
             }
 
             DefaultEventUtils(androidAmplitude).trackAppUpdatedInstalledEvent(packageInfo)
-
-            application.registerActivityLifecycleCallbacks(this)
+        }
+        // We want to consume events to prevent memory growth in channel
+        eventJob = amplitude.amplitudeScope.launch {
+            for (event in activityLifecycleObserver.eventChannel) {
+                if (AutocaptureOption.APP_LIFECYCLES in androidConfiguration.autocapture) {
+                    event.activity.get()?.let { activity ->
+                        when (event.type) {
+                            ActivityCallbackType.Created -> onActivityCreated(
+                                activity,
+                                activity.intent.extras
+                            )
+                            ActivityCallbackType.Started -> onActivityStarted(activity)
+                            ActivityCallbackType.Resumed -> onActivityResumed(activity)
+                            ActivityCallbackType.Paused -> onActivityPaused(activity)
+                            ActivityCallbackType.Stopped -> onActivityStopped(activity)
+                            ActivityCallbackType.Destroyed -> onActivityDestroyed(activity)
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -118,7 +144,7 @@ class AndroidLifecyclePlugin : Application.ActivityLifecycleCallbacks, Plugin {
 
     override fun teardown() {
         super.teardown()
-        (androidConfiguration.context as Application).unregisterActivityLifecycleCallbacks(this)
+        eventJob?.cancel()
     }
 
     companion object {
