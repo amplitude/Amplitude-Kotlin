@@ -8,7 +8,7 @@ import java.lang.ref.WeakReference
 
 class ActivityLifecycleObserver : ActivityLifecycleCallbacks {
 
-    val eventChannel = Channel<ActivityCallbackEvent>(Channel.UNLIMITED)
+    internal val eventChannel = Channel<ActivityCallbackEvent>(Channel.UNLIMITED)
 
     override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
         eventChannel.trySend(

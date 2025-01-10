@@ -5,6 +5,7 @@ import android.app.Application
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Bundle
+import androidx.annotation.VisibleForTesting
 import com.amplitude.android.AutocaptureOption
 import com.amplitude.android.Configuration
 import com.amplitude.android.ExperimentalAmplitudeFeature
@@ -31,7 +32,8 @@ class AndroidLifecyclePlugin(
 
     private var appInBackground = false
 
-    private var eventJob: Job? = null
+    @VisibleForTesting
+    internal var eventJob: Job? = null
 
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
@@ -57,7 +59,7 @@ class AndroidLifecyclePlugin(
                         when (event.type) {
                             ActivityCallbackType.Created -> onActivityCreated(
                                 activity,
-                                activity.intent.extras
+                                activity.intent?.extras
                             )
                             ActivityCallbackType.Started -> onActivityStarted(activity)
                             ActivityCallbackType.Resumed -> onActivityResumed(activity)
@@ -74,9 +76,6 @@ class AndroidLifecyclePlugin(
     override fun onActivityCreated(activity: Activity, bundle: Bundle?) {
         created.add(activity.hashCode())
 
-        if (AutocaptureOption.DEEP_LINKS in androidConfiguration.autocapture) {
-            DefaultEventUtils(androidAmplitude).trackDeepLinkOpenedEvent(activity)
-        }
         if (AutocaptureOption.SCREEN_VIEWS in androidConfiguration.autocapture) {
             DefaultEventUtils(androidAmplitude).startFragmentViewedEventTracking(activity)
         }
@@ -95,6 +94,10 @@ class AndroidLifecyclePlugin(
                 isFromBackground = appInBackground
             )
             appInBackground = false
+        }
+
+        if (AutocaptureOption.DEEP_LINKS in androidConfiguration.autocapture) {
+            DefaultEventUtils(androidAmplitude).trackDeepLinkOpenedEvent(activity)
         }
 
         if (AutocaptureOption.SCREEN_VIEWS in androidConfiguration.autocapture) {

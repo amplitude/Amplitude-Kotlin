@@ -162,18 +162,18 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         } ?: amplitude.logger.error("Failed to stop user interaction event tracking: Activity window is null")
     }
 
+    private val isFragmentActivityAvailable by lazy {
+        LoadClass.isClassAvailable(FRAGMENT_ACTIVITY_CLASS_NAME, amplitude.logger)
+    }
+
     fun startFragmentViewedEventTracking(activity: Activity) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP &&
-            LoadClass.isClassAvailable(FRAGMENT_ACTIVITY_CLASS_NAME, amplitude.logger)
-        ) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && isFragmentActivityAvailable) {
             activity.registerFragmentLifecycleCallbacks(amplitude::track, amplitude.logger)
         }
     }
 
     fun stopFragmentViewedEventTracking(activity: Activity) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP &&
-            LoadClass.isClassAvailable(FRAGMENT_ACTIVITY_CLASS_NAME, amplitude.logger)
-        ) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && isFragmentActivityAvailable) {
             activity.unregisterFragmentLifecycleCallbacks(amplitude.logger)
         }
     }
@@ -181,7 +181,6 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
     companion object {
         private const val FRAGMENT_ACTIVITY_CLASS_NAME = "androidx.fragment.app.FragmentActivity"
         internal val Activity.screenName: String?
-            @Throws(PackageManager.NameNotFoundException::class, Exception::class)
             get() {
                 val packageManager = packageManager
                 val info =
@@ -203,21 +202,18 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             return activity.referrer
         } else {
             var referrerUri: Uri? = null
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-                val intent = activity.intent
-                referrerUri = intent.getParcelableExtra(Intent.EXTRA_REFERRER)
-
-                if (referrerUri == null) {
-                    referrerUri =
-                        intent.getStringExtra("android.intent.extra.REFERRER_NAME")?.let {
-                            try {
-                                Uri.parse(it)
-                            } catch (e: ParseException) {
-                                amplitude.logger.error("Failed to parse the referrer uri: $it")
-                                null
-                            }
+            val intent = activity.intent
+            referrerUri = intent.getParcelableExtra(Intent.EXTRA_REFERRER)
+            if (referrerUri == null) {
+                referrerUri =
+                    intent.getStringExtra("android.intent.extra.REFERRER_NAME")?.let {
+                        try {
+                            Uri.parse(it)
+                        } catch (e: ParseException) {
+                            amplitude.logger.error("Failed to parse the referrer uri: $it")
+                            null
                         }
-                }
+                    }
             }
             return referrerUri
         }
