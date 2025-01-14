@@ -1,3 +1,10 @@
+## [1.19.3](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.19.2...v1.19.3) (2025-01-14)
+
+
+### Bug Fixes
+
+* autocapture missing events fix ([#232](https://github.com/amplitude/Amplitude-Kotlin/issues/232)) ([7476456](https://github.com/amplitude/Amplitude-Kotlin/commit/74764561d2c87c5eb6f59198822f93ca249178ad))
+
 ## [1.19.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.19.1...v1.19.2) (2024-11-14)
 
 
