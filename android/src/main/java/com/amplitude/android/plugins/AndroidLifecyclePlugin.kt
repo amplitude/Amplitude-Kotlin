@@ -14,6 +14,7 @@ import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.android.utilities.DefaultEventUtils
 import com.amplitude.core.Amplitude
 import com.amplitude.core.platform.Plugin
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import com.amplitude.android.Amplitude as AndroidAmplitude
@@ -53,7 +54,7 @@ class AndroidLifecyclePlugin(
 
             DefaultEventUtils(androidAmplitude).trackAppUpdatedInstalledEvent(packageInfo)
 
-            eventJob = amplitude.amplitudeScope.launch {
+            eventJob = amplitude.amplitudeScope.launch(Dispatchers.Main) {
                 for (event in activityLifecycleObserver.eventChannel) {
                     event.activity.get()?.let { activity ->
                         when (event.type) {
