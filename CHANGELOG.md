@@ -1,3 +1,10 @@
+## [1.19.4](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.19.3...v1.19.4) (2025-01-23)
+
+
+### Bug Fixes
+
+* autocapture not main thread crash ([#235](https://github.com/amplitude/Amplitude-Kotlin/issues/235)) ([3582b73](https://github.com/amplitude/Amplitude-Kotlin/commit/3582b7368e5a642442d28dd3a8bf9e0b9ed82328))
+
 ## [1.19.3](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.19.2...v1.19.3) (2025-01-14)
 
 
