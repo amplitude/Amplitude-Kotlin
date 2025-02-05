@@ -3,6 +3,14 @@ package com.amplitude.core.utilities
 import com.amplitude.core.Configuration
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline
+import com.amplitude.core.utilities.http.BadRequestResponse
+import com.amplitude.core.utilities.http.FailedResponse
+import com.amplitude.core.utilities.http.HttpStatus
+import com.amplitude.core.utilities.http.PayloadTooLargeResponse
+import com.amplitude.core.utilities.http.ResponseHandler
+import com.amplitude.core.utilities.http.SuccessResponse
+import com.amplitude.core.utilities.http.TimeoutResponse
+import com.amplitude.core.utilities.http.TooManyRequestsResponse
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay

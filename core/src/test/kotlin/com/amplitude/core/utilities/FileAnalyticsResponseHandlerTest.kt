@@ -3,13 +3,14 @@ package com.amplitude.core.utilities
 import com.amplitude.core.Configuration
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline
+import com.amplitude.core.utilities.http.BadRequestResponse
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import org.json.JSONObject
 import org.junit.jupiter.api.Test
 
-class InMemoryResponseHandlerTest {
+class FileAnalyticsResponseHandlerTest {
     @Test
     fun testBadResponseHandlerForInvalidApiKey() {
         val response = BadRequestResponse(
@@ -18,7 +19,7 @@ class InMemoryResponseHandlerTest {
         val storage = mockk<EventsFileStorage>()
         val pipeline = mockk<EventPipeline>()
         val handler =
-            InMemoryResponseHandler(pipeline, Configuration("test"), mockk(), mockk())
+            FileResponseHandler(storage, pipeline, Configuration("test"), mockk(), mockk(), null)
 
         every {
             storage.removeFile("file_path")
@@ -26,12 +27,14 @@ class InMemoryResponseHandlerTest {
 
         handler.handleBadRequestResponse(
             response,
-            listOf(generateBaseEvent("test1"), generateBaseEvent("test2")),
-            ""
+            "file_path",
+            JSONUtil.eventsToString(
+                listOf(generateBaseEvent("test1"), generateBaseEvent("test2"))
+            )
         )
 
-        verify(exactly = 0) {
-            pipeline.put(any())
+        verify(exactly = 1) {
+            storage.removeFile("file_path")
         }
     }
 

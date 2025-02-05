@@ -1,4 +1,4 @@
-package com.amplitude.core.utilities
+package com.amplitude.core.utilities.http
 
 import com.amplitude.core.Configuration
 import java.io.BufferedReader
@@ -8,32 +8,9 @@ import java.net.HttpURLConnection
 import java.net.MalformedURLException
 import java.net.URL
 
-internal class HttpClient(
+open class HttpClient(
     private val configuration: Configuration,
-) {
-    fun upload(events: String, diagnostics: String? = null): Response {
-        val connection: HttpURLConnection = getConnection(configuration.getApiHost())
-        val request = Request(getApiKey(), System.currentTimeMillis(), events, configuration.minIdLength, diagnostics)
-        val bodyString = request.getBodyStr()
-        val input = bodyString.toByteArray()
-        connection.outputStream.write(input, 0, input.size)
-        connection.outputStream.close()
-
-        val responseCode: Int = connection.responseCode
-        var responseBody: String?
-        var inputStream: InputStream? = null
-        try {
-            inputStream = getInputStream(connection)
-            responseBody = inputStream.bufferedReader().use(BufferedReader::readText)
-            return Response.create(responseCode, responseBody)
-        } catch (e: IOException) {
-            return Response.create(408, null)
-        } finally {
-            inputStream?.close()
-            connection.disconnect()
-        }
-    }
-
+) : HttpClientInterface {
     private fun getConnection(url: String): HttpURLConnection {
         val requestedURL: URL =
             try {
@@ -50,6 +27,29 @@ internal class HttpClient(
         connection.connectTimeout = 15_000 // 15s
         connection.readTimeout = 20_1000 // 20s
         return connection
+    }
+
+    override fun upload(events: String, diagnostics: String?): AnalyticsResponse {
+        val connection: HttpURLConnection = getConnection(configuration.getApiHost())
+        val request = AnalyticsRequest(getApiKey(), events, configuration.minIdLength, diagnostics)
+        val bodyString = request.getBodyStr()
+        val input = bodyString.toByteArray()
+        connection.outputStream.write(input, 0, input.size)
+        connection.outputStream.close()
+
+        val responseCode: Int = connection.responseCode
+        var responseBody: String?
+        var inputStream: InputStream? = null
+        try {
+            inputStream = getInputStream(connection)
+            responseBody = inputStream.bufferedReader().use(BufferedReader::readText)
+            return AnalyticsResponse.create(responseCode, responseBody)
+        } catch (e: IOException) {
+            return AnalyticsResponse.create(408, null)
+        } finally {
+            inputStream?.close()
+            connection.disconnect()
+        }
     }
 
     internal fun getApiKey(): String {

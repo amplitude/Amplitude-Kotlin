@@ -2,6 +2,8 @@ package com.amplitude.core.utilities
 
 import com.amplitude.core.Configuration
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.utilities.http.FailedResponse
+import com.amplitude.core.utilities.http.HttpClient
 import io.mockk.every
 import io.mockk.mockkStatic
 import io.mockk.spyk

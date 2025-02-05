@@ -2,7 +2,7 @@ package com.amplitude.core
 
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline
-import com.amplitude.core.utilities.ResponseHandler
+import com.amplitude.core.utilities.http.ResponseHandler
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 

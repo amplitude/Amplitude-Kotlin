@@ -30,7 +30,8 @@ class MainApplication : Application() {
                     +appLifecycles
                     +deepLinks
                     +screenViews
-                }
+                },
+                httpClient = CustomClient(AMPLITUDE_API_KEY),
             )
         )
 

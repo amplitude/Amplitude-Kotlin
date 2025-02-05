@@ -16,7 +16,7 @@ import com.amplitude.core.utilities.EventsFileManager
 import com.amplitude.core.utilities.EventsFileStorage
 import com.amplitude.core.utilities.FileResponseHandler
 import com.amplitude.core.utilities.JSONUtil
-import com.amplitude.core.utilities.ResponseHandler
+import com.amplitude.core.utilities.http.ResponseHandler
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import org.json.JSONArray

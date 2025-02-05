@@ -1,16 +1,16 @@
-package com.amplitude.core.utilities
+package com.amplitude.core.utilities.http
 
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
-data class Request(
+data class AnalyticsRequest(
     val apiKey: String,
-    val clientUploadTime: Long,
     val events: String,
-    val minIdLength: Int?,
-    val diagnostics: String?
+    val minIdLength: Int? = null,
+    val diagnostics: String? = null,
+    val clientUploadTime: Long = System.currentTimeMillis()
 ) {
     private val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("UTC")
@@ -18,7 +18,7 @@ data class Request(
 
     fun getBodyStr(): String {
         return buildString {
-            append("{\"api_key\":\"$apiKey\",\"client_upload_time\":\"$clientUploadTime\",\"events\":$events")
+            append("{\"api_key\":\"$apiKey\",\"client_upload_time\":\"${getClientUploadTime()}\",\"events\":$events")
             if (minIdLength != null) {
                 append(",\"options\":{\"min_id_length\":$minIdLength}")
             }

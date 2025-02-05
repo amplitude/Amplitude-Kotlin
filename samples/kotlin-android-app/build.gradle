@@ -52,4 +52,5 @@ dependencies {
     implementation 'com.amplitude:experiment-android-client:1.6.3'
     // For trouble shooting plugin
     implementation group: 'com.google.code.gson', name: 'gson', version: '2.10'
+    implementation group: 'com.squareup.okhttp3', name: 'okhttp', version: '4.12.0'
 }

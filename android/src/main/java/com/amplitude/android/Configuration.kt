@@ -10,6 +10,7 @@ import com.amplitude.core.ServerZone
 import com.amplitude.core.StorageProvider
 import com.amplitude.core.events.IngestionMetadata
 import com.amplitude.core.events.Plan
+import com.amplitude.core.utilities.http.HttpClientInterface
 import com.amplitude.id.IdentityStorageProvider
 import java.io.File
 
@@ -47,6 +48,7 @@ open class Configuration(
     override var offline: Boolean? = false,
     override var deviceId: String? = null,
     override var sessionId: Long? = null,
+    override var httpClient: HttpClientInterface? = null,
 ) : Configuration(
     apiKey,
     flushQueueSize,
@@ -112,6 +114,7 @@ open class Configuration(
         offline: Boolean? = false,
         deviceId: String? = null,
         sessionId: Long? = null,
+        httpClient: HttpClientInterface? = null,
     ) : this(
         apiKey,
         context,
@@ -146,6 +149,7 @@ open class Configuration(
         offline,
         deviceId,
         sessionId,
+        httpClient
     ) {
         if (!trackingSessionEvents) {
             defaultTracking.sessions = false
