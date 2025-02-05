@@ -10,7 +10,7 @@ import okhttp3.RequestBody
 import java.io.IOException
 
 
-class CustomClient(val apiKey: String) : HttpClientInterface {
+class CustomOkHttpClient(val apiKey: String) : HttpClientInterface {
     private val okHttpClient = OkHttpClient()
 
     override fun upload(events: String, diagnostics: String?): AnalyticsResponse {

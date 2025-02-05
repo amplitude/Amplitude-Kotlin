@@ -31,7 +31,7 @@ class MainApplication : Application() {
                     +deepLinks
                     +screenViews
                 },
-                httpClient = CustomClient(AMPLITUDE_API_KEY),
+                httpClient = CustomOkHttpClient(AMPLITUDE_API_KEY),
             )
         )
 

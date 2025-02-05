@@ -27,7 +27,7 @@ import org.robolectric.RobolectricTestRunner
 import java.util.concurrent.TimeUnit
 
 @RunWith(RobolectricTestRunner::class)
-class AnalyticsResponseHandlerTest {
+class ResponseHandlerTest {
     private lateinit var server: MockWebServer
     private lateinit var amplitude: Amplitude
 

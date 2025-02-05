@@ -10,7 +10,7 @@ import io.mockk.verify
 import org.json.JSONObject
 import org.junit.jupiter.api.Test
 
-class FileAnalyticsResponseHandlerTest {
+class FileResponseHandlerTest {
     @Test
     fun testBadResponseHandlerForInvalidApiKey() {
         val response = BadRequestResponse(

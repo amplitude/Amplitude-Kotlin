@@ -8,7 +8,7 @@ import java.net.HttpURLConnection
 import java.net.MalformedURLException
 import java.net.URL
 
-open class HttpClient(
+internal class HttpClient(
     private val configuration: Configuration,
 ) : HttpClientInterface {
     private fun getConnection(url: String): HttpURLConnection {
