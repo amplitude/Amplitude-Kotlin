@@ -58,7 +58,7 @@ class DiagnosticsTest {
     @Test
     fun `test extractDiagnostics`() {
         val diagnostics = Diagnostics()
-        assertEquals("", diagnostics.extractDiagnostics())
+        assertEquals(null, diagnostics.extractDiagnostics())
         diagnostics.addErrorLog("log")
         diagnostics.addMalformedEvent("event")
         assertEquals("{\"error_logs\":[\"log\"],\"malformed_events\":[\"event\"]}", diagnostics.extractDiagnostics())
