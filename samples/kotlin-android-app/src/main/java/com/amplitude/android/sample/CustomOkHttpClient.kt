@@ -9,7 +9,6 @@ import okhttp3.Request
 import okhttp3.RequestBody
 import java.io.IOException
 
-
 class CustomOkHttpClient(val apiKey: String) : HttpClientInterface {
     private val okHttpClient = OkHttpClient()
 

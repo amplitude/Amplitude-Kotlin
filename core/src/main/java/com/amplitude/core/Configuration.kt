@@ -49,7 +49,7 @@ open class Configuration @JvmOverloads constructor(
         return apiKey.isNotBlank() && flushQueueSize > 0 && flushIntervalMillis > 0 && isMinIdLengthValid()
     }
 
-    fun isMinIdLengthValid(): Boolean {
+    private fun isMinIdLengthValid(): Boolean {
         return minIdLength ?. let {
             it > 0
         } ?: let {
@@ -58,13 +58,14 @@ open class Configuration @JvmOverloads constructor(
     }
 
     internal fun getApiHost(): String {
-        if (!this.serverUrl.isNullOrEmpty()) {
-            return this.serverUrl!!
+        return this.serverUrl ?: with(this) {
+            when {
+                serverZone == ServerZone.EU && useBatch -> Constants.EU_BATCH_API_HOST
+                serverZone == ServerZone.EU -> Constants.EU_DEFAULT_API_HOST
+                useBatch -> Constants.BATCH_API_HOST
+                else -> Constants.DEFAULT_API_HOST
+            }
         }
-        if (this.serverZone == ServerZone.EU) {
-            return if (this.useBatch) Constants.EU_BATCH_API_HOST else Constants.EU_DEFAULT_API_HOST
-        }
-        return if (this.useBatch) Constants.BATCH_API_HOST else Constants.DEFAULT_API_HOST
     }
 }
 

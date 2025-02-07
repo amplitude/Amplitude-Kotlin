@@ -136,11 +136,7 @@ class EventPipeline(
                         val eventsString = storage.getEventsString(events)
                         if (eventsString.isEmpty()) continue
 
-                        val diagnostics = if (amplitude.diagnostics.hasDiagnostics()) {
-                            amplitude.diagnostics.extractDiagnostics()
-                        } else {
-                            null
-                        }
+                        val diagnostics = amplitude.diagnostics.extractDiagnostics()
                         val response = httpClient.upload(eventsString, diagnostics)
                         responseHandler.handle(response, events, eventsString)
                     } catch (e: FileNotFoundException) {

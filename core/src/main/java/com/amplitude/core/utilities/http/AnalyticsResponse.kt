@@ -146,7 +146,7 @@ class TooManyRequestsResponse(response: JSONObject) : AnalyticsResponse {
 
     fun isEventExceedDailyQuota(event: BaseEvent): Boolean {
         return (event.userId != null && exceededDailyQuotaUsers.contains(event.userId)) ||
-                (event.deviceId != null && exceededDailyQuotaDevices.contains(event.deviceId))
+            (event.deviceId != null && exceededDailyQuotaDevices.contains(event.deviceId))
     }
 }
 
