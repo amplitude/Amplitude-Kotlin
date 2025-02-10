@@ -42,7 +42,7 @@ class FileIdentityStorageTest {
             logger = logger,
             storageDirectory = File("/tmp/amplitude-kotlin-file-identity-test"),
             fileName = "identity.properties"
-            )
+        )
         val fileIdentityStorage = identityStorageProvider.getIdentityStorage(identityConfiguration)
         val savedIdentity = fileIdentityStorage.load()
         val expectedIdentity = Identity("user_id", "device_id")
