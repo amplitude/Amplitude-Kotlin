@@ -14,8 +14,11 @@ repositories {
     mavenCentral()
 }
 
-test {
+tasks.withType(Test) {
     useJUnitPlatform()
+    testLogging {
+        showStandardStreams = true
+    }
 }
 
 dependencies {
