@@ -18,6 +18,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkConstructor
 import io.mockk.mockkStatic
+import io.mockk.slot
 import io.mockk.spyk
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -71,7 +72,10 @@ class AmplitudeSessionTest {
         val context = mockk<Application>(relaxed = true)
         var connectivityManager = mockk<ConnectivityManager>(relaxed = true)
         every { context.getSystemService(Context.CONNECTIVITY_SERVICE) } returns connectivityManager
-        every { context.getDir(any(), any()) } returns File("/tmp/amplitude-kotlin-test")
+        val dirNameSlot = slot<String>()
+        every { context.getDir(capture(dirNameSlot), any()) } answers {
+            File("/tmp/amplitude-kotlin/${dirNameSlot.captured}")
+        }
 
         return Configuration(
             apiKey = "api-key",

@@ -2,8 +2,10 @@ package com.amplitude.id
 
 import com.amplitude.common.Logger
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import java.io.File
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class FileIdentityStorageTest {
@@ -13,6 +15,13 @@ class FileIdentityStorageTest {
         override fun error(message: String) {}
         override fun info(message: String) {}
         override fun warn(message: String) {}
+    }
+
+    val storageDirectory = File("/tmp/amplitude-kotlin-file-identity-test")
+
+    @BeforeEach
+    fun before() {
+        storageDirectory.deleteRecursively()
     }
 
     @Test
@@ -30,7 +39,9 @@ class FileIdentityStorageTest {
             instanceName = "testInstance",
             identityStorageProvider = identityStorageProvider,
             apiKey = "test-api-key",
-            logger = logger
+            logger = logger,
+            storageDirectory = File("/tmp/amplitude-kotlin-file-identity-test"),
+            fileName = "identity.properties"
         )
         val fileIdentityStorage = identityStorageProvider.getIdentityStorage(identityConfiguration)
         val savedIdentity = fileIdentityStorage.load()
@@ -47,7 +58,9 @@ class FileIdentityStorageTest {
             identityStorageProvider = identityStorageProvider,
             apiKey = "test-different-api-key",
             experimentApiKey = "test-experiment-api-key",
-            logger = logger
+            logger = logger,
+            storageDirectory = File("/tmp/amplitude-kotlin-file-identity-test"),
+            fileName = "identity.properties"
         )
         val fileIdentityStorage = identityStorageProvider.getIdentityStorage(identityConfiguration)
         val savedIdentity = fileIdentityStorage.load()
@@ -61,7 +74,9 @@ class FileIdentityStorageTest {
             instanceName = "testInstance",
             identityStorageProvider = identityStorageProvider,
             apiKey = "test-api-key",
-            logger = logger
+            logger = logger,
+            storageDirectory = File("/tmp/amplitude-kotlin-file-identity-test"),
+            fileName = "identity.properties"
         )
         val fileIdentityStorage = identityStorageProvider.getIdentityStorage(identityConfiguration)
         fileIdentityStorage.saveUserId("user_id")
