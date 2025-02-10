@@ -30,6 +30,10 @@ class PropertiesFile(
                 logger?.error("Failed to load property file with path ${propertiesFile.absolutePath}, error stacktrace: ${e.stackTraceToString()}")
             }
         }
+        createPropertiesFile()
+    }
+
+    internal fun createPropertiesFile() {
         propertiesFile.parentFile.mkdirs()
         propertiesFile.createNewFile()
     }

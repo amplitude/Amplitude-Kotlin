@@ -18,7 +18,9 @@ class IdentityStorageMigration(
             if (identity.deviceId != null) {
                 destination.saveDeviceId(identity.deviceId)
             }
-            source.delete()
+            // Since we are not doing a major version upgrade, keep the old profile file around
+            // just in case someone decides to rollback back to the older version of the SDK.
+//            source.delete()
         } catch (e: Exception) {
             logger.error("Unable to migrate file identity storage: ${e.message}")
         }

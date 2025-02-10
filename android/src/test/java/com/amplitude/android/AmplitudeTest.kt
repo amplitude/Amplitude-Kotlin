@@ -50,7 +50,10 @@ class AmplitudeTest {
         context = mockk<Application>(relaxed = true)
         connectivityManager = mockk<ConnectivityManager>(relaxed = true)
         every { context!!.getSystemService(Context.CONNECTIVITY_SERVICE) } returns connectivityManager
-        every { context!!.getDir(any(), any()) } returns File("/tmp/amplitude-kotlin-test")
+        val dirNameSlot = slot<String>()
+        every { context!!.getDir(capture(dirNameSlot), any()) } answers {
+            File("/tmp/amplitude-kotlin/${dirNameSlot.captured}")
+        }
 
         mockkStatic(AndroidLifecyclePlugin::class)
 

@@ -1,3 +1,31 @@
+## [1.19.4](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.19.3...v1.19.4) (2025-01-23)
+
+
+### Bug Fixes
+
+* autocapture not main thread crash ([#235](https://github.com/amplitude/Amplitude-Kotlin/issues/235)) ([3582b73](https://github.com/amplitude/Amplitude-Kotlin/commit/3582b7368e5a642442d28dd3a8bf9e0b9ed82328))
+
+## [1.19.3](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.19.2...v1.19.3) (2025-01-14)
+
+
+### Bug Fixes
+
+* autocapture missing events fix ([#232](https://github.com/amplitude/Amplitude-Kotlin/issues/232)) ([7476456](https://github.com/amplitude/Amplitude-Kotlin/commit/74764561d2c87c5eb6f59198822f93ca249178ad))
+
+## [1.19.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.19.1...v1.19.2) (2024-11-14)
+
+
+### Bug Fixes
+
+* type mismatch on `queryDb` ([#228](https://github.com/amplitude/Amplitude-Kotlin/issues/228)) ([1a708c6](https://github.com/amplitude/Amplitude-Kotlin/commit/1a708c60d5889ae6787c3a0842ae981c7e5becb0))
+
+## [1.19.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.19.0...v1.19.1) (2024-10-04)
+
+
+### Bug Fixes
+
+* don't delete old profile file for backwards compatibility ([#227](https://github.com/amplitude/Amplitude-Kotlin/issues/227)) ([4e6957c](https://github.com/amplitude/Amplitude-Kotlin/commit/4e6957c2c7a1449469fb8b4a833a8f6f76ff7200))
+
 # [1.19.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.18.0...v1.19.0) (2024-10-02)
 
 

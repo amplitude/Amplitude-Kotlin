@@ -2,574 +2,462 @@ package com.amplitude.android.plugins
 
 import android.app.Activity
 import android.app.Application
-import android.content.Context
 import android.content.Intent
-import android.content.pm.ActivityInfo
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
-import android.net.ConnectivityManager
 import android.net.Uri
-import android.os.Bundle
 import com.amplitude.android.Amplitude
 import com.amplitude.android.AutocaptureOption
 import com.amplitude.android.Configuration
-import com.amplitude.android.StubPlugin
+import com.amplitude.android.internal.fragments.FragmentActivityHandler
+import com.amplitude.android.internal.fragments.FragmentActivityHandler.registerFragmentLifecycleCallbacks
+import com.amplitude.android.internal.fragments.FragmentActivityHandler.unregisterFragmentLifecycleCallbacks
+import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.android.utilities.DefaultEventUtils
-import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.core.Storage
-import com.amplitude.core.events.BaseEvent
-import com.amplitude.core.utilities.ConsoleLoggerProvider
-import com.amplitude.core.utilities.InMemoryStorageProvider
-import com.amplitude.id.IMIdentityStorageProvider
+import com.amplitude.core.utilities.InMemoryStorage
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.mockkConstructor
+import io.mockk.mockkObject
 import io.mockk.spyk
+import io.mockk.unmockkObject
 import io.mockk.verify
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
-import org.junit.jupiter.api.Assertions
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
-import java.io.File
 
 @ExperimentalCoroutinesApi
 @RunWith(RobolectricTestRunner::class)
 class AndroidLifecyclePluginTest {
-    private val androidLifecyclePlugin = AndroidLifecyclePlugin()
-    private lateinit var amplitude: Amplitude
-    private lateinit var configuration: Configuration
 
     private val mockedContext = mockk<Application>(relaxed = true)
-    private var mockedPackageManager: PackageManager
-    private lateinit var connectivityManager: ConnectivityManager
+    private val mockedAmplitude = mockk<Amplitude>(relaxed = true)
+    private val mockedConfig = mockk<Configuration>(relaxed = true)
 
-    init {
-        val packageInfo = PackageInfo()
-        @Suppress("DEPRECATION")
-        packageInfo.versionCode = 66
-        packageInfo.versionName = "6.0.0"
+    private lateinit var spiedStorage: InMemoryStorage
 
-        mockedPackageManager = mockk<PackageManager> {
-            every { getPackageInfo("com.plugin.test", 0) } returns packageInfo
-        }
-        every { mockedContext.packageName } returns "com.plugin.test"
-        every { mockedContext.packageManager } returns mockedPackageManager
+    private val mockedPackageManager = mockk<PackageManager>()
+    private val packageInfo = PackageInfo().apply {
+        versionCode = 66
+        longVersionCode = 66
+        versionName = "6.0.0"
     }
 
-    private fun setDispatcher(testScheduler: TestCoroutineScheduler) {
-        val dispatcher = StandardTestDispatcher(testScheduler)
-        // inject the amplitudeDispatcher field with reflection, as the field is val (read-only)
-        val amplitudeDispatcherField = com.amplitude.core.Amplitude::class.java.getDeclaredField("amplitudeDispatcher")
-        amplitudeDispatcherField.isAccessible = true
-        amplitudeDispatcherField.set(amplitude, dispatcher)
-    }
+    private val testDispatcher = StandardTestDispatcher()
+
+    private lateinit var observer: ActivityLifecycleObserver
+    private lateinit var plugin: AndroidLifecyclePlugin
 
     @Before
     fun setup() {
-        mockkConstructor(AndroidContextProvider::class)
-        every { anyConstructed<AndroidContextProvider>().osName } returns "android"
-        every { anyConstructed<AndroidContextProvider>().osVersion } returns "10"
-        every { anyConstructed<AndroidContextProvider>().brand } returns "google"
-        every { anyConstructed<AndroidContextProvider>().manufacturer } returns "Android"
-        every { anyConstructed<AndroidContextProvider>().model } returns "Android SDK built for x86"
-        every { anyConstructed<AndroidContextProvider>().language } returns "English"
-        every { anyConstructed<AndroidContextProvider>().advertisingId } returns ""
-        every { anyConstructed<AndroidContextProvider>().versionName } returns "1.0"
-        every { anyConstructed<AndroidContextProvider>().carrier } returns "Android"
-        every { anyConstructed<AndroidContextProvider>().country } returns "US"
-        every { anyConstructed<AndroidContextProvider>().mostRecentLocation } returns null
-        every { anyConstructed<AndroidContextProvider>().appSetId } returns ""
+        Dispatchers.setMain(testDispatcher)
+        every { mockedAmplitude.configuration } returns mockedConfig
+        every { mockedConfig.context } returns mockedContext
+        every { mockedContext.packageManager } returns mockedPackageManager
+        every { mockedPackageManager.getPackageInfo(any<String>(), any<Int>()) } returns packageInfo
 
-        connectivityManager = mockk<ConnectivityManager>(relaxed = true)
-        every { mockedContext!!.getSystemService(Context.CONNECTIVITY_SERVICE) } returns connectivityManager
-        every { mockedContext!!.getDir(any(), any()) } returns File("/tmp/amplitude-kotlin-test")
+        spiedStorage = spyk(InMemoryStorage())
+        every { mockedAmplitude.storage } returns spiedStorage
+        every { mockedAmplitude.storageIODispatcher } returns testDispatcher
 
-        configuration = Configuration(
-            apiKey = "api-key",
-            context = mockedContext,
-            storageProvider = InMemoryStorageProvider(),
-            loggerProvider = ConsoleLoggerProvider(),
-            identifyInterceptStorageProvider = InMemoryStorageProvider(),
-            identityStorageProvider = IMIdentityStorageProvider(),
-            autocapture = setOf()
-        )
-        amplitude = Amplitude(configuration)
+        observer = ActivityLifecycleObserver()
+        plugin = AndroidLifecyclePlugin(observer)
+
+        mockkObject(FragmentActivityHandler)
     }
 
     @Test
     fun `test application installed event is tracked`() = runTest {
-        configuration = Configuration(
-            apiKey = "api-key",
-            context = mockedContext,
-            storageProvider = InMemoryStorageProvider(),
-            loggerProvider = ConsoleLoggerProvider(),
-            identifyInterceptStorageProvider = InMemoryStorageProvider(),
-            identityStorageProvider = IMIdentityStorageProvider(),
-            autocapture = setOf(AutocaptureOption.APP_LIFECYCLES)
-        )
-        amplitude = Amplitude(configuration)
+        every { mockedConfig.autocapture } returns setOf(AutocaptureOption.APP_LIFECYCLES)
+        every { mockedAmplitude.amplitudeScope } returns this
 
-        setDispatcher(testScheduler)
-        amplitude.add(androidLifecyclePlugin)
-
-        val mockedPlugin = spyk(StubPlugin())
-        amplitude.add(mockedPlugin)
-        amplitude.isBuilt.await()
-
-        val mockedActivity = mockk<Activity>()
-        val mockedBundle = mockk<Bundle>()
-        androidLifecyclePlugin.onActivityCreated(mockedActivity, mockedBundle)
+        plugin.setup(mockedAmplitude)
 
         advanceUntilIdle()
-        Thread.sleep(100)
 
-        val tracks = mutableListOf<BaseEvent>()
-        verify { mockedPlugin.track(capture(tracks)) }
-        Assertions.assertEquals(1, tracks.count())
-
-        with(tracks[0]) {
-            Assertions.assertEquals(DefaultEventUtils.EventTypes.APPLICATION_INSTALLED, eventType)
-            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.BUILD), "66")
-            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.VERSION), "6.0.0")
+        verify {
+            mockedAmplitude.track(
+                DefaultEventUtils.EventTypes.APPLICATION_INSTALLED,
+                any(),
+                any()
+            )
         }
+
+        coVerify(exactly = 1) { spiedStorage.write(eq(Storage.Constants.APP_VERSION), any()) }
+        coVerify(exactly = 1) { spiedStorage.write(eq(Storage.Constants.APP_BUILD), any()) }
+
+        close()
     }
 
     @Test
     fun `test application installed event is not tracked when disabled`() = runTest {
-        setDispatcher(testScheduler)
-        amplitude.add(androidLifecyclePlugin)
+        every { mockedAmplitude.amplitudeScope } returns this
 
-        val mockedPlugin = spyk(StubPlugin())
-        amplitude.add(mockedPlugin)
-        amplitude.isBuilt.await()
-
-        val mockedActivity = mockk<Activity>()
-        val mockedBundle = mockk<Bundle>()
-        androidLifecyclePlugin.onActivityCreated(mockedActivity, mockedBundle)
+        plugin.setup(mockedAmplitude)
 
         advanceUntilIdle()
-        Thread.sleep(100)
 
-        val tracks = mutableListOf<BaseEvent>()
-        verify(exactly = 0) { mockedPlugin.track(capture(tracks)) }
-        Assertions.assertEquals(0, tracks.count())
+        verify(exactly = 0) {
+            mockedAmplitude.track(
+                DefaultEventUtils.EventTypes.APPLICATION_INSTALLED,
+                any(),
+                any()
+            )
+        }
+
+        coVerify(exactly = 0) { spiedStorage.write(eq(Storage.Constants.APP_VERSION), any()) }
+        coVerify(exactly = 0) { spiedStorage.write(eq(Storage.Constants.APP_BUILD), any()) }
+
+        close()
     }
 
     @Test
     fun `test application updated event is tracked`() = runTest {
-        configuration = Configuration(
-            apiKey = "api-key",
-            context = mockedContext,
-            storageProvider = InMemoryStorageProvider(),
-            loggerProvider = ConsoleLoggerProvider(),
-            identifyInterceptStorageProvider = InMemoryStorageProvider(),
-            identityStorageProvider = IMIdentityStorageProvider(),
-            autocapture = setOf(AutocaptureOption.APP_LIFECYCLES)
-        )
-        amplitude = Amplitude(configuration)
-
-        setDispatcher(testScheduler)
-        amplitude.add(androidLifecyclePlugin)
-
-        val mockedPlugin = spyk(StubPlugin())
-        amplitude.add(mockedPlugin)
-        amplitude.isBuilt.await()
+        every { mockedConfig.autocapture } returns setOf(AutocaptureOption.APP_LIFECYCLES)
+        every { mockedAmplitude.amplitudeScope } returns this
 
         // Stored previous version/build
-        amplitude.storage.write(Storage.Constants.APP_BUILD, "55")
-        amplitude.storage.write(Storage.Constants.APP_VERSION, "5.0.0")
+        spiedStorage.write(Storage.Constants.APP_BUILD, "55")
+        spiedStorage.write(Storage.Constants.APP_VERSION, "5.0.0")
 
-        val mockedActivity = mockk<Activity>()
-        val mockedBundle = mockk<Bundle>()
-        androidLifecyclePlugin.onActivityCreated(mockedActivity, mockedBundle)
+        plugin.setup(mockedAmplitude)
 
         advanceUntilIdle()
-        Thread.sleep(100)
 
-        val tracks = mutableListOf<BaseEvent>()
-        verify { mockedPlugin.track(capture(tracks)) }
-        Assertions.assertEquals(1, tracks.count())
-
-        with(tracks[0]) {
-            Assertions.assertEquals(DefaultEventUtils.EventTypes.APPLICATION_UPDATED, eventType)
-            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.BUILD), "66")
-            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.VERSION), "6.0.0")
-            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.PREVIOUS_BUILD), "55")
-            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.PREVIOUS_VERSION), "5.0.0")
+        verify {
+            mockedAmplitude.track(
+                DefaultEventUtils.EventTypes.APPLICATION_UPDATED,
+                any(),
+                any()
+            )
         }
+
+        coVerify(exactly = 2) { spiedStorage.write(eq(Storage.Constants.APP_VERSION), any()) }
+        coVerify(exactly = 2) { spiedStorage.write(eq(Storage.Constants.APP_BUILD), any()) }
+
+        close()
     }
 
     @Test
     fun `test application updated event is not tracked when disabled`() = runTest {
-        setDispatcher(testScheduler)
-        amplitude.add(androidLifecyclePlugin)
-
-        val mockedPlugin = spyk(StubPlugin())
-        amplitude.add(mockedPlugin)
-        amplitude.isBuilt.await()
+        every { mockedAmplitude.amplitudeScope } returns this
 
         // Stored previous version/build
-        amplitude.storage.write(Storage.Constants.APP_BUILD, "55")
-        amplitude.storage.write(Storage.Constants.APP_VERSION, "5.0.0")
+        spiedStorage.write(Storage.Constants.APP_BUILD, "55")
+        spiedStorage.write(Storage.Constants.APP_VERSION, "5.0.0")
 
-        val mockedActivity = mockk<Activity>()
-        val mockedBundle = mockk<Bundle>()
-        androidLifecyclePlugin.onActivityCreated(mockedActivity, mockedBundle)
+        plugin.setup(mockedAmplitude)
 
         advanceUntilIdle()
-        Thread.sleep(100)
 
-        val tracks = mutableListOf<BaseEvent>()
-        verify(exactly = 0) { mockedPlugin.track(capture(tracks)) }
-        Assertions.assertEquals(0, tracks.count())
+        verify(exactly = 0) {
+            mockedAmplitude.track(
+                DefaultEventUtils.EventTypes.APPLICATION_UPDATED,
+                any(),
+            )
+        }
+
+        coVerify(exactly = 1) { spiedStorage.write(eq(Storage.Constants.APP_VERSION), any()) }
+        coVerify(exactly = 1) { spiedStorage.write(eq(Storage.Constants.APP_BUILD), any()) }
+
+        close()
     }
 
     @Test
-    fun `test application opened event is tracked`() = runTest {
-        configuration = Configuration(
-            apiKey = "api-key",
-            context = mockedContext,
-            storageProvider = InMemoryStorageProvider(),
-            loggerProvider = ConsoleLoggerProvider(),
-            identifyInterceptStorageProvider = InMemoryStorageProvider(),
-            identityStorageProvider = IMIdentityStorageProvider(),
-            autocapture = setOf(AutocaptureOption.APP_LIFECYCLES)
+    fun `test fragment activity is tracked if enabled`() = runTest {
+        every { mockedConfig.autocapture } returns setOf(
+            AutocaptureOption.APP_LIFECYCLES,
+            AutocaptureOption.SCREEN_VIEWS
         )
-        amplitude = Amplitude(configuration)
+        every { mockedAmplitude.amplitudeScope } returns this
 
-        setDispatcher(testScheduler)
-        amplitude.add(androidLifecyclePlugin)
+        val activity = mockk<Activity>()
+        every { activity.intent } returns Intent()
 
-        val mockedPlugin = spyk(StubPlugin())
-        amplitude.add(mockedPlugin)
-        amplitude.isBuilt.await()
+        plugin.setup(mockedAmplitude)
 
-        val mockedActivity = mockk<Activity>()
-        val mockedBundle = mockk<Bundle>()
-        androidLifecyclePlugin.onActivityCreated(mockedActivity, mockedBundle)
-        androidLifecyclePlugin.onActivityStarted(mockedActivity)
-        androidLifecyclePlugin.onActivityResumed(mockedActivity)
+        every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+        every { activity.unregisterFragmentLifecycleCallbacks(any()) } returns Unit
+
+        observer.onActivityCreated(activity, mockk())
+        observer.onActivityDestroyed(activity)
 
         advanceUntilIdle()
-        Thread.sleep(100)
 
-        val tracks = mutableListOf<BaseEvent>()
-        verify { mockedPlugin.track(capture(tracks)) }
-        Assertions.assertEquals(2, tracks.count())
+        verify(exactly = 1) {
+            activity.registerFragmentLifecycleCallbacks(any(), any())
+        }
 
-        with(tracks[0]) {
-            Assertions.assertEquals(DefaultEventUtils.EventTypes.APPLICATION_INSTALLED, eventType)
+        verify(exactly = 1) {
+            activity.unregisterFragmentLifecycleCallbacks(any())
         }
-        with(tracks[1]) {
-            Assertions.assertEquals(DefaultEventUtils.EventTypes.APPLICATION_OPENED, eventType)
-            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.BUILD), "66")
-            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.VERSION), "6.0.0")
-            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.FROM_BACKGROUND), false)
+
+        close()
+    }
+
+    @Test
+    fun `test fragment activity is not tracked if disabled`() = runTest {
+        every { mockedConfig.autocapture } returns setOf(
+            AutocaptureOption.APP_LIFECYCLES
+        )
+        every { mockedAmplitude.amplitudeScope } returns this
+
+        val activity = mockk<Activity>()
+        every { activity.intent } returns Intent()
+
+        plugin.setup(mockedAmplitude)
+
+        every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+        every { activity.unregisterFragmentLifecycleCallbacks(any()) } returns Unit
+
+        observer.onActivityCreated(activity, mockk())
+        observer.onActivityDestroyed(activity)
+
+        advanceUntilIdle()
+
+        verify(exactly = 0) {
+            activity.registerFragmentLifecycleCallbacks(any(), any())
         }
+
+        verify(exactly = 0) {
+            activity.unregisterFragmentLifecycleCallbacks(any())
+        }
+
+        close()
+    }
+
+    @Test
+    fun `test application opened event is tracked not from background`() = runTest {
+        every { mockedConfig.autocapture } returns setOf(AutocaptureOption.APP_LIFECYCLES)
+        every { mockedAmplitude.amplitudeScope } returns this
+
+        val activity = mockk<Activity>(relaxed = true)
+        plugin.setup(mockedAmplitude)
+
+        every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+        observer.onActivityCreated(activity, mockk())
+        observer.onActivityStarted(activity)
+
+        advanceUntilIdle()
+
+        verify(exactly = 1) {
+            mockedAmplitude.track(
+                eq(DefaultEventUtils.EventTypes.APPLICATION_OPENED),
+                match { param -> param.values.first() == false },
+            )
+        }
+
+        close()
+    }
+
+    @Test
+    fun `test application opened event is tracked from background`() = runTest {
+        every { mockedConfig.autocapture } returns setOf(AutocaptureOption.APP_LIFECYCLES)
+        every { mockedAmplitude.amplitudeScope } returns this
+
+        val activity = mockk<Activity>(relaxed = true)
+        plugin.setup(mockedAmplitude)
+
+        every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+        observer.onActivityCreated(activity, mockk())
+
+        observer.onActivityStarted(activity)
+        advanceUntilIdle()
+        verify(exactly = 1) {
+            mockedAmplitude.track(
+                eq(DefaultEventUtils.EventTypes.APPLICATION_OPENED),
+                match { param -> param.values.first() == false },
+                any()
+            )
+        }
+
+        observer.onActivityStopped(activity)
+        advanceUntilIdle()
+        verify(exactly = 1) {
+            mockedAmplitude.track(
+                eq(DefaultEventUtils.EventTypes.APPLICATION_BACKGROUNDED),
+                any(),
+                any()
+            )
+        }
+
+        observer.onActivityStarted(activity)
+        advanceUntilIdle()
+        verify(exactly = 1) {
+            mockedAmplitude.track(
+                DefaultEventUtils.EventTypes.APPLICATION_OPENED,
+                match { param -> param.values.first() == false },
+                any()
+            )
+        }
+        close()
     }
 
     @Test
     fun `test application opened event is not tracked when disabled`() = runTest {
-        setDispatcher(testScheduler)
-        amplitude.add(androidLifecyclePlugin)
+        every { mockedAmplitude.amplitudeScope } returns this
 
-        val mockedPlugin = spyk(StubPlugin())
-        amplitude.add(mockedPlugin)
-        amplitude.isBuilt.await()
+        val activity = mockk<Activity>(relaxed = true)
+        plugin.setup(mockedAmplitude)
 
-        val mockedActivity = mockk<Activity>()
-        val mockedBundle = mockk<Bundle>()
-        androidLifecyclePlugin.onActivityCreated(mockedActivity, mockedBundle)
-        androidLifecyclePlugin.onActivityStarted(mockedActivity)
-        androidLifecyclePlugin.onActivityResumed(mockedActivity)
+        every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+        observer.onActivityCreated(activity, mockk())
 
+        observer.onActivityStarted(activity)
         advanceUntilIdle()
-        Thread.sleep(100)
-
-        val tracks = mutableListOf<BaseEvent>()
-        verify(exactly = 0) { mockedPlugin.track(capture(tracks)) }
-        Assertions.assertEquals(0, tracks.count())
-    }
-
-    @Test
-    fun `test application backgrounded event is tracked`() = runTest {
-        configuration = Configuration(
-            apiKey = "api-key",
-            context = mockedContext,
-            storageProvider = InMemoryStorageProvider(),
-            loggerProvider = ConsoleLoggerProvider(),
-            identifyInterceptStorageProvider = InMemoryStorageProvider(),
-            identityStorageProvider = IMIdentityStorageProvider(),
-            autocapture = setOf(AutocaptureOption.APP_LIFECYCLES)
-        )
-        amplitude = Amplitude(configuration)
-
-        setDispatcher(testScheduler)
-        amplitude.add(androidLifecyclePlugin)
-
-        val mockedPlugin = spyk(StubPlugin())
-        amplitude.add(mockedPlugin)
-        amplitude.isBuilt.await()
-
-        val mockedActivity = mockk<Activity>()
-        androidLifecyclePlugin.onActivityPaused(mockedActivity)
-        androidLifecyclePlugin.onActivityStopped(mockedActivity)
-        androidLifecyclePlugin.onActivityDestroyed(mockedActivity)
-
-        advanceUntilIdle()
-        Thread.sleep(100)
-
-        val tracks = mutableListOf<BaseEvent>()
-        verify { mockedPlugin.track(capture(tracks)) }
-        Assertions.assertEquals(1, tracks.count())
-
-        with(tracks[0]) {
-            Assertions.assertEquals(DefaultEventUtils.EventTypes.APPLICATION_BACKGROUNDED, eventType)
+        verify(exactly = 0) {
+            mockedAmplitude.track(
+                eq(DefaultEventUtils.EventTypes.APPLICATION_OPENED),
+                match { param -> param.values.first() == false },
+            )
         }
-    }
 
-    @Test
-    fun `test application backgrounded event is not tracked when disabled`() = runTest {
-        setDispatcher(testScheduler)
-        amplitude.add(androidLifecyclePlugin)
-
-        val mockedPlugin = spyk(StubPlugin())
-        amplitude.add(mockedPlugin)
-        amplitude.isBuilt.await()
-
-        val mockedActivity = mockk<Activity>()
-        androidLifecyclePlugin.onActivityPaused(mockedActivity)
-        androidLifecyclePlugin.onActivityStopped(mockedActivity)
-        androidLifecyclePlugin.onActivityDestroyed(mockedActivity)
-
+        observer.onActivityStopped(activity)
         advanceUntilIdle()
-        Thread.sleep(100)
+        verify(exactly = 0) {
+            mockedAmplitude.track(
+                eq(DefaultEventUtils.EventTypes.APPLICATION_BACKGROUNDED),
+                any(),
+                any()
+            )
+        }
 
-        val tracks = mutableListOf<BaseEvent>()
-        verify(exactly = 0) { mockedPlugin.track(capture(tracks)) }
-        Assertions.assertEquals(0, tracks.count())
+        close()
     }
 
     @Test
     fun `test screen viewed event is tracked`() = runTest {
-        configuration = Configuration(
-            apiKey = "api-key",
-            context = mockedContext,
-            storageProvider = InMemoryStorageProvider(),
-            loggerProvider = ConsoleLoggerProvider(),
-            identifyInterceptStorageProvider = InMemoryStorageProvider(),
-            identityStorageProvider = IMIdentityStorageProvider(),
-            autocapture = setOf(AutocaptureOption.SCREEN_VIEWS)
+        every { mockedConfig.autocapture } returns setOf(
+            AutocaptureOption.APP_LIFECYCLES,
+            AutocaptureOption.SCREEN_VIEWS
         )
-        amplitude = Amplitude(configuration)
+        every { mockedAmplitude.amplitudeScope } returns this
 
-        setDispatcher(testScheduler)
-        amplitude.add(androidLifecyclePlugin)
+        val activity = mockk<Activity>(relaxed = true)
+        plugin.setup(mockedAmplitude)
 
-        val mockedPlugin = spyk(StubPlugin())
-        amplitude.add(mockedPlugin)
-        amplitude.isBuilt.await()
-
-        val mockedActivity = mockk<Activity>()
-        every { mockedActivity.packageManager } returns mockedPackageManager
-        every { mockedActivity.componentName } returns mockk()
-        val mockedActivityInfo = mockk<ActivityInfo>()
-        every { mockedPackageManager.getActivityInfo(any(), PackageManager.GET_META_DATA) } returns mockedActivityInfo
-        every { mockedActivityInfo.loadLabel(mockedPackageManager) } returns "test-label"
-        val mockedBundle = mockk<Bundle>()
-        androidLifecyclePlugin.onActivityCreated(mockedActivity, mockedBundle)
-        androidLifecyclePlugin.onActivityStarted(mockedActivity)
+        every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+        observer.onActivityCreated(activity, mockk())
+        observer.onActivityStarted(activity)
 
         advanceUntilIdle()
-        Thread.sleep(100)
 
-        val tracks = mutableListOf<BaseEvent>()
-        verify { mockedPlugin.track(capture(tracks)) }
-        Assertions.assertEquals(1, tracks.count())
-
-        with(tracks[0]) {
-            Assertions.assertEquals(DefaultEventUtils.EventTypes.SCREEN_VIEWED, eventType)
-            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.SCREEN_NAME), "test-label")
+        verify(exactly = 1) {
+            mockedAmplitude.track(
+                eq(DefaultEventUtils.EventTypes.SCREEN_VIEWED),
+                any(),
+            )
         }
+
+        close()
     }
 
     @Test
     fun `test screen viewed event is not tracked when disabled`() = runTest {
-        setDispatcher(testScheduler)
-        amplitude.add(androidLifecyclePlugin)
+        every { mockedConfig.autocapture } returns setOf(
+            AutocaptureOption.APP_LIFECYCLES,
+        )
+        every { mockedAmplitude.amplitudeScope } returns this
 
-        val mockedPlugin = spyk(StubPlugin())
-        amplitude.add(mockedPlugin)
-        amplitude.isBuilt.await()
+        val activity = mockk<Activity>(relaxed = true)
+        plugin.setup(mockedAmplitude)
 
-        val mockedActivity = mockk<Activity>()
-        every { mockedActivity.packageManager } returns mockedPackageManager
-        every { mockedActivity.componentName } returns mockk()
-        val mockedActivityInfo = mockk<ActivityInfo>()
-        every { mockedPackageManager.getActivityInfo(any(), PackageManager.GET_META_DATA) } returns mockedActivityInfo
-        every { mockedActivityInfo.loadLabel(mockedPackageManager) } returns "test-label"
-        val mockedBundle = mockk<Bundle>()
-        androidLifecyclePlugin.onActivityCreated(mockedActivity, mockedBundle)
-        androidLifecyclePlugin.onActivityStarted(mockedActivity)
+        every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+        observer.onActivityCreated(activity, mockk())
+        observer.onActivityStarted(activity)
 
         advanceUntilIdle()
-        Thread.sleep(100)
 
-        val tracks = mutableListOf<BaseEvent>()
-        verify(exactly = 0) { mockedPlugin.track(capture(tracks)) }
-        Assertions.assertEquals(0, tracks.count())
+        verify(exactly = 0) {
+            mockedAmplitude.track(
+                eq(DefaultEventUtils.EventTypes.SCREEN_VIEWED),
+                any(),
+            )
+        }
+
+        close()
     }
 
     @Test
     fun `test deep link opened event is tracked`() = runTest {
-        configuration = Configuration(
-            apiKey = "api-key",
-            context = mockedContext,
-            storageProvider = InMemoryStorageProvider(),
-            loggerProvider = ConsoleLoggerProvider(),
-            identifyInterceptStorageProvider = InMemoryStorageProvider(),
-            identityStorageProvider = IMIdentityStorageProvider(),
-            autocapture = setOf(AutocaptureOption.DEEP_LINKS)
+        every { mockedConfig.autocapture } returns setOf(
+            AutocaptureOption.APP_LIFECYCLES,
+            AutocaptureOption.DEEP_LINKS
         )
-        amplitude = Amplitude(configuration)
+        every { mockedAmplitude.amplitudeScope } returns this
 
-        setDispatcher(testScheduler)
-        amplitude.add(androidLifecyclePlugin)
+        val activity = mockk<Activity>(relaxed = true)
+        plugin.setup(mockedAmplitude)
 
-        val mockedPlugin = spyk(StubPlugin())
-        amplitude.add(mockedPlugin)
-        amplitude.isBuilt.await()
+        every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+        observer.onActivityCreated(activity, mockk())
 
-        val mockedIntent = mockk<Intent>()
-        every { mockedIntent.data } returns Uri.parse("app://url.com/open")
-        val mockedActivity = mockk<Activity>()
-        every { mockedActivity.intent } returns mockedIntent
-        every { mockedActivity.referrer } returns Uri.parse("android-app://com.android.chrome")
-        val mockedBundle = mockk<Bundle>()
-        androidLifecyclePlugin.onActivityCreated(mockedActivity, mockedBundle)
+        every { activity.intent } returns Intent().apply {
+            data = Uri.parse("android-app://com.android.unit-test")
+        }
+        observer.onActivityStarted(activity)
 
         advanceUntilIdle()
-        Thread.sleep(100)
 
-        val tracks = mutableListOf<BaseEvent>()
-        verify { mockedPlugin.track(capture(tracks)) }
-        Assertions.assertEquals(1, tracks.count())
-
-        with(tracks[0]) {
-            Assertions.assertEquals(DefaultEventUtils.EventTypes.DEEP_LINK_OPENED, eventType)
-            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.LINK_URL), "app://url.com/open")
-            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.LINK_REFERRER), "android-app://com.android.chrome")
+        verify(exactly = 1) {
+            mockedAmplitude.track(
+                eq(DefaultEventUtils.EventTypes.DEEP_LINK_OPENED),
+                any(),
+            )
         }
-    }
 
-    @Config(sdk = [21])
-    @Test
-    fun `test deep link opened event is tracked when using sdk is between 17 and 21`() = runTest {
-        configuration = Configuration(
-            apiKey = "api-key",
-            context = mockedContext,
-            storageProvider = InMemoryStorageProvider(),
-            loggerProvider = ConsoleLoggerProvider(),
-            identifyInterceptStorageProvider = InMemoryStorageProvider(),
-            identityStorageProvider = IMIdentityStorageProvider(),
-            autocapture = setOf(AutocaptureOption.DEEP_LINKS)
-        )
-        amplitude = Amplitude(configuration)
-
-        setDispatcher(testScheduler)
-        amplitude.add(androidLifecyclePlugin)
-
-        val mockedPlugin = spyk(StubPlugin())
-        amplitude.add(mockedPlugin)
-        amplitude.isBuilt.await()
-
-        val mockedIntent = mockk<Intent>()
-        every { mockedIntent.data } returns Uri.parse("app://url.com/open")
-        every { mockedIntent.getParcelableExtra<Uri>(any()) } returns Uri.parse("android-app://com.android.chrome")
-        val mockedActivity = mockk<Activity>()
-        every { mockedActivity.intent } returns mockedIntent
-        val mockedBundle = mockk<Bundle>()
-        androidLifecyclePlugin.onActivityCreated(mockedActivity, mockedBundle)
-
-        advanceUntilIdle()
-        Thread.sleep(100)
-
-        val tracks = mutableListOf<BaseEvent>()
-        verify { mockedPlugin.track(capture(tracks)) }
-        Assertions.assertEquals(1, tracks.count())
-
-        with(tracks[0]) {
-            Assertions.assertEquals(DefaultEventUtils.EventTypes.DEEP_LINK_OPENED, eventType)
-            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.LINK_URL), "app://url.com/open")
-            Assertions.assertEquals(eventProperties?.get(DefaultEventUtils.EventProperties.LINK_REFERRER), "android-app://com.android.chrome")
-        }
+        close()
     }
 
     @Test
     fun `test deep link opened event is not tracked when disabled`() = runTest {
-        setDispatcher(testScheduler)
-        amplitude.add(androidLifecyclePlugin)
+        every { mockedConfig.autocapture } returns setOf(
+            AutocaptureOption.APP_LIFECYCLES,
+        )
+        every { mockedAmplitude.amplitudeScope } returns this
 
-        val mockedPlugin = spyk(StubPlugin())
-        amplitude.add(mockedPlugin)
-        amplitude.isBuilt.await()
+        val activity = mockk<Activity>(relaxed = true)
+        plugin.setup(mockedAmplitude)
 
-        val mockedIntent = mockk<Intent>()
-        every { mockedIntent.data } returns Uri.parse("app://url.com/open")
-        val mockedActivity = mockk<Activity>()
-        every { mockedActivity.intent } returns mockedIntent
-        every { mockedActivity.referrer } returns Uri.parse("android-app://com.android.chrome")
-        val mockedBundle = mockk<Bundle>()
-        androidLifecyclePlugin.onActivityCreated(mockedActivity, mockedBundle)
+        every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+        observer.onActivityCreated(activity, mockk())
+
+        every { activity.intent } returns Intent().apply {
+            data = Uri.parse("android-app://com.android.unit-test")
+        }
+        observer.onActivityStarted(activity)
 
         advanceUntilIdle()
-        Thread.sleep(100)
 
-        val tracks = mutableListOf<BaseEvent>()
-        verify(exactly = 0) { mockedPlugin.track(capture(tracks)) }
-        Assertions.assertEquals(0, tracks.count())
+        verify(exactly = 0) {
+            mockedAmplitude.track(
+                eq(DefaultEventUtils.EventTypes.DEEP_LINK_OPENED),
+                any(),
+            )
+        }
+
+        close()
     }
 
-    @Test
-    fun `test deep link opened event is not tracked when URL is missing`() = runTest {
-        configuration = Configuration(
-            apiKey = "api-key",
-            context = mockedContext,
-            storageProvider = InMemoryStorageProvider(),
-            loggerProvider = ConsoleLoggerProvider(),
-            identifyInterceptStorageProvider = InMemoryStorageProvider(),
-            identityStorageProvider = IMIdentityStorageProvider(),
-            autocapture = setOf(AutocaptureOption.DEEP_LINKS)
-        )
-        amplitude = Amplitude(configuration)
+    // TODO Replace with Turbine
+    private suspend fun close() {
+        observer.eventChannel.close()
+        plugin.eventJob?.join()
+    }
 
-        setDispatcher(testScheduler)
-        amplitude.add(androidLifecyclePlugin)
-
-        val mockedPlugin = spyk(StubPlugin())
-        amplitude.add(mockedPlugin)
-        amplitude.isBuilt.await()
-
-        val mockedIntent = mockk<Intent>()
-        every { mockedIntent.data } returns null
-        val mockedActivity = mockk<Activity>()
-        every { mockedActivity.intent } returns mockedIntent
-        every { mockedActivity.referrer } returns Uri.parse("android-app://com.android.unit-test")
-        val mockedBundle = mockk<Bundle>()
-        androidLifecyclePlugin.onActivityCreated(mockedActivity, mockedBundle)
-
-        advanceUntilIdle()
-        Thread.sleep(100)
-
-        val tracks = mutableListOf<BaseEvent>()
-        verify(exactly = 0) { mockedPlugin.track(capture(tracks)) }
-        Assertions.assertEquals(0, tracks.count())
+    @After
+    fun teardown() {
+        Dispatchers.resetMain()
+        unmockkObject(FragmentActivityHandler)
     }
 }
