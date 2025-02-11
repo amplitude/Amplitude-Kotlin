@@ -1,27 +1,35 @@
-package com.amplitude.core.utilities
+package com.amplitude.core.utilities.http
 
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.utilities.collectIndices
+import com.amplitude.core.utilities.getStringWithDefault
+import com.amplitude.core.utilities.toIntArray
 import org.json.JSONObject
 import java.lang.Exception
 
 internal object HttpResponse {
-    fun createHttpResponse(code: Int, responseBody: String?): Response {
+    fun createHttpResponse(code: Int, responseBody: String?): AnalyticsResponse {
         when (code) {
             HttpStatus.SUCCESS.code -> {
                 return SuccessResponse()
             }
+
             HttpStatus.BAD_REQUEST.code -> {
                 return BadRequestResponse(JSONObject(responseBody))
             }
+
             HttpStatus.PAYLOAD_TOO_LARGE.code -> {
                 return PayloadTooLargeResponse(JSONObject(responseBody))
             }
+
             HttpStatus.TOO_MANY_REQUESTS.code -> {
                 return TooManyRequestsResponse(JSONObject(responseBody))
             }
+
             HttpStatus.TIMEOUT.code -> {
                 return TimeoutResponse()
             }
+
             else -> {
                 return FailedResponse(parseResponseBodyOrGetDefault(responseBody))
             }
@@ -43,15 +51,21 @@ internal object HttpResponse {
     }
 }
 
-interface Response {
+interface AnalyticsResponse {
     val status: HttpStatus
+
+    companion object {
+        fun create(responseCode: Int, responseBody: String?): AnalyticsResponse {
+            return HttpResponse.createHttpResponse(responseCode, responseBody)
+        }
+    }
 }
 
-class SuccessResponse() : Response {
+class SuccessResponse() : AnalyticsResponse {
     override val status: HttpStatus = HttpStatus.SUCCESS
 }
 
-class BadRequestResponse(response: JSONObject) : Response {
+class BadRequestResponse(response: JSONObject) : AnalyticsResponse {
     override val status: HttpStatus = HttpStatus.BAD_REQUEST
     val error: String = response.getStringWithDefault("error", "")
     var eventsWithInvalidFields: Set<Int> = setOf()
@@ -97,12 +111,12 @@ class BadRequestResponse(response: JSONObject) : Response {
     }
 }
 
-class PayloadTooLargeResponse(response: JSONObject) : Response {
+class PayloadTooLargeResponse(response: JSONObject) : AnalyticsResponse {
     override val status: HttpStatus = HttpStatus.PAYLOAD_TOO_LARGE
     val error: String = response.getStringWithDefault("error", "")
 }
 
-class TooManyRequestsResponse(response: JSONObject) : Response {
+class TooManyRequestsResponse(response: JSONObject) : AnalyticsResponse {
     override val status: HttpStatus = HttpStatus.TOO_MANY_REQUESTS
     val error: String = response.getStringWithDefault("error", "")
     var exceededDailyQuotaUsers: Set<String> = setOf()
@@ -136,33 +150,38 @@ class TooManyRequestsResponse(response: JSONObject) : Response {
     }
 }
 
-class TimeoutResponse() : Response {
+class TimeoutResponse() : AnalyticsResponse {
     override val status: HttpStatus = HttpStatus.TIMEOUT
 }
 
-class FailedResponse(response: JSONObject) : Response {
+class FailedResponse(response: JSONObject) : AnalyticsResponse {
     override val status: HttpStatus = HttpStatus.FAILED
     val error: String = response.getStringWithDefault("error", "")
 }
 
 interface ResponseHandler {
-    fun handle(response: Response, events: Any, eventsString: String) {
+    fun handle(response: AnalyticsResponse, events: Any, eventsString: String) {
         when (response) {
             is SuccessResponse -> {
                 handleSuccessResponse(response, events, eventsString)
             }
+
             is BadRequestResponse -> {
                 handleBadRequestResponse(response, events, eventsString)
             }
+
             is PayloadTooLargeResponse -> {
                 handlePayloadTooLargeResponse(response, events, eventsString)
             }
+
             is TooManyRequestsResponse -> {
                 handleTooManyRequestsResponse(response, events, eventsString)
             }
+
             is TimeoutResponse -> {
                 handleTimeoutResponse(response, events, eventsString)
             }
+
             else -> {
                 handleFailedResponse(response as FailedResponse, events, eventsString)
             }
@@ -170,9 +189,24 @@ interface ResponseHandler {
     }
 
     fun handleSuccessResponse(successResponse: SuccessResponse, events: Any, eventsString: String)
-    fun handleBadRequestResponse(badRequestResponse: BadRequestResponse, events: Any, eventsString: String)
-    fun handlePayloadTooLargeResponse(payloadTooLargeResponse: PayloadTooLargeResponse, events: Any, eventsString: String)
-    fun handleTooManyRequestsResponse(tooManyRequestsResponse: TooManyRequestsResponse, events: Any, eventsString: String)
+    fun handleBadRequestResponse(
+        badRequestResponse: BadRequestResponse,
+        events: Any,
+        eventsString: String
+    )
+
+    fun handlePayloadTooLargeResponse(
+        payloadTooLargeResponse: PayloadTooLargeResponse,
+        events: Any,
+        eventsString: String
+    )
+
+    fun handleTooManyRequestsResponse(
+        tooManyRequestsResponse: TooManyRequestsResponse,
+        events: Any,
+        eventsString: String
+    )
+
     fun handleTimeoutResponse(timeoutResponse: TimeoutResponse, events: Any, eventsString: String)
     fun handleFailedResponse(failedResponse: FailedResponse, events: Any, eventsString: String)
 }

@@ -5,6 +5,7 @@ import com.amplitude.core.events.IngestionMetadata
 import com.amplitude.core.events.Plan
 import com.amplitude.core.utilities.ConsoleLoggerProvider
 import com.amplitude.core.utilities.InMemoryStorageProvider
+import com.amplitude.core.utilities.http.HttpClientInterface
 import com.amplitude.id.IMIdentityStorageProvider
 import com.amplitude.id.IdentityStorageProvider
 
@@ -33,6 +34,7 @@ open class Configuration @JvmOverloads constructor(
     open var offline: Boolean? = false,
     open var deviceId: String? = null,
     open var sessionId: Long? = null,
+    open var httpClient: HttpClientInterface? = null,
 ) {
 
     companion object {
@@ -47,11 +49,22 @@ open class Configuration @JvmOverloads constructor(
         return apiKey.isNotBlank() && flushQueueSize > 0 && flushIntervalMillis > 0 && isMinIdLengthValid()
     }
 
-    fun isMinIdLengthValid(): Boolean {
+    private fun isMinIdLengthValid(): Boolean {
         return minIdLength ?. let {
             it > 0
         } ?: let {
             true
+        }
+    }
+
+    internal fun getApiHost(): String {
+        return this.serverUrl ?: with(this) {
+            when {
+                serverZone == ServerZone.EU && useBatch -> Constants.EU_BATCH_API_HOST
+                serverZone == ServerZone.EU -> Constants.EU_DEFAULT_API_HOST
+                useBatch -> Constants.BATCH_API_HOST
+                else -> Constants.DEFAULT_API_HOST
+            }
         }
     }
 }

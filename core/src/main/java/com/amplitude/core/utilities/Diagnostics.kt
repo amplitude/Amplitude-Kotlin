@@ -32,9 +32,9 @@ class Diagnostics() {
      * Extracts the diagnostics as a JSON string.
      * @return JSON string of diagnostics or empty if no diagnostics are present.
      */
-    fun extractDiagnostics(): String {
+    fun extractDiagnostics(): String? {
         if (!hasDiagnostics()) {
-            return ""
+            return null
         }
         val diagnostics = mutableMapOf<String, List<String>>()
         if (malformedEvents != null && malformedEvents!!.isNotEmpty()) {

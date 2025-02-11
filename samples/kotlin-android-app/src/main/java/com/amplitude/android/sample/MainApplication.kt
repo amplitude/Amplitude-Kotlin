@@ -30,7 +30,8 @@ class MainApplication : Application() {
                     +appLifecycles
                     +deepLinks
                     +screenViews
-                }
+                },
+                httpClient = CustomOkHttpClient(AMPLITUDE_API_KEY),
             )
         )
 

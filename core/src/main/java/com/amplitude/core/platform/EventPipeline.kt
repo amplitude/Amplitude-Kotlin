@@ -2,8 +2,9 @@ package com.amplitude.core.platform
 
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
-import com.amplitude.core.utilities.HttpClient
-import com.amplitude.core.utilities.ResponseHandler
+import com.amplitude.core.utilities.http.HttpClient
+import com.amplitude.core.utilities.http.HttpClientInterface
+import com.amplitude.core.utilities.http.ResponseHandler
 import com.amplitude.core.utilities.logWithStackTrace
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
@@ -24,7 +25,7 @@ class EventPipeline(
 
     private val eventCount: AtomicInteger = AtomicInteger(0)
 
-    private val httpClient: HttpClient = HttpClient(amplitude.configuration)
+    private val httpClient: HttpClientInterface = amplitude.configuration.httpClient ?: HttpClient(amplitude.configuration)
 
     private val storage get() = amplitude.storage
 
@@ -134,15 +135,10 @@ class EventPipeline(
                     try {
                         val eventsString = storage.getEventsString(events)
                         if (eventsString.isEmpty()) continue
-                        val connection = httpClient.upload()
-                        connection.outputStream?.let {
-                            connection.setEvents(eventsString)
-                            connection.setDiagnostics(amplitude.diagnostics)
-                            // Upload the payloads.
-                            connection.close()
-                        }
 
-                        responseHandler.handle(connection.response, events, eventsString)
+                        val diagnostics = amplitude.diagnostics.extractDiagnostics()
+                        val response = httpClient.upload(eventsString, diagnostics)
+                        responseHandler.handle(response, events, eventsString)
                     } catch (e: FileNotFoundException) {
                         e.message?.let {
                             amplitude.logger.warn("Event storage file not found: $it")

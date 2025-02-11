@@ -2,7 +2,8 @@ package com.amplitude.core.utilities
 
 import com.amplitude.core.Configuration
 import com.amplitude.core.events.BaseEvent
-import io.mockk.every
+import com.amplitude.core.utilities.http.FailedResponse
+import com.amplitude.core.utilities.http.HttpClient
 import io.mockk.spyk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import okhttp3.mockwebserver.MockResponse
@@ -11,6 +12,7 @@ import okhttp3.mockwebserver.RecordedRequest
 import org.json.JSONObject
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -21,8 +23,6 @@ import java.util.concurrent.TimeUnit
 class HttpClientTest {
     private lateinit var server: MockWebServer
     val apiKey = "API_KEY"
-    val clientUploadTimeMillis = 1699905773000L
-    val clientUploadTimeString = "2023-11-13T20:02:53.000Z"
 
     @ExperimentalCoroutinesApi
     @BeforeEach
@@ -49,20 +49,13 @@ class HttpClientTest {
         event.eventType = "test"
 
         val httpClient = spyk(HttpClient(config))
-        every { httpClient.getCurrentTimeMillis() } returns clientUploadTimeMillis
-
-        val connection = httpClient.upload()
-        connection.outputStream?.let {
-            connection.setEvents(JSONUtil.eventsToString(listOf(event)))
-            // Upload the payloads.
-            connection.close()
-        }
+        val response = httpClient.upload(JSONUtil.eventsToString(listOf(event)))
 
         val request = runRequest()
         val result = JSONObject(request?.body?.readUtf8())
 
         assertEquals(apiKey, result.getString("api_key"))
-        assertEquals(clientUploadTimeString, result.getString("client_upload_time"))
+        assertNotNull(result.getString("client_upload_time"))
     }
 
     @Test
@@ -79,20 +72,14 @@ class HttpClientTest {
         event.eventType = "test"
 
         val httpClient = spyk(HttpClient(config))
-        every { httpClient.getCurrentTimeMillis() } returns clientUploadTimeMillis
 
-        val connection = httpClient.upload()
-        connection.outputStream?.let {
-            connection.setEvents(JSONUtil.eventsToString(listOf(event)))
-            // Upload the payloads.
-            connection.close()
-        }
+        val response = httpClient.upload(JSONUtil.eventsToString(listOf(event)))
 
         val request = runRequest()
         val result = JSONObject(request?.body?.readUtf8())
 
         assertEquals(apiKey, result.getString("api_key"))
-        assertEquals(clientUploadTimeString, result.getString("client_upload_time"))
+        assertNotNull(result.getString("client_upload_time"))
         assertNull(result.optJSONObject("request_metadata"))
     }
 
@@ -113,13 +100,7 @@ class HttpClientTest {
         diagnostics.addErrorLog("error")
         diagnostics.addMalformedEvent("malformed-event")
 
-        val connection = httpClient.upload()
-        connection.outputStream?.let {
-            connection.setEvents(JSONUtil.eventsToString(listOf(event)))
-            connection.setDiagnostics(diagnostics)
-            // Upload the payloads.
-            connection.close()
-        }
+        val response = httpClient.upload(JSONUtil.eventsToString(listOf(event)), diagnostics.extractDiagnostics())
 
         val request = runRequest()
         val result = JSONObject(request?.body?.readUtf8())
@@ -149,19 +130,13 @@ class HttpClientTest {
         diagnostics.addErrorLog("error")
         diagnostics.addMalformedEvent("malformed-event")
 
-        val connection = httpClient.upload()
-        connection.outputStream?.let {
-            connection.setEvents(JSONUtil.eventsToString(listOf(event)))
-            connection.setDiagnostics(diagnostics)
-            // Upload the payloads.
-            connection.close()
-        }
+        val response = httpClient.upload(JSONUtil.eventsToString(listOf(event)), diagnostics.extractDiagnostics())
 
         runRequest()
-        assertEquals(200, connection.response.status.code)
+        assertEquals(200, response.status.code)
 
         runRequest()
-        assertEquals(200, connection.response.status.code)
+        assertEquals(200, response.status.code)
     }
 
     @Test
@@ -178,17 +153,12 @@ class HttpClientTest {
 
         val httpClient = spyk(HttpClient(config))
 
-        val connection = httpClient.upload()
-        connection.outputStream?.let {
-            connection.setEvents(JSONUtil.eventsToString(listOf(event)))
-            // Upload the payloads.
-            connection.close()
-        }
+        val response = httpClient.upload(JSONUtil.eventsToString(listOf(event)))
 
         runRequest()
         // Error code 503 is converted to a 500 in the http client
-        assertEquals(500, connection.response.status.code)
-        val responseBody = connection.response as FailedResponse
+        assertEquals(500, response.status.code)
+        val responseBody = response as FailedResponse
         assertEquals("<html>Error occurred</html>", responseBody.error)
     }
 

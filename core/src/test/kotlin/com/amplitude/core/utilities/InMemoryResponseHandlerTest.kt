@@ -3,6 +3,7 @@ package com.amplitude.core.utilities
 import com.amplitude.core.Configuration
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline
+import com.amplitude.core.utilities.http.BadRequestResponse
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify

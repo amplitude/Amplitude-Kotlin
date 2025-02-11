@@ -6,6 +6,7 @@ import com.amplitude.core.Storage
 import com.amplitude.core.StorageProvider
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline
+import com.amplitude.core.utilities.http.ResponseHandler
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import java.util.concurrent.ConcurrentHashMap
