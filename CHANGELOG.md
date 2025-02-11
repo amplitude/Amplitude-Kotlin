@@ -1,3 +1,10 @@
+# [1.20.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.19.4...v1.20.0) (2025-02-11)
+
+
+### Features
+
+* cleaning up http client interface and adding the ability to use custom http clients ([#237](https://github.com/amplitude/Amplitude-Kotlin/issues/237)) ([bddd9d7](https://github.com/amplitude/Amplitude-Kotlin/commit/bddd9d744f2e17d512ec4fd693fb4dcd28d0238e))
+
 ## [1.19.4](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.19.3...v1.19.4) (2025-01-23)
 
 
