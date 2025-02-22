@@ -50,14 +50,14 @@ open class Configuration @JvmOverloads constructor(
     }
 
     private fun isMinIdLengthValid(): Boolean {
-        return minIdLength ?. let {
+        return minIdLength?.let {
             it > 0
         } ?: let {
             true
         }
     }
 
-    internal fun getApiHost(): String {
+    fun getApiHost(): String {
         return this.serverUrl ?: with(this) {
             when {
                 serverZone == ServerZone.EU && useBatch -> Constants.EU_BATCH_API_HOST

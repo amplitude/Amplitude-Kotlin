@@ -54,7 +54,6 @@ android {
 
 dependencies {
     embed project(':common')
-    embed project(':common-jvm')
     embed project(':common-android')
     embed project(':core')
     embed project(':event-bridge')
