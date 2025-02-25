@@ -28,7 +28,7 @@ open class Amplitude(
             return (timeline as Timeline).sessionId
         }
 
-    private lateinit var activityLifecycleCallbacks : ActivityLifecycleObserver
+    private lateinit var activityLifecycleCallbacks: ActivityLifecycleObserver
 
     /**
      * This build call is initiated by parent class and happens before this class
