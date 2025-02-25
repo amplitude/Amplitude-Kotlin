@@ -15,6 +15,7 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
 import com.amplitude.id.IdentityConfiguration
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.launch
 
 open class Amplitude(
@@ -27,7 +28,16 @@ open class Amplitude(
             return (timeline as Timeline).sessionId
         }
 
-    private val activityLifecycleCallbacks = ActivityLifecycleObserver()
+    private lateinit var activityLifecycleCallbacks: ActivityLifecycleObserver
+
+    /**
+     * This build call is initiated by parent class and happens before this class
+     * init block
+     */
+    override fun build(): Deferred<Boolean> {
+        activityLifecycleCallbacks = ActivityLifecycleObserver()
+        return super.build()
+    }
 
     init {
         registerShutdownHook()
