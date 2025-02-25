@@ -1,3 +1,10 @@
+## [1.20.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.20.0...v1.20.1) (2025-02-25)
+
+
+### Bug Fixes
+
+* autocapture observer null pointer exception ([#243](https://github.com/amplitude/Amplitude-Kotlin/issues/243)) ([d4f80ae](https://github.com/amplitude/Amplitude-Kotlin/commit/d4f80ae72dfe4717a0b386696638d158d73664da))
+
 # [1.20.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.19.4...v1.20.0) (2025-02-11)
 
 
