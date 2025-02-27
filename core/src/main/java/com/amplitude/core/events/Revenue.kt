@@ -37,6 +37,11 @@ open class Revenue {
     var revenueType: String? = null
 
     /**
+     * The 3 letter currency code (optional).
+     */
+    var currency: String? = null
+
+    /**
      * The Receipt field (required if you want to verify the revenue event).
      */
     var receipt: String? = null
@@ -66,6 +71,7 @@ open class Revenue {
         internal const val REVENUE_QUANTITY = "\$quantity"
         internal const val REVENUE_PRICE = "\$price"
         internal const val REVENUE_TYPE = "\$revenueType"
+        internal const val REVENUE_CURRENCY = "\$currency"
         internal const val REVENUE_RECEIPT = "\$receipt"
         internal const val REVENUE_RECEIPT_SIG = "\$receiptSig"
         internal const val REVENUE = "\$revenue"
@@ -97,6 +103,7 @@ open class Revenue {
         eventProperties.put(REVENUE_QUANTITY, quantity)
         price?.let { eventProperties.put(REVENUE_PRICE, it) }
         revenueType?.let { eventProperties.put(REVENUE_TYPE, it) }
+        currency?.let { eventProperties.put(REVENUE_CURRENCY, it) }
         receipt?.let { eventProperties.put(REVENUE_RECEIPT, it) }
         receiptSig?.let { eventProperties.put(REVENUE_RECEIPT_SIG, it) }
         revenue?.let { eventProperties.put(REVENUE, it) }

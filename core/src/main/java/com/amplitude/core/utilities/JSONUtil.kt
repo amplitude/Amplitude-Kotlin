@@ -37,6 +37,7 @@ object JSONUtil {
         eventJSON.addValue("revenue", event.revenue)
         eventJSON.addValue("productId", event.productId)
         eventJSON.addValue("revenueType", event.revenueType)
+        eventJSON.addValue("currency", event.currency)
         eventJSON.addValue("location_lat", event.locationLat)
         eventJSON.addValue("location_lng", event.locationLng)
         eventJSON.addValue("ip", event.ip)

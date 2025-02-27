@@ -61,6 +61,23 @@ class RevenueTest {
     }
 
     @Test
+    fun testRevenueCurrency() {
+        val revenue = Revenue()
+        assertEquals(revenue.currency, null)
+        val currency = "CAD"
+        revenue.currency = currency
+        assertEquals(revenue.currency, currency)
+
+        // verify that null and empty strings allowed
+        revenue.currency = null
+        assertNull(revenue.currency)
+        revenue.currency = ""
+        assertEquals(revenue.currency, "")
+        revenue.currency = currency
+        assertEquals(revenue.currency, currency)
+    }
+
+    @Test
     fun testReceipt() {
         val revenue = Revenue()
         assertNull(revenue.receipt)
@@ -79,11 +96,13 @@ class RevenueTest {
         revenue.revenueType = "testRevenueType"
         revenue.quantity = 20
         revenue.productId = "testProductId"
+        revenue.currency = "CAD"
         val event = revenue.toRevenueEvent()
         assertEquals(19.99, event.eventProperties?.get(Revenue.REVENUE_PRICE))
         assertEquals("testRevenueType", event.eventProperties?.get(Revenue.REVENUE_TYPE))
         assertEquals(20, event.eventProperties?.get(Revenue.REVENUE_QUANTITY))
         assertEquals("testProductId", event.eventProperties?.get(Revenue.REVENUE_PRODUCT_ID))
+        assertEquals("CAD", event.eventProperties?.get(Revenue.REVENUE_CURRENCY))
     }
 
     @Test
@@ -93,6 +112,7 @@ class RevenueTest {
         revenue.revenueType = "testRevenueType"
         revenue.quantity = 20
         revenue.productId = "testProductId"
+        revenue.currency = "CAD"
         val receipt = "testReceipt"
         val receiptSig = "testReceiptSig"
         revenue.setReceipt(receipt, receiptSig)
@@ -100,6 +120,7 @@ class RevenueTest {
         val event = revenue.toRevenueEvent()
         assertEquals(receipt, event.eventProperties?.get(Revenue.REVENUE_RECEIPT))
         assertEquals(receiptSig, event.eventProperties?.get(Revenue.REVENUE_RECEIPT_SIG))
+        assertEquals("CAD", event.eventProperties?.get(Revenue.REVENUE_CURRENCY))
         assertEquals("san francisco", event.eventProperties?.get("city"))
     }
 

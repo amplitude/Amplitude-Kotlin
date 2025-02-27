@@ -46,6 +46,7 @@ open class BaseEvent : EventOptions() {
         options.quantity?.let { quantity = it }
         options.productId?.let { productId = it }
         options.revenueType?.let { revenueType = it }
+        options.currency?.let { currency = it }
         options.extra?.let { extra = it }
         options.callback?.let { callback = it }
         options.partnerId?.let { partnerId = it }
