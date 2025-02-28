@@ -39,6 +39,7 @@ open class EventOptions {
     var quantity: Int? = null
     var productId: String? = null
     var revenueType: String? = null
+    var currency: String? = null
     var extra: Map<String, Any>? = null
     var callback: EventCallBack? = null
     var partnerId: String? = null
