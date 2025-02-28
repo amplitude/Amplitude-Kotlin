@@ -1,3 +1,10 @@
+## [1.20.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.20.1...v1.20.2) (2025-02-28)
+
+
+### Bug Fixes
+
+* adding ability to track revenue currency ([#244](https://github.com/amplitude/Amplitude-Kotlin/issues/244)) ([f33552b](https://github.com/amplitude/Amplitude-Kotlin/commit/f33552b6b7b8b4bb4cfc2011592d61284e83d79b))
+
 ## [1.20.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.20.0...v1.20.1) (2025-02-25)
 
 
