@@ -171,13 +171,19 @@ class EventPipeline(
 
     private fun registerShutdownHook() {
         // close the stream if the app shuts down
-        Runtime.getRuntime().addShutdownHook(
-            object : Thread() {
-                override fun run() {
-                    this@EventPipeline.stop()
-                }
-            },
-        )
+        try {
+            Runtime.getRuntime().addShutdownHook(
+                object : Thread() {
+                    override fun run() {
+                        this@EventPipeline.stop()
+                    }
+                },
+            )
+        } catch (e: IllegalStateException) {
+            // Once the shutdown sequence has begun it is impossible to register a shutdown hook,
+            // so we just ignore the IllegalStateException that's thrown.
+            // https://developer.android.com/reference/java/lang/Runtime#addShutdownHook(java.lang.Thread)
+        }
     }
 }
 
