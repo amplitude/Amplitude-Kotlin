@@ -57,7 +57,7 @@ open class Configuration @JvmOverloads constructor(
         }
     }
 
-    internal fun getApiHost(): String {
+    fun getApiHost(): String {
         return this.serverUrl ?: with(this) {
             when {
                 serverZone == ServerZone.EU && useBatch -> Constants.EU_BATCH_API_HOST

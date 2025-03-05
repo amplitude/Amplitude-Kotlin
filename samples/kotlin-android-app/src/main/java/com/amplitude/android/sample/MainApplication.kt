@@ -20,20 +20,22 @@ class MainApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        // init instance
-        amplitude = Amplitude(
-            Configuration(
-                apiKey = AMPLITUDE_API_KEY,
-                context = applicationContext,
-                autocapture = autocaptureOptions {
-                    +sessions
-                    +appLifecycles
-                    +deepLinks
-                    +screenViews
-                },
-                httpClient = CustomOkHttpClient(AMPLITUDE_API_KEY),
-            )
+        val httpClient = CustomOkHttpClient()
+        val configuration = Configuration(
+            apiKey = AMPLITUDE_API_KEY,
+            context = applicationContext,
+            autocapture = autocaptureOptions {
+                +sessions
+                +appLifecycles
+                +deepLinks
+                +screenViews
+            },
+            httpClient = httpClient,
         )
+        httpClient.initialize(configuration)
+
+        // init instance
+        amplitude = Amplitude(configuration)
 
         // Sample for Experiment Integration
         val experimentConfig = ExperimentConfig.builder()
