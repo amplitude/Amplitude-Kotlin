@@ -5,6 +5,10 @@ labels: 'type: bug'
 ---
 
 <!--- Please fill out the template to the best of your ability -->
+## SDK Version and configuration details
+<!--- E.g. v1.6.0 -->
+<!--- Plugins attached and their versions -->
+<!--- SDK additional configurations -->  
 
 ## Expected Behavior
 <!--- What should have happened? -->
