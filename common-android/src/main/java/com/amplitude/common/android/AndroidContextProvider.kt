@@ -77,7 +77,9 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
                 packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
                 return packageInfo.versionName
             } catch (e: PackageManager.NameNotFoundException) {
+                // do nothing
             } catch (e: Exception) {
+                // do nothing
             }
             return null
         }
@@ -94,7 +96,7 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
             return null
         }
 
-        private fun fetchCountry(): String? {
+        private fun fetchCountry(): String {
             // This should not be called on the main thread.
 
             // Prioritize reverse geocode, but until we have a result from that,
@@ -170,15 +172,17 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
         private val locale: Locale
             get() {
                 val configuration = Resources.getSystem().configuration
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                     val localeList = configuration.locales
                     if (localeList.isEmpty) {
-                        return Locale.getDefault()
+                        Locale.getDefault()
                     } else {
-                        return localeList.get(0)
+                        localeList.get(0)
                     }
                 } else {
-                    return configuration.locale
+                    // for legacy versions, we're just going to use the deprecated field
+                    @Suppress("DEPRECATION")
+                    configuration.locale
                 }
             }
 
