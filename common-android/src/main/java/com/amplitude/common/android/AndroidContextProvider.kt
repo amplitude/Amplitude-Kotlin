@@ -300,10 +300,6 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
         }
     }
 
-    fun prefetch() {
-        cachedInfo
-    }
-
     fun isGooglePlayServicesEnabled(): Boolean {
         return cachedInfo!!.gpsEnabled
     }
