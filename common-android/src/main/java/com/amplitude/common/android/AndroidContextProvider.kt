@@ -27,13 +27,7 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
     ContextProvider {
     var isLocationListening = true
     var shouldTrackAdid = true
-    private var cachedInfo: CachedInfo? = null
-        get() {
-            if (field == null) {
-                field = CachedInfo()
-            }
-            return field
-        }
+    private val cachedInfo: CachedInfo by lazy { CachedInfo() }
 
     /**
      * Internal class serves as a cache
@@ -301,35 +295,35 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
     }
 
     fun isGooglePlayServicesEnabled(): Boolean {
-        return cachedInfo!!.gpsEnabled
+        return cachedInfo.gpsEnabled
     }
 
     fun isLimitAdTrackingEnabled(): Boolean {
-        return cachedInfo!!.limitAdTrackingEnabled
+        return cachedInfo.limitAdTrackingEnabled
     }
 
     val versionName: String?
-        get() = cachedInfo!!.versionName
+        get() = cachedInfo.versionName
     val osName: String
-        get() = cachedInfo!!.osName
+        get() = cachedInfo.osName
     val osVersion: String
-        get() = cachedInfo!!.osVersion
+        get() = cachedInfo.osVersion
     val brand: String
-        get() = cachedInfo!!.brand
+        get() = cachedInfo.brand
     val manufacturer: String
-        get() = cachedInfo!!.manufacturer
+        get() = cachedInfo.manufacturer
     val model: String
-        get() = cachedInfo!!.model
+        get() = cachedInfo.model
     val carrier: String?
-        get() = cachedInfo!!.carrier
+        get() = cachedInfo.carrier
     val country: String?
-        get() = cachedInfo!!.country
+        get() = cachedInfo.country
     val language: String
-        get() = cachedInfo!!.language
+        get() = cachedInfo.language
     val advertisingId: String?
-        get() = cachedInfo!!.advertisingId
+        get() = cachedInfo.advertisingId
     val appSetId: String?
-        get() = cachedInfo!!.appSetId // other causes// failed to get providers list
+        get() = cachedInfo.appSetId // other causes// failed to get providers list
     // Don't crash if the device does not have location services.
 
     // It's possible that the location service is running out of process
