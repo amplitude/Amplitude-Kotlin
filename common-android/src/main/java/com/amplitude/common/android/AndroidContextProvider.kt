@@ -57,13 +57,13 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
             advertisingId = fetchAdvertisingId()
             versionName = fetchVersionName()
             osName = OS_NAME
-            osVersion = fetchOsVersion()
-            brand = fetchBrand()
-            manufacturer = fetchManufacturer()
-            model = fetchModel()
+            osVersion = Build.VERSION.RELEASE
+            brand = Build.BRAND
+            manufacturer = Build.MANUFACTURER
+            model = Build.MODEL
             carrier = fetchCarrier()
             country = fetchCountry()
-            language = fetchLanguage()
+            language = locale.language
             gpsEnabled = checkGPSEnabled()
             appSetId = fetchAppSetId()
         }
@@ -82,21 +82,6 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
             return null
         }
 
-        private fun fetchOsVersion(): String {
-            return Build.VERSION.RELEASE
-        }
-
-        private fun fetchBrand(): String {
-            return Build.BRAND
-        }
-
-        private fun fetchManufacturer(): String {
-            return Build.MANUFACTURER
-        }
-
-        private fun fetchModel(): String {
-            return Build.MODEL
-        }
 
         private fun fetchCarrier(): String? {
             try {
@@ -200,17 +185,13 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
         private val countryFromLocale: String
             get() = locale.country
 
-        private fun fetchLanguage(): String {
-            return locale.language
-        }
-
         private fun fetchAdvertisingId(): String? {
             if (!shouldTrackAdid) {
                 return null
             }
 
             // This should not be called on the main thread.
-            return if ("Amazon" == fetchManufacturer()) {
+            return if ("Amazon" == manufacturer) {
                 fetchAndCacheAmazonAdvertisingId
             } else {
                 fetchAndCacheGoogleAdvertisingId
