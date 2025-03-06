@@ -399,8 +399,5 @@ class AndroidContextProvider(
         const val OS_NAME = "android"
         const val SETTING_LIMIT_AD_TRACKING = "limit_ad_tracking"
         const val SETTING_ADVERTISING_ID = "advertising_id"
-        fun generateUUID(): String {
-            return UUID.randomUUID().toString()
-        }
     }
 }

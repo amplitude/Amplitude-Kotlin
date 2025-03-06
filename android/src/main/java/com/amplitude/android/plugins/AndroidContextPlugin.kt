@@ -63,7 +63,8 @@ open class AndroidContextPlugin : Plugin {
         }
 
         // Generate random id
-        val randomId = AndroidContextProvider.generateUUID() + "R"
+        val generatedUuid = UUID.randomUUID().toString()
+        val randomId = generatedUuid + "R"
         setDeviceId(randomId)
     }
 
