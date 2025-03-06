@@ -14,18 +14,12 @@ import android.telephony.TelephonyManager
 import androidx.core.content.ContextCompat
 import com.amplitude.common.ContextProvider
 import java.io.IOException
-import java.lang.Exception
-import java.lang.IllegalArgumentException
-import java.lang.IllegalStateException
-import java.lang.NullPointerException
 import java.lang.reflect.InvocationTargetException
 import java.util.Locale
-import java.util.UUID
-import kotlin.collections.ArrayList
 
 class AndroidContextProvider(
-    private val context: Context, 
-    private val locationListening: Boolean, 
+    private val context: Context,
+    private val locationListening: Boolean,
     private val shouldTrackAdid: Boolean
 ) : ContextProvider {
 
@@ -50,16 +44,18 @@ class AndroidContextProvider(
         var appSetId: String?
 
         init {
-            advertisingId = fetchAdvertisingId()
-            versionName = fetchVersionName()
             osName = OS_NAME
             osVersion = Build.VERSION.RELEASE
             brand = Build.BRAND
             manufacturer = Build.MANUFACTURER
             model = Build.MODEL
+            language = locale.language
+
+            // order is important here, some fields are checked before fetching the data
+            advertisingId = fetchAdvertisingId()
+            versionName = fetchVersionName()
             carrier = fetchCarrier()
             country = fetchCountry()
-            language = locale.language
             gpsEnabled = checkGPSEnabled()
             appSetId = fetchAppSetId()
         }
@@ -79,7 +75,6 @@ class AndroidContextProvider(
             }
             return null
         }
-
 
         private fun fetchCarrier(): String? {
             try {
