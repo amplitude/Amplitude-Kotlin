@@ -23,10 +23,12 @@ import java.util.Locale
 import java.util.UUID
 import kotlin.collections.ArrayList
 
-class AndroidContextProvider(private val context: Context, locationListening: Boolean, shouldTrackAdid: Boolean) :
-    ContextProvider {
-    var isLocationListening = true
-    var shouldTrackAdid = true
+class AndroidContextProvider(
+    private val context: Context, 
+    private val locationListening: Boolean, 
+    private val shouldTrackAdid: Boolean
+) : ContextProvider {
+
     private val cachedInfo: CachedInfo by lazy { CachedInfo() }
 
     /**
@@ -108,7 +110,7 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
         // Failed to reverse geocode location
         private val countryFromLocation: String?
             get() {
-                if (!isLocationListening) {
+                if (!locationListening) {
                     return null
                 }
                 val recent = mostRecentLocation
@@ -330,7 +332,7 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
     // and the remote getProviders call fails. Handle null provider lists.
     val mostRecentLocation: Location?
         get() {
-            if (!isLocationListening) {
+            if (!locationListening) {
                 return null
             }
             if (!(
@@ -400,10 +402,5 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
         fun generateUUID(): String {
             return UUID.randomUUID().toString()
         }
-    }
-
-    init {
-        isLocationListening = locationListening
-        this.shouldTrackAdid = shouldTrackAdid
     }
 }
