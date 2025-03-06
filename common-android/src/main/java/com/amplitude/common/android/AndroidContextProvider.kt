@@ -14,26 +14,16 @@ import android.telephony.TelephonyManager
 import androidx.core.content.ContextCompat
 import com.amplitude.common.ContextProvider
 import java.io.IOException
-import java.lang.Exception
-import java.lang.IllegalArgumentException
-import java.lang.IllegalStateException
-import java.lang.NullPointerException
 import java.lang.reflect.InvocationTargetException
 import java.util.Locale
-import java.util.UUID
-import kotlin.collections.ArrayList
 
-class AndroidContextProvider(private val context: Context, locationListening: Boolean, shouldTrackAdid: Boolean) :
-    ContextProvider {
-    var isLocationListening = true
-    var shouldTrackAdid = true
-    private var cachedInfo: CachedInfo? = null
-        get() {
-            if (field == null) {
-                field = CachedInfo()
-            }
-            return field
-        }
+class AndroidContextProvider(
+    private val context: Context,
+    private val locationListening: Boolean,
+    private val shouldTrackAdid: Boolean
+) : ContextProvider {
+
+    private val cachedInfo: CachedInfo by lazy { CachedInfo() }
 
     /**
      * Internal class serves as a cache
@@ -54,16 +44,18 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
         var appSetId: String?
 
         init {
+            osName = OS_NAME
+            osVersion = Build.VERSION.RELEASE
+            brand = Build.BRAND
+            manufacturer = Build.MANUFACTURER
+            model = Build.MODEL
+            language = locale.language
+
+            // order is important here, some fields are checked before fetching the data
             advertisingId = fetchAdvertisingId()
             versionName = fetchVersionName()
-            osName = OS_NAME
-            osVersion = fetchOsVersion()
-            brand = fetchBrand()
-            manufacturer = fetchManufacturer()
-            model = fetchModel()
             carrier = fetchCarrier()
             country = fetchCountry()
-            language = fetchLanguage()
             gpsEnabled = checkGPSEnabled()
             appSetId = fetchAppSetId()
         }
@@ -77,25 +69,11 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
                 packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
                 return packageInfo.versionName
             } catch (e: PackageManager.NameNotFoundException) {
+                // do nothing
             } catch (e: Exception) {
+                // do nothing
             }
             return null
-        }
-
-        private fun fetchOsVersion(): String {
-            return Build.VERSION.RELEASE
-        }
-
-        private fun fetchBrand(): String {
-            return Build.BRAND
-        }
-
-        private fun fetchManufacturer(): String {
-            return Build.MANUFACTURER
-        }
-
-        private fun fetchModel(): String {
-            return Build.MODEL
         }
 
         private fun fetchCarrier(): String? {
@@ -109,7 +87,7 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
             return null
         }
 
-        private fun fetchCountry(): String? {
+        private fun fetchCountry(): String {
             // This should not be called on the main thread.
 
             // Prioritize reverse geocode, but until we have a result from that,
@@ -127,7 +105,7 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
         // Failed to reverse geocode location
         private val countryFromLocation: String?
             get() {
-                if (!isLocationListening) {
+                if (!locationListening) {
                     return null
                 }
                 val recent = mostRecentLocation
@@ -185,24 +163,22 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
         private val locale: Locale
             get() {
                 val configuration = Resources.getSystem().configuration
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                     val localeList = configuration.locales
                     if (localeList.isEmpty) {
-                        return Locale.getDefault()
+                        Locale.getDefault()
                     } else {
-                        return localeList.get(0)
+                        localeList.get(0)
                     }
                 } else {
-                    return configuration.locale
+                    // for legacy versions, we're just going to use the deprecated field
+                    @Suppress("DEPRECATION")
+                    configuration.locale
                 }
             }
 
         private val countryFromLocale: String
             get() = locale.country
-
-        private fun fetchLanguage(): String {
-            return locale.language
-        }
 
         private fun fetchAdvertisingId(): String? {
             if (!shouldTrackAdid) {
@@ -210,7 +186,7 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
             }
 
             // This should not be called on the main thread.
-            return if ("Amazon" == fetchManufacturer()) {
+            return if ("Amazon" == manufacturer) {
                 fetchAndCacheAmazonAdvertisingId
             } else {
                 fetchAndCacheGoogleAdvertisingId
@@ -315,47 +291,43 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
         }
     }
 
-    fun prefetch() {
-        cachedInfo
-    }
-
     fun isGooglePlayServicesEnabled(): Boolean {
-        return cachedInfo!!.gpsEnabled
+        return cachedInfo.gpsEnabled
     }
 
     fun isLimitAdTrackingEnabled(): Boolean {
-        return cachedInfo!!.limitAdTrackingEnabled
+        return cachedInfo.limitAdTrackingEnabled
     }
 
     val versionName: String?
-        get() = cachedInfo!!.versionName
+        get() = cachedInfo.versionName
     val osName: String
-        get() = cachedInfo!!.osName
+        get() = cachedInfo.osName
     val osVersion: String
-        get() = cachedInfo!!.osVersion
+        get() = cachedInfo.osVersion
     val brand: String
-        get() = cachedInfo!!.brand
+        get() = cachedInfo.brand
     val manufacturer: String
-        get() = cachedInfo!!.manufacturer
+        get() = cachedInfo.manufacturer
     val model: String
-        get() = cachedInfo!!.model
+        get() = cachedInfo.model
     val carrier: String?
-        get() = cachedInfo!!.carrier
+        get() = cachedInfo.carrier
     val country: String?
-        get() = cachedInfo!!.country
+        get() = cachedInfo.country
     val language: String
-        get() = cachedInfo!!.language
+        get() = cachedInfo.language
     val advertisingId: String?
-        get() = cachedInfo!!.advertisingId
+        get() = cachedInfo.advertisingId
     val appSetId: String?
-        get() = cachedInfo!!.appSetId // other causes// failed to get providers list
+        get() = cachedInfo.appSetId // other causes// failed to get providers list
     // Don't crash if the device does not have location services.
 
     // It's possible that the location service is running out of process
     // and the remote getProviders call fails. Handle null provider lists.
     val mostRecentLocation: Location?
         get() {
-            if (!isLocationListening) {
+            if (!locationListening) {
                 return null
             }
             if (!(
@@ -422,13 +394,5 @@ class AndroidContextProvider(private val context: Context, locationListening: Bo
         const val OS_NAME = "android"
         const val SETTING_LIMIT_AD_TRACKING = "limit_ad_tracking"
         const val SETTING_ADVERTISING_ID = "advertising_id"
-        fun generateUUID(): String {
-            return UUID.randomUUID().toString()
-        }
-    }
-
-    init {
-        isLocationListening = locationListening
-        this.shouldTrackAdid = shouldTrackAdid
     }
 }
