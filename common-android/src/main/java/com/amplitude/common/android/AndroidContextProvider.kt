@@ -20,7 +20,8 @@ import java.util.Locale
 class AndroidContextProvider(
     private val context: Context,
     private val locationListening: Boolean,
-    private val shouldTrackAdid: Boolean
+    private val shouldTrackAdid: Boolean,
+    private val shouldTrackAppSetId: Boolean
 ) : ContextProvider {
     private val cachedInfo: CachedInfo by lazy { CachedInfo() }
 
@@ -193,6 +194,10 @@ class AndroidContextProvider(
         }
 
         private fun fetchAppSetId(): String? {
+            if (!shouldTrackAppSetId) {
+                return null
+            }
+
             try {
                 val AppSet = Class
                     .forName("com.google.android.gms.appset.AppSet")

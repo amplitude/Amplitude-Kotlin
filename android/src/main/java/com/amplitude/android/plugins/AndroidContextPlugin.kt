@@ -20,7 +20,8 @@ open class AndroidContextPlugin : Plugin {
         contextProvider = AndroidContextProvider(
             configuration.context,
             configuration.locationListening,
-            configuration.trackingOptions.shouldTrackAdid()
+            configuration.trackingOptions.shouldTrackAdid(),
+            configuration.trackingOptions.shouldTrackAppSetId()
         )
         initializeDeviceId(configuration)
     }
