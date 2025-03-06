@@ -22,7 +22,6 @@ class AndroidContextProvider(
     private val locationListening: Boolean,
     private val shouldTrackAdid: Boolean
 ) : ContextProvider {
-
     private val cachedInfo: CachedInfo by lazy { CachedInfo() }
 
     /**
