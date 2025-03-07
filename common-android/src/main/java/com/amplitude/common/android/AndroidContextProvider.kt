@@ -20,16 +20,16 @@ import java.util.Locale
 class AndroidContextProvider(
     private val context: Context,
     private val locationListening: Boolean,
-    private val shouldTrackAdid: Boolean
+    private val shouldTrackAdid: Boolean,
+    private val shouldTrackAppSetId: Boolean
 ) : ContextProvider {
-
     private val cachedInfo: CachedInfo by lazy { CachedInfo() }
 
     /**
      * Internal class serves as a cache
      */
     inner class CachedInfo {
-        var advertisingId: String?
+        val advertisingId: String?
         val country: String?
         val versionName: String?
         val osName: String
@@ -41,7 +41,7 @@ class AndroidContextProvider(
         val language: String
         var limitAdTrackingEnabled: Boolean = true
         val gpsEnabled: Boolean
-        var appSetId: String?
+        val appSetId: String?
 
         init {
             osName = OS_NAME
@@ -52,12 +52,12 @@ class AndroidContextProvider(
             language = locale.language
 
             // order is important here, some fields are checked before fetching the data
-            advertisingId = fetchAdvertisingId()
+            advertisingId = if (shouldTrackAdid) fetchAdvertisingId() else null
             versionName = fetchVersionName()
             carrier = fetchCarrier()
             country = fetchCountry()
             gpsEnabled = checkGPSEnabled()
-            appSetId = fetchAppSetId()
+            appSetId = if (shouldTrackAppSetId) fetchAppSetId() else null
         }
 
         /**
@@ -180,18 +180,15 @@ class AndroidContextProvider(
         private val countryFromLocale: String
             get() = locale.country
 
-        private fun fetchAdvertisingId(): String? {
-            if (!shouldTrackAdid) {
-                return null
-            }
-
-            // This should not be called on the main thread.
-            return if ("Amazon" == manufacturer) {
-                fetchAndCacheAmazonAdvertisingId
+        /**
+         * This should not be called on the main thread.
+         */
+        private fun fetchAdvertisingId(): String? =
+            if ("Amazon" == manufacturer) {
+                fetchAndCacheAmazonAdvertisingId()
             } else {
-                fetchAndCacheGoogleAdvertisingId
+                fetchAndCacheGoogleAdvertisingId()
             }
-        }
 
         private fun fetchAppSetId(): String? {
             try {
@@ -206,7 +203,7 @@ class AndroidContextProvider(
                     Tasks.getMethod("await", Class.forName("com.google.android.gms.tasks.Task"))
                 val appSetInfo = await.invoke(null, taskWithAppSetInfo)
                 val getId = appSetInfo.javaClass.getMethod("getId")
-                appSetId = getId.invoke(appSetInfo) as String
+                return getId.invoke(appSetInfo) as String
             } catch (e: ClassNotFoundException) {
                 LogcatLogger.logger
                     .warn("Google Play Services SDK not found for app set id!")
@@ -217,48 +214,47 @@ class AndroidContextProvider(
                     "Encountered an error connecting to Google Play Services for app set id"
                 )
             }
-            return appSetId
+
+            return null
         }
 
-        private val fetchAndCacheAmazonAdvertisingId: String?
-            get() {
-                val cr = context.contentResolver
-                limitAdTrackingEnabled = Secure.getInt(cr, SETTING_LIMIT_AD_TRACKING, 0) == 1
-                advertisingId = Secure.getString(cr, SETTING_ADVERTISING_ID)
-                return advertisingId
+        private fun fetchAndCacheAmazonAdvertisingId(): String? {
+            val cr = context.contentResolver
+            limitAdTrackingEnabled = Secure.getInt(cr, SETTING_LIMIT_AD_TRACKING, 0) == 1
+            return Secure.getString(cr, SETTING_ADVERTISING_ID)
+        }
+
+        private fun fetchAndCacheGoogleAdvertisingId(): String? {
+            try {
+                val AdvertisingIdClient = Class
+                    .forName("com.google.android.gms.ads.identifier.AdvertisingIdClient")
+                val getAdvertisingInfo = AdvertisingIdClient.getMethod(
+                    "getAdvertisingIdInfo",
+                    Context::class.java
+                )
+                val advertisingInfo = getAdvertisingInfo.invoke(null, context)
+                val isLimitAdTrackingEnabled = advertisingInfo.javaClass.getMethod(
+                    "isLimitAdTrackingEnabled"
+                )
+                val limitAdTrackingEnabled = isLimitAdTrackingEnabled
+                    .invoke(advertisingInfo) as? Boolean
+                this.limitAdTrackingEnabled =
+                    limitAdTrackingEnabled != null && limitAdTrackingEnabled
+                val getId = advertisingInfo.javaClass.getMethod("getId")
+                return getId.invoke(advertisingInfo) as String
+            } catch (e: ClassNotFoundException) {
+                LogcatLogger.logger
+                    .warn("Google Play Services SDK not found for advertising id!")
+            } catch (e: InvocationTargetException) {
+                LogcatLogger.logger
+                    .warn("Google Play Services not available for advertising id")
+            } catch (e: Exception) {
+                LogcatLogger.logger.error(
+                    "Encountered an error connecting to Google Play Services for advertising id"
+                )
             }
-        private val fetchAndCacheGoogleAdvertisingId: String?
-            get() {
-                try {
-                    val AdvertisingIdClient = Class
-                        .forName("com.google.android.gms.ads.identifier.AdvertisingIdClient")
-                    val getAdvertisingInfo = AdvertisingIdClient.getMethod(
-                        "getAdvertisingIdInfo",
-                        Context::class.java
-                    )
-                    val advertisingInfo = getAdvertisingInfo.invoke(null, context)
-                    val isLimitAdTrackingEnabled = advertisingInfo.javaClass.getMethod(
-                        "isLimitAdTrackingEnabled"
-                    )
-                    val limitAdTrackingEnabled = isLimitAdTrackingEnabled
-                        .invoke(advertisingInfo) as? Boolean
-                    this.limitAdTrackingEnabled =
-                        limitAdTrackingEnabled != null && limitAdTrackingEnabled
-                    val getId = advertisingInfo.javaClass.getMethod("getId")
-                    advertisingId = getId.invoke(advertisingInfo) as String
-                } catch (e: ClassNotFoundException) {
-                    LogcatLogger.logger
-                        .warn("Google Play Services SDK not found for advertising id!")
-                } catch (e: InvocationTargetException) {
-                    LogcatLogger.logger
-                        .warn("Google Play Services not available for advertising id")
-                } catch (e: Exception) {
-                    LogcatLogger.logger.error(
-                        "Encountered an error connecting to Google Play Services for advertising id"
-                    )
-                }
-                return advertisingId
-            }
+            return null
+        }
 
         private fun checkGPSEnabled(): Boolean {
             // This should not be called on the main thread.
