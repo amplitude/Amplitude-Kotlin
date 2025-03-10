@@ -1,3 +1,13 @@
+## [1.20.3](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.20.2...v1.20.3) (2025-03-10)
+
+
+### Bug Fixes
+
+* add consumer-rules for useAppSetIdForDeviceId = true ([#249](https://github.com/amplitude/Amplitude-Kotlin/issues/249)) ([83cc361](https://github.com/amplitude/Amplitude-Kotlin/commit/83cc361deaef445bb75af49e64ebd9cffca80535))
+* ignore illegal state exception on addShutdownHook w/c happens when shutdown sequence has begun ([#248](https://github.com/amplitude/Amplitude-Kotlin/issues/248)) ([864cbc4](https://github.com/amplitude/Amplitude-Kotlin/commit/864cbc4f6fd098547383df865ea9dc7c6f7c3771))
+* initialize custom http client with configuration ([#240](https://github.com/amplitude/Amplitude-Kotlin/issues/240)) ([1173728](https://github.com/amplitude/Amplitude-Kotlin/commit/1173728efb84722d6f74825b628cfe83e7376df9))
+* respect play services flags inside context provider ([#252](https://github.com/amplitude/Amplitude-Kotlin/issues/252)) ([e7f9112](https://github.com/amplitude/Amplitude-Kotlin/commit/e7f9112e394398d4e8f56b1b45e23a01ba022fa2))
+
 ## [1.20.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.20.1...v1.20.2) (2025-02-28)
 
 
