@@ -484,8 +484,12 @@ open class Amplitude internal constructor(
     }
 
     fun flush() {
-        this.timeline.applyClosure {
-            (it as? EventPlugin)?.flush()
+        amplitudeScope.launch(amplitudeDispatcher) {
+            isBuilt.await()
+
+            timeline.applyClosure {
+                (it as? EventPlugin)?.flush()
+            }
         }
     }
 
