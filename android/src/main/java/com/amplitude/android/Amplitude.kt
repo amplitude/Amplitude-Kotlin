@@ -119,11 +119,8 @@ open class Amplitude(
         dummyExitForegroundEvent.timestamp = timestamp
         timeline.process(dummyExitForegroundEvent)
 
-        amplitudeScope.launch(amplitudeDispatcher) {
-            isBuilt.await()
-            if ((configuration as Configuration).flushEventsOnClose) {
-                flush()
-            }
+        if ((configuration as Configuration).flushEventsOnClose) {
+            flush()
         }
     }
 
