@@ -6,7 +6,9 @@ import com.amplitude.core.events.IdentifyEvent
 import com.amplitude.core.events.RevenueEvent
 import java.util.concurrent.CopyOnWriteArrayList
 
-internal class Mediator(private val plugins: CopyOnWriteArrayList<Plugin>) {
+internal class Mediator(
+    private val plugins: CopyOnWriteArrayList<Plugin> = CopyOnWriteArrayList()
+) {
     fun add(plugin: Plugin) {
         plugins.add(plugin)
     }
