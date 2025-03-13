@@ -2,13 +2,14 @@ package com.amplitude.core.platform
 
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
+import java.util.concurrent.CopyOnWriteArrayList
 
 open class Timeline {
     internal val plugins: Map<Plugin.Type, Mediator> = mapOf(
-        Plugin.Type.Before to Mediator(mutableListOf()),
-        Plugin.Type.Enrichment to Mediator(mutableListOf()),
-        Plugin.Type.Destination to Mediator(mutableListOf()),
-        Plugin.Type.Utility to Mediator(mutableListOf())
+        Plugin.Type.Before to Mediator(CopyOnWriteArrayList()),
+        Plugin.Type.Enrichment to Mediator(CopyOnWriteArrayList()),
+        Plugin.Type.Destination to Mediator(CopyOnWriteArrayList()),
+        Plugin.Type.Utility to Mediator(CopyOnWriteArrayList())
     )
     lateinit var amplitude: Amplitude
 
