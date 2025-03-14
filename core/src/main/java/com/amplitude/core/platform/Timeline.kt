@@ -5,10 +5,10 @@ import com.amplitude.core.events.BaseEvent
 
 open class Timeline {
     internal val plugins: Map<Plugin.Type, Mediator> = mapOf(
-        Plugin.Type.Before to Mediator(mutableListOf()),
-        Plugin.Type.Enrichment to Mediator(mutableListOf()),
-        Plugin.Type.Destination to Mediator(mutableListOf()),
-        Plugin.Type.Utility to Mediator(mutableListOf())
+        Plugin.Type.Before to Mediator(),
+        Plugin.Type.Enrichment to Mediator(),
+        Plugin.Type.Destination to Mediator(),
+        Plugin.Type.Utility to Mediator()
     )
     lateinit var amplitude: Amplitude
 

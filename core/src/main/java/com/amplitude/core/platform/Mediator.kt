@@ -4,17 +4,18 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.GroupIdentifyEvent
 import com.amplitude.core.events.IdentifyEvent
 import com.amplitude.core.events.RevenueEvent
+import java.util.concurrent.CopyOnWriteArrayList
 
-internal class Mediator(internal val plugins: MutableList<Plugin>) {
-    fun add(plugin: Plugin) = synchronized(plugins) {
+internal class Mediator(
+    private val plugins: CopyOnWriteArrayList<Plugin> = CopyOnWriteArrayList()
+) {
+    fun add(plugin: Plugin) {
         plugins.add(plugin)
     }
 
-    fun remove(plugin: Plugin) = synchronized(plugins) {
-        plugins.removeAll { it === plugin }
-    }
+    fun remove(plugin: Plugin) = plugins.removeAll { it === plugin }
 
-    fun execute(event: BaseEvent): BaseEvent? = synchronized(plugins) {
+    fun execute(event: BaseEvent): BaseEvent? {
         var result: BaseEvent? = event
 
         plugins.forEach { plugin ->
@@ -53,9 +54,14 @@ internal class Mediator(internal val plugins: MutableList<Plugin>) {
         return result
     }
 
-    fun applyClosure(closure: (Plugin) -> Unit) = synchronized(plugins) {
+    fun applyClosure(closure: (Plugin) -> Unit) {
         plugins.forEach {
             closure(it)
         }
     }
+
+    /**
+     * Only visible for testing
+     */
+    internal fun size() = plugins.size
 }
