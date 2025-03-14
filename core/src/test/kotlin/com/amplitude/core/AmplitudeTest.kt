@@ -316,10 +316,10 @@ internal class AmplitudeTest {
                 override lateinit var amplitude: Amplitude
             }
             amplitude.add(middleware)
-            amplitude.timeline.plugins[Plugin.Type.Enrichment]?.plugins?.let {
+            amplitude.timeline.plugins[Plugin.Type.Enrichment]?.size()?.let {
                 assertEquals(
                     2,
-                    it.size
+                    it
                 )
             } ?: fail()
         }
@@ -332,10 +332,10 @@ internal class AmplitudeTest {
             }
             amplitude.add(middleware)
             amplitude.remove(middleware)
-            amplitude.timeline.plugins[Plugin.Type.Enrichment]?.plugins?.let {
+            amplitude.timeline.plugins[Plugin.Type.Enrichment]?.size()?.let {
                 assertEquals(
                     1, // SegmentLog is the other added at startup
-                    it.size
+                    it
                 )
             } ?: fail()
         }
