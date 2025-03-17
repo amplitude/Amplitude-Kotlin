@@ -9,6 +9,8 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
 
+private const val UNIT_OF_WORK_IN_MS = 100L
+
 class MediatorTest {
     private val mediator = Mediator(CopyOnWriteArrayList())
 
@@ -20,13 +22,12 @@ class MediatorTest {
 
         override fun flush() {
             super.flush()
-            Thread.sleep(1_000)
+            Thread.sleep(UNIT_OF_WORK_IN_MS)
             amountOfWorkDone.incrementAndGet()
         }
     }
 
-    @Test
-    @Timeout(3, unit = TimeUnit.SECONDS)
+    @Timeout(UNIT_OF_WORK_IN_MS * 3, unit = TimeUnit.MILLISECONDS)
     fun `does work twice on two destination plugins`() {
         val fakeDestinationPlugins = List(2) { FakeDestinationPlugin() }
         fakeDestinationPlugins.forEach {
@@ -54,7 +55,7 @@ class MediatorTest {
     }
 
     @Test
-    @Timeout(7, unit = TimeUnit.SECONDS)
+    @Timeout(UNIT_OF_WORK_IN_MS * 6, unit = TimeUnit.MILLISECONDS)
     fun `work, add a new plugin and work, and work again on two destination plugins`() {
         val fakeDestinationPlugin1 = FakeDestinationPlugin()
         val fakeDestinationPlugin2 = FakeDestinationPlugin()
@@ -76,7 +77,7 @@ class MediatorTest {
         }
         val t2 = thread {
             // give time for the first work() to start
-            Thread.sleep(100)
+            Thread.sleep(UNIT_OF_WORK_IN_MS / 2)
             // add plugin 2, 2nd work() should catch up with the newly added plugin
             mediator.add(fakeDestinationPlugin2)
             latch.countDown()
