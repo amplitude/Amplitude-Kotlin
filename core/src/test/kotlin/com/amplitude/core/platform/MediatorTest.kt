@@ -27,13 +27,13 @@ class MediatorTest {
 
     @Test
     @Timeout(3, unit = TimeUnit.SECONDS)
-    fun `call flush twice on two destination plugins`() {
+    fun `does work twice on two destination plugins`() {
         val fakeDestinationPlugins = List(2) { FakeDestinationPlugin() }
         fakeDestinationPlugins.forEach {
             mediator.add(it)
         }
 
-        // simulate 2 threads executing flush on 2 different DestinationPlugins
+        // simulate 2 threads executing work on 2 different DestinationPlugins
         val work = {
             mediator.applyClosure {
                 (it as EventPlugin).flush()
@@ -54,8 +54,8 @@ class MediatorTest {
     }
 
     @Test
-    @Timeout(5, unit = TimeUnit.SECONDS)
-    fun `flush, add a new plugin, and flush again on two destination plugins`() {
+    @Timeout(7, unit = TimeUnit.SECONDS)
+    fun `work, add a new plugin and work, and work again on two destination plugins`() {
         val fakeDestinationPlugin1 = FakeDestinationPlugin()
         val fakeDestinationPlugin2 = FakeDestinationPlugin()
 
@@ -67,28 +67,31 @@ class MediatorTest {
             }
         }
 
-        // flush and add
+        // work and add, work again
         val latch = CountDownLatch(2)
         val t1 = thread {
+            work()
             work()
             latch.countDown()
         }
         val t2 = thread {
-            // add plugin 2, work() should catch up with the newly added plugin
+            // give time for the first work() to start
+            Thread.sleep(100)
+            // add plugin 2, 2nd work() should catch up with the newly added plugin
             mediator.add(fakeDestinationPlugin2)
             latch.countDown()
         }
+        t1.join()
+        t2.join()
         latch.await()
 
-        // flush again
+        // work again
         val t3 = thread {
             work()
         }
-        t1.join()
-        t2.join()
         t3.join()
 
-        assertEquals(2, fakeDestinationPlugin1.amountOfWorkDone.get())
+        assertEquals(3, fakeDestinationPlugin1.amountOfWorkDone.get())
         assertEquals(2, fakeDestinationPlugin2.amountOfWorkDone.get())
     }
 }
