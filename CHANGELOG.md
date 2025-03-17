@@ -1,3 +1,11 @@
+## [1.20.4](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.20.3...v1.20.4) (2025-03-17)
+
+
+### Bug Fixes
+
+* Mediator flaky test  ([#256](https://github.com/amplitude/Amplitude-Kotlin/issues/256)) ([7dacdfa](https://github.com/amplitude/Amplitude-Kotlin/commit/7dacdfa20c8fc5a9ad751c09fdee977bf1db3af0))
+* remove synchronized on mediator ([#254](https://github.com/amplitude/Amplitude-Kotlin/issues/254)) ([d71d59b](https://github.com/amplitude/Amplitude-Kotlin/commit/d71d59be1c0f2bdc518d6839937b963b4b88ff76))
+
 ## [1.20.3](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.20.2...v1.20.3) (2025-03-10)
 
 
