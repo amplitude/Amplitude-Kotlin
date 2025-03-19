@@ -35,8 +35,9 @@ class CustomOkHttpClient : HttpClientInterface {
             .build()
 
         try {
-            val response = okHttpClient.newCall(request).execute()
-            return AnalyticsResponse.create(response.code, response.body?.string())
+            return okHttpClient.newCall(request).execute().use { response ->
+                AnalyticsResponse.create(response.code, response.body?.string())
+            }
         } catch (e: IOException) {
             e.printStackTrace()
             return AnalyticsResponse.create(500, null)
