@@ -9,30 +9,18 @@ import java.lang.Exception
 
 internal object HttpResponse {
     fun createHttpResponse(code: Int, responseBody: String?): AnalyticsResponse {
-        when (code) {
-            HttpStatus.SUCCESS.code -> {
-                return SuccessResponse()
-            }
+        return when (code) {
+            HttpStatus.SUCCESS.code -> SuccessResponse()
 
-            HttpStatus.BAD_REQUEST.code -> {
-                return BadRequestResponse(JSONObject(responseBody))
-            }
+            HttpStatus.BAD_REQUEST.code -> BadRequestResponse(JSONObject(responseBody))
 
-            HttpStatus.PAYLOAD_TOO_LARGE.code -> {
-                return PayloadTooLargeResponse(JSONObject(responseBody))
-            }
+            HttpStatus.PAYLOAD_TOO_LARGE.code -> PayloadTooLargeResponse(JSONObject(responseBody))
 
-            HttpStatus.TOO_MANY_REQUESTS.code -> {
-                return TooManyRequestsResponse(JSONObject(responseBody))
-            }
+            HttpStatus.TOO_MANY_REQUESTS.code -> TooManyRequestsResponse(JSONObject(responseBody))
 
-            HttpStatus.TIMEOUT.code -> {
-                return TimeoutResponse()
-            }
+            HttpStatus.TIMEOUT.code -> TimeoutResponse()
 
-            else -> {
-                return FailedResponse(parseResponseBodyOrGetDefault(responseBody))
-            }
+            else -> FailedResponse(parseResponseBodyOrGetDefault(responseBody))
         }
     }
 
@@ -61,17 +49,17 @@ interface AnalyticsResponse {
     }
 }
 
-class SuccessResponse() : AnalyticsResponse {
+class SuccessResponse : AnalyticsResponse {
     override val status: HttpStatus = HttpStatus.SUCCESS
 }
 
 class BadRequestResponse(response: JSONObject) : AnalyticsResponse {
     override val status: HttpStatus = HttpStatus.BAD_REQUEST
     val error: String = response.getStringWithDefault("error", "")
-    var eventsWithInvalidFields: Set<Int> = setOf()
-    var eventsWithMissingFields: Set<Int> = setOf()
-    var silencedEvents: Set<Int> = setOf()
-    var silencedDevices: Set<String> = setOf()
+    private var eventsWithInvalidFields: Set<Int> = setOf()
+    private var eventsWithMissingFields: Set<Int> = setOf()
+    private var silencedEvents: Set<Int> = setOf()
+    private var silencedDevices: Set<String> = setOf()
 
     init {
         if (response.has("events_with_invalid_fields")) {
@@ -99,10 +87,12 @@ class BadRequestResponse(response: JSONObject) : AnalyticsResponse {
     }
 
     fun isEventSilenced(event: BaseEvent): Boolean {
-        event.deviceId?.let {
-            return silencedDevices.contains(it)
-        } ?: let {
-            return false
+        val eventDeviceId = event.deviceId
+
+        return if (eventDeviceId != null) {
+            silencedDevices.contains(eventDeviceId)
+        } else {
+            false
         }
     }
 
@@ -150,7 +140,7 @@ class TooManyRequestsResponse(response: JSONObject) : AnalyticsResponse {
     }
 }
 
-class TimeoutResponse() : AnalyticsResponse {
+class TimeoutResponse : AnalyticsResponse {
     override val status: HttpStatus = HttpStatus.TIMEOUT
 }
 
@@ -162,33 +152,32 @@ class FailedResponse(response: JSONObject) : AnalyticsResponse {
 interface ResponseHandler {
     fun handle(response: AnalyticsResponse, events: Any, eventsString: String) {
         when (response) {
-            is SuccessResponse -> {
+            is SuccessResponse ->
                 handleSuccessResponse(response, events, eventsString)
-            }
 
-            is BadRequestResponse -> {
+            is BadRequestResponse ->
                 handleBadRequestResponse(response, events, eventsString)
-            }
 
-            is PayloadTooLargeResponse -> {
+            is PayloadTooLargeResponse ->
                 handlePayloadTooLargeResponse(response, events, eventsString)
-            }
 
-            is TooManyRequestsResponse -> {
+            is TooManyRequestsResponse ->
                 handleTooManyRequestsResponse(response, events, eventsString)
-            }
 
-            is TimeoutResponse -> {
+            is TimeoutResponse ->
                 handleTimeoutResponse(response, events, eventsString)
-            }
 
-            else -> {
+            else ->
                 handleFailedResponse(response as FailedResponse, events, eventsString)
-            }
         }
     }
 
-    fun handleSuccessResponse(successResponse: SuccessResponse, events: Any, eventsString: String)
+    fun handleSuccessResponse(
+        successResponse: SuccessResponse,
+        events: Any,
+        eventsString: String
+    )
+
     fun handleBadRequestResponse(
         badRequestResponse: BadRequestResponse,
         events: Any,
@@ -207,6 +196,15 @@ interface ResponseHandler {
         eventsString: String
     )
 
-    fun handleTimeoutResponse(timeoutResponse: TimeoutResponse, events: Any, eventsString: String)
-    fun handleFailedResponse(failedResponse: FailedResponse, events: Any, eventsString: String)
+    fun handleTimeoutResponse(
+        timeoutResponse: TimeoutResponse,
+        events: Any,
+        eventsString: String
+    )
+
+    fun handleFailedResponse(
+        failedResponse: FailedResponse,
+        events: Any,
+        eventsString: String
+    )
 }
