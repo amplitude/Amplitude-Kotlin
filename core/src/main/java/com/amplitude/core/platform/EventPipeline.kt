@@ -30,6 +30,15 @@ class EventPipeline(
     private var scheduled: Boolean
     var flushSizeDivider: AtomicInteger = AtomicInteger(1)
 
+    private val responseHandler by lazy {
+        storage.getResponseHandler(
+            this@EventPipeline,
+            amplitude.configuration,
+            scope,
+            amplitude.retryDispatcher,
+        )
+    }
+
     companion object {
         internal const val UPLOAD_SIG = "#!upload"
     }
@@ -116,7 +125,8 @@ class EventPipeline(
                         if (eventsString.isEmpty()) continue
 
                         val diagnostics = amplitude.diagnostics.extractDiagnostics()
-                        httpClient.upload(eventsString, diagnostics)
+                        val response = httpClient.upload(eventsString, diagnostics)
+                        responseHandler.handle(response, events, eventsString)
                     } catch (e: FileNotFoundException) {
                         e.message?.let {
                             amplitude.logger.warn("Event storage file not found: $it")
