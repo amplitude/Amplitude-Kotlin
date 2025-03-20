@@ -74,8 +74,8 @@ class AndroidStorage(
         storageV2.releaseFile(filePath)
     }
 
-    override suspend fun getEventsString(content: Any): String {
-        return storageV2.getEventsString(content)
+    override suspend fun getEventsString(filePath: Any): String {
+        return storageV2.getEventsString(filePath)
     }
 
     override fun getResponseHandler(
