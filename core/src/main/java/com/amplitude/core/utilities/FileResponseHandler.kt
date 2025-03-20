@@ -133,7 +133,6 @@ class FileResponseHandler(
         logger?.debug(
             "Handle response, status: ${tooManyRequestsResponse.status}, error: ${tooManyRequestsResponse.error}"
         )
-        // trigger exponential backoff
         storage.releaseFile(events as String)
         return false
     }
@@ -144,7 +143,6 @@ class FileResponseHandler(
         eventsString: String
     ): Boolean {
         logger?.debug("Handle response, status: ${timeoutResponse.status}")
-        // trigger exponential backoff
         storage.releaseFile(events as String)
         return false
     }
@@ -158,7 +156,6 @@ class FileResponseHandler(
             "Handle response, status: ${failedResponse.status}, error: ${failedResponse.error}"
         )
         // wait for next time to try again
-        // trigger exponential backoff
         storage.releaseFile(events as String)
         return false
     }
