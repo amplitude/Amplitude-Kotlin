@@ -4,7 +4,6 @@ import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.http.HttpClient
 import com.amplitude.core.utilities.http.HttpClientInterface
-import com.amplitude.core.utilities.http.ResponseHandler
 import com.amplitude.core.utilities.logWithStackTrace
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
@@ -20,34 +19,29 @@ class EventPipeline(
     private val amplitude: Amplitude,
 ) {
     private val writeChannel: Channel<WriteQueueMessage>
-
     private val uploadChannel: Channel<String>
-
     private val eventCount: AtomicInteger = AtomicInteger(0)
-
     private val httpClient: HttpClientInterface = amplitude.configuration.httpClient
         ?: HttpClient(amplitude.configuration)
-
     private val storage get() = amplitude.storage
-
     private val scope get() = amplitude.amplitudeScope
 
-    var flushInterval = amplitude.configuration.flushIntervalMillis.toLong()
-    var flushQueueSize = amplitude.configuration.flushQueueSize
-
     private var running: Boolean
-
     private var scheduled: Boolean
-
     var flushSizeDivider: AtomicInteger = AtomicInteger(1)
 
-    var exceededRetries = false
+    private val responseHandler by lazy {
+        storage.getResponseHandler(
+            this@EventPipeline,
+            amplitude.configuration,
+            scope,
+            amplitude.retryDispatcher,
+        )
+    }
 
     companion object {
         internal const val UPLOAD_SIG = "#!upload"
     }
-
-    private val responseHandler: ResponseHandler
 
     init {
         running = false
@@ -57,14 +51,6 @@ class EventPipeline(
         uploadChannel = Channel(UNLIMITED)
 
         registerShutdownHook()
-
-        responseHandler =
-            storage.getResponseHandler(
-                this@EventPipeline,
-                amplitude.configuration,
-                scope,
-                amplitude.retryDispatcher,
-            )
     }
 
     fun put(event: BaseEvent) {
@@ -153,15 +139,15 @@ class EventPipeline(
         }
 
     private fun getFlushCount(): Int {
-        val count = flushQueueSize / flushSizeDivider.get()
+        val count = amplitude.configuration.flushQueueSize / flushSizeDivider.get()
         return count.takeUnless { it == 0 } ?: 1
     }
 
     private fun schedule() =
         scope.launch(amplitude.storageIODispatcher) {
-            if (isActive && running && !scheduled && !exceededRetries) {
+            if (isActive && running && !scheduled) {
                 scheduled = true
-                delay(flushInterval)
+                delay(amplitude.configuration.flushIntervalMillis.toLong())
                 flush()
                 scheduled = false
             }
