@@ -125,8 +125,7 @@ class EventPipeline(
                         if (eventsString.isEmpty()) continue
 
                         val diagnostics = amplitude.diagnostics.extractDiagnostics()
-                        val response = httpClient.upload(eventsString, diagnostics)
-                        responseHandler.handle(response, events, eventsString)
+                        httpClient.upload(eventsString, diagnostics)
                     } catch (e: FileNotFoundException) {
                         e.message?.let {
                             amplitude.logger.warn("Event storage file not found: $it")
