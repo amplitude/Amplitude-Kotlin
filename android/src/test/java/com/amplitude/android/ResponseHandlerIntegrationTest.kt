@@ -36,7 +36,7 @@ private const val FLUSH_MAX_RETRIES = 3
 
 @ExperimentalCoroutinesApi
 @RunWith(RobolectricTestRunner::class)
-class ResponseHandlerTest {
+class ResponseHandlerIntegrationTest {
     private lateinit var server: MockWebServer
     private lateinit var amplitude: Amplitude
 
