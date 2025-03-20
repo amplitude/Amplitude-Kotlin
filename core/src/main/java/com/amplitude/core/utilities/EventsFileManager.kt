@@ -100,8 +100,8 @@ class EventsFileManager(
     fun read(): List<String> {
         // we need to filter out .temp file, since it's operating on the writing thread
         val fileList = directory.listFiles { _, name ->
-                name.contains(storageKey) && !name.endsWith(".tmp") && !name.endsWith(".properties")
-            } ?: emptyArray()
+            name.contains(storageKey) && !name.endsWith(".tmp") && !name.endsWith(".properties")
+        } ?: emptyArray()
 
         fun getSortKeyForFile(file: File): String {
             val name = file.nameWithoutExtension.replace("$storageKey-", "")
