@@ -21,6 +21,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import org.json.JSONArray
 import java.io.File
+import androidx.core.content.edit
 
 class AndroidStorageV2(
     /**
@@ -62,11 +63,15 @@ class AndroidStorageV2(
         key: Storage.Constants,
         value: String,
     ) {
-        sharedPreferences.edit().putString(key.rawVal, value).apply()
+        sharedPreferences.edit {
+            putString(key.rawVal, value)
+        }
     }
 
     override suspend fun remove(key: Storage.Constants) {
-        sharedPreferences.edit().remove(key.rawVal).apply()
+        sharedPreferences.edit {
+            remove(key.rawVal)
+        }
     }
 
     override suspend fun rollover() {
@@ -85,8 +90,8 @@ class AndroidStorageV2(
         eventsFile.release(filePath)
     }
 
-    override suspend fun getEventsString(content: Any): String {
-        return eventsFile.getEventString(content as String)
+    override suspend fun getEventsString(filePath: Any): String {
+        return eventsFile.getEventString(filePath as String)
     }
 
     override fun getResponseHandler(
