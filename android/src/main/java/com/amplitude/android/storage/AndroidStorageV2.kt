@@ -2,6 +2,7 @@ package com.amplitude.android.storage
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import com.amplitude.android.utilities.AndroidKVS
 import com.amplitude.common.Logger
 import com.amplitude.core.Amplitude
@@ -21,7 +22,6 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import org.json.JSONArray
 import java.io.File
-import androidx.core.content.edit
 
 class AndroidStorageV2(
     /**
@@ -141,7 +141,8 @@ class AndroidEventsStorageProviderV2 : StorageProvider {
     ): Storage {
         val configuration = amplitude.configuration as com.amplitude.android.Configuration
         val sharedPreferencesName = "amplitude-events-${configuration.instanceName}"
-        val sharedPreferences = configuration.context.getSharedPreferences(sharedPreferencesName, Context.MODE_PRIVATE)
+        val sharedPreferences =
+            configuration.context.getSharedPreferences(sharedPreferencesName, Context.MODE_PRIVATE)
         return AndroidStorageV2(
             configuration.instanceName,
             configuration.loggerProvider.getLogger(amplitude),
