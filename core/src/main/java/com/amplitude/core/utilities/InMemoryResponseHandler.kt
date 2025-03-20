@@ -27,15 +27,29 @@ internal class InMemoryResponseHandler(
         const val BACK_OFF: Long = 30000
     }
 
-    override fun handleSuccessResponse(successResponse: SuccessResponse, events: Any, eventsString: String) {
-        triggerEventsCallback(events as List<BaseEvent>, HttpStatus.SUCCESS.code, "Event sent success.")
+    override fun handleSuccessResponse(
+        successResponse: SuccessResponse,
+        events: Any,
+        eventsString: String
+    ): Boolean {
+        triggerEventsCallback(
+            events as List<BaseEvent>,
+            HttpStatus.SUCCESS.code,
+            "Event sent success."
+        )
+
+        return true
     }
 
-    override fun handleBadRequestResponse(badRequestResponse: BadRequestResponse, events: Any, eventsString: String) {
+    override fun handleBadRequestResponse(
+        badRequestResponse: BadRequestResponse,
+        events: Any,
+        eventsString: String
+    ): Boolean {
         val eventsList = events as List<BaseEvent>
         if (eventsList.size == 1 || badRequestResponse.isInvalidApiKeyResponse()) {
             triggerEventsCallback(eventsList, HttpStatus.BAD_REQUEST.code, badRequestResponse.error)
-            return
+            return true
         }
         val droppedIndices = badRequestResponse.getEventIndicesToDrop()
         val eventsToDrop = mutableListOf<BaseEvent>()
@@ -51,21 +65,31 @@ internal class InMemoryResponseHandler(
         eventsToRetry.forEach {
             eventPipeline.put(it)
         }
+        return true
     }
 
-    override fun handlePayloadTooLargeResponse(payloadTooLargeResponse: PayloadTooLargeResponse, events: Any, eventsString: String) {
+    override fun handlePayloadTooLargeResponse(
+        payloadTooLargeResponse: PayloadTooLargeResponse,
+        events: Any,
+        eventsString: String
+    ): Boolean {
         val eventsList = events as List<BaseEvent>
         if (eventsList.size == 1) {
             triggerEventsCallback(eventsList, HttpStatus.PAYLOAD_TOO_LARGE.code, payloadTooLargeResponse.error)
-            return
+            return true
         }
         eventPipeline.flushSizeDivider.incrementAndGet()
         eventsList.forEach {
             eventPipeline.put(it)
         }
+        return true
     }
 
-    override fun handleTooManyRequestsResponse(tooManyRequestsResponse: TooManyRequestsResponse, events: Any, eventsString: String) {
+    override fun handleTooManyRequestsResponse(
+        tooManyRequestsResponse: TooManyRequestsResponse,
+        events: Any,
+        eventsString: String
+    ): Boolean {
         val eventsList = events as List<BaseEvent>
         val eventsToDrop = mutableListOf<BaseEvent>()
         val eventsToRetryNow = mutableListOf<BaseEvent>()
@@ -89,9 +113,14 @@ internal class InMemoryResponseHandler(
                 eventPipeline.put(it)
             }
         }
+        return false
     }
 
-    override fun handleTimeoutResponse(timeoutResponse: TimeoutResponse, events: Any, eventsString: String) {
+    override fun handleTimeoutResponse(
+        timeoutResponse: TimeoutResponse,
+        events: Any,
+        eventsString: String
+    ): Boolean {
         val eventsList = events as List<BaseEvent>
         scope.launch(dispatcher) {
             delay(BACK_OFF)
@@ -99,9 +128,14 @@ internal class InMemoryResponseHandler(
                 eventPipeline.put(it)
             }
         }
+        return false
     }
 
-    override fun handleFailedResponse(failedResponse: FailedResponse, events: Any, eventsString: String) {
+    override fun handleFailedResponse(
+        failedResponse: FailedResponse,
+        events: Any,
+        eventsString: String
+    ): Boolean {
         val eventsList = events as List<BaseEvent>
         val eventsToDrop = mutableListOf<BaseEvent>()
         val eventsToRetry = mutableListOf<BaseEvent>()
@@ -116,6 +150,7 @@ internal class InMemoryResponseHandler(
         eventsToRetry.forEach {
             eventPipeline.put(it)
         }
+        return false
     }
 
     private fun triggerEventsCallback(events: List<BaseEvent>, status: Int, message: String) {
