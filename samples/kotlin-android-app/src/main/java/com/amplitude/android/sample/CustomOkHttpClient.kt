@@ -8,6 +8,7 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 
 class CustomOkHttpClient : HttpClientInterface {
@@ -26,14 +27,17 @@ class CustomOkHttpClient : HttpClientInterface {
             diagnostics = diagnostics,
             minIdLength = configuration.minIdLength
         )
-        val formBody: RequestBody = RequestBody.create(mediaType, ampRequest.getBodyStr())
-        val request: Request =
-            Request.Builder().url(configuration.getApiHost()).post(formBody).build()
+        val formBody: RequestBody = ampRequest.getBodyStr()
+            .toRequestBody(mediaType)
+        val request: Request = Request.Builder()
+            .url(configuration.getApiHost())
+            .post(formBody)
+            .build()
 
         try {
-            val response = okHttpClient.newCall(request).execute()
-            return AnalyticsResponse.create(response.code, response.body?.string())
-            // Do something with the response.
+            return okHttpClient.newCall(request).execute().use { response ->
+                AnalyticsResponse.create(response.code, response.body?.string())
+            }
         } catch (e: IOException) {
             e.printStackTrace()
             return AnalyticsResponse.create(500, null)

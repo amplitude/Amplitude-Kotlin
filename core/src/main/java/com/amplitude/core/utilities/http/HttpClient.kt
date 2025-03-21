@@ -38,7 +38,7 @@ internal class HttpClient(
         connection.outputStream.close()
 
         val responseCode: Int = connection.responseCode
-        var responseBody: String?
+        val responseBody: String?
         var inputStream: InputStream? = null
         try {
             inputStream = getInputStream(connection)
@@ -52,7 +52,7 @@ internal class HttpClient(
         }
     }
 
-    internal fun getApiKey(): String {
+    private fun getApiKey(): String {
         return configuration.apiKey
     }
 

@@ -25,7 +25,8 @@ class EventPipeline(
 
     private val eventCount: AtomicInteger = AtomicInteger(0)
 
-    private val httpClient: HttpClientInterface = amplitude.configuration.httpClient ?: HttpClient(amplitude.configuration)
+    private val httpClient: HttpClientInterface = amplitude.configuration.httpClient
+        ?: HttpClient(amplitude.configuration)
 
     private val storage get() = amplitude.storage
 
@@ -34,11 +35,9 @@ class EventPipeline(
     var flushInterval = amplitude.configuration.flushIntervalMillis.toLong()
     var flushQueueSize = amplitude.configuration.flushQueueSize
 
-    var running: Boolean
-        private set
+    private var running: Boolean
 
-    var scheduled: Boolean
-        private set
+    private var scheduled: Boolean
 
     var flushSizeDivider: AtomicInteger = AtomicInteger(1)
 
@@ -48,7 +47,7 @@ class EventPipeline(
         internal const val UPLOAD_SIG = "#!upload"
     }
 
-    val responseHandler: ResponseHandler
+    private val responseHandler: ResponseHandler
 
     init {
         running = false
@@ -98,7 +97,10 @@ class EventPipeline(
                     try {
                         storage.writeEvent(message.event)
                     } catch (e: Exception) {
-                        e.logWithStackTrace(amplitude.logger, "Error when writing event to pipeline")
+                        e.logWithStackTrace(
+                            amplitude.logger,
+                            "Error when writing event to pipeline"
+                        )
                     }
                 }
 
@@ -155,15 +157,11 @@ class EventPipeline(
         return count.takeUnless { it == 0 } ?: 1
     }
 
-    private fun getFlushIntervalInMillis(): Long {
-        return flushInterval
-    }
-
     private fun schedule() =
         scope.launch(amplitude.storageIODispatcher) {
             if (isActive && running && !scheduled && !exceededRetries) {
                 scheduled = true
-                delay(getFlushIntervalInMillis())
+                delay(flushInterval)
                 flush()
                 scheduled = false
             }
