@@ -1,8 +1,8 @@
 package com.amplitude.core.utilities
 
-import kotlin.math.pow
 import kotlinx.coroutines.delay
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.math.pow
 
 /**
  * A utility class to handle exponential backoff retry logic.
