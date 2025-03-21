@@ -192,7 +192,9 @@ class EventsFileManager(
                         return@use jsonArray.toString()
                     } catch (e: JSONException) {
                         diagnostics.addMalformedEvent(normalizedContent)
-                        logger.error("Failed to parse events: $normalizedContent, dropping file: $filePath")
+                        logger.error(
+                            "Failed to parse events: $normalizedContent, dropping file: $filePath"
+                        )
                         this.remove(filePath)
                         return@use normalizedContent
                     }
@@ -333,7 +335,9 @@ class EventsFileManager(
                             finish(it)
                         }
                     } catch (e: JSONException) {
-                        logger.error("Failed to parse events: $normalizedContent, dropping file: ${it.path}")
+                        logger.error(
+                            "Failed to parse events: $normalizedContent, dropping file: ${it.path}"
+                        )
                         this.remove(it.path)
                     }
                 }

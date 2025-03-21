@@ -1,6 +1,5 @@
 package com.amplitude.core.utilities
 
-import kotlin.math.pow
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
@@ -8,6 +7,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import kotlin.math.pow
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ExponentialBackoffRetryHandlerTest {
