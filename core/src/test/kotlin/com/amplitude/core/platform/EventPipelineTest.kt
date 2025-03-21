@@ -7,14 +7,7 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.ConsoleLoggerProvider
 import com.amplitude.core.utilities.ExponentialBackoffRetryHandler
 import com.amplitude.core.utilities.InMemoryStorageProvider
-import com.amplitude.core.utilities.http.BadRequestResponse
-import com.amplitude.core.utilities.http.FailedResponse
-import com.amplitude.core.utilities.http.HttpStatus
-import com.amplitude.core.utilities.http.PayloadTooLargeResponse
 import com.amplitude.core.utilities.http.ResponseHandler
-import com.amplitude.core.utilities.http.SuccessResponse
-import com.amplitude.core.utilities.http.TimeoutResponse
-import com.amplitude.core.utilities.http.TooManyRequestsResponse
 import com.amplitude.id.IMIdentityStorageProvider
 import io.mockk.coVerify
 import io.mockk.every
@@ -52,7 +45,7 @@ class EventPipelineTest {
         storageIODispatcher = testDispatcher,
         retryDispatcher = testDispatcher
     )
-    private val fakeResponseHandler: ResponseHandler = mockk(relaxed= true)
+    private val fakeResponseHandler: ResponseHandler = mockk(relaxed = true)
 
     @Test
     fun `should not flush when put and offline`() = runTest(testDispatcher) {

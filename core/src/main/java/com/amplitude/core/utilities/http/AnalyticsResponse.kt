@@ -8,7 +8,10 @@ import org.json.JSONObject
 import java.lang.Exception
 
 internal object HttpResponse {
-    fun createHttpResponse(code: Int, responseBody: String?): AnalyticsResponse {
+    fun createHttpResponse(
+        code: Int,
+        responseBody: String?,
+    ): AnalyticsResponse {
         return when (code) {
             HttpStatus.SUCCESS.code -> SuccessResponse()
 
@@ -43,7 +46,10 @@ interface AnalyticsResponse {
     val status: HttpStatus
 
     companion object {
-        fun create(responseCode: Int, responseBody: String?): AnalyticsResponse {
+        fun create(
+            responseCode: Int,
+            responseBody: String?,
+        ): AnalyticsResponse {
             return HttpResponse.createHttpResponse(responseCode, responseBody)
         }
     }
@@ -159,7 +165,11 @@ class FailedResponse(response: JSONObject) : AnalyticsResponse {
  * @return true if response was handled or we have successfully recovered, false otherwise
  */
 interface ResponseHandler {
-    fun handle(response: AnalyticsResponse, events: Any, eventsString: String): Boolean {
+    fun handle(
+        response: AnalyticsResponse,
+        events: Any,
+        eventsString: String,
+    ): Boolean {
         return when (response) {
             is SuccessResponse ->
                 handleSuccessResponse(response, events, eventsString)
@@ -187,8 +197,8 @@ interface ResponseHandler {
     fun handleSuccessResponse(
         successResponse: SuccessResponse,
         events: Any,
-        eventsString: String
-    ) : Boolean
+        eventsString: String,
+    ): Boolean
 
     /**
      * Handle a [HttpStatus.BAD_REQUEST] response.
@@ -196,8 +206,8 @@ interface ResponseHandler {
     fun handleBadRequestResponse(
         badRequestResponse: BadRequestResponse,
         events: Any,
-        eventsString: String
-    ) : Boolean
+        eventsString: String,
+    ): Boolean
 
     /**
      * Handle a [HttpStatus.PAYLOAD_TOO_LARGE] response.
@@ -205,8 +215,8 @@ interface ResponseHandler {
     fun handlePayloadTooLargeResponse(
         payloadTooLargeResponse: PayloadTooLargeResponse,
         events: Any,
-        eventsString: String
-    ) : Boolean
+        eventsString: String,
+    ): Boolean
 
     /**
      * Handle a [HttpStatus.TOO_MANY_REQUESTS] response.
@@ -214,8 +224,8 @@ interface ResponseHandler {
     fun handleTooManyRequestsResponse(
         tooManyRequestsResponse: TooManyRequestsResponse,
         events: Any,
-        eventsString: String
-    ) : Boolean
+        eventsString: String,
+    ): Boolean
 
     /**
      * Handle a [HttpStatus.TIMEOUT] response.
@@ -223,8 +233,8 @@ interface ResponseHandler {
     fun handleTimeoutResponse(
         timeoutResponse: TimeoutResponse,
         events: Any,
-        eventsString: String
-    ) : Boolean
+        eventsString: String,
+    ): Boolean
 
     /**
      * Handle a [HttpStatus.FAILED] response.
@@ -232,6 +242,6 @@ interface ResponseHandler {
     fun handleFailedResponse(
         failedResponse: FailedResponse,
         events: Any,
-        eventsString: String
-    ) : Boolean
+        eventsString: String,
+    ): Boolean
 }
