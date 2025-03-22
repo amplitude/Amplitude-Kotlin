@@ -8,7 +8,10 @@ import org.json.JSONObject
 import java.lang.Exception
 
 internal object HttpResponse {
-    fun createHttpResponse(code: Int, responseBody: String?): AnalyticsResponse {
+    fun createHttpResponse(
+        code: Int,
+        responseBody: String?,
+    ): AnalyticsResponse {
         return when (code) {
             HttpStatus.SUCCESS.code -> SuccessResponse()
 
@@ -43,7 +46,10 @@ interface AnalyticsResponse {
     val status: HttpStatus
 
     companion object {
-        fun create(responseCode: Int, responseBody: String?): AnalyticsResponse {
+        fun create(
+            responseCode: Int,
+            responseBody: String?,
+        ): AnalyticsResponse {
             return HttpResponse.createHttpResponse(responseCode, responseBody)
         }
     }
@@ -149,9 +155,22 @@ class FailedResponse(response: JSONObject) : AnalyticsResponse {
     val error: String = response.getStringWithDefault("error", "")
 }
 
+/**
+ * Handle different types of responses from the server after an upload.
+ *
+ * The response is considered handled if:
+ * - we have finished the handling of the response
+ * - we have successfully recovered from the response (e.g. removed the offending bad event file, split the event file that is too large)
+ *
+ * @return true if response was handled or we have successfully recovered, false otherwise
+ */
 interface ResponseHandler {
-    fun handle(response: AnalyticsResponse, events: Any, eventsString: String) {
-        when (response) {
+    fun handle(
+        response: AnalyticsResponse,
+        events: Any,
+        eventsString: String,
+    ): Boolean {
+        return when (response) {
             is SuccessResponse ->
                 handleSuccessResponse(response, events, eventsString)
 
@@ -172,39 +191,57 @@ interface ResponseHandler {
         }
     }
 
+    /**
+     * Handle a [HttpStatus.SUCCESS] response.
+     */
     fun handleSuccessResponse(
         successResponse: SuccessResponse,
         events: Any,
-        eventsString: String
-    )
+        eventsString: String,
+    ): Boolean
 
+    /**
+     * Handle a [HttpStatus.BAD_REQUEST] response.
+     */
     fun handleBadRequestResponse(
         badRequestResponse: BadRequestResponse,
         events: Any,
-        eventsString: String
-    )
+        eventsString: String,
+    ): Boolean
 
+    /**
+     * Handle a [HttpStatus.PAYLOAD_TOO_LARGE] response.
+     */
     fun handlePayloadTooLargeResponse(
         payloadTooLargeResponse: PayloadTooLargeResponse,
         events: Any,
-        eventsString: String
-    )
+        eventsString: String,
+    ): Boolean
 
+    /**
+     * Handle a [HttpStatus.TOO_MANY_REQUESTS] response.
+     */
     fun handleTooManyRequestsResponse(
         tooManyRequestsResponse: TooManyRequestsResponse,
         events: Any,
-        eventsString: String
-    )
+        eventsString: String,
+    ): Boolean
 
+    /**
+     * Handle a [HttpStatus.TIMEOUT] response.
+     */
     fun handleTimeoutResponse(
         timeoutResponse: TimeoutResponse,
         events: Any,
-        eventsString: String
-    )
+        eventsString: String,
+    ): Boolean
 
+    /**
+     * Handle a [HttpStatus.FAILED] response.
+     */
     fun handleFailedResponse(
         failedResponse: FailedResponse,
         events: Any,
-        eventsString: String
-    )
+        eventsString: String,
+    ): Boolean
 }
