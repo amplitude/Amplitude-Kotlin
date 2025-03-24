@@ -12,6 +12,10 @@ import io.mockk.every
 import io.mockk.mockkConstructor
 import io.mockk.mockkStatic
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestCoroutineScheduler
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
@@ -26,12 +30,14 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.util.concurrent.TimeUnit
 
+private const val FLUSH_INTERVAL_IN_MS = 150
+
+@ExperimentalCoroutinesApi
 @RunWith(RobolectricTestRunner::class)
 class ResponseHandlerTest {
     private lateinit var server: MockWebServer
     private lateinit var amplitude: Amplitude
 
-    @ExperimentalCoroutinesApi
     @Before
     fun setup() {
         server = MockWebServer()
@@ -46,7 +52,9 @@ class ResponseHandlerTest {
                 context = context,
                 serverUrl = server.url("/").toString(),
                 autocapture = setOf(),
-                flushIntervalMillis = 150,
+                // required for [PayloadTooLargeResponse] test
+                flushQueueSize = 2,
+                flushIntervalMillis = FLUSH_INTERVAL_IN_MS,
                 identifyBatchIntervalMillis = 1000,
                 flushMaxRetries = 3,
                 identityStorageProvider = IMIdentityStorageProvider(),
@@ -84,7 +92,8 @@ class ResponseHandlerTest {
     }
 
     @Test
-    fun `test handle on rate limit`() {
+    fun `test handle on rate limit`() = runTest {
+        setAmplitudeDispatchers(amplitude, testScheduler)
         val rateLimitBody = """
         {
           "code": 429,
@@ -95,18 +104,24 @@ class ResponseHandlerTest {
         for (i in 1..6) {
             server.enqueue(MockResponse().setBody(rateLimitBody).setResponseCode(429))
         }
+
+        amplitude.isBuilt.await()
         for (k in 1..4) {
             amplitude.track("test event $k")
-            runRequest()
+            advanceUntilIdle()
         }
         Thread.sleep(100)
+
         // verify the total request count when reaching max retries
         assertEquals(6, server.requestCount)
     }
 
     @Test
     fun `test handle payload too large with only one event`() {
-        server.enqueue(MockResponse().setBody("{\"code\": \"413\", \"error\": \"payload too large\"}").setResponseCode(413))
+        server.enqueue(
+            MockResponse().setBody("{\"code\": \"413\", \"error\": \"payload too large\"}")
+                .setResponseCode(413)
+        )
         val options = EventOptions()
         var statusCode = 0
         var callFinished = false
@@ -128,40 +143,67 @@ class ResponseHandlerTest {
     }
 
     @Test
-    fun `test handle payload too large`() {
-        server.enqueue(MockResponse().setBody("{\"code\": \"413\", \"error\": \"payload too large\"}").setResponseCode(413))
-        server.enqueue(MockResponse().setBody("{\"code\": \"200\"}").setResponseCode(200))
-        server.enqueue(MockResponse().setBody("{\"code\": \"200\"}").setResponseCode(200))
-        server.enqueue(MockResponse().setBody("{\"code\": \"200\"}").setResponseCode(200))
+    fun `test handle payload too large`() = runTest {
+        setAmplitudeDispatchers(amplitude, testScheduler)
+        val expectedSuccesEvents = 5
+        server.enqueue(
+            MockResponse().setBody("{\"code\": \"413\", \"error\": \"payload too large\"}")
+                .setResponseCode(413)
+        )
+        repeat(expectedSuccesEvents) {
+            server.enqueue(MockResponse().setBody("{\"code\": \"200\"}").setResponseCode(200))
+        }
         var eventCompleteCount = 0
         val statusMap = mutableMapOf<Int, Int>()
         val options = EventOptions()
         options.callback = { _: BaseEvent, status: Int, _: String ->
             eventCompleteCount++
-            statusMap.put(status, statusMap.getOrDefault(status, 0) + 1)
+            statusMap[status] = statusMap.getOrDefault(status, 0) + 1
         }
+
+        // send 2 events so the event size will be greater than 1 and call split event file
+        amplitude.isBuilt.await()
         amplitude.track("test event 1", options = options)
         amplitude.track("test event 2", options = options)
+        advanceUntilIdle()
+
+        // verify first request that hit 413
+        val request = runRequest()
+        requireNotNull(request)
+        val failedEvents = getEventsFromRequest(request)
+        assertEquals(2, failedEvents.size)
+
+        // send succeeding events
         amplitude.track("test event 3", options = options)
         amplitude.track("test event 4", options = options)
-        val request = runRequest()
-        // verify the first request hit 413
-        assertNotNull(request)
-        val events = getEventsFromRequest(request!!)
-        assertEquals(4, events.size)
         amplitude.track("test event 5", options = options)
-        runRequest()
-        runRequest()
-        runRequest()
-        Thread.sleep(150)
+        advanceUntilIdle()
+
+        // verify next requests after split event file
+        val splitRequest1 = runRequest()
+        requireNotNull(splitRequest1)
+        val splitEvents1 = getEventsFromRequest(splitRequest1)
+        assertEquals(1, splitEvents1.size)
+        val splitRequest2 = runRequest()
+        requireNotNull(splitRequest2)
+        val splitEvents2 = getEventsFromRequest(splitRequest2)
+        assertEquals(1, splitEvents2.size)
+
+        // verify we completed processing for the events after file split
+        val afterSplitRequest = runRequest()
+        requireNotNull(afterSplitRequest)
+        val afterSplitEvents = getEventsFromRequest(afterSplitRequest)
+        assertEquals(3, afterSplitEvents.size)
+
         // verify we completed processing for the events after file split
         assertEquals(4, server.requestCount)
-        assertEquals(5, statusMap.get(200))
-        assertEquals(5, eventCompleteCount)
+        assertEquals(expectedSuccesEvents, statusMap[200])
+        assertEquals(expectedSuccesEvents, eventCompleteCount)
     }
 
     @Test
-    fun `test handle bad request response`() {
+    fun `test handle bad request response`() = runTest {
+        setAmplitudeDispatchers(amplitude, testScheduler)
         val badRequestResponseBody = """
         {
           "code": 400,
@@ -185,27 +227,37 @@ class ResponseHandlerTest {
         val options = EventOptions()
         options.callback = { _: BaseEvent, status: Int, _: String ->
             eventCompleteCount++
-            statusMap.put(status, statusMap.getOrDefault(status, 0) + 1)
+            statusMap[status] = statusMap.getOrDefault(status, 0) + 1
         }
+
+        amplitude.isBuilt.await()
         amplitude.track("test event 1", options = options)
+        advanceUntilIdle()
+
+        // verify first request that hit 400
+        val request = runRequest()
+        requireNotNull(request)
+        val failedEvents = getEventsFromRequest(request)
+        assertEquals(1, failedEvents.size)
+
+        // send succeeding events
         amplitude.track("test event 2", options = options)
         amplitude.track("test event 3", options = options)
         amplitude.track("test event 4", options = options)
-        // verify first request take 4 events hit 400
-        val request = runRequest()
-        assertNotNull(request)
-        val events = getEventsFromRequest(request!!)
-        assertEquals(4, events.size)
-        // verify second request take 2 events after removing 2 bad events
-        val request2 = runRequest()
-        assertNotNull(request2)
-        val events2 = getEventsFromRequest(request2!!)
-        assertEquals(2, events2.size)
+        advanceUntilIdle()
+
+        // verify next request that the 3 events with 200
+        val successRequest = runRequest()
+        requireNotNull(successRequest)
+        val successfulEvents = getEventsFromRequest(successRequest)
+        assertEquals(3, successfulEvents.size)
+
         assertEquals(2, server.requestCount)
         Thread.sleep(10)
+
         // verify the processed status
-        assertEquals(2, statusMap.get(400))
-        assertEquals(2, statusMap.get(200))
+        assertEquals(1, statusMap[400])
+        assertEquals(3, statusMap[200])
         assertEquals(4, eventCompleteCount)
     }
 
@@ -286,5 +338,26 @@ class ResponseHandlerTest {
         every { anyConstructed<AndroidContextProvider>().country } returns "US"
         every { anyConstructed<AndroidContextProvider>().mostRecentLocation } returns null
         every { anyConstructed<AndroidContextProvider>().appSetId } returns ""
+    }
+
+    companion object {
+        private fun setAmplitudeDispatchers(
+            amplitude: com.amplitude.core.Amplitude,
+            testCoroutineScheduler: TestCoroutineScheduler,
+        ) {
+            // inject these dispatcher fields with reflection, as the field is val (read-only)
+            listOf(
+                "amplitudeDispatcher",
+                "networkIODispatcher",
+                "storageIODispatcher",
+                "retryDispatcher"
+            ).forEach { dispatcherField ->
+                com.amplitude.core.Amplitude::class.java.getDeclaredField(dispatcherField)
+                    .apply {
+                        isAccessible = true
+                        set(amplitude, StandardTestDispatcher(testCoroutineScheduler))
+                    }
+            }
+        }
     }
 }
