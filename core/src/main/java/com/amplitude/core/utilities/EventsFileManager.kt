@@ -9,7 +9,6 @@ import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
-import java.io.BufferedReader
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
@@ -28,8 +27,8 @@ class EventsFileManager(
 ) {
     private val fileIndexKey = "amplitude.events.file.index.$storageKey"
     private val storageVersionKey = "amplitude.events.file.version.$storageKey"
-    val filePathSet: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap())
-    val curFile: MutableMap<String, File> = ConcurrentHashMap<String, File>()
+    private val filePathSet: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap())
+    private val curFile: MutableMap<String, File> = ConcurrentHashMap<String, File>()
 
     companion object {
         const val MAX_FILE_SIZE = 975_000 // 975KB
@@ -38,7 +37,7 @@ class EventsFileManager(
         val readMutexMap = ConcurrentHashMap<String, Mutex>()
     }
 
-    val writeMutex = writeMutexMap.getOrPut(storageKey) { Mutex() }
+    private val writeMutex = writeMutexMap.getOrPut(storageKey) { Mutex() }
     private val readMutex = readMutexMap.getOrPut(storageKey) { Mutex() }
 
     init {
@@ -100,20 +99,24 @@ class EventsFileManager(
      */
     fun read(): List<String> {
         // we need to filter out .temp file, since it's operating on the writing thread
-        val fileList =
-            directory.listFiles { _, name ->
-                name.contains(storageKey) && !name.endsWith(".tmp") && !name.endsWith(".properties")
-            } ?: emptyArray()
-        return fileList.sortedBy { it ->
-            getSortKeyForFile(it)
+        val fileList = directory.listFiles { _, name ->
+            name.contains(storageKey) && !name.endsWith(".tmp") && !name.endsWith(".properties")
+        } ?: emptyArray()
+
+        return fileList.sortedBy { file ->
+            val name = file.nameWithoutExtension.replace("$storageKey-", "")
+
+            val dashIndex = name.indexOf('-')
+            if (dashIndex >= 0) {
+                name.substring(0, dashIndex).padStart(10, '0') + name.substring(dashIndex)
+            } else {
+                name
+            }
         }.map {
             it.absolutePath
         }
     }
 
-    /**
-     * deletes the file at filePath
-     */
     fun remove(filePath: String): Boolean {
         filePathSet.remove(filePath)
         return File(filePath).delete()
@@ -160,8 +163,8 @@ class EventsFileManager(
                 return@withLock ""
             }
             filePathSet.add(filePath)
-            File(filePath).bufferedReader().use<BufferedReader, String> {
-                val content = it.readText()
+            File(filePath).bufferedReader().use { reader ->
+                val content = reader.readText()
                 val isCurrentVersion = content.endsWith(DELIMITER)
                 if (isCurrentVersion) {
                     // handle current version
@@ -245,15 +248,6 @@ class EventsFileManager(
         val index = kvs.getLong(fileIndexKey, 0)
         curFile[storageKey] = file ?: File(directory, "$storageKey-$index.tmp")
         return curFile[storageKey]!!
-    }
-
-    private fun getSortKeyForFile(file: File): String {
-        val name = file.nameWithoutExtension.replace("$storageKey-", "")
-        val dashIndex = name.indexOf('-')
-        if (dashIndex >= 0) {
-            return name.substring(0, dashIndex).padStart(10, '0') + name.substring(dashIndex)
-        }
-        return name
     }
 
     // write to underlying file
