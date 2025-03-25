@@ -103,18 +103,15 @@ class EventsFileManager(
             name.contains(storageKey) && !name.endsWith(".tmp") && !name.endsWith(".properties")
         } ?: emptyArray()
 
-        fun getSortKeyForFile(file: File): String {
+        return fileList.sortedBy { file ->
             val name = file.nameWithoutExtension.replace("$storageKey-", "")
+
             val dashIndex = name.indexOf('-')
             if (dashIndex >= 0) {
-                return name.substring(0, dashIndex)
-                    .padStart(10, '0') + name.substring(dashIndex)
+                name.substring(0, dashIndex).padStart(10, '0') + name.substring(dashIndex)
+            } else {
+                name
             }
-            return name
-        }
-
-        return fileList.sortedBy {
-            getSortKeyForFile(it)
         }.map {
             it.absolutePath
         }
