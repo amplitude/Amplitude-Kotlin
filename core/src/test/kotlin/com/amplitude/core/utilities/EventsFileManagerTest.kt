@@ -1,8 +1,8 @@
 package com.amplitude.core.utilities
 
 import com.amplitude.common.jvm.ConsoleLogger
+import com.amplitude.core.Configuration
 import com.amplitude.id.utilities.PropertiesFile
-import kotlin.concurrent.thread
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -12,8 +12,9 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
+import kotlin.concurrent.thread
 
-private const val STORAGE_KEY = "storageKey"
+private const val STORAGE_KEY = Configuration.DEFAULT_INSTANCE
 
 class EventsFileManagerTest {
     @TempDir lateinit var tempDir: File
@@ -71,6 +72,33 @@ class EventsFileManagerTest {
     }
 
     @Test
+    fun `read should respect file name order`() {
+        val tempFiles = listOf("3.properties")
+        val splitFiles1 = listOf("1-1", "1-2")
+        val unsentFiles = listOf("6", "7", "8", "9")
+        val splitFiles2 = listOf("32-1", "32-2")
+        val latestUnsentFiles = (33..41).toList().map { it.toString() }
+
+        // explicitly scramble the order of the files
+        (splitFiles2 + unsentFiles + latestUnsentFiles + splitFiles1 + tempFiles)
+            // append storage key prefix
+            .map { STORAGE_KEY + '-' + it }
+            .forEach { fileName ->
+                File(tempDir, fileName).createNewFile()
+            }
+
+        val eventFiles = eventsFileManager.read()
+
+        val expectedFiles =
+            // .properties files should be ignored
+            (splitFiles1 + unsentFiles + splitFiles2 + latestUnsentFiles)
+                // append full directory path and storage key prefix
+                .map { tempDir.toString() + "/" + STORAGE_KEY + '-' + it }
+
+        assertEquals(eventFiles, expectedFiles)
+    }
+
+    @Test
     fun `rollover should finish current non-empty temp file`() = runBlocking {
         eventsFileManager.storeEvent(createEvent("test1"))
         val filePaths = eventsFileManager.read()
@@ -109,26 +137,28 @@ class EventsFileManagerTest {
     }
 
     @Test
-    fun `split`() = runBlocking {
+    fun `split event files`() = runBlocking {
         eventsFileManager.storeEvent(createEvent("test1"))
         eventsFileManager.storeEvent(createEvent("test2"))
         eventsFileManager.rollover()
+
         val filePaths = eventsFileManager.read()
         assertEquals(1, filePaths.size)
-        runBlocking {
-            val eventsString = eventsFileManager.getEventString(filePaths[0])
-            val events = JSONArray(eventsString)
-            assertEquals(2, events.length())
-            eventsFileManager.splitFile(filePaths[0], events)
-        }
+        val eventsString = eventsFileManager.getEventString(filePaths[0])
+        val events = JSONArray(eventsString)
+
+        assertEquals(2, events.length())
+        eventsFileManager.splitFile(filePaths[0], events)
         val filePathsAfterSplit = eventsFileManager.read()
         assertEquals(2, filePathsAfterSplit.size)
+
         val file0 = File(filePathsAfterSplit[0])
         val content0 = file0.readText()
         val lines0 = content0.split(EventsFileManager.DELIMITER)
         assertEquals(2, lines0.size)
         assertEquals(createEvent("test1"), lines0[0])
         assertEquals("", lines0[1])
+
         val file1 = File(filePathsAfterSplit[1])
         val content1 = file1.readText()
         val lines1 = content1.split(EventsFileManager.DELIMITER)
