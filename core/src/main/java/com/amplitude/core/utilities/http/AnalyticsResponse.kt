@@ -42,9 +42,7 @@ internal object HttpResponse {
     }
 }
 
-interface AnalyticsResponse {
-    val status: HttpStatus
-
+sealed class AnalyticsResponse(val status: HttpStatus) {
     companion object {
         fun create(
             responseCode: Int,
@@ -55,12 +53,9 @@ interface AnalyticsResponse {
     }
 }
 
-class SuccessResponse : AnalyticsResponse {
-    override val status: HttpStatus = HttpStatus.SUCCESS
-}
+class SuccessResponse : AnalyticsResponse(HttpStatus.SUCCESS)
 
-class BadRequestResponse(response: JSONObject) : AnalyticsResponse {
-    override val status: HttpStatus = HttpStatus.BAD_REQUEST
+class BadRequestResponse(response: JSONObject) : AnalyticsResponse(HttpStatus.BAD_REQUEST) {
     val error: String = response.getStringWithDefault("error", "")
     private var eventsWithInvalidFields: Set<Int> = setOf()
     private var eventsWithMissingFields: Set<Int> = setOf()
@@ -107,19 +102,20 @@ class BadRequestResponse(response: JSONObject) : AnalyticsResponse {
     }
 }
 
-class PayloadTooLargeResponse(response: JSONObject) : AnalyticsResponse {
-    override val status: HttpStatus = HttpStatus.PAYLOAD_TOO_LARGE
+class PayloadTooLargeResponse(response: JSONObject) :
+    AnalyticsResponse(HttpStatus.PAYLOAD_TOO_LARGE) {
     val error: String = response.getStringWithDefault("error", "")
 }
 
-class TooManyRequestsResponse(response: JSONObject) : AnalyticsResponse {
-    override val status: HttpStatus = HttpStatus.TOO_MANY_REQUESTS
+class TooManyRequestsResponse(response: JSONObject) :
+    AnalyticsResponse(HttpStatus.TOO_MANY_REQUESTS) {
+    private var exceededDailyQuotaUsers: Set<String> = setOf()
+    private var exceededDailyQuotaDevices: Set<String> = setOf()
+    private var throttledDevices: Set<String> = setOf()
+    private var throttledUsers: Set<String> = setOf()
+
     val error: String = response.getStringWithDefault("error", "")
-    var exceededDailyQuotaUsers: Set<String> = setOf()
-    var exceededDailyQuotaDevices: Set<String> = setOf()
-    var throttledEvents: Set<Int> = setOf()
-    var throttledDevices: Set<String> = setOf()
-    var throttledUsers: Set<String> = setOf()
+    var throttledEvents = setOf<Int>()
 
     init {
         if (response.has("exceeded_daily_quota_users")) {
@@ -146,12 +142,9 @@ class TooManyRequestsResponse(response: JSONObject) : AnalyticsResponse {
     }
 }
 
-class TimeoutResponse : AnalyticsResponse {
-    override val status: HttpStatus = HttpStatus.TIMEOUT
-}
+class TimeoutResponse : AnalyticsResponse(HttpStatus.TIMEOUT)
 
-class FailedResponse(response: JSONObject) : AnalyticsResponse {
-    override val status: HttpStatus = HttpStatus.FAILED
+class FailedResponse(response: JSONObject) : AnalyticsResponse(HttpStatus.FAILED) {
     val error: String = response.getStringWithDefault("error", "")
 }
 
