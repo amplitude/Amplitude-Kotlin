@@ -212,11 +212,21 @@ interface ResponseHandler {
     )
 }
 
-enum class HttpStatus(val code: Int) {
+/**
+ * Enum class to represent the HTTP status codes and whether the upload should be retried on failure.
+ * A request requires a retry if the event file/s are still present and we want to attempt to upload them again.
+ */
+enum class HttpStatus(
+    val code: Int,
+    val shouldRetryUploadOnFailure: Boolean? = null,
+) {
     SUCCESS(200),
-    BAD_REQUEST(400),
-    TIMEOUT(408),
-    PAYLOAD_TOO_LARGE(413),
-    TOO_MANY_REQUESTS(429),
-    FAILED(500),
+
+    // bad event files will be removed and there's nothing to retry
+    BAD_REQUEST(400, false),
+    TIMEOUT(408, true),
+    // event files will be split and retried individually
+    PAYLOAD_TOO_LARGE(413, true),
+    TOO_MANY_REQUESTS(429, true),
+    FAILED(500, true),
 }
