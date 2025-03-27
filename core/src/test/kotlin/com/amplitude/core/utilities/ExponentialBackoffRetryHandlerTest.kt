@@ -13,42 +13,55 @@ import kotlin.math.pow
 class ExponentialBackoffRetryHandlerTest {
 
     @Test
-    fun `canRetry returns properly until maxRetryAttempt is reached`() = runBlocking {
+    fun `attemptRetry returns properly until maxRetryAttempt is reached`() = runBlocking {
         val handler = ExponentialBackoffRetryHandler(
             maxRetryAttempt = 2,
             baseDelayInMs = 10
         )
-        repeat(2) {
-            assertTrue(handler.canRetry())
-            handler.retryWithDelay {}
+        repeat(3) { count ->
+            handler.attemptRetry { canRetry ->
+                if (count < 2) {
+                    assertTrue(canRetry)
+                } else {
+                    assertFalse(canRetry)
+                }
+            }
         }
-        assertFalse(handler.canRetry())
     }
 
     @Test
     fun `retryWithDelay increments attempts within max range`() = runTest {
         val handler = ExponentialBackoffRetryHandler(maxRetryAttempt = 2)
 
-        handler.retryWithDelay {}
+        handler.attemptRetry {}
         assertEquals(1, handler.attempt.get())
-        handler.retryWithDelay {}
+        handler.attemptRetry {}
         assertEquals(2, handler.attempt.get())
-        handler.retryWithDelay {}
+        handler.attemptRetry {}
         assertEquals(2, handler.attempt.get()) // max attempt reached
     }
 
     @Test
     fun `reset sets attempts to zero`() = runBlocking {
         val handler = ExponentialBackoffRetryHandler(maxRetryAttempt = 3, baseDelayInMs = 10)
-        repeat(3) {
-            handler.retryWithDelay {}
+        repeat(4) { count ->
+            handler.attemptRetry { canRetry ->
+                if (count < 3) {
+                    assertTrue(canRetry)
+                } else {
+                    assertFalse(canRetry)
+                }
+            }
         }
         handler.reset()
         assertEquals(0, handler.attempt.get())
+        handler.attemptRetry { canRetry ->
+            assertTrue(canRetry)
+        }
     }
 
     @Test
-    fun `retryWithDelay respects exponential backoff`() = runBlocking {
+    fun `attemptRetry respects exponential backoff`() = runBlocking {
         val baseDelayInMs = 10
         val attemptNumber = 4
         val handler = ExponentialBackoffRetryHandler(
@@ -57,7 +70,8 @@ class ExponentialBackoffRetryHandlerTest {
         handler.attempt.set(attemptNumber)
 
         val startTime = System.currentTimeMillis()
-        handler.retryWithDelay {
+        handler.attemptRetry { canRetry ->
+            assertTrue(canRetry)
             val endTime = System.currentTimeMillis()
             val elapsedTime = endTime - startTime
 

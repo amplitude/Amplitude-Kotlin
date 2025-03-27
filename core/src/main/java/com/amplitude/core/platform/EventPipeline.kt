@@ -47,7 +47,8 @@ class EventPipeline(
     }
 
     companion object {
-        private const val UPLOAD_SIG = "#!upload"
+        internal const val UPLOAD_SIG = "#!upload"
+        internal const val MAX_RETRY_ATTEMPT_SIG = "#!maxRetryAttemptReached"
     }
 
     init {
@@ -122,48 +123,47 @@ class EventPipeline(
                     }
                 }
 
-                uploadNextEventFile()
-            }
-        }
+                if (signal == MAX_RETRY_ATTEMPT_SIG) {
+                    amplitude.logger.debug(
+                        "Max retries ${retryUploadHandler.maxRetryAttempt} reached, temporarily stop consuming upload signals."
+                    )
+                    // approximately 32 seconds after max retry attempt is reached
+                    delay(retryUploadHandler.exponentialBackOffDelayInMs * 2)
+                    retryUploadHandler.reset()
+                    amplitude.logger.debug("Enable processing of requests again.")
+                }
 
-    private suspend fun uploadNextEventFile() {
-        try {
-            // only get first event file, we want to upload them one by one, in order
-            val eventFile = storage.readEventsContent().firstOrNull() ?: return
-            val eventsString = storage.getEventsString(eventFile)
-            if (eventsString.isEmpty()) return
+                val eventFiles = storage.readEventsContent()
+                for (eventFile in eventFiles) {
+                    try {
+                        val eventsString = storage.getEventsString(eventFile)
+                        if (eventsString.isEmpty()) continue
 
-            val diagnostics = amplitude.diagnostics.extractDiagnostics()
-            val response = httpClient.upload(eventsString, diagnostics)
-            responseHandler.handle(response, eventFile, eventsString)
+                        val diagnostics = amplitude.diagnostics.extractDiagnostics()
+                        val response = httpClient.upload(eventsString, diagnostics)
 
-            when {
-                true -> retryUploadHandler.reset()
-                retryUploadHandler.canRetry() -> {
-                    retryUploadHandler.retryWithDelay {
-                        uploadChannel.trySend(UPLOAD_SIG)
+                        // if we encounter a retryable error, we retry with delay and
+                        // restart the loop to get the newest event files
+                        if (response.status.shouldRetryUploadOnFailure == true) {
+                            retryUploadHandler.attemptRetry { canRetry ->
+                                val retrySignal = if (canRetry) UPLOAD_SIG else MAX_RETRY_ATTEMPT_SIG
+                                uploadChannel.trySend(retrySignal)
+                            }
+                            break
+                        }
+                        retryUploadHandler.reset() // always reset when we've successfully uploaded
+
+                        responseHandler.handle(response, eventFile, eventsString)
+                    } catch (e: FileNotFoundException) {
+                        e.message?.let {
+                            amplitude.logger.warn("Event storage file not found: $it")
+                        }
+                    } catch (e: Exception) {
+                        e.logWithStackTrace(amplitude.logger, "Error when uploading event")
                     }
                 }
-                else -> {
-                    amplitude.logger.error(
-                        "Upload failed ${retryUploadHandler.maxRetryAttempt} times. " +
-                            "Cancel all uploads as we might be offline."
-                    )
-
-                    // cancel all previous signals in the upload channel and reset
-                    uploadChannel.cancel()
-                    uploadChannel = Channel(UNLIMITED)
-                    retryUploadHandler.reset()
-                }
             }
-        } catch (e: FileNotFoundException) {
-            e.message?.let {
-                amplitude.logger.warn("Event storage file not found: $it")
-            }
-        } catch (e: Exception) {
-            e.logWithStackTrace(amplitude.logger, "Error when uploading event")
         }
-    }
 
     private fun getFlushCount(): Int {
         val count = amplitude.configuration.flushQueueSize / flushSizeDivider.get()
