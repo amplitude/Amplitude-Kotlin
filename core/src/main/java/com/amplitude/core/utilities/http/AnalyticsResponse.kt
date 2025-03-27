@@ -222,10 +222,10 @@ enum class HttpStatus(
 ) {
     SUCCESS(200),
 
-    // bad event files will be removed and there's nothing to retry
+    /** should NOT retry as bad event files will be removed and there's nothing to retry */
     BAD_REQUEST(400, false),
     TIMEOUT(408, true),
-    // event files will be split and retried individually
+    /** should retry as large event files will be split and retried individually */
     PAYLOAD_TOO_LARGE(413, true),
     TOO_MANY_REQUESTS(429, true),
     FAILED(500, true),

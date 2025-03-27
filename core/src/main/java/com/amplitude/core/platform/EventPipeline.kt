@@ -47,8 +47,8 @@ class EventPipeline(
     }
 
     companion object {
-        internal const val UPLOAD_SIG = "#!upload"
-        internal const val MAX_RETRY_ATTEMPT_SIG = "#!maxRetryAttemptReached"
+        private const val UPLOAD_SIG = "#!upload"
+        private const val MAX_RETRY_ATTEMPT_SIG = "#!maxRetryAttemptReached"
     }
 
     init {
