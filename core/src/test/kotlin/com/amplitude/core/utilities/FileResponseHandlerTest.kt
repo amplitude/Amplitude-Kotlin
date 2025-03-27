@@ -16,7 +16,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.json.JSONObject
-import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -58,13 +57,12 @@ class FileResponseHandlerTest {
         val events = listOf(
             generateBaseEvent("test1")
         )
-        val handled = handler.handleSuccessResponse(
+        handler.handleSuccessResponse(
             successResponse = response,
             events = "file_path",
             eventsString = JSONUtil.eventsToString(events)
         )
 
-        assertTrue(handled)
         assertTrue(configCallBackEventTypes.contains("test1"))
         verify(exactly = 1) {
             storage.removeFile("file_path")
@@ -80,13 +78,12 @@ class FileResponseHandlerTest {
             generateBaseEvent("test2"),
             generateBaseEvent("test3"),
         )
-        val handled = handler.handleSuccessResponse(
+        handler.handleSuccessResponse(
             successResponse = response,
             events = "file_path",
             eventsString = JSONUtil.eventsToString(events)
         )
 
-        assertTrue(handled)
         val expectedEventTypes = events.map { it.eventType }
         assertTrue(configCallBackEventTypes.containsAll(expectedEventTypes))
         verify(exactly = 1) {
@@ -100,7 +97,7 @@ class FileResponseHandlerTest {
             JSONObject("{\"error\":\"Some Error\"}")
         )
 
-        val handled = handler.handleBadRequestResponse(
+        handler.handleBadRequestResponse(
             badRequestResponse = response,
             events = "file_path",
             eventsString = JSONUtil.eventsToString(
@@ -110,7 +107,6 @@ class FileResponseHandlerTest {
             )
         )
 
-        assertTrue(handled)
         assertTrue(configCallBackEventTypes.contains("test1"))
         verify(exactly = 1) {
             storage.removeFile("file_path")
@@ -123,7 +119,7 @@ class FileResponseHandlerTest {
             JSONObject("{\"error\":\"Invalid API key\"}")
         )
 
-        val handled = handler.handleBadRequestResponse(
+        handler.handleBadRequestResponse(
             badRequestResponse = response,
             events = "file_path",
             eventsString = JSONUtil.eventsToString(
@@ -134,7 +130,6 @@ class FileResponseHandlerTest {
             )
         )
 
-        assertTrue(handled)
         assertTrue(configCallBackEventTypes.contains("test1"))
         verify(exactly = 1) {
             storage.removeFile("file_path")
@@ -152,13 +147,12 @@ class FileResponseHandlerTest {
             generateBaseEvent("test2"),
             generateBaseEvent("test3"),
         )
-        val handled = handler.handleBadRequestResponse(
+        handler.handleBadRequestResponse(
             badRequestResponse = response,
             events = "file_path",
             eventsString = JSONUtil.eventsToString(events)
         )
 
-        assertTrue(handled)
         val expectedEventTypes = events.map { it.eventType }
         expectedEventTypes.forEach { eventType ->
             verify {
@@ -192,13 +186,12 @@ class FileResponseHandlerTest {
             generateBaseEvent("test2"),
             generateBaseEvent("test3"),
         )
-        val handled = handler.handleBadRequestResponse(
+        handler.handleBadRequestResponse(
             badRequestResponse = response,
             events = "file_path",
             eventsString = JSONUtil.eventsToString(events)
         )
 
-        assertTrue(handled)
         assertTrue(configCallBackEventTypes.contains("test1"))
         verify {
             pipeline.put(match { it.eventType == "test2" })
@@ -231,13 +224,12 @@ class FileResponseHandlerTest {
             generateBaseEvent("test2"),
             generateBaseEvent("test3"),
         )
-        val handled = handler.handleBadRequestResponse(
+        handler.handleBadRequestResponse(
             badRequestResponse = response,
             events = "file_path",
             eventsString = JSONUtil.eventsToString(events)
         )
 
-        assertTrue(handled)
         assertTrue(configCallBackEventTypes.contains("test1"))
         verify {
             pipeline.put(match { it.eventType == "test2" })
@@ -259,13 +251,12 @@ class FileResponseHandlerTest {
         val events = listOf(
             generateBaseEvent("test1")
         )
-        val handled = handler.handlePayloadTooLargeResponse(
+        handler.handlePayloadTooLargeResponse(
             payloadTooLargeResponse = response,
             events = "file_path",
             eventsString = JSONUtil.eventsToString(events)
         )
 
-        assertTrue(handled)
         assertTrue(configCallBackEventTypes.contains("test1"))
         verify(exactly = 1) {
             storage.removeFile("file_path")
@@ -283,13 +274,12 @@ class FileResponseHandlerTest {
             generateBaseEvent("test2"),
             generateBaseEvent("test3")
         )
-        val handled = handler.handlePayloadTooLargeResponse(
+        handler.handlePayloadTooLargeResponse(
             payloadTooLargeResponse = response,
             events = "file_path",
             eventsString = JSONUtil.eventsToString(events)
         )
 
-        assertTrue(handled)
         verify(exactly = 1) {
             storage.splitEventFile("file_path", any())
         }
@@ -306,13 +296,12 @@ class FileResponseHandlerTest {
             generateBaseEvent("test2"),
             generateBaseEvent("test3")
         )
-        val handled = handler.handleTooManyRequestsResponse(
+        handler.handleTooManyRequestsResponse(
             tooManyRequestsResponse = response,
             events = "file_path",
             eventsString = JSONUtil.eventsToString(events)
         )
 
-        assertFalse(handled)
         verify(exactly = 1) {
             storage.releaseFile("file_path")
         }
@@ -327,13 +316,12 @@ class FileResponseHandlerTest {
             generateBaseEvent("test2"),
             generateBaseEvent("test3")
         )
-        val handled = handler.handleTimeoutResponse(
+        handler.handleTimeoutResponse(
             timeoutResponse = response,
             events = "file_path",
             eventsString = JSONUtil.eventsToString(events)
         )
 
-        assertFalse(handled)
         verify(exactly = 1) {
             storage.releaseFile("file_path")
         }
@@ -350,13 +338,12 @@ class FileResponseHandlerTest {
             generateBaseEvent("test2"),
             generateBaseEvent("test3")
         )
-        val handled = handler.handleFailedResponse(
+        handler.handleFailedResponse(
             failedResponse = response,
             events = "file_path",
             eventsString = JSONUtil.eventsToString(events)
         )
 
-        assertFalse(handled)
         verify(exactly = 1) {
             storage.releaseFile("file_path")
         }

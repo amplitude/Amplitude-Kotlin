@@ -135,11 +135,11 @@ class EventPipeline(
 
             val diagnostics = amplitude.diagnostics.extractDiagnostics()
             val response = httpClient.upload(eventsString, diagnostics)
-            val handled = responseHandler.handle(response, eventFile, eventsString)
+            responseHandler.handle(response, eventFile, eventsString)
 
             when {
-                handled -> retryUploadHandler.reset()
-                !handled && retryUploadHandler.canRetry() -> {
+                true -> retryUploadHandler.reset()
+                retryUploadHandler.canRetry() -> {
                     retryUploadHandler.retryWithDelay {
                         uploadChannel.trySend(UPLOAD_SIG)
                     }
