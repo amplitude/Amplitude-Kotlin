@@ -31,7 +31,7 @@ class FileResponseHandler(
         successResponse: SuccessResponse,
         events: Any,
         eventsString: String,
-    ): Boolean {
+    ) {
         val eventFilePath = events as String
         logger?.debug("Handle response, status: ${successResponse.status}")
         val eventsList: List<BaseEvent>
@@ -46,14 +46,13 @@ class FileResponseHandler(
         scope.launch(dispatcher) {
             storage.removeFile(eventFilePath)
         }
-        return true
     }
 
     override fun handleBadRequestResponse(
         badRequestResponse: BadRequestResponse,
         events: Any,
-        eventsString: String
-    ): Boolean {
+        eventsString: String,
+    ) {
         logger?.debug(
             "Handle response, status: ${badRequestResponse.status}, error: ${badRequestResponse.error}"
         )
@@ -69,7 +68,7 @@ class FileResponseHandler(
         if (eventsList.size == 1 || badRequestResponse.isInvalidApiKeyResponse()) {
             triggerEventsCallback(eventsList, HttpStatus.BAD_REQUEST.code, badRequestResponse.error)
             storage.removeFile(eventFilePath)
-            return true
+            return
         }
         val droppedIndices = badRequestResponse.getEventIndicesToDrop()
         val eventsToDrop = mutableListOf<BaseEvent>()
@@ -88,14 +87,13 @@ class FileResponseHandler(
         scope.launch(dispatcher) {
             storage.removeFile(eventFilePath)
         }
-        return true
     }
 
     override fun handlePayloadTooLargeResponse(
         payloadTooLargeResponse: PayloadTooLargeResponse,
         events: Any,
-        eventsString: String
-    ): Boolean {
+        eventsString: String,
+    ) {
         logger?.debug(
             "Handle response, status: ${payloadTooLargeResponse.status}, error: ${payloadTooLargeResponse.error}"
         )
@@ -116,48 +114,44 @@ class FileResponseHandler(
             scope.launch(dispatcher) {
                 storage.removeFile(eventFilePath)
             }
-            return true
+            return
         }
         // split file into two
         scope.launch(dispatcher) {
             storage.splitEventFile(eventFilePath, rawEvents)
         }
-        return true
     }
 
     override fun handleTooManyRequestsResponse(
         tooManyRequestsResponse: TooManyRequestsResponse,
         events: Any,
-        eventsString: String
-    ): Boolean {
+        eventsString: String,
+    ) {
         logger?.debug(
             "Handle response, status: ${tooManyRequestsResponse.status}, error: ${tooManyRequestsResponse.error}"
         )
         storage.releaseFile(events as String)
-        return false
     }
 
     override fun handleTimeoutResponse(
         timeoutResponse: TimeoutResponse,
         events: Any,
-        eventsString: String
-    ): Boolean {
+        eventsString: String,
+    ) {
         logger?.debug("Handle response, status: ${timeoutResponse.status}")
         storage.releaseFile(events as String)
-        return false
     }
 
     override fun handleFailedResponse(
         failedResponse: FailedResponse,
         events: Any,
-        eventsString: String
-    ): Boolean {
+        eventsString: String,
+    ) {
         logger?.debug(
             "Handle response, status: ${failedResponse.status}, error: ${failedResponse.error}"
         )
         // wait for next time to try again
         storage.releaseFile(events as String)
-        return false
     }
 
     private fun triggerEventsCallback(
