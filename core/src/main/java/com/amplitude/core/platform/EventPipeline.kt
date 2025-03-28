@@ -44,7 +44,7 @@ class EventPipeline(
             this@EventPipeline,
             amplitude.configuration,
             scope,
-            amplitude.retryDispatcher,
+            amplitude.storageIODispatcher,
         )
     }
 

@@ -93,14 +93,14 @@ class FileStorage(
         eventPipeline: EventPipeline,
         configuration: Configuration,
         scope: CoroutineScope,
-        dispatcher: CoroutineDispatcher,
+        storageDispatcher: CoroutineDispatcher,
     ): ResponseHandler {
         return FileResponseHandler(
             this,
             eventPipeline,
             configuration,
             scope,
-            dispatcher,
+            storageDispatcher,
             logger,
         )
     }

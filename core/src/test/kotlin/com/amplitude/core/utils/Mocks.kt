@@ -11,5 +11,12 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 fun testAmplitude(configuration: Configuration): Amplitude {
     val testDispatcher = UnconfinedTestDispatcher()
     val testScope = TestScope(testDispatcher)
-    return object : Amplitude(configuration, State(), testScope, testDispatcher, testDispatcher, testDispatcher, testDispatcher) {}
+    return object : Amplitude(
+        configuration,
+        State(),
+        testScope,
+        testDispatcher,
+        testDispatcher,
+        testDispatcher
+    ) {}
 }

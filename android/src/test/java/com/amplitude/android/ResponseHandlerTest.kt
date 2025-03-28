@@ -349,8 +349,7 @@ class ResponseHandlerTest {
             listOf(
                 "amplitudeDispatcher",
                 "networkIODispatcher",
-                "storageIODispatcher",
-                "retryDispatcher"
+                "storageIODispatcher"
             ).forEach { dispatcherField ->
                 com.amplitude.core.Amplitude::class.java.getDeclaredField(dispatcherField)
                     .apply {
