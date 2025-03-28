@@ -35,6 +35,8 @@ class EventsFileManager(
         const val DELIMITER = "\u0000"
         val writeMutexMap = ConcurrentHashMap<String, Mutex>()
         val readMutexMap = ConcurrentHashMap<String, Mutex>()
+
+        private const val FILE_NAME_DESIRED_PADDED_LENGTH = 10
     }
 
     private val writeMutex = writeMutexMap.getOrPut(storageKey) { Mutex() }
@@ -95,7 +97,7 @@ class EventsFileManager(
     }
 
     /**
-     * Returns a comma-separated list of file paths that are not yet uploaded
+     * Returns a sorted list of file paths that are not yet uploaded
      */
     fun read(): List<String> {
         // we need to filter out .temp file, since it's operating on the writing thread
@@ -103,18 +105,23 @@ class EventsFileManager(
             name.contains(storageKey) && !name.endsWith(".tmp") && !name.endsWith(".properties")
         } ?: emptyArray()
 
-        return fileList.sortedBy { file ->
-            val name = file.nameWithoutExtension.replace("$storageKey-", "")
+        return fileList
+            .sortedBy { file ->
+                val name = file.nameWithoutExtension.replace("$storageKey-", "")
 
-            val dashIndex = name.indexOf('-')
-            if (dashIndex >= 0) {
-                name.substring(0, dashIndex).padStart(10, '0') + name.substring(dashIndex)
-            } else {
-                name
+                // we're padding file name with 0s to ensure they are sorted in the correct order,
+                // even for file names with varying lengths and split files (e.g. "1-1", "2",  "21")
+                val dashIndex = name.indexOf('-')
+                if (dashIndex >= 0) {
+                    name.substring(0, dashIndex)
+                        .padStart(FILE_NAME_DESIRED_PADDED_LENGTH, '0') + name.substring(dashIndex)
+                } else {
+                    name.padStart(FILE_NAME_DESIRED_PADDED_LENGTH, '0')
+                }
             }
-        }.map {
-            it.absolutePath
-        }
+            .map {
+                it.absolutePath
+            }
     }
 
     fun remove(filePath: String): Boolean {
@@ -192,7 +199,9 @@ class EventsFileManager(
                         return@use jsonArray.toString()
                     } catch (e: JSONException) {
                         diagnostics.addMalformedEvent(normalizedContent)
-                        logger.error("Failed to parse events: $normalizedContent, dropping file: $filePath")
+                        logger.error(
+                            "Failed to parse events: $normalizedContent, dropping file: $filePath"
+                        )
                         this.remove(filePath)
                         return@use normalizedContent
                     }
@@ -333,7 +342,9 @@ class EventsFileManager(
                             finish(it)
                         }
                     } catch (e: JSONException) {
-                        logger.error("Failed to parse events: $normalizedContent, dropping file: ${it.path}")
+                        logger.error(
+                            "Failed to parse events: $normalizedContent, dropping file: ${it.path}"
+                        )
                         this.remove(it.path)
                     }
                 }
