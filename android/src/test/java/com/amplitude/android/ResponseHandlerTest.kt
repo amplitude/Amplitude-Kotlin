@@ -14,6 +14,7 @@ import io.mockk.mockkStatic
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestCoroutineScheduler
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse
@@ -31,6 +32,7 @@ import org.robolectric.RobolectricTestRunner
 import java.util.concurrent.TimeUnit
 
 private const val FLUSH_INTERVAL_IN_MS = 150
+private const val FLUSH_MAX_RETRIES = 3
 
 @ExperimentalCoroutinesApi
 @RunWith(RobolectricTestRunner::class)
@@ -52,11 +54,9 @@ class ResponseHandlerTest {
                 context = context,
                 serverUrl = server.url("/").toString(),
                 autocapture = setOf(),
-                // required for [PayloadTooLargeResponse] test
-                flushQueueSize = 2,
                 flushIntervalMillis = FLUSH_INTERVAL_IN_MS,
                 identifyBatchIntervalMillis = 1000,
-                flushMaxRetries = 3,
+                flushMaxRetries = FLUSH_MAX_RETRIES,
                 identityStorageProvider = IMIdentityStorageProvider(),
             )
         )
@@ -94,6 +94,7 @@ class ResponseHandlerTest {
     @Test
     fun `test handle on rate limit`() = runTest {
         setAmplitudeDispatchers(amplitude, testScheduler)
+        val expectedEventsSize = FLUSH_MAX_RETRIES
         val rateLimitBody = """
         {
           "code": 429,
@@ -101,23 +102,23 @@ class ResponseHandlerTest {
           "eps_threshold": 30
         }
         """.trimIndent()
-        for (i in 1..6) {
+        repeat(FLUSH_MAX_RETRIES) {
             server.enqueue(MockResponse().setBody(rateLimitBody).setResponseCode(429))
         }
+        server.enqueue(MockResponse().setResponseCode(200))
 
         amplitude.isBuilt.await()
-        for (k in 1..4) {
+        for (k in 1..expectedEventsSize) {
             amplitude.track("test event $k")
-            advanceUntilIdle()
         }
-        Thread.sleep(100)
+        advanceUntilIdle()
 
         // verify the total request count when reaching max retries
-        assertEquals(6, server.requestCount)
+        assertEquals(1 + FLUSH_MAX_RETRIES, server.requestCount)
     }
 
     @Test
-    fun `test handle payload too large with only one event`() {
+    fun `test handle payload too large with only one event`() = runTest {
         server.enqueue(
             MockResponse().setBody("{\"code\": \"413\", \"error\": \"payload too large\"}")
                 .setResponseCode(413)
@@ -165,7 +166,7 @@ class ResponseHandlerTest {
         amplitude.isBuilt.await()
         amplitude.track("test event 1", options = options)
         amplitude.track("test event 2", options = options)
-        advanceUntilIdle()
+        advanceTimeBy(1_000)
 
         // verify first request that hit 413
         val request = runRequest()
@@ -316,7 +317,7 @@ class ResponseHandlerTest {
 
     private fun runRequest(): RecordedRequest? {
         return try {
-            server.takeRequest(5, TimeUnit.SECONDS)
+            server.takeRequest(1, TimeUnit.SECONDS)
         } catch (e: InterruptedException) {
             null
         }

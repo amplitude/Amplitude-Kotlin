@@ -132,7 +132,7 @@ class EventPipeline(
                     // approximately 32 seconds after max retry attempt is reached
                     delay(retryUploadHandler.exponentialBackOffDelayInMs * 2)
                     retryUploadHandler.reset()
-                    amplitude.logger.debug("Enable processing of requests again.")
+                    amplitude.logger.debug("Enable consuming of upload signals again.")
                 }
 
                 val eventFiles = storage.readEventsContent()
@@ -143,6 +143,7 @@ class EventPipeline(
 
                         val diagnostics = amplitude.diagnostics.extractDiagnostics()
                         val response = httpClient.upload(eventsString, diagnostics)
+                        responseHandler.handle(response, eventFile, eventsString)
 
                         // if we encounter a retryable error, we retry with delay and
                         // restart the loop to get the newest event files
@@ -154,8 +155,6 @@ class EventPipeline(
                             break
                         }
                         retryUploadHandler.reset() // always reset when we've successfully uploaded
-
-                        responseHandler.handle(response, eventFile, eventsString)
                     } catch (e: FileNotFoundException) {
                         e.message?.let {
                             amplitude.logger.warn("Event storage file not found: $it")
