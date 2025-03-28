@@ -157,8 +157,8 @@ class EventPipelineTest {
         advanceUntilIdle()
 
         coVerify { retryUploadHandler.attemptRetry(any<(Boolean) -> Unit>()) }
+        verify { fakeResponseHandler.handle(fakeResponse, any(), any()) }
         verify(exactly = 0) { retryUploadHandler.reset() }
-        verify(exactly = 0) { fakeResponseHandler.handle(fakeResponse, any(), any()) }
     }
 
     @Test
@@ -178,8 +178,8 @@ class EventPipelineTest {
         advanceUntilIdle()
 
         coVerify { retryUploadHandler.attemptRetry(any<(Boolean) -> Unit>()) }
+        verify { fakeResponseHandler.handle(fakeResponse, any(), any()) }
         verify(exactly = 0) { retryUploadHandler.reset() }
-        verify(exactly = 0) { fakeResponseHandler.handle(fakeResponse, any(), any()) }
     }
 
     @Test
