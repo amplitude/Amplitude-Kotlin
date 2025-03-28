@@ -52,8 +52,7 @@ class EventPipelineTest {
         amplitudeScope = testScope,
         amplitudeDispatcher = testDispatcher,
         networkIODispatcher = testDispatcher,
-        storageIODispatcher = testDispatcher,
-        retryDispatcher = testDispatcher
+        storageIODispatcher = testDispatcher
     )
     private val fakeResponseHandler: ResponseHandler = mockk(relaxed = true)
 

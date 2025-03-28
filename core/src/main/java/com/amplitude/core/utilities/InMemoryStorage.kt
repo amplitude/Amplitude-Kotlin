@@ -57,9 +57,9 @@ class InMemoryStorage : Storage {
         eventPipeline: EventPipeline,
         configuration: Configuration,
         scope: CoroutineScope,
-        dispatcher: CoroutineDispatcher
+        storageDispatcher: CoroutineDispatcher
     ): ResponseHandler {
-        return InMemoryResponseHandler(eventPipeline, configuration, scope, dispatcher)
+        return InMemoryResponseHandler(eventPipeline, configuration, scope, storageDispatcher)
     }
 
     fun removeEvents() {
