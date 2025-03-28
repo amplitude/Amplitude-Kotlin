@@ -23,7 +23,7 @@ class FileResponseHandler(
     private val eventPipeline: EventPipeline,
     private val configuration: Configuration,
     private val scope: CoroutineScope,
-    private val dispatcher: CoroutineDispatcher,
+    private val storageDispatcher: CoroutineDispatcher,
     private val logger: Logger?,
 ) : ResponseHandler {
 
@@ -38,12 +38,14 @@ class FileResponseHandler(
         try {
             eventsList = JSONArray(eventsString).toEvents()
         } catch (e: JSONException) {
-            storage.removeFile(eventFilePath)
+            scope.launch(storageDispatcher) {
+                storage.removeFile(eventFilePath)
+            }
             removeCallbackByInsertId(eventsString)
             throw e
         }
         triggerEventsCallback(eventsList, HttpStatus.SUCCESS.code, "Event sent success.")
-        scope.launch(dispatcher) {
+        scope.launch(storageDispatcher) {
             storage.removeFile(eventFilePath)
         }
     }
@@ -61,13 +63,17 @@ class FileResponseHandler(
         try {
             eventsList = JSONArray(eventsString).toEvents()
         } catch (e: JSONException) {
-            storage.removeFile(eventFilePath)
+            scope.launch(storageDispatcher) {
+                storage.removeFile(eventFilePath)
+            }
             removeCallbackByInsertId(eventsString)
             throw e
         }
         if (eventsList.size == 1 || badRequestResponse.isInvalidApiKeyResponse()) {
             triggerEventsCallback(eventsList, HttpStatus.BAD_REQUEST.code, badRequestResponse.error)
-            storage.removeFile(eventFilePath)
+            scope.launch(storageDispatcher) {
+                storage.removeFile(eventFilePath)
+            }
             return
         }
         val droppedIndices = badRequestResponse.getEventIndicesToDrop()
@@ -84,7 +90,7 @@ class FileResponseHandler(
         eventsToRetry.forEach {
             eventPipeline.put(it)
         }
-        scope.launch(dispatcher) {
+        scope.launch(storageDispatcher) {
             storage.removeFile(eventFilePath)
         }
     }
@@ -102,7 +108,9 @@ class FileResponseHandler(
         try {
             rawEvents = JSONArray(eventsString)
         } catch (e: JSONException) {
-            storage.removeFile(eventFilePath)
+            scope.launch(storageDispatcher) {
+                storage.removeFile(eventFilePath)
+            }
             removeCallbackByInsertId(eventsString)
             throw e
         }
@@ -111,13 +119,13 @@ class FileResponseHandler(
             triggerEventsCallback(
                 eventsList, HttpStatus.PAYLOAD_TOO_LARGE.code, payloadTooLargeResponse.error
             )
-            scope.launch(dispatcher) {
+            scope.launch(storageDispatcher) {
                 storage.removeFile(eventFilePath)
             }
             return
         }
         // split file into two
-        scope.launch(dispatcher) {
+        scope.launch(storageDispatcher) {
             storage.splitEventFile(eventFilePath, rawEvents)
         }
     }
@@ -130,7 +138,9 @@ class FileResponseHandler(
         logger?.debug(
             "Handle response, status: ${tooManyRequestsResponse.status}, error: ${tooManyRequestsResponse.error}"
         )
-        storage.releaseFile(events as String)
+        scope.launch(storageDispatcher) {
+            storage.releaseFile(events as String)
+        }
     }
 
     override fun handleTimeoutResponse(
@@ -139,7 +149,9 @@ class FileResponseHandler(
         eventsString: String,
     ) {
         logger?.debug("Handle response, status: ${timeoutResponse.status}")
-        storage.releaseFile(events as String)
+        scope.launch(storageDispatcher) {
+            storage.releaseFile(events as String)
+        }
     }
 
     override fun handleFailedResponse(
@@ -151,7 +163,9 @@ class FileResponseHandler(
             "Handle response, status: ${failedResponse.status}, error: ${failedResponse.error}"
         )
         // wait for next time to try again
-        storage.releaseFile(events as String)
+        scope.launch(storageDispatcher) {
+            storage.releaseFile(events as String)
+        }
     }
 
     private fun triggerEventsCallback(
@@ -164,9 +178,11 @@ class FileResponseHandler(
                 it(event, status, message)
             }
             event.insertId?.let { insertId ->
-                storage.getEventCallback(insertId)?.let {
-                    it(event, status, message)
-                    storage.removeEventCallback(insertId)
+                scope.launch(storageDispatcher) {
+                    storage.getEventCallback(insertId)?.let {
+                        it(event, status, message)
+                        storage.removeEventCallback(insertId)
+                    }
                 }
             }
         }
@@ -175,7 +191,9 @@ class FileResponseHandler(
     private fun removeCallbackByInsertId(eventsString: String) {
         val regex = """"insert_id":"(.{36})",""".toRegex()
         regex.findAll(eventsString).forEach {
-            storage.removeEventCallback(it.groupValues[1])
+            scope.launch(storageDispatcher) {
+                storage.removeEventCallback(it.groupValues[1])
+            }
         }
     }
 }

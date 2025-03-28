@@ -33,7 +33,7 @@ class FileResponseHandlerTest {
             }
         ),
         scope = TestScope(),
-        dispatcher = UnconfinedTestDispatcher(),
+        storageDispatcher = UnconfinedTestDispatcher(),
         logger = null
     )
     private var configCallBackEventTypes = mutableListOf<String>()
