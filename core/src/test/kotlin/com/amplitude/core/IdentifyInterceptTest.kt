@@ -53,7 +53,6 @@ class IdentifyInterceptTest {
             testDispatcher,
             testDispatcher,
             testDispatcher,
-            testDispatcher
         )
     }
 

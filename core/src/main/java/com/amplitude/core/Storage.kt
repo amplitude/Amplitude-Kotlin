@@ -38,7 +38,7 @@ interface Storage {
         eventPipeline: EventPipeline,
         configuration: Configuration,
         scope: CoroutineScope,
-        dispatcher: CoroutineDispatcher,
+        storageDispatcher: CoroutineDispatcher,
     ): ResponseHandler
 }
 

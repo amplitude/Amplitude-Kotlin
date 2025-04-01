@@ -1,10 +1,14 @@
 package com.amplitude.core.platform
 
 import com.amplitude.core.Amplitude
+import com.amplitude.core.Storage
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.utilities.ExponentialBackoffRetryHandler
 import com.amplitude.core.utilities.http.HttpClient
 import com.amplitude.core.utilities.http.HttpClientInterface
+import com.amplitude.core.utilities.http.ResponseHandler
 import com.amplitude.core.utilities.logWithStackTrace
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
 import kotlinx.coroutines.channels.consumeEach
@@ -17,38 +21,41 @@ import java.util.concurrent.atomic.AtomicInteger
 
 class EventPipeline(
     private val amplitude: Amplitude,
-) {
-    private val writeChannel: Channel<WriteQueueMessage>
-    private val uploadChannel: Channel<String>
-    private val eventCount: AtomicInteger = AtomicInteger(0)
+    private val eventCount: AtomicInteger = AtomicInteger(0),
     private val httpClient: HttpClientInterface = amplitude.configuration.httpClient
-        ?: HttpClient(amplitude.configuration)
-    private val storage get() = amplitude.storage
-    private val scope get() = amplitude.amplitudeScope
+        ?: HttpClient(amplitude.configuration),
+    private val retryUploadHandler: ExponentialBackoffRetryHandler =
+        ExponentialBackoffRetryHandler(
+            maxRetryAttempt = amplitude.configuration.flushMaxRetries
+        ),
+    private val storage: Storage = amplitude.storage,
+    private val scope: CoroutineScope = amplitude.amplitudeScope,
+    private val writeChannel: Channel<WriteQueueMessage> = Channel(UNLIMITED),
+    private var uploadChannel: Channel<String> = Channel(UNLIMITED),
+    overrideResponseHandler: ResponseHandler? = null,
+) {
 
     private var running: Boolean
     private var scheduled: Boolean
     var flushSizeDivider: AtomicInteger = AtomicInteger(1)
 
     private val responseHandler by lazy {
-        storage.getResponseHandler(
+        overrideResponseHandler ?: storage.getResponseHandler(
             this@EventPipeline,
             amplitude.configuration,
             scope,
-            amplitude.retryDispatcher,
+            amplitude.storageIODispatcher,
         )
     }
 
     companion object {
-        internal const val UPLOAD_SIG = "#!upload"
+        private const val UPLOAD_SIG = "#!upload"
+        private const val MAX_RETRY_ATTEMPT_SIG = "#!maxRetryAttemptReached"
     }
 
     init {
         running = false
         scheduled = false
-
-        writeChannel = Channel(UNLIMITED)
-        uploadChannel = Channel(UNLIMITED)
 
         registerShutdownHook()
     }
@@ -107,7 +114,7 @@ class EventPipeline(
 
     private fun upload() =
         scope.launch(amplitude.networkIODispatcher) {
-            uploadChannel.consumeEach {
+            uploadChannel.consumeEach { signal ->
                 withContext(amplitude.storageIODispatcher) {
                     try {
                         storage.rollover()
@@ -118,15 +125,36 @@ class EventPipeline(
                     }
                 }
 
-                val eventsData = storage.readEventsContent()
-                for (events in eventsData) {
+                if (signal == MAX_RETRY_ATTEMPT_SIG) {
+                    amplitude.logger.debug(
+                        "Max retries ${retryUploadHandler.maxRetryAttempt} reached, temporarily stop consuming upload signals."
+                    )
+                    // Use the max delay when retry attempt is reached
+                    delay(retryUploadHandler.maxDelayInMs)
+                    retryUploadHandler.reset()
+                    amplitude.logger.debug("Enable consuming of upload signals again.")
+                }
+
+                val eventFiles = storage.readEventsContent()
+                for (eventFile in eventFiles) {
                     try {
-                        val eventsString = storage.getEventsString(events)
+                        val eventsString = storage.getEventsString(eventFile)
                         if (eventsString.isEmpty()) continue
 
                         val diagnostics = amplitude.diagnostics.extractDiagnostics()
                         val response = httpClient.upload(eventsString, diagnostics)
-                        responseHandler.handle(response, events, eventsString)
+                        responseHandler.handle(response, eventFile, eventsString)
+
+                        // if we encounter a retryable error, we retry with delay and
+                        // restart the loop to get the newest event files
+                        if (response.status.shouldRetryUploadOnFailure == true) {
+                            retryUploadHandler.attemptRetry { canRetry ->
+                                val retrySignal = if (canRetry) UPLOAD_SIG else MAX_RETRY_ATTEMPT_SIG
+                                uploadChannel.trySend(retrySignal)
+                            }
+                            break
+                        }
+                        retryUploadHandler.reset() // always reset when we've successfully uploaded
                     } catch (e: FileNotFoundException) {
                         e.message?.let {
                             amplitude.logger.warn("Event storage file not found: $it")

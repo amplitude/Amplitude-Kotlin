@@ -82,9 +82,9 @@ class AndroidStorage(
         eventPipeline: EventPipeline,
         configuration: Configuration,
         scope: CoroutineScope,
-        dispatcher: CoroutineDispatcher,
+        storageDispatcher: CoroutineDispatcher,
     ): ResponseHandler {
-        return storageV2.getResponseHandler(eventPipeline, configuration, scope, dispatcher)
+        return storageV2.getResponseHandler(eventPipeline, configuration, scope, storageDispatcher)
     }
 
     override fun removeFile(filePath: String): Boolean {

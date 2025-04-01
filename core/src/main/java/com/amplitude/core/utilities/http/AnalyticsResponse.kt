@@ -8,7 +8,10 @@ import org.json.JSONObject
 import java.lang.Exception
 
 internal object HttpResponse {
-    fun createHttpResponse(code: Int, responseBody: String?): AnalyticsResponse {
+    fun createHttpResponse(
+        code: Int,
+        responseBody: String?,
+    ): AnalyticsResponse {
         return when (code) {
             HttpStatus.SUCCESS.code -> SuccessResponse()
 
@@ -39,22 +42,20 @@ internal object HttpResponse {
     }
 }
 
-interface AnalyticsResponse {
-    val status: HttpStatus
-
+sealed class AnalyticsResponse(val status: HttpStatus) {
     companion object {
-        fun create(responseCode: Int, responseBody: String?): AnalyticsResponse {
+        fun create(
+            responseCode: Int,
+            responseBody: String?,
+        ): AnalyticsResponse {
             return HttpResponse.createHttpResponse(responseCode, responseBody)
         }
     }
 }
 
-class SuccessResponse : AnalyticsResponse {
-    override val status: HttpStatus = HttpStatus.SUCCESS
-}
+class SuccessResponse : AnalyticsResponse(HttpStatus.SUCCESS)
 
-class BadRequestResponse(response: JSONObject) : AnalyticsResponse {
-    override val status: HttpStatus = HttpStatus.BAD_REQUEST
+class BadRequestResponse(response: JSONObject) : AnalyticsResponse(HttpStatus.BAD_REQUEST) {
     val error: String = response.getStringWithDefault("error", "")
     private var eventsWithInvalidFields: Set<Int> = setOf()
     private var eventsWithMissingFields: Set<Int> = setOf()
@@ -101,19 +102,20 @@ class BadRequestResponse(response: JSONObject) : AnalyticsResponse {
     }
 }
 
-class PayloadTooLargeResponse(response: JSONObject) : AnalyticsResponse {
-    override val status: HttpStatus = HttpStatus.PAYLOAD_TOO_LARGE
+class PayloadTooLargeResponse(response: JSONObject) :
+    AnalyticsResponse(HttpStatus.PAYLOAD_TOO_LARGE) {
     val error: String = response.getStringWithDefault("error", "")
 }
 
-class TooManyRequestsResponse(response: JSONObject) : AnalyticsResponse {
-    override val status: HttpStatus = HttpStatus.TOO_MANY_REQUESTS
+class TooManyRequestsResponse(response: JSONObject) :
+    AnalyticsResponse(HttpStatus.TOO_MANY_REQUESTS) {
+    private var exceededDailyQuotaUsers: Set<String> = setOf()
+    private var exceededDailyQuotaDevices: Set<String> = setOf()
+    private var throttledDevices: Set<String> = setOf()
+    private var throttledUsers: Set<String> = setOf()
+
     val error: String = response.getStringWithDefault("error", "")
-    var exceededDailyQuotaUsers: Set<String> = setOf()
-    var exceededDailyQuotaDevices: Set<String> = setOf()
-    var throttledEvents: Set<Int> = setOf()
-    var throttledDevices: Set<String> = setOf()
-    var throttledUsers: Set<String> = setOf()
+    var throttledEvents = setOf<Int>()
 
     init {
         if (response.has("exceeded_daily_quota_users")) {
@@ -140,17 +142,18 @@ class TooManyRequestsResponse(response: JSONObject) : AnalyticsResponse {
     }
 }
 
-class TimeoutResponse : AnalyticsResponse {
-    override val status: HttpStatus = HttpStatus.TIMEOUT
-}
+class TimeoutResponse : AnalyticsResponse(HttpStatus.TIMEOUT)
 
-class FailedResponse(response: JSONObject) : AnalyticsResponse {
-    override val status: HttpStatus = HttpStatus.FAILED
+class FailedResponse(response: JSONObject) : AnalyticsResponse(HttpStatus.FAILED) {
     val error: String = response.getStringWithDefault("error", "")
 }
 
 interface ResponseHandler {
-    fun handle(response: AnalyticsResponse, events: Any, eventsString: String) {
+    fun handle(
+        response: AnalyticsResponse,
+        events: Any,
+        eventsString: String,
+    ) {
         when (response) {
             is SuccessResponse ->
                 handleSuccessResponse(response, events, eventsString)
@@ -175,36 +178,55 @@ interface ResponseHandler {
     fun handleSuccessResponse(
         successResponse: SuccessResponse,
         events: Any,
-        eventsString: String
+        eventsString: String,
     )
 
     fun handleBadRequestResponse(
         badRequestResponse: BadRequestResponse,
         events: Any,
-        eventsString: String
+        eventsString: String,
     )
 
     fun handlePayloadTooLargeResponse(
         payloadTooLargeResponse: PayloadTooLargeResponse,
         events: Any,
-        eventsString: String
+        eventsString: String,
     )
 
     fun handleTooManyRequestsResponse(
         tooManyRequestsResponse: TooManyRequestsResponse,
         events: Any,
-        eventsString: String
+        eventsString: String,
     )
 
     fun handleTimeoutResponse(
         timeoutResponse: TimeoutResponse,
         events: Any,
-        eventsString: String
+        eventsString: String,
     )
 
     fun handleFailedResponse(
         failedResponse: FailedResponse,
         events: Any,
-        eventsString: String
+        eventsString: String,
     )
+}
+
+/**
+ * Enum class to represent the HTTP status codes and whether the upload should be retried on failure.
+ * A request requires a retry if the event file/s are still present and we want to attempt to upload them again.
+ */
+enum class HttpStatus(
+    val code: Int,
+    val shouldRetryUploadOnFailure: Boolean? = null,
+) {
+    SUCCESS(200),
+
+    /** should NOT retry as bad event files will be removed and there's nothing to retry */
+    BAD_REQUEST(400, false),
+    TIMEOUT(408, true),
+    /** should retry as large event files will be split and retried individually */
+    PAYLOAD_TOO_LARGE(413, true),
+    TOO_MANY_REQUESTS(429, true),
+    FAILED(500, true),
 }
