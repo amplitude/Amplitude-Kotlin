@@ -20,6 +20,7 @@ import io.mockk.mockk
 import io.mockk.spyk
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -33,6 +34,10 @@ class EventPipelineTest {
     private val config = Configuration(
         apiKey = "API_KEY",
         flushIntervalMillis = 1,
+        /**
+         * Take note that [com.amplitude.core.utilities.InMemoryStorage] will not persist data and
+         * clear the buffer after a call to `readEventsContent()` is made.
+         */
         storageProvider = InMemoryStorageProvider(),
         loggerProvider = ConsoleLoggerProvider(),
         identifyInterceptStorageProvider = InMemoryStorageProvider(),
@@ -203,7 +208,9 @@ class EventPipelineTest {
         advanceUntilIdle()
 
         coVerify { retryUploadHandler.attemptRetry(any<(Boolean) -> Unit>()) }
-        // this will be called on the MAX_RETRY_ATTEMPT_SIG block on upload()
+        // this will be called on the MAX_RETRY_ATTEMPT_SIG block on upload(),
+        // this is because the InMemoryStorage will clear the buffer and the second call to
+        // readEventsContent() will return an empty list and will stop the processing
         verify(exactly = 1) { retryUploadHandler.reset() }
     }
 }
