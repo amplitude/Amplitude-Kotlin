@@ -129,8 +129,8 @@ class EventPipeline(
                     amplitude.logger.debug(
                         "Max retries ${retryUploadHandler.maxRetryAttempt} reached, temporarily stop consuming upload signals."
                     )
-                    // approximately 32 seconds after max retry attempt is reached
-                    delay(retryUploadHandler.exponentialBackOffDelayInMs * 2)
+                    // Use the max delay when retry attempt is reached
+                    delay(retryUploadHandler.maxDelayInMs)
                     retryUploadHandler.reset()
                     amplitude.logger.debug("Enable consuming of upload signals again.")
                 }

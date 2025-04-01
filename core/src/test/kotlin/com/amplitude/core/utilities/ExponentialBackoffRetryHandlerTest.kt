@@ -1,5 +1,6 @@
 package com.amplitude.core.utilities
 
+import kotlin.math.max
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
@@ -78,5 +79,24 @@ class ExponentialBackoffRetryHandlerTest {
             val expected = baseDelayInMs * 2.0.pow(attemptNumber)
             assertTrue(elapsedTime >= expected)
         }
+    }
+
+    @Test
+    fun `maxDelay respects ceiling value and current attempt count`() {
+        val maxRetryAttempt = 10
+        var handler = ExponentialBackoffRetryHandler(
+            maxRetryAttempt = maxRetryAttempt
+        )
+
+        // should be set to ceiling of 60 seconds
+        handler.attempt.set(10)
+        assertEquals(handler.maxDelayInMs, 60_000)
+
+        // should be set to 2^5: 2^(maxRetryAttempt + 1)
+        handler = ExponentialBackoffRetryHandler(
+            maxRetryAttempt = 4
+        )
+        handler.attempt.set(4)
+        assertEquals(handler.maxDelayInMs, 32_000)
     }
 }

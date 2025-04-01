@@ -21,8 +21,17 @@ class ExponentialBackoffRetryHandler(
      *
      * e.g. for the default values, it will be: 1, 2, 4, 8, 16 seconds
      */
-    val exponentialBackOffDelayInMs
+    private val exponentialBackOffDelayInMs
         get() = (baseDelayInMs * factor.pow(attempt.get())).toLong()
+
+    /**
+     * After we've reached [maxRetryAttempt], we will stop retrying for a longer period and use this
+     * value. We apply a ceiling of 60 seconds [MAX_DELAY_IN_MILLIS] to the delay to avoid waiting too long.
+     */
+    val maxDelayInMs: Long
+        get() = MAX_DELAY_IN_MILLIS.coerceAtMost(
+            baseDelayInMs * factor.pow(maxRetryAttempt + 1).toInt()
+        ).toLong()
 
     internal var attempt = AtomicInteger(0)
 
@@ -52,5 +61,6 @@ class ExponentialBackoffRetryHandler(
 
     companion object {
         private const val MAX_RETRY_ATTEMPT = 5
+        private const val MAX_DELAY_IN_MILLIS = 60_000
     }
 }
