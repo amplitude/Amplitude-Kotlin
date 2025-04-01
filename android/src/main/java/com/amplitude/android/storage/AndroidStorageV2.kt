@@ -2,6 +2,7 @@ package com.amplitude.android.storage
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import com.amplitude.android.utilities.AndroidKVS
 import com.amplitude.common.Logger
 import com.amplitude.core.Amplitude
@@ -62,11 +63,15 @@ class AndroidStorageV2(
         key: Storage.Constants,
         value: String,
     ) {
-        sharedPreferences.edit().putString(key.rawVal, value).apply()
+        sharedPreferences.edit {
+            putString(key.rawVal, value)
+        }
     }
 
     override suspend fun remove(key: Storage.Constants) {
-        sharedPreferences.edit().remove(key.rawVal).apply()
+        sharedPreferences.edit {
+            remove(key.rawVal)
+        }
     }
 
     override suspend fun rollover() {
@@ -85,8 +90,8 @@ class AndroidStorageV2(
         eventsFile.release(filePath)
     }
 
-    override suspend fun getEventsString(content: Any): String {
-        return eventsFile.getEventString(content as String)
+    override suspend fun getEventsString(filePath: Any): String {
+        return eventsFile.getEventString(filePath as String)
     }
 
     override fun getResponseHandler(
@@ -136,7 +141,8 @@ class AndroidEventsStorageProviderV2 : StorageProvider {
     ): Storage {
         val configuration = amplitude.configuration as com.amplitude.android.Configuration
         val sharedPreferencesName = "amplitude-events-${configuration.instanceName}"
-        val sharedPreferences = configuration.context.getSharedPreferences(sharedPreferencesName, Context.MODE_PRIVATE)
+        val sharedPreferences =
+            configuration.context.getSharedPreferences(sharedPreferencesName, Context.MODE_PRIVATE)
         return AndroidStorageV2(
             configuration.instanceName,
             configuration.loggerProvider.getLogger(amplitude),

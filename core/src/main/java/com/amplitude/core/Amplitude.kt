@@ -156,10 +156,10 @@ open class Amplitude internal constructor(
         options: EventOptions? = null,
         callback: EventCallBack? = null,
     ): Amplitude {
-        options ?. let {
+        options?.let {
             event.mergeEventOptions(it)
         }
-        callback ?. let {
+        callback?.let {
             event.callback = it
         }
         process(event)
