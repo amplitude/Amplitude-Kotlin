@@ -88,8 +88,8 @@ internal object ViewHierarchyScanner {
                         false
                     }
                 }
-            } catch (t: Throwable) {
-                logger.error("Error while locating target")
+            } catch (e: ClassCastException) {
+                logger.error("Error while locating target in view hierarchy: $e")
             }
         }
 
