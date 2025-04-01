@@ -1,6 +1,5 @@
 package com.amplitude.core.utilities
 
-import kotlin.math.max
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
