@@ -72,21 +72,24 @@ internal object ViewHierarchyScanner {
             if (view is ViewGroup) {
                 queue.addAll(view.children)
             }
-
-            // Applies the locators until a target is found. If the target type is clickable, check
-            // the children in case the target is a child which is also clickable.
-            viewTargetLocators.any { locator ->
-                with(locator) {
-                    view.locate(targetPosition, targetType)?.let { newTarget ->
-                        if (targetType == ViewTarget.Type.Clickable) {
-                            target = newTarget
-                            return@any true
-                        } else {
-                            return newTarget
+            try {
+                // Applies the locators until a target is found. If the target type is clickable, check
+                // the children in case the target is a child which is also clickable.
+                viewTargetLocators.any { locator ->
+                    with(locator) {
+                        view.locate(targetPosition, targetType)?.let { newTarget ->
+                            if (targetType == ViewTarget.Type.Clickable) {
+                                target = newTarget
+                                return@any true
+                            } else {
+                                return newTarget
+                            }
                         }
+                        false
                     }
-                    false
                 }
+            } catch (t: Throwable) {
+                logger.error("Error while locating target")
             }
         }
 

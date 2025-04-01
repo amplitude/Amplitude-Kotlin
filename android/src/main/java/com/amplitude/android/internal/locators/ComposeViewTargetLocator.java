@@ -2,13 +2,13 @@ package com.amplitude.android.internal.locators;
 
 import androidx.annotation.OptIn;
 import androidx.compose.ui.InternalComposeUiApi;
+import androidx.compose.ui.Modifier;
 import androidx.compose.ui.geometry.Rect;
 import androidx.compose.ui.layout.ModifierInfo;
 import androidx.compose.ui.node.LayoutNode;
 import androidx.compose.ui.node.Owner;
-import androidx.compose.ui.semantics.SemanticsConfiguration;
-import androidx.compose.ui.semantics.SemanticsModifier;
-import androidx.compose.ui.semantics.SemanticsPropertyKey;
+import androidx.compose.ui.platform.InspectableValue;
+import androidx.compose.ui.platform.ValueElement;
 
 import com.amplitude.android.internal.ViewTarget;
 import com.amplitude.common.Logger;
@@ -17,6 +17,8 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayDeque;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -72,27 +74,44 @@ public class ComposeViewTargetLocator implements ViewTargetLocator {
                 boolean isClickable = false;
                 final List<ModifierInfo> modifiers = node.getModifierInfo();
                 for (ModifierInfo modifierInfo : modifiers) {
-                    if (modifierInfo.getModifier() instanceof SemanticsModifier) {
-                        final SemanticsModifier semanticsModifierCore =
-                                (SemanticsModifier) modifierInfo.getModifier();
-                        final SemanticsConfiguration semanticsConfiguration =
-                                semanticsModifierCore.getSemanticsConfiguration();
-                        for (Map.Entry<? extends SemanticsPropertyKey<?>, ?> entry : semanticsConfiguration) {
-                            final @Nullable String key = entry.getKey().getName();
-                            if ("OnClick".equals(key)) {
-                                isClickable = true;
-                            } else if ("TestTag".equals(key)) {
-                                if (entry.getValue() instanceof String) {
-                                    lastKnownTag = (String) entry.getValue();
+                    final Modifier modifier = modifierInfo.getModifier();
+                    if (modifier instanceof InspectableValue) {
+                        final InspectableValue inspectableValue = (InspectableValue) modifier;
+                        if ("testTag".equals(inspectableValue.getNameFallback())) {
+                            Iterator<ValueElement> iterator = inspectableValue.getInspectableElements().iterator();
+                            while (iterator.hasNext()) {
+                                final ValueElement element = iterator.next();
+                                if ("tag".equals(element.getName())) {
+                                    lastKnownTag = (String) element.getValue();
+                                    break;
+                                }
+                            }
+                        } else if ("semantics".equals(inspectableValue.getNameFallback())) {
+                            Iterator<ValueElement> iterator = inspectableValue.getInspectableElements().iterator();
+                            while (iterator.hasNext()) {
+                                final ValueElement element = iterator.next();
+                                if ("properties".equals(element.getName())) {
+                                    final Object elementValue = element.getValue();
+                                    if (elementValue instanceof LinkedHashMap) {
+                                        final LinkedHashMap<Object, Object> properties = (LinkedHashMap<Object, Object>) elementValue;
+                                        for (Map.Entry<Object, Object> entry : properties.entrySet()) {
+                                            if ("TestTag".equals(entry.getKey())) {
+                                                lastKnownTag = (String) entry.getValue();
+                                                break;
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
-                    } else {
-                        // Newer Jetpack Compose 1.5 uses Node modifiers for clicks/scrolls
-                        final @Nullable String type = modifierInfo.getModifier().getClass().getCanonicalName();
-                        if ("androidx.compose.foundation.ClickableElement".equals(type)
-                                || "androidx.compose.foundation.CombinedClickableElement".equals(type)) {
+                        if ("clickable".equals(inspectableValue.getNameFallback())) {
                             isClickable = true;
+                        } else {
+                            final @Nullable String type = modifier.getClass().getCanonicalName();
+                            if ("androidx.compose.foundation.ClickableElement".equals(type)
+                                    || "androidx.compose.foundation.CombinedClickableElement".equals(type)) {
+                                isClickable = true;
+                            }
                         }
                     }
                 }
