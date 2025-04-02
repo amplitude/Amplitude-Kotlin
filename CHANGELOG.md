@@ -1,3 +1,12 @@
+## [1.20.5](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.20.4...v1.20.5) (2025-04-02)
+
+
+### Bug Fixes
+
+* compose autocapture properties update ([#261](https://github.com/amplitude/Amplitude-Kotlin/issues/261)) ([a49b6a7](https://github.com/amplitude/Amplitude-Kotlin/commit/a49b6a7bab6f899ccb8652f53d8b5b7dfbffb346))
+* reformatting and warning fixes for upload ordering ticket  ([#257](https://github.com/amplitude/Amplitude-Kotlin/issues/257)) ([61eb7ee](https://github.com/amplitude/Amplitude-Kotlin/commit/61eb7eecc1ce58d6f95cb4862a6a359ff106cece))
+* retry upload order ([#259](https://github.com/amplitude/Amplitude-Kotlin/issues/259)) ([59a339d](https://github.com/amplitude/Amplitude-Kotlin/commit/59a339deac99b29b1257293162fb2f5f0d14f01b))
+
 ## [1.20.4](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.20.3...v1.20.4) (2025-03-17)
 
 
