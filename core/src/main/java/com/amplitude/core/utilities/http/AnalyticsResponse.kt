@@ -173,9 +173,9 @@ interface ResponseHandler {
             }
 
             is BadRequestResponse -> {
+                // RETRY if bad events are removed and there's nothing to retry
+                // DON'T RETRY if it's a response that comes from a proxy
                 handleBadRequestResponse(response, events, eventsString)
-                // DON'T retry as bad event files will be removed and there's nothing to retry
-                false
             }
 
             is PayloadTooLargeResponse -> {
