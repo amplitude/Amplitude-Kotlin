@@ -6,7 +6,6 @@ import com.amplitude.core.State
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.ConsoleLoggerProvider
 import com.amplitude.core.utilities.ExponentialBackoffRetryHandler
-import com.amplitude.core.utilities.InMemoryResponseHandler
 import com.amplitude.core.utilities.InMemoryStorageProvider
 import com.amplitude.core.utilities.http.AnalyticsResponse
 import com.amplitude.core.utilities.http.BadRequestResponse

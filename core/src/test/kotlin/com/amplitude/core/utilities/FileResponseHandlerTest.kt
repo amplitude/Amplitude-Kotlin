@@ -16,6 +16,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.json.JSONObject
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -97,7 +98,7 @@ class FileResponseHandlerTest {
             JSONObject("{\"error\":\"Invalid API key\"}")
         )
 
-        handler.handleBadRequestResponse(
+        val shouldRetryUploadOnFailure = handler.handleBadRequestResponse(
             badRequestResponse = response,
             events = "file_path",
             eventsString = JSONUtil.eventsToString(
@@ -112,6 +113,7 @@ class FileResponseHandlerTest {
         verify(exactly = 1) {
             storage.removeFile("file_path")
         }
+        assertFalse(shouldRetryUploadOnFailure)
     }
 
     @Test
@@ -125,7 +127,7 @@ class FileResponseHandlerTest {
             generateBaseEvent("test2"),
             generateBaseEvent("test3"),
         )
-        handler.handleBadRequestResponse(
+        val shouldRetryUploadOnFailure = handler.handleBadRequestResponse(
             badRequestResponse = response,
             events = "file_path",
             eventsString = JSONUtil.eventsToString(events)
@@ -140,6 +142,7 @@ class FileResponseHandlerTest {
         verify(exactly = 1) {
             storage.removeFile("file_path")
         }
+        assertTrue(shouldRetryUploadOnFailure)
     }
 
     @Test
@@ -164,7 +167,7 @@ class FileResponseHandlerTest {
             generateBaseEvent("test2"),
             generateBaseEvent("test3"),
         )
-        handler.handleBadRequestResponse(
+        val shouldRetryUploadOnFailure = handler.handleBadRequestResponse(
             badRequestResponse = response,
             events = "file_path",
             eventsString = JSONUtil.eventsToString(events)
@@ -180,6 +183,7 @@ class FileResponseHandlerTest {
         verify {
             storage.removeFile("file_path")
         }
+        assertFalse(shouldRetryUploadOnFailure)
     }
 
     @Test
@@ -202,7 +206,7 @@ class FileResponseHandlerTest {
             generateBaseEvent("test2"),
             generateBaseEvent("test3"),
         )
-        handler.handleBadRequestResponse(
+        val shouldRetryUploadOnFailure = handler.handleBadRequestResponse(
             badRequestResponse = response,
             events = "file_path",
             eventsString = JSONUtil.eventsToString(events)
@@ -218,6 +222,7 @@ class FileResponseHandlerTest {
         verify(exactly = 1) {
             storage.removeFile("file_path")
         }
+        assertFalse(shouldRetryUploadOnFailure)
     }
 
     @Test

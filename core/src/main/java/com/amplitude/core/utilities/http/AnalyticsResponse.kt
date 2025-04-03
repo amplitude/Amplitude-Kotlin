@@ -5,7 +5,6 @@ import com.amplitude.core.utilities.collectIndices
 import com.amplitude.core.utilities.getStringWithDefault
 import com.amplitude.core.utilities.toIntArray
 import org.json.JSONObject
-import java.lang.Exception
 
 internal object HttpResponse {
     fun createHttpResponse(
@@ -218,12 +217,14 @@ interface ResponseHandler {
 
     /**
      * Handle a [HttpStatus.BAD_REQUEST] response.
+     *
+     * @return true if we should retry the upload (e.g. no events dropped), else false as we have discarded the events
      */
     fun handleBadRequestResponse(
         badRequestResponse: BadRequestResponse,
         events: Any,
         eventsString: String,
-    )
+    ): Boolean
 
     /**
      * Handle a [HttpStatus.PAYLOAD_TOO_LARGE] response.

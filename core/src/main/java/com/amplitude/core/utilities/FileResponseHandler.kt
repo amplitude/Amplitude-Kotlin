@@ -45,7 +45,7 @@ class FileResponseHandler(
         badRequestResponse: BadRequestResponse,
         events: Any,
         eventsString: String,
-    ) {
+    ): Boolean {
         logger?.debug(
             "Handle response, status: ${badRequestResponse.status}, error: ${badRequestResponse.error}"
         )
@@ -56,7 +56,7 @@ class FileResponseHandler(
             scope.launch(storageDispatcher) {
                 storage.removeFile(eventFilePath)
             }
-            return
+            return false
         }
         val droppedIndices = badRequestResponse.getEventIndicesToDrop()
         val eventsToDrop = mutableListOf<BaseEvent>()
@@ -75,6 +75,10 @@ class FileResponseHandler(
         scope.launch(storageDispatcher) {
             storage.removeFile(eventFilePath)
         }
+
+        // shouldRetryUploadOnFailure is true if there are NO events to drop, this happens
+        // when connected to a proxy and it returns 400 with w/o the eventsToDrop fields
+        return eventsToDrop.isEmpty()
     }
 
     override fun handlePayloadTooLargeResponse(

@@ -203,7 +203,7 @@ class ResponseHandlerIntegrationTest {
     }
 
     @Test
-    fun `test handle bad request response`() = runTest {
+    fun `test handle bad request response - missing field`() = runTest {
         setAmplitudeDispatchers(amplitude, testScheduler)
         val badRequestResponseBody = """
         {
@@ -216,7 +216,7 @@ class ResponseHandlerIntegrationTest {
           },
           "events_with_missing_fields": {
             "event_type": [
-              2
+              0
             ]
           }
         }
