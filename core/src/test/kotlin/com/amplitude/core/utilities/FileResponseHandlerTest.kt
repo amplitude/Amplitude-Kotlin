@@ -92,28 +92,6 @@ class FileResponseHandlerTest {
     }
 
     @Test
-    fun `bad request single event`() {
-        val response = BadRequestResponse(
-            JSONObject("{\"error\":\"Some Error\"}")
-        )
-
-        handler.handleBadRequestResponse(
-            badRequestResponse = response,
-            events = "file_path",
-            eventsString = JSONUtil.eventsToString(
-                listOf(
-                    generateBaseEvent("test1")
-                )
-            )
-        )
-
-        assertTrue(configCallBackEventTypes.contains("test1"))
-        verify(exactly = 1) {
-            storage.removeFile("file_path")
-        }
-    }
-
-    @Test
     fun `bad request for invalid API key`() {
         val response = BadRequestResponse(
             JSONObject("{\"error\":\"Invalid API key\"}")

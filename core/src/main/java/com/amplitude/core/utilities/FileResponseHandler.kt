@@ -51,7 +51,7 @@ class FileResponseHandler(
         )
         val eventFilePath = events as String
         val eventsList = parseEvents(eventsString, eventFilePath).toEvents()
-        if (eventsList.size == 1 || badRequestResponse.isInvalidApiKeyResponse()) {
+        if (badRequestResponse.isInvalidApiKeyResponse()) {
             triggerEventsCallback(eventsList, HttpStatus.BAD_REQUEST.code, badRequestResponse.error)
             scope.launch(storageDispatcher) {
                 storage.removeFile(eventFilePath)
