@@ -143,11 +143,11 @@ class EventPipeline(
 
                         val diagnostics = amplitude.diagnostics.extractDiagnostics()
                         val response = httpClient.upload(eventsString, diagnostics)
-                        responseHandler.handle(response, eventFile, eventsString)
+                        val shouldRetryUploadOnFailure = responseHandler.handle(response, eventFile, eventsString)
 
                         // if we encounter a retryable error, we retry with delay and
                         // restart the loop to get the newest event files
-                        if (response.status.shouldRetryUploadOnFailure == true) {
+                        if (shouldRetryUploadOnFailure == true) {
                             retryUploadHandler.attemptRetry { canRetry ->
                                 val retrySignal = if (canRetry) UPLOAD_SIG else MAX_RETRY_ATTEMPT_SIG
                                 uploadChannel.trySend(retrySignal)
