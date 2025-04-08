@@ -10,12 +10,19 @@ import com.amplitude.core.utilities.InMemoryStorageProvider
 import com.amplitude.core.utilities.http.AnalyticsResponse
 import com.amplitude.core.utilities.http.BadRequestResponse
 import com.amplitude.core.utilities.http.HttpClientInterface
+import com.amplitude.core.utilities.http.HttpStatus.BAD_REQUEST
+import com.amplitude.core.utilities.http.HttpStatus.FAILED
+import com.amplitude.core.utilities.http.HttpStatus.PAYLOAD_TOO_LARGE
+import com.amplitude.core.utilities.http.HttpStatus.SUCCESS
+import com.amplitude.core.utilities.http.HttpStatus.TIMEOUT
+import com.amplitude.core.utilities.http.HttpStatus.TOO_MANY_REQUESTS
 import com.amplitude.core.utilities.http.PayloadTooLargeResponse
 import com.amplitude.core.utilities.http.ResponseHandler
 import com.amplitude.core.utilities.http.SuccessResponse
 import com.amplitude.core.utilities.http.TimeoutResponse
 import com.amplitude.id.IMIdentityStorageProvider
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.spyk
 import io.mockk.verify
@@ -58,7 +65,20 @@ class EventPipelineTest {
         networkIODispatcher = testDispatcher,
         storageIODispatcher = testDispatcher
     )
-    private val fakeResponseHandler: ResponseHandler = mockk(relaxed = true)
+    private val fakeResponseHandler: ResponseHandler = mockk(relaxed = true) {
+        every { handle(any(), any(), any()) } answers {
+            val response = it.invocation.args[0] as AnalyticsResponse
+            val shouldRetryUploadOnFailure = when (response.status) {
+                SUCCESS -> null
+                BAD_REQUEST -> false
+                TIMEOUT,
+                PAYLOAD_TOO_LARGE,
+                TOO_MANY_REQUESTS,
+                FAILED -> true
+            }
+            shouldRetryUploadOnFailure
+        }
+    }
 
     @Test
     fun `should not flush when put and offline`() = runTest(testDispatcher) {

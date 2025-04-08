@@ -36,7 +36,7 @@ private const val FLUSH_MAX_RETRIES = 3
 
 @ExperimentalCoroutinesApi
 @RunWith(RobolectricTestRunner::class)
-class ResponseHandlerTest {
+class ResponseHandlerIntegrationTest {
     private lateinit var server: MockWebServer
     private lateinit var amplitude: Amplitude
 
@@ -203,7 +203,7 @@ class ResponseHandlerTest {
     }
 
     @Test
-    fun `test handle bad request response`() = runTest {
+    fun `test handle bad request response - missing field`() = runTest {
         setAmplitudeDispatchers(amplitude, testScheduler)
         val badRequestResponseBody = """
         {
@@ -216,7 +216,7 @@ class ResponseHandlerTest {
           },
           "events_with_missing_fields": {
             "event_type": [
-              2
+              0
             ]
           }
         }

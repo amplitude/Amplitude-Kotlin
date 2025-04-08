@@ -34,16 +34,7 @@ class FileResponseHandler(
     ) {
         val eventFilePath = events as String
         logger?.debug("Handle response, status: ${successResponse.status}")
-        val eventsList: List<BaseEvent>
-        try {
-            eventsList = JSONArray(eventsString).toEvents()
-        } catch (e: JSONException) {
-            scope.launch(storageDispatcher) {
-                storage.removeFile(eventFilePath)
-            }
-            removeCallbackByInsertId(eventsString)
-            throw e
-        }
+        val eventsList = parseEvents(eventsString, eventFilePath).toEvents()
         triggerEventsCallback(eventsList, HttpStatus.SUCCESS.code, "Event sent success.")
         scope.launch(storageDispatcher) {
             storage.removeFile(eventFilePath)
@@ -54,27 +45,18 @@ class FileResponseHandler(
         badRequestResponse: BadRequestResponse,
         events: Any,
         eventsString: String,
-    ) {
+    ): Boolean {
         logger?.debug(
             "Handle response, status: ${badRequestResponse.status}, error: ${badRequestResponse.error}"
         )
         val eventFilePath = events as String
-        val eventsList: List<BaseEvent>
-        try {
-            eventsList = JSONArray(eventsString).toEvents()
-        } catch (e: JSONException) {
-            scope.launch(storageDispatcher) {
-                storage.removeFile(eventFilePath)
-            }
-            removeCallbackByInsertId(eventsString)
-            throw e
-        }
-        if (eventsList.size == 1 || badRequestResponse.isInvalidApiKeyResponse()) {
+        val eventsList = parseEvents(eventsString, eventFilePath).toEvents()
+        if (badRequestResponse.isInvalidApiKeyResponse()) {
             triggerEventsCallback(eventsList, HttpStatus.BAD_REQUEST.code, badRequestResponse.error)
             scope.launch(storageDispatcher) {
                 storage.removeFile(eventFilePath)
             }
-            return
+            return false
         }
         val droppedIndices = badRequestResponse.getEventIndicesToDrop()
         val eventsToDrop = mutableListOf<BaseEvent>()
@@ -86,13 +68,27 @@ class FileResponseHandler(
                 eventsToRetry.add(event)
             }
         }
+        // shouldRetryUploadOnFailure is true if there are NO events to drop, this happens
+        // when connected to a proxy and it returns 400 with w/o the eventsToDrop fields
+        if (eventsToDrop.isEmpty()) {
+            scope.launch(storageDispatcher) {
+                storage.releaseFile(events)
+            }
+            return true
+        }
+
         triggerEventsCallback(eventsToDrop, HttpStatus.BAD_REQUEST.code, badRequestResponse.error)
         eventsToRetry.forEach {
             eventPipeline.put(it)
         }
         scope.launch(storageDispatcher) {
+            logger?.debug(
+                "--> remove file: ${eventFilePath.split("-").takeLast(2)}, dropped events: ${eventsToDrop.size}, " +
+                    "retry events: ${eventsToRetry.size}"
+            )
             storage.removeFile(eventFilePath)
         }
+        return false
     }
 
     override fun handlePayloadTooLargeResponse(
@@ -104,16 +100,7 @@ class FileResponseHandler(
             "Handle response, status: ${payloadTooLargeResponse.status}, error: ${payloadTooLargeResponse.error}"
         )
         val eventFilePath = events as String
-        val rawEvents: JSONArray
-        try {
-            rawEvents = JSONArray(eventsString)
-        } catch (e: JSONException) {
-            scope.launch(storageDispatcher) {
-                storage.removeFile(eventFilePath)
-            }
-            removeCallbackByInsertId(eventsString)
-            throw e
-        }
+        val rawEvents = parseEvents(eventsString, eventFilePath)
         if (rawEvents.length() == 1) {
             val eventsList = rawEvents.toEvents()
             triggerEventsCallback(
@@ -166,6 +153,28 @@ class FileResponseHandler(
         scope.launch(storageDispatcher) {
             storage.releaseFile(events as String)
         }
+    }
+
+    /**
+     * Parse events from the [eventsString] at the given [eventFilePath].
+     * If parsing fails, this removes the file at [eventFilePath], and
+     * remove the callback by insert ID, and throws a [JSONException].
+     */
+    private fun parseEvents(
+        eventsString: String,
+        eventFilePath: String,
+    ): JSONArray {
+        val rawEvents: JSONArray
+        try {
+            rawEvents = JSONArray(eventsString)
+        } catch (e: JSONException) {
+            scope.launch(storageDispatcher) {
+                storage.removeFile(eventFilePath)
+            }
+            removeCallbackByInsertId(eventsString)
+            throw e
+        }
+        return rawEvents
     }
 
     private fun triggerEventsCallback(
