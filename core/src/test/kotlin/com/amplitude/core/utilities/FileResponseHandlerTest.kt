@@ -133,16 +133,16 @@ class FileResponseHandlerTest {
             eventsString = JSONUtil.eventsToString(events)
         )
 
-        val expectedEventTypes = events.map { it.eventType }
-        expectedEventTypes.forEach { eventType ->
-            verify {
-                pipeline.put(match { it.eventType == eventType })
-            }
-        }
         verify(exactly = 1) {
-            storage.removeFile("file_path")
+            storage.releaseFile("file_path")
         }
         assertTrue(shouldRetryUploadOnFailure)
+        verify(exactly = 0) {
+            pipeline.put(any())
+        }
+        verify(exactly = 0) {
+            storage.removeFile("file_path")
+        }
     }
 
     @Test

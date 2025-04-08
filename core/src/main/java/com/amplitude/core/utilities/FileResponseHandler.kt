@@ -68,17 +68,27 @@ class FileResponseHandler(
                 eventsToRetry.add(event)
             }
         }
+        // shouldRetryUploadOnFailure is true if there are NO events to drop, this happens
+        // when connected to a proxy and it returns 400 with w/o the eventsToDrop fields
+        if (eventsToDrop.isEmpty()) {
+            scope.launch(storageDispatcher) {
+                storage.releaseFile(events)
+            }
+            return true
+        }
+
         triggerEventsCallback(eventsToDrop, HttpStatus.BAD_REQUEST.code, badRequestResponse.error)
         eventsToRetry.forEach {
             eventPipeline.put(it)
         }
         scope.launch(storageDispatcher) {
+            logger?.debug(
+                "--> remove file: ${eventFilePath.split("-").takeLast(2)}, dropped events: ${eventsToDrop.size}, " +
+                    "retry events: ${eventsToRetry.size}"
+            )
             storage.removeFile(eventFilePath)
         }
-
-        // shouldRetryUploadOnFailure is true if there are NO events to drop, this happens
-        // when connected to a proxy and it returns 400 with w/o the eventsToDrop fields
-        return eventsToDrop.isEmpty()
+        return false
     }
 
     override fun handlePayloadTooLargeResponse(
