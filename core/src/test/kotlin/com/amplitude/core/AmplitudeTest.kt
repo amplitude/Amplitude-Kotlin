@@ -11,13 +11,14 @@ import com.amplitude.core.events.Plan
 import com.amplitude.core.events.Revenue
 import com.amplitude.core.events.RevenueEvent
 import com.amplitude.core.platform.Plugin
+import com.amplitude.core.utils.FakeAmplitude
 import com.amplitude.core.utils.StubPlugin
 import com.amplitude.core.utils.TestRunPlugin
-import com.amplitude.core.utils.testAmplitude
 import io.mockk.slot
 import io.mockk.spyk
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.jupiter.api.AfterEach
@@ -46,13 +47,14 @@ internal class AmplitudeTest {
         val testApiKey = "test-123"
         val plan = Plan("test-branch", "test")
         val ingestionMetadata = IngestionMetadata("ampli", "2.0.0")
-        amplitude = testAmplitude(
+        amplitude = FakeAmplitude(
             Configuration(
                 testApiKey,
                 plan = plan,
                 ingestionMetadata = ingestionMetadata,
                 serverUrl = server.url("/").toString()
-            )
+            ),
+            testDispatcher = UnconfinedTestDispatcher()
         )
     }
 
@@ -66,7 +68,7 @@ internal class AmplitudeTest {
         @Test
         fun `set deviceId`() {
             val deviceId = "test-device-id"
-            amplitude = testAmplitude(
+            amplitude = FakeAmplitude(
                 Configuration(
                     "api-key",
                     deviceId = deviceId,
