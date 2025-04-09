@@ -1,3 +1,10 @@
+## [1.20.6](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.20.5...v1.20.6) (2025-04-09)
+
+
+### Bug Fixes
+
+* 4xx-handling-when-on-proxy ([#262](https://github.com/amplitude/Amplitude-Kotlin/issues/262)) ([7561305](https://github.com/amplitude/Amplitude-Kotlin/commit/7561305276893d88866ec4651e9412a6a6ae8295))
+
 ## [1.20.5](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.20.4...v1.20.5) (2025-04-02)
 
 
