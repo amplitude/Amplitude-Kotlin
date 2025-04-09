@@ -10,17 +10,37 @@ import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.android.plugins.AndroidNetworkConnectivityCheckerPlugin
 import com.amplitude.android.storage.AndroidStorageContextV3
 import com.amplitude.android.utilities.ActivityLifecycleObserver
-import com.amplitude.core.Amplitude
+import com.amplitude.core.State
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
 import com.amplitude.id.IdentityConfiguration
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
+import java.util.concurrent.Executors
+import com.amplitude.core.Amplitude as CoreAmplitude
 
-open class Amplitude(
-    configuration: Configuration
-) : Amplitude(configuration) {
+open class Amplitude internal constructor(
+    configuration: Configuration,
+    state: State,
+    amplitudeScope: CoroutineScope = CoroutineScope(SupervisorJob()),
+    amplitudeDispatcher: CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher(),
+    networkIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
+    storageIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+) : CoreAmplitude(
+    configuration = configuration,
+    store = state,
+    amplitudeScope = amplitudeScope,
+    amplitudeDispatcher = amplitudeDispatcher,
+    networkIODispatcher = networkIODispatcher,
+    storageIODispatcher = storageIODispatcher
+) {
+    constructor(configuration: Configuration) : this(configuration, State())
+
     private lateinit var androidContextPlugin: AndroidContextPlugin
 
     val sessionId: Long

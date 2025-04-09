@@ -3,8 +3,8 @@ package com.amplitude.android
 import android.app.Application
 import android.content.Context
 import android.net.ConnectivityManager
-import com.amplitude.android.plugins.AndroidLifecyclePlugin
-import com.amplitude.common.android.AndroidContextProvider
+import com.amplitude.android.utilities.createFakeAmplitude
+import com.amplitude.android.utilities.setupMockAndroidContext
 import com.amplitude.core.Storage
 import com.amplitude.core.StorageProvider
 import com.amplitude.core.events.BaseEvent
@@ -12,65 +12,25 @@ import com.amplitude.core.utilities.ConsoleLoggerProvider
 import com.amplitude.core.utilities.InMemoryStorage
 import com.amplitude.core.utilities.InMemoryStorageProvider
 import com.amplitude.id.IMIdentityStorageProvider
-import com.amplitude.id.IdentityConfiguration
-import com.amplitude.id.IdentityContainer
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.mockkConstructor
-import io.mockk.mockkStatic
 import io.mockk.slot
 import io.mockk.spyk
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.io.File
 
 @ExperimentalCoroutinesApi
 class AmplitudeSessionTest {
-    @BeforeEach
-    fun setUp() {
-        mockkStatic(AndroidLifecyclePlugin::class)
-
-        mockkConstructor(AndroidContextProvider::class)
-        every { anyConstructed<AndroidContextProvider>().osName } returns "android"
-        every { anyConstructed<AndroidContextProvider>().osVersion } returns "10"
-        every { anyConstructed<AndroidContextProvider>().brand } returns "google"
-        every { anyConstructed<AndroidContextProvider>().manufacturer } returns "Android"
-        every { anyConstructed<AndroidContextProvider>().model } returns "Android SDK built for x86"
-        every { anyConstructed<AndroidContextProvider>().language } returns "English"
-        every { anyConstructed<AndroidContextProvider>().advertisingId } returns ""
-        every { anyConstructed<AndroidContextProvider>().versionName } returns "1.0"
-        every { anyConstructed<AndroidContextProvider>().carrier } returns "Android"
-        every { anyConstructed<AndroidContextProvider>().country } returns "US"
-        every { anyConstructed<AndroidContextProvider>().mostRecentLocation } returns null
-        every { anyConstructed<AndroidContextProvider>().appSetId } returns ""
-
-        val configuration = IdentityConfiguration(
-            instanceName,
-            identityStorageProvider = IMIdentityStorageProvider(),
-            storageDirectory = File("/tmp/amplitude-kotlin-identity-test"),
-            fileName = "identity",
-        )
-        IdentityContainer.getInstance(configuration)
-    }
-
-    private fun setDispatcher(amplitude: Amplitude, testScheduler: TestCoroutineScheduler) {
-        val dispatcher = StandardTestDispatcher(testScheduler)
-        // inject the amplitudeDispatcher field with reflection, as the field is val (read-only)
-        val amplitudeDispatcherField = com.amplitude.core.Amplitude::class.java.getDeclaredField("amplitudeDispatcher")
-        amplitudeDispatcherField.isAccessible = true
-        amplitudeDispatcherField.set(amplitude, dispatcher)
-    }
 
     private fun createConfiguration(storageProvider: StorageProvider? = null, shouldTrackSessions: Boolean = true): Configuration {
+        setupMockAndroidContext()
         val context = mockk<Application>(relaxed = true)
-        var connectivityManager = mockk<ConnectivityManager>(relaxed = true)
+        val connectivityManager = mockk<ConnectivityManager>(relaxed = true)
         every { context.getSystemService(Context.CONNECTIVITY_SERVICE) } returns connectivityManager
         val dirNameSlot = slot<String>()
         every { context.getDir(capture(dirNameSlot), any()) } answers {
@@ -92,8 +52,11 @@ class AmplitudeSessionTest {
 
     @Test
     fun amplitude_closeBackgroundEventsShouldNotStartNewSession() = runTest {
-        val amplitude = Amplitude(createConfiguration())
-        setDispatcher(amplitude, testScheduler)
+        val amplitude = createFakeAmplitude(
+            server = null,
+            scheduler = testScheduler,
+            configuration = createConfiguration()
+        )
 
         val mockedPlugin = spyk(StubPlugin())
         amplitude.add(mockedPlugin)
@@ -134,8 +97,10 @@ class AmplitudeSessionTest {
 
     @Test
     fun amplitude_distantBackgroundEventsShouldStartNewSession() = runTest {
-        val amplitude = Amplitude(createConfiguration())
-        setDispatcher(amplitude, testScheduler)
+        val amplitude = createFakeAmplitude(
+            scheduler = testScheduler,
+            configuration = createConfiguration()
+        )
 
         val mockedPlugin = spyk(StubPlugin())
         amplitude.add(mockedPlugin)
@@ -186,8 +151,10 @@ class AmplitudeSessionTest {
 
     @Test
     fun amplitude_foregroundEventsShouldNotStartNewSession() = runTest {
-        val amplitude = Amplitude(createConfiguration())
-        setDispatcher(amplitude, testScheduler)
+        val amplitude = createFakeAmplitude(
+            scheduler = testScheduler,
+            configuration = createConfiguration()
+        )
 
         val mockedPlugin = spyk(StubPlugin())
         amplitude.add(mockedPlugin)
@@ -229,8 +196,10 @@ class AmplitudeSessionTest {
 
     @Test
     fun amplitude_closeBackgroundForegroundEventsShouldNotStartNewSession() = runTest {
-        val amplitude = Amplitude(createConfiguration())
-        setDispatcher(amplitude, testScheduler)
+        val amplitude = createFakeAmplitude(
+            scheduler = testScheduler,
+            configuration = createConfiguration()
+        )
 
         val mockedPlugin = spyk(StubPlugin())
         amplitude.add(mockedPlugin)
@@ -272,8 +241,10 @@ class AmplitudeSessionTest {
 
     @Test
     fun amplitude_distantBackgroundForegroundEventsShouldStartNewSession() = runTest {
-        val amplitude = Amplitude(createConfiguration())
-        setDispatcher(amplitude, testScheduler)
+        val amplitude = createFakeAmplitude(
+            scheduler = testScheduler,
+            configuration = createConfiguration()
+        )
 
         val mockedPlugin = spyk(StubPlugin())
         amplitude.add(mockedPlugin)
@@ -325,8 +296,10 @@ class AmplitudeSessionTest {
 
     @Test
     fun amplitude_closeForegroundBackgroundEventsShouldNotStartNewSession() = runTest {
-        val amplitude = Amplitude(createConfiguration())
-        setDispatcher(amplitude, testScheduler)
+        val amplitude = createFakeAmplitude(
+            scheduler = testScheduler,
+            configuration = createConfiguration()
+        )
 
         val mockedPlugin = spyk(StubPlugin())
         amplitude.add(mockedPlugin)
@@ -369,8 +342,10 @@ class AmplitudeSessionTest {
 
     @Test
     fun amplitude_distantForegroundBackgroundEventsShouldStartNewSession() = runTest {
-        val amplitude = Amplitude(createConfiguration())
-        setDispatcher(amplitude, testScheduler)
+        val amplitude = createFakeAmplitude(
+            scheduler = testScheduler,
+            configuration = createConfiguration()
+        )
 
         val mockedPlugin = spyk(StubPlugin())
         amplitude.add(mockedPlugin)
@@ -424,9 +399,10 @@ class AmplitudeSessionTest {
     @Test
     fun amplitude_sessionDataShouldBePersisted() = runTest {
         val storageProvider = InstanceStorageProvider(InMemoryStorage())
-
-        val amplitude1 = Amplitude(createConfiguration(storageProvider))
-        setDispatcher(amplitude1, testScheduler)
+        val amplitude1 = createFakeAmplitude(
+            scheduler = testScheduler,
+            configuration = createConfiguration(storageProvider)
+        )
         amplitude1.isBuilt.await()
 
         amplitude1.onEnterForeground(1000)
@@ -451,8 +427,10 @@ class AmplitudeSessionTest {
         Assertions.assertEquals(1200, timeline1.lastEventTime)
         Assertions.assertEquals(2, timeline1.lastEventId)
 
-        val amplitude2 = Amplitude(createConfiguration(storageProvider))
-        setDispatcher(amplitude2, testScheduler)
+        val amplitude2 = createFakeAmplitude(
+            scheduler = testScheduler,
+            configuration = createConfiguration(storageProvider)
+        )
         amplitude2.isBuilt.await()
 
         advanceUntilIdle()
@@ -467,8 +445,10 @@ class AmplitudeSessionTest {
 
     @Test
     fun amplitude_explicitSessionForEventShouldBePreserved() = runTest {
-        val amplitude = Amplitude(createConfiguration())
-        setDispatcher(amplitude, testScheduler)
+        val amplitude = createFakeAmplitude(
+            scheduler = testScheduler,
+            configuration = createConfiguration()
+        )
 
         val mockedPlugin = spyk(StubPlugin())
         amplitude.add(mockedPlugin)
@@ -515,8 +495,10 @@ class AmplitudeSessionTest {
 
     @Test
     fun amplitude_explicitNoSessionForEventShouldBePreserved() = runTest {
-        val amplitude = Amplitude(createConfiguration())
-        setDispatcher(amplitude, testScheduler)
+        val amplitude = createFakeAmplitude(
+            scheduler = testScheduler,
+            configuration = createConfiguration()
+        )
 
         val mockedPlugin = spyk(StubPlugin())
         amplitude.add(mockedPlugin)
@@ -566,8 +548,10 @@ class AmplitudeSessionTest {
     fun amplitude_noSessionEventsWhenDisabledWithTrackingSessionEvents() = runTest {
         val configuration = createConfiguration()
         configuration.trackingSessionEvents = false
-        val amplitude = Amplitude(configuration)
-        setDispatcher(amplitude, testScheduler)
+        val amplitude = createFakeAmplitude(
+            scheduler = testScheduler,
+            configuration = configuration
+        )
 
         val mockedPlugin = spyk(StubPlugin())
         amplitude.add(mockedPlugin)
@@ -592,8 +576,10 @@ class AmplitudeSessionTest {
     fun amplitude_noSessionEventsWhenDisabledWithDefaultTrackingOptions() = runTest {
         val configuration = createConfiguration()
         configuration.defaultTracking.sessions = false
-        val amplitude = Amplitude(configuration)
-        setDispatcher(amplitude, testScheduler)
+        val amplitude = createFakeAmplitude(
+            scheduler = testScheduler,
+            configuration = configuration
+        )
 
         val mockedPlugin = spyk(StubPlugin())
         amplitude.add(mockedPlugin)
@@ -615,9 +601,10 @@ class AmplitudeSessionTest {
 
     @Test
     fun amplitude_noSessionEventsWhenDisabledWithAutocaptureOptions() = runTest {
-        val configuration = createConfiguration(shouldTrackSessions = false)
-        val amplitude = Amplitude(configuration)
-        setDispatcher(amplitude, testScheduler)
+        val amplitude = createFakeAmplitude(
+            scheduler = testScheduler,
+            configuration = createConfiguration(shouldTrackSessions = false)
+        )
 
         val mockedPlugin = spyk(StubPlugin())
         amplitude.add(mockedPlugin)

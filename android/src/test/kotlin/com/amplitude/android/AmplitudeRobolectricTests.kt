@@ -19,10 +19,11 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.util.TempDirectory
 import java.io.File
 import kotlin.io.path.absolutePathString
+import com.amplitude.core.Amplitude as CoreAmplitude
 
 @RunWith(RobolectricTestRunner::class)
 class AmplitudeRobolectricTests {
-    private lateinit var amplitude: Amplitude
+    private lateinit var amplitude: CoreAmplitude
     private var context: Context? = null
     private lateinit var connectivityManager: ConnectivityManager
 

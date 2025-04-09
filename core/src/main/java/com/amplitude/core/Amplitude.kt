@@ -41,7 +41,7 @@ import java.util.concurrent.Executors
  * This is the SDK instance class that contains all of the SDK functionality.<br><br>
  * Many of the SDK functions return the SDK instance back, allowing you to chain multiple methods calls together.
  */
-open class Amplitude internal constructor(
+open class Amplitude(
     val configuration: Configuration,
     val store: State,
     val amplitudeScope: CoroutineScope = CoroutineScope(SupervisorJob()),

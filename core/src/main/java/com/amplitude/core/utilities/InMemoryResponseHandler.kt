@@ -43,7 +43,7 @@ internal class InMemoryResponseHandler(
         eventsString: String,
     ): Boolean {
         val eventsList = events as List<BaseEvent>
-        if (eventsList.size == 1 || badRequestResponse.isInvalidApiKeyResponse()) {
+        if (badRequestResponse.isInvalidApiKeyResponse()) {
             triggerEventsCallback(eventsList, HttpStatus.BAD_REQUEST.code, badRequestResponse.error)
             return false
         }
@@ -76,9 +76,13 @@ internal class InMemoryResponseHandler(
             )
             return
         }
-        eventPipeline.flushSizeDivider.incrementAndGet()
-        eventsList.forEach {
-            eventPipeline.put(it)
+
+        scope.launch(storageDispatcher) {
+            eventPipeline.flushSizeDivider.incrementAndGet()
+            eventsList.forEach {
+                delay(BACK_OFF)
+                eventPipeline.put(it)
+            }
         }
     }
 
