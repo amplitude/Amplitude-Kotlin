@@ -1,9 +1,8 @@
 package com.amplitude.core.platform.plugins
 
 import com.amplitude.core.Amplitude
-import com.amplitude.core.Configuration
 import com.amplitude.core.events.BaseEvent
-import com.amplitude.core.utils.testAmplitude
+import com.amplitude.core.utils.FakeAmplitude
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeEach
@@ -17,8 +16,7 @@ class GetAmpliExtrasPluginTest {
     @ExperimentalCoroutinesApi
     @BeforeEach
     fun setup() {
-        val testApiKey = "test-123"
-        amplitude = testAmplitude(Configuration(testApiKey))
+        amplitude = FakeAmplitude()
     }
 
     @Test

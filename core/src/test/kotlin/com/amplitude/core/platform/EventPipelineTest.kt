@@ -20,6 +20,7 @@ import com.amplitude.core.utilities.http.PayloadTooLargeResponse
 import com.amplitude.core.utilities.http.ResponseHandler
 import com.amplitude.core.utilities.http.SuccessResponse
 import com.amplitude.core.utilities.http.TimeoutResponse
+import com.amplitude.core.utils.FakeAmplitude
 import com.amplitude.id.IMIdentityStorageProvider
 import io.mockk.coVerify
 import io.mockk.every
@@ -57,7 +58,7 @@ class EventPipelineTest {
     )
     private val testDispatcher = StandardTestDispatcher()
     private val testScope = TestScope(testDispatcher)
-    private val amplitude: Amplitude = Amplitude(
+    private val amplitude: Amplitude = FakeAmplitude(
         configuration = config,
         store = State(),
         amplitudeScope = testScope,
