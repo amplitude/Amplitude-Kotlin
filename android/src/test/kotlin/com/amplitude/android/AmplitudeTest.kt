@@ -39,8 +39,6 @@ open class StubPlugin : EventPlugin {
 
 @ExperimentalCoroutinesApi
 class AmplitudeTest {
-    private lateinit var amplitude: Amplitude
-
     private fun createConfiguration(
         minTimeBetweenSessionsMillis: Long? = null,
         storageProvider: StorageProvider = InMemoryStorageProvider(),
@@ -206,16 +204,14 @@ class AmplitudeTest {
     fun amplitude_should_set_deviceId_from_configuration() = runTest {
         val testDeviceId = "test device id"
         // set device Id in the config
-        amplitude = Amplitude(createConfiguration(deviceId = testDeviceId))
         val amplitude = createFakeAmplitude(
             scheduler = testScheduler,
             configuration = createConfiguration()
         )
 
-        if (amplitude.isBuilt!!.await()) {
-            assertEquals(testDeviceId, amplitude.store?.deviceId)
-            assertEquals(testDeviceId, amplitude.getDeviceId())
-        }
+        amplitude.isBuilt.await()
+        assertEquals(testDeviceId, amplitude.store.deviceId)
+        assertEquals(testDeviceId, amplitude.getDeviceId())
     }
 
     @Test
@@ -227,9 +223,8 @@ class AmplitudeTest {
             configuration = createConfiguration(sessionId = testSessionId)
         )
 
-        if (amplitude.isBuilt!!.await()) {
-            assertEquals(testSessionId, amplitude.sessionId)
-        }
+        amplitude.isBuilt.await()
+        assertEquals(testSessionId, amplitude.sessionId)
     }
 
     /**
