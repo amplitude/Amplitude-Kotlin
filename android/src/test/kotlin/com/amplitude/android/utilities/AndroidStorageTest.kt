@@ -124,7 +124,7 @@ class AndroidStorageTest {
     }
 
     @Test
-    fun `verify malformed event show in diagonstics`() {
+    fun `verify malformed event show in diagnostics`() {
         val logger = ConsoleLogger()
         val storageKey = "storageKey"
         val prefix = "test"

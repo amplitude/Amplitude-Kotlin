@@ -18,9 +18,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.slot
-import io.mockk.spyk
 import io.mockk.unmockkObject
-import io.mockk.verify
 import kotlin.concurrent.thread
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -29,12 +27,19 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.io.File
 
-open class StubPlugin : EventPlugin {
+internal class FakeEventPlugin : EventPlugin {
     override val type: Plugin.Type = Plugin.Type.Before
     override lateinit var amplitude: com.amplitude.core.Amplitude
+    internal val trackedEvents = mutableListOf<BaseEvent>()
+
+    override fun track(payload: BaseEvent): BaseEvent? {
+        trackedEvents += payload
+        return super.track(payload)
+    }
 }
 
 @ExperimentalCoroutinesApi
@@ -112,8 +117,8 @@ class AmplitudeTest {
             scheduler = testScheduler,
             configuration = createConfiguration()
         )
-        val mockedPlugin = spyk(StubPlugin())
-        amplitude.add(mockedPlugin)
+        val fakeEventPlugin = FakeEventPlugin()
+        amplitude.add(fakeEventPlugin)
 
         amplitude.isBuilt.await()
         val event = BaseEvent()
@@ -122,11 +127,10 @@ class AmplitudeTest {
         advanceUntilIdle()
         Thread.sleep(100)
 
-        val track = slot<BaseEvent>()
-        verify { mockedPlugin.track(capture(track)) }
-        track.captured.let {
-            assertEquals("\$remote", it.ip)
-            assertNull(it.country)
+        assertTrue(fakeEventPlugin.trackedEvents.size == 1)
+        with(fakeEventPlugin.trackedEvents.first()) {
+            assertEquals("\$remote", ip)
+            assertNull(country)
         }
     }
 
@@ -136,8 +140,8 @@ class AmplitudeTest {
             scheduler = testScheduler,
             configuration = createConfiguration()
         )
-        val mockedPlugin = spyk(StubPlugin())
-        amplitude.add(mockedPlugin)
+        val fakeEventPlugin = FakeEventPlugin()
+        amplitude.add(fakeEventPlugin)
 
         amplitude.isBuilt.await()
         val event = BaseEvent()
@@ -147,11 +151,10 @@ class AmplitudeTest {
         advanceUntilIdle()
         Thread.sleep(100)
 
-        val track = slot<BaseEvent>()
-        verify { mockedPlugin.track(capture(track)) }
-        track.captured.let {
-            assertEquals("127.0.0.1", it.ip)
-            assertEquals("US", it.country)
+        assertTrue(fakeEventPlugin.trackedEvents.size == 1)
+        with(fakeEventPlugin.trackedEvents.first()) {
+            assertEquals("127.0.0.1", ip)
+            assertEquals("US", country)
         }
     }
 
@@ -161,8 +164,6 @@ class AmplitudeTest {
             scheduler = testScheduler,
             configuration = createConfiguration()
         )
-        val mockedPlugin = spyk(StubPlugin())
-        amplitude.add(mockedPlugin)
 
         amplitude.isBuilt.await()
 
@@ -184,8 +185,8 @@ class AmplitudeTest {
         connector.identityStore.addIdentityListener(identityListener)
         amplitude.setUserId(connectorUserId)
         amplitude.setDeviceId(connectorDeviceId)
-        advanceUntilIdle()
         connectorIdentitySet = true
+        advanceUntilIdle()
         connector.identityStore.removeIdentityListener(identityListener)
     }
 
@@ -206,7 +207,9 @@ class AmplitudeTest {
         // set device Id in the config
         val amplitude = createFakeAmplitude(
             scheduler = testScheduler,
-            configuration = createConfiguration()
+            configuration = createConfiguration(
+                deviceId = testDeviceId
+            )
         )
 
         amplitude.isBuilt.await()

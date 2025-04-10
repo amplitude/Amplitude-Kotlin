@@ -3,13 +3,14 @@ package com.amplitude.android
 import android.app.Application
 import android.content.Context
 import android.net.ConnectivityManager
+import com.amplitude.core.Amplitude as CoreAmplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.ConsoleLoggerProvider
 import com.amplitude.id.IMIdentityStorageProvider
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.spyk
-import io.mockk.verify
+import kotlin.io.path.absolutePathString
+import kotlin.test.assertTrue
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import org.junit.After
 import org.junit.Before
@@ -18,8 +19,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.util.TempDirectory
 import java.io.File
-import kotlin.io.path.absolutePathString
-import com.amplitude.core.Amplitude as CoreAmplitude
 
 @RunWith(RobolectricTestRunner::class)
 class AmplitudeRobolectricTests {
@@ -46,9 +45,9 @@ class AmplitudeRobolectricTests {
 
     @Test
     fun `test optOut is true no event should be send`() {
-        val mockedPluginTest = spyk(StubPlugin())
+        val fakeEventPlugin = FakeEventPlugin()
         val amplitudeInstance = Amplitude(createConfiguration(100, true))
-        amplitudeInstance.add(mockedPluginTest)
+        amplitudeInstance.add(fakeEventPlugin)
 
         val event1 = BaseEvent()
         event1.eventType = "test event 1"
@@ -64,7 +63,7 @@ class AmplitudeRobolectricTests {
 
         amplitudeInstance.onExitForeground(2000)
 
-        verify(exactly = 0) { mockedPluginTest.track(any()) }
+        assertTrue { fakeEventPlugin.trackedEvents.isEmpty() }
     }
 
     private fun createConfiguration(
