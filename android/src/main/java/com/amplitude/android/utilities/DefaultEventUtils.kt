@@ -16,7 +16,7 @@ import com.amplitude.android.internal.locators.ViewTargetLocators.ALL
 import com.amplitude.core.Storage
 import kotlinx.coroutines.launch
 
-class DefaultEventUtils(private val amplitude: Amplitude) {
+internal class DefaultEventUtils(private val amplitude: Amplitude) {
     object EventTypes {
         const val APPLICATION_INSTALLED = "[Amplitude] Application Installed"
         const val APPLICATION_UPDATED = "[Amplitude] Application Updated"
