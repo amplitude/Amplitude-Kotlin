@@ -13,42 +13,13 @@ import com.amplitude.android.internal.fragments.FragmentActivityHandler.unregist
 import com.amplitude.android.internal.gestures.AutocaptureWindowCallback
 import com.amplitude.android.internal.gestures.NoCaptureWindowCallback
 import com.amplitude.android.internal.locators.ViewTargetLocators.ALL
+import com.amplitude.core.Constants.EventProperties
+import com.amplitude.core.Constants.EventTypes
 import com.amplitude.core.Storage
 import kotlinx.coroutines.launch
 
 @Deprecated("This class is deprecated and will be removed in future releases.")
 class DefaultEventUtils(private val amplitude: Amplitude) {
-    object EventTypes {
-        const val APPLICATION_INSTALLED = "[Amplitude] Application Installed"
-        const val APPLICATION_UPDATED = "[Amplitude] Application Updated"
-        const val APPLICATION_OPENED = "[Amplitude] Application Opened"
-        const val APPLICATION_BACKGROUNDED = "[Amplitude] Application Backgrounded"
-        const val DEEP_LINK_OPENED = "[Amplitude] Deep Link Opened"
-        const val SCREEN_VIEWED = "[Amplitude] Screen Viewed"
-        const val FRAGMENT_VIEWED = "[Amplitude] Fragment Viewed"
-        const val ELEMENT_INTERACTED = "[Amplitude] Element Interacted"
-    }
-
-    object EventProperties {
-        const val VERSION = "[Amplitude] Version"
-        const val BUILD = "[Amplitude] Build"
-        const val PREVIOUS_VERSION = "[Amplitude] Previous Version"
-        const val PREVIOUS_BUILD = "[Amplitude] Previous Build"
-        const val FROM_BACKGROUND = "[Amplitude] From Background"
-        const val LINK_URL = "[Amplitude] Link URL"
-        const val LINK_REFERRER = "[Amplitude] Link Referrer"
-        const val SCREEN_NAME = "[Amplitude] Screen Name"
-        const val FRAGMENT_CLASS = "[Amplitude] Fragment Class"
-        const val FRAGMENT_IDENTIFIER = "[Amplitude] Fragment Identifier"
-        const val FRAGMENT_TAG = "[Amplitude] Fragment Tag"
-        const val ACTION = "[Amplitude] Action"
-        const val TARGET_CLASS = "[Amplitude] Target Class"
-        const val TARGET_RESOURCE = "[Amplitude] Target Resource"
-        const val TARGET_TAG = "[Amplitude] Target Tag"
-        const val TARGET_TEXT = "[Amplitude] Target Text"
-        const val TARGET_SOURCE = "[Amplitude] Target Source"
-        const val HIERARCHY = "[Amplitude] Hierarchy"
-    }
 
     fun trackAppUpdatedInstalledEvent(packageInfo: PackageInfo) {
         // Get current version/build and previously stored version/build information
