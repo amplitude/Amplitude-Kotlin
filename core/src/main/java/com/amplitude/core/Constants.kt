@@ -22,6 +22,7 @@ object Constants {
         const val SCREEN_VIEWED = "[Amplitude] Screen Viewed"
         const val FRAGMENT_VIEWED = "[Amplitude] Fragment Viewed"
         const val ELEMENT_INTERACTED = "[Amplitude] Element Interacted"
+        const val NETWORK_TRACKING = "[Amplitude] Network Tracking"
     }
 
     object EventProperties {
@@ -43,5 +44,18 @@ object Constants {
         const val TARGET_TEXT = "[Amplitude] Target Text"
         const val TARGET_SOURCE = "[Amplitude] Target Source"
         const val HIERARCHY = "[Amplitude] Hierarchy"
+
+        const val NETWORK_TRACKING_URL =  "[Amplitude] URL"
+        const val NETWORK_TRACKING_URL_QUERY =  "[Amplitude] URL Query"
+        const val NETWORK_TRACKING_URL_FRAGMENT =  "[Amplitude] URL Fragment"
+        const val NETWORK_TRACKING_REQUEST_METHOD =  "[Amplitude] Request Method"
+        const val NETWORK_TRACKING_STATUS_CODE =  "[Amplitude] Status Code"
+        const val NETWORK_TRACKING_ERROR_CODE =  "[Amplitude] Error Code"
+        const val NETWORK_TRACKING_ERROR_MESSAGE =  "[Amplitude] Error Message"
+        const val NETWORK_TRACKING_START_TIME =  "[Amplitude] Start Time"
+        const val NETWORK_TRACKING_COMPLETION_TIME =  "[Amplitude] Completion Time"
+        const val NETWORK_TRACKING_DURATION =  "[Amplitude] Duration"
+        const val NETWORK_TRACKING_REQUEST_BODY_SIZE =  "[Amplitude] Request Body Size"
+        const val NETWORK_TRACKING_RESPONSE_BODY_SIZE =  "[Amplitude] Response Body Size"
     }
 }
