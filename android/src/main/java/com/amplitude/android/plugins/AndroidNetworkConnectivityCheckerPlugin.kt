@@ -38,10 +38,10 @@ class AndroidNetworkConnectivityCheckerPlugin : Plugin {
                 }
             }
         networkListener = AndroidNetworkListener(
-            (amplitude.configuration as Configuration).context,
-            amplitude.logger
+            context = (amplitude.configuration as Configuration).context,
+            logger = amplitude.logger,
+            networkCallback = networkChangeHandler
         )
-        networkListener.setNetworkChangeCallback(networkChangeHandler)
         networkListener.startListening()
     }
 
