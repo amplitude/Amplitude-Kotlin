@@ -16,7 +16,8 @@ import com.amplitude.android.internal.locators.ViewTargetLocators.ALL
 import com.amplitude.core.Storage
 import kotlinx.coroutines.launch
 
-internal class DefaultEventUtils(private val amplitude: Amplitude) {
+@Deprecated("This class is deprecated and will be removed in future releases.")
+class DefaultEventUtils(private val amplitude: Amplitude) {
     object EventTypes {
         const val APPLICATION_INSTALLED = "[Amplitude] Application Installed"
         const val APPLICATION_UPDATED = "[Amplitude] Application Updated"
