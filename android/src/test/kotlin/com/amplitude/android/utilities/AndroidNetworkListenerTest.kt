@@ -66,9 +66,10 @@ class AndroidNetworkListenerTest {
             every { hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) } returns true
         }
         val unavailableCapability = mockk<NetworkCapabilities>() {
-            every { hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) } returns true
+            every { hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) } returns false
             every { hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) } returns false
         }
+        every { fakeConnectivityManager.getNetworkCapabilities(network) } returns availableCapability
 
         // available: true, blocked: false
         networkCallback.onAvailable(network)
@@ -103,7 +104,7 @@ class AndroidNetworkListenerTest {
         assertTrue(networkChangeCallback.available) // available again
 
         // available: true, blocked: false (new state)
-        networkCallback.onAvailable(mockk())
+        networkCallback.onAvailable(network)
         assertTrue(networkChangeCallback.available)
 
         // N/A

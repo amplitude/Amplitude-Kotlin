@@ -65,10 +65,11 @@ class AndroidNetworkListener(
 
             override fun onAvailable(network: Network) {
                 // A default network is available, set the network state and callback
+                val capabilities = connectivityManager.getNetworkCapabilities(network)
                 networkState = NetworkState(
                     network = network,
                     networkCallback = networkCallback,
-                    available = true,
+                    available = capabilities?.available() ?: true,
                     blocked = false
                 )
             }
@@ -86,9 +87,7 @@ class AndroidNetworkListener(
                 network: Network,
                 networkCapabilities: NetworkCapabilities,
             ) {
-                val capable = networkCapabilities.hasCapability(NET_CAPABILITY_INTERNET)
-                val validated = networkCapabilities.hasCapability(NET_CAPABILITY_VALIDATED)
-                networkState?.update(network, available = capable && validated)
+                networkState?.update(network, available = networkCapabilities.available())
             }
 
             override fun onBlockedStatusChanged(
@@ -96,6 +95,16 @@ class AndroidNetworkListener(
                 blocked: Boolean,
             ) {
                 networkState?.update(network, blocked = blocked)
+            }
+
+            // Best attempt to check if the network is available
+            private fun NetworkCapabilities.available(): Boolean {
+                val validated = if (VERSION.SDK_INT >= VERSION_CODES.M) {
+                    hasCapability(NET_CAPABILITY_VALIDATED)
+                } else {
+                    true
+                }
+                return hasCapability(NET_CAPABILITY_INTERNET) && validated
             }
         }.also { callbackForHigherApiLevels ->
             connectivityManager.registerNetworkCallback(
