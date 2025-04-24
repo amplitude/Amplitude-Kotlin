@@ -16,6 +16,7 @@ import com.amplitude.core.Constants.EventTypes.NETWORK_TRACKING
 import com.amplitude.core.platform.Plugin
 import com.amplitude.core.platform.Plugin.Type
 import com.amplitude.core.platform.Plugin.Type.Utility
+import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.Interceptor.Chain
 import okhttp3.Request
@@ -136,7 +137,7 @@ class NetworkTrackingPlugin(
         amplitude.track(
             NETWORK_TRACKING,
             eventProperties = mapOf(
-                NETWORK_TRACKING_URL to request.url.toString(),
+                NETWORK_TRACKING_URL to request.url.toMaskedString(),
                 NETWORK_TRACKING_URL_QUERY to request.url.query,
                 NETWORK_TRACKING_URL_FRAGMENT to request.url.fragment,
                 NETWORK_TRACKING_REQUEST_METHOD to request.method,
@@ -149,6 +150,28 @@ class NetworkTrackingPlugin(
                 NETWORK_TRACKING_RESPONSE_BODY_SIZE to response?.body?.contentLength(),
             )
         )
+    }
+
+    /**
+     * Converts the URL to a masked string for sensitive params
+     */
+    private fun HttpUrl.toMaskedString(): String {
+        val sensitiveQueryParams = setOf("username", "password", "email", "phone")
+
+        val query = queryParameterNames.joinToString("&") { name ->
+            if (sensitiveQueryParams.contains(name.lowercase())) {
+                "$name=[mask]"
+            } else {
+                "$name=${queryParameter(name)}"
+            }
+        }
+
+        return newBuilder()
+            .username("mask".takeIf { username.isNotEmpty() } ?: "")
+            .password("mask".takeIf { password.isNotEmpty() } ?: "")
+            .query(query.ifEmpty { null })
+            .build()
+            .toString()
     }
 
     data class CaptureRule(

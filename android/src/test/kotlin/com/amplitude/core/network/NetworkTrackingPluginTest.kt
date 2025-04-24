@@ -586,6 +586,34 @@ class NetworkTrackingPluginTest {
         }
     }
 
+    @Test
+    fun `mask sensitive URL params`() {
+        val plugin = networkTrackingPlugin(
+            statusCodeRange = (200..299).toList(),
+            ignoreAmplitudeRequests = false
+        )
+
+        val url = "https://sample_username:sample_password@example.com/test?username=johndoe&password=1234&email=test@example.com&phone=1234567890&token=abcd1234"
+        plugin.intercept(
+            mockInterceptorChain(
+                statusCode = 200,
+                url = url
+            )
+        )
+
+        verify {
+            mockAmplitude.track(
+                eq(NETWORK_TRACKING),
+                withArg { eventProperties ->
+                    assertEquals(
+                        "https://mask:mask@example.com/test?username=[mask]&password=[mask]&email=[mask]&phone=[mask]&token=abcd1234",
+                        eventProperties[NETWORK_TRACKING_URL]
+                    )
+                }
+            )
+        }
+    }
+
     private fun mockInterceptorChain(
         statusCode: Int,
         exception: IOException? = null,
