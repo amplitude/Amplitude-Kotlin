@@ -8,6 +8,7 @@ import com.amplitude.android.internal.ViewHierarchyScanner.findTarget
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.locators.ViewTargetLocator
 import com.amplitude.android.utilities.DefaultEventUtils.Companion.screenName
+import com.amplitude.common.Logger
 import com.amplitude.core.Constants.EventProperties.ACTION
 import com.amplitude.core.Constants.EventProperties.HIERARCHY
 import com.amplitude.core.Constants.EventProperties.SCREEN_NAME
@@ -17,7 +18,6 @@ import com.amplitude.core.Constants.EventProperties.TARGET_SOURCE
 import com.amplitude.core.Constants.EventProperties.TARGET_TAG
 import com.amplitude.core.Constants.EventProperties.TARGET_TEXT
 import com.amplitude.core.Constants.EventTypes.ELEMENT_INTERACTED
-import com.amplitude.common.Logger
 import java.lang.ref.WeakReference
 
 @VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)
