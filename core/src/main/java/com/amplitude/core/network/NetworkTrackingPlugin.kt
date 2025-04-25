@@ -101,10 +101,10 @@ class NetworkTrackingPlugin(
         host: String,
         responseCode: Int,
     ): Boolean {
-        return any { rule ->
-            (host in rule.hosts || rule.hosts.contains(STAR_WILDCARD)) &&
-                responseCode in rule.statusCodeRange
-        }
+        val ruleWithMatchingHost = lastOrNull {
+            host in it.hosts || it.hosts.contains(STAR_WILDCARD)
+        } ?: return false
+        return responseCode in ruleWithMatchingHost.statusCodeRange
     }
 
     /**

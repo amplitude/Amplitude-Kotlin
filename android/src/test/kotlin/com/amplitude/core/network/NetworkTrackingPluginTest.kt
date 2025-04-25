@@ -15,6 +15,7 @@ import com.amplitude.core.Constants.EventProperties.NETWORK_TRACKING_URL_QUERY
 import com.amplitude.core.Constants.EventTypes.NETWORK_TRACKING
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.network.NetworkTrackingPlugin.CaptureRule
+import io.mockk.confirmVerified
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
@@ -337,9 +338,13 @@ class NetworkTrackingPluginTest {
     }
 
     @Test
-    fun `Multiple Capture Rules`() {
+    fun `multiple capture rules`() {
         val plugin = networkTrackingPlugin(
             overrideCaptureRules = listOf(
+                CaptureRule(
+                    hosts = listOf("*"),
+                    statusCodeRange = (500..599).toList()
+                ),
                 CaptureRule(
                     hosts = listOf("api1.example.com"),
                     statusCodeRange = (200..299).toList()
@@ -348,30 +353,43 @@ class NetworkTrackingPluginTest {
                     hosts = listOf("api2.example.com"),
                     statusCodeRange = (400..499).toList()
                 )
-            )
+            ),
+            ignoreAmplitudeRequests = true
         )
 
-        // Should match first rule
+        // Should match second rule
         plugin.intercept(
             mockInterceptorChain(
                 statusCode = 200,
                 url = "https://api1.example.com/test"
             )
         )
-
-        // Should match second rule
+        // Should match third rule
         plugin.intercept(
             mockInterceptorChain(
                 statusCode = 404,
                 url = "https://api2.example.com/test"
             )
         )
+        // Should match first rule (wildcard)
+        plugin.intercept(
+            mockInterceptorChain(
+                statusCode = 503,
+                url = "https://any.domain.com/test"
+            )
+        )
 
-        // Should not match any rules
+        // Should not match any rules (wrong status code ranges)
         plugin.intercept(
             mockInterceptorChain(
                 statusCode = 200,
                 url = "https://api2.example.com/test"
+            )
+        )
+        plugin.intercept(
+            mockInterceptorChain(
+                statusCode = 404,
+                url = "https://api1.example.com/test"
             )
         )
 
@@ -396,7 +414,18 @@ class NetworkTrackingPluginTest {
                     assertEquals(true, eventProperties[NETWORK_TRACKING_DURATION] != null)
                 }
             )
+            mockAmplitude.track(
+                eq(NETWORK_TRACKING),
+                withArg { eventProperties ->
+                    assertEquals(
+                        "https://any.domain.com/test", eventProperties[NETWORK_TRACKING_URL]
+                    )
+                    assertEquals(503, eventProperties[NETWORK_TRACKING_STATUS_CODE])
+                    assertEquals(true, eventProperties[NETWORK_TRACKING_DURATION] != null)
+                }
+            )
         }
+        confirmVerified(mockAmplitude)
     }
 
     @Test
@@ -593,7 +622,8 @@ class NetworkTrackingPluginTest {
             ignoreAmplitudeRequests = false
         )
 
-        val url = "https://sample_username:sample_password@example.com/test?username=johndoe&password=1234&email=test@example.com&phone=1234567890&token=abcd1234"
+        val url =
+            "https://sample_username:sample_password@example.com/test?username=johndoe&password=1234&email=test@example.com&phone=1234567890&token=abcd1234"
         plugin.intercept(
             mockInterceptorChain(
                 statusCode = 200,
