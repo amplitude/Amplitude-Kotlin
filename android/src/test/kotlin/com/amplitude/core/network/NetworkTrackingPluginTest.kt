@@ -248,7 +248,7 @@ class NetworkTrackingPluginTest {
     }
 
     @Test
-    fun `wildcard host matching`() {
+    fun `basic wildcard host matching`() {
         val plugin = networkTrackingPlugin(
             overrideCaptureRules = listOf(
                 CaptureRule(
@@ -285,6 +285,77 @@ class NetworkTrackingPluginTest {
                 )
             }
         }
+    }
+
+    @Test
+    fun `domain wildcard host matching`() {
+        val plugin = networkTrackingPlugin(
+            hosts = listOf("*.example.com", "test.*", "exact-match.com"),
+            statusCodeRange = (200..299).toList(),
+            ignoreAmplitudeRequests = false
+        )
+
+        // Should match wildcard hosts
+        plugin.intercept(
+            mockInterceptorChain(
+                statusCode = 200,
+                url = "https://api.example.com/test"
+            )
+        )
+        plugin.intercept(
+            mockInterceptorChain(
+                statusCode = 200,
+                url = "https://test.amplitude.com/api"
+            )
+        )
+        plugin.intercept(
+            mockInterceptorChain(
+                statusCode = 200,
+                url = "https://exact-match.com/test"
+            )
+        )
+
+        // Should not match
+        plugin.intercept(
+            mockInterceptorChain(
+                statusCode = 200,
+                url = "https://notexample.com/test"
+            )
+        )
+        plugin.intercept(
+            mockInterceptorChain(
+                statusCode = 200,
+                url = "https://testing.other.com/test"
+            )
+        )
+
+        verifyOrder {
+            mockAmplitude.track(
+                eq(NETWORK_TRACKING),
+                withArg { eventProperties ->
+                    assertEquals(
+                        "https://api.example.com/test", eventProperties[NETWORK_TRACKING_URL]
+                    )
+                }
+            )
+            mockAmplitude.track(
+                eq(NETWORK_TRACKING),
+                withArg { eventProperties ->
+                    assertEquals(
+                        "https://test.amplitude.com/api", eventProperties[NETWORK_TRACKING_URL]
+                    )
+                }
+            )
+            mockAmplitude.track(
+                eq(NETWORK_TRACKING),
+                withArg { eventProperties ->
+                    assertEquals(
+                        "https://exact-match.com/test", eventProperties[NETWORK_TRACKING_URL]
+                    )
+                }
+            )
+        }
+        confirmVerified(mockAmplitude)
     }
 
     @Test

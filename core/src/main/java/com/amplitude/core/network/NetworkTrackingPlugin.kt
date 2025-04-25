@@ -16,6 +16,7 @@ import com.amplitude.core.Constants.EventTypes.NETWORK_TRACKING
 import com.amplitude.core.platform.Plugin
 import com.amplitude.core.platform.Plugin.Type
 import com.amplitude.core.platform.Plugin.Type.Utility
+import kotlin.text.RegexOption.IGNORE_CASE
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.Interceptor.Chain
@@ -101,9 +102,7 @@ class NetworkTrackingPlugin(
         host: String,
         responseCode: Int,
     ): Boolean {
-        val ruleWithMatchingHost = lastOrNull {
-            host in it.hosts || it.hosts.contains(STAR_WILDCARD)
-        } ?: return false
+        val ruleWithMatchingHost = lastOrNull { it.matches(host) } ?: return false
         return responseCode in ruleWithMatchingHost.statusCodeRange
     }
 
@@ -177,5 +176,17 @@ class NetworkTrackingPlugin(
     data class CaptureRule(
         val hosts: List<String>,
         val statusCodeRange: List<Int>,
-    )
+    ) {
+        private val hostRegexes: List<Regex> = hosts.filter { it.contains(STAR_WILDCARD) }
+            .map { host ->
+                val regexString = host.replace(".", "\\.")
+                    .replace("*", ".*")
+                "^${regexString}$".toRegex(IGNORE_CASE)
+            }
+        private val hostSet: Set<String> = hosts.filter { !it.contains("*") }.toSet()
+
+        fun matches(host: String): Boolean {
+            return hostSet.contains(host) || hostRegexes.any { it.matches(host) }
+        }
+    }
 }
