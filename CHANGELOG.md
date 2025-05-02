@@ -1,3 +1,13 @@
+## [1.20.7](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.20.6...v1.20.7) (2025-05-02)
+
+
+### Bug Fixes
+
+* default location listening to false ([#270](https://github.com/amplitude/Amplitude-Kotlin/issues/270)) ([3946f35](https://github.com/amplitude/Amplitude-Kotlin/commit/3946f3578089288d86acc9bb2fece8cf0a5aedf8))
+* make DefaultEventUtils internal ([#264](https://github.com/amplitude/Amplitude-Kotlin/issues/264)) ([6f17917](https://github.com/amplitude/Amplitude-Kotlin/commit/6f179174c1dc9cc354b968b77887427ce2ccdf61))
+* mark event utils as deprecated ([#268](https://github.com/amplitude/Amplitude-Kotlin/issues/268)) ([ff00a73](https://github.com/amplitude/Amplitude-Kotlin/commit/ff00a737aebc6a5cbb53a9d00e23b7fcb2a9e23c))
+* update network listener to cover cases where network is blocked ([#267](https://github.com/amplitude/Amplitude-Kotlin/issues/267)) ([f347bb1](https://github.com/amplitude/Amplitude-Kotlin/commit/f347bb12dcbaa4fae9c710db4ec9e8d80a111240))
+
 ## [1.20.6](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.20.5...v1.20.6) (2025-04-09)
 
 
