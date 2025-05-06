@@ -14,7 +14,7 @@ import com.amplitude.core.Constants.EventProperties.NETWORK_TRACKING_URL_FRAGMEN
 import com.amplitude.core.Constants.EventProperties.NETWORK_TRACKING_URL_QUERY
 import com.amplitude.core.Constants.EventTypes.NETWORK_TRACKING
 import com.amplitude.core.events.BaseEvent
-import com.amplitude.core.network.NetworkTrackingPlugin.CaptureRule
+import com.amplitude.core.network.NetworkTrackingOptions.CaptureRule
 import io.mockk.confirmVerified
 import io.mockk.every
 import io.mockk.mockk
@@ -44,49 +44,17 @@ class NetworkTrackingPluginTest {
         ignoreHosts: List<String> = emptyList(),
         ignoreAmplitudeRequests: Boolean = true,
     ) = NetworkTrackingPlugin(
-        captureRules = overrideCaptureRules ?: listOf(
-            CaptureRule(
-                hosts = hosts,
-                statusCodeRange = statusCodeRange
-            )
-        ),
-        ignoreHosts = ignoreHosts,
-        ignoreAmplitudeRequests = ignoreAmplitudeRequests
+        NetworkTrackingOptions(
+            captureRules = overrideCaptureRules ?: listOf(
+                CaptureRule(
+                    hosts = hosts,
+                    statusCodeRange = statusCodeRange
+                )
+            ),
+            ignoreHosts = ignoreHosts,
+            ignoreAmplitudeRequests = ignoreAmplitudeRequests
+        )
     ).apply { amplitude = mockAmplitude }
-
-    @Test
-    fun `capture rules must must be non-empty`() {
-        val exception = assertThrows<IllegalArgumentException> {
-            networkTrackingPlugin(
-                overrideCaptureRules = emptyList(),
-                ignoreAmplitudeRequests = false
-            )
-        }
-        assertEquals("Capture rules must not be empty.", exception.message)
-    }
-
-    @Test
-    fun `capture rules must have non-empty host list`() {
-        val exception = assertThrows<IllegalArgumentException> {
-            networkTrackingPlugin(
-                hosts = emptyList(),
-                statusCodeRange = (500..599).toList(),
-                ignoreAmplitudeRequests = false
-            )
-        }
-        assertEquals("Capture rules must have a non-empty host list.", exception.message)
-    }
-
-    @Test
-    fun `capture rules must have non-empty status code range`() {
-        val exception = assertThrows<IllegalArgumentException> {
-            networkTrackingPlugin(
-                statusCodeRange = emptyList(),
-                ignoreAmplitudeRequests = false
-            )
-        }
-        assertEquals("Capture rules must have a non-empty status code range.", exception.message)
-    }
 
     @Test
     fun `successful response capture`() {
@@ -186,17 +154,50 @@ class NetworkTrackingPluginTest {
     }
 
     @Test
-    fun `request ignored by host`() {
+    fun `ignore hosts`() {
         val plugin = networkTrackingPlugin(
             statusCodeRange = (200..299).toList(),
-            ignoreHosts = listOf("example.com"),
-            ignoreAmplitudeRequests = false
+            ignoreAmplitudeRequests = false,
+            ignoreHosts = listOf("ignore.example.com", "*.ignore.com")
         )
 
-        plugin.intercept(mockInterceptorChain(statusCode = 200))
+        // Test exact match ignored host
+        plugin.intercept(
+            mockInterceptorChain(
+                statusCode = 200,
+                url = "https://ignore.example.com/test"
+            )
+        )
 
-        verify(exactly = 0) {
-            mockAmplitude.track(any<BaseEvent>(), any())
+        // Test wildcard match ignored host
+        plugin.intercept(
+            mockInterceptorChain(
+                statusCode = 200,
+                url = "https://api.ignore.com/test"
+            )
+        )
+
+        // Test accepted/matched host
+        plugin.intercept(
+            mockInterceptorChain(
+                statusCode = 200,
+                url = "https://example.com/test"
+            )
+        )
+
+        // Verify only non-ignored host request was tracked
+        verify(exactly = 1) {
+            mockAmplitude.track(
+                eq(NETWORK_TRACKING),
+                withArg { eventProperties ->
+                    assertEquals(
+                        "https://example.com/test",
+                        eventProperties[NETWORK_TRACKING_URL]
+                    )
+                    assertEquals(200, eventProperties[NETWORK_TRACKING_STATUS_CODE])
+                    assertEquals(true, eventProperties[NETWORK_TRACKING_DURATION] != null)
+                }
+            )
         }
     }
 
@@ -239,167 +240,6 @@ class NetworkTrackingPluginTest {
                 withArg { eventProperties ->
                     assertEquals(
                         "https://api.amplitude.com/test", eventProperties[NETWORK_TRACKING_URL]
-                    )
-                    assertEquals(200, eventProperties[NETWORK_TRACKING_STATUS_CODE])
-                    assertEquals(true, eventProperties[NETWORK_TRACKING_DURATION] != null)
-                }
-            )
-        }
-    }
-
-    @Test
-    fun `basic wildcard host matching`() {
-        val plugin = networkTrackingPlugin(
-            overrideCaptureRules = listOf(
-                CaptureRule(
-                    hosts = listOf("*"),
-                    statusCodeRange = (200..299).toList()
-                )
-            ),
-            ignoreAmplitudeRequests = false
-        )
-
-        val matchingHosts = listOf(
-            "api.example.com",
-            "test.amplitude.com", // one amplitude host
-            "random-api.com"
-        )
-        matchingHosts.forEach { host ->
-            plugin.intercept(
-                mockInterceptorChain(
-                    statusCode = 200,
-                    url = "https://$host/test"
-                )
-            )
-        }
-
-        verifyOrder {
-            matchingHosts.forEach { host ->
-                mockAmplitude.track(
-                    eq(NETWORK_TRACKING),
-                    withArg { eventProperties ->
-                        assertEquals("https://$host/test", eventProperties[NETWORK_TRACKING_URL])
-                        assertEquals(200, eventProperties[NETWORK_TRACKING_STATUS_CODE])
-                        assertEquals(true, eventProperties[NETWORK_TRACKING_DURATION] != null)
-                    }
-                )
-            }
-        }
-    }
-
-    @Test
-    fun `domain wildcard host matching`() {
-        val plugin = networkTrackingPlugin(
-            hosts = listOf("*.example.com", "test.*", "exact-match.com"),
-            statusCodeRange = (200..299).toList(),
-            ignoreAmplitudeRequests = false
-        )
-
-        // Should match wildcard hosts
-        plugin.intercept(
-            mockInterceptorChain(
-                statusCode = 200,
-                url = "https://api.example.com/test"
-            )
-        )
-        plugin.intercept(
-            mockInterceptorChain(
-                statusCode = 200,
-                url = "https://test.amplitude.com/api"
-            )
-        )
-        plugin.intercept(
-            mockInterceptorChain(
-                statusCode = 200,
-                url = "https://exact-match.com/test"
-            )
-        )
-
-        // Should not match
-        plugin.intercept(
-            mockInterceptorChain(
-                statusCode = 200,
-                url = "https://notexample.com/test"
-            )
-        )
-        plugin.intercept(
-            mockInterceptorChain(
-                statusCode = 200,
-                url = "https://testing.other.com/test"
-            )
-        )
-
-        verifyOrder {
-            mockAmplitude.track(
-                eq(NETWORK_TRACKING),
-                withArg { eventProperties ->
-                    assertEquals(
-                        "https://api.example.com/test", eventProperties[NETWORK_TRACKING_URL]
-                    )
-                }
-            )
-            mockAmplitude.track(
-                eq(NETWORK_TRACKING),
-                withArg { eventProperties ->
-                    assertEquals(
-                        "https://test.amplitude.com/api", eventProperties[NETWORK_TRACKING_URL]
-                    )
-                }
-            )
-            mockAmplitude.track(
-                eq(NETWORK_TRACKING),
-                withArg { eventProperties ->
-                    assertEquals(
-                        "https://exact-match.com/test", eventProperties[NETWORK_TRACKING_URL]
-                    )
-                }
-            )
-        }
-        confirmVerified(mockAmplitude)
-    }
-
-    @Test
-    fun `specific host matching`() {
-        val plugin = networkTrackingPlugin(
-            overrideCaptureRules = listOf(
-                CaptureRule(
-                    hosts = listOf("api.example.com"),
-                    statusCodeRange = (200..299).toList()
-                )
-            ),
-            ignoreAmplitudeRequests = true
-        )
-
-        val nonMatchingHosts = listOf(
-            "other.example.com",
-            "test.amplitude.com", // one amplitude host
-            "api.different.com",
-        )
-
-        // matching host request
-        plugin.intercept(
-            mockInterceptorChain(
-                statusCode = 200,
-                url = "https://api.example.com/test"
-            )
-        )
-
-        // non-matching host requests
-        nonMatchingHosts.forEach { host ->
-            plugin.intercept(
-                mockInterceptorChain(
-                    statusCode = 200,
-                    url = "https://$host/test"
-                )
-            )
-        }
-
-        verify(exactly = 1) {
-            mockAmplitude.track(
-                eq(NETWORK_TRACKING),
-                withArg { eventProperties ->
-                    assertEquals(
-                        "https://api.example.com/test", eventProperties[NETWORK_TRACKING_URL]
                     )
                     assertEquals(200, eventProperties[NETWORK_TRACKING_STATUS_CODE])
                     assertEquals(true, eventProperties[NETWORK_TRACKING_DURATION] != null)

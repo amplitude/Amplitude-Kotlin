@@ -16,7 +16,6 @@ import com.amplitude.core.Constants.EventTypes.NETWORK_TRACKING
 import com.amplitude.core.platform.Plugin
 import com.amplitude.core.platform.Plugin.Type
 import com.amplitude.core.platform.Plugin.Type.Utility
-import kotlin.text.RegexOption.IGNORE_CASE
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.Interceptor.Chain
@@ -27,34 +26,14 @@ import okio.Buffer
 import okio.ByteString.Companion.toByteString
 import okio.IOException
 
-private const val STAR_WILDCARD = "*"
 private const val AMPLITUDE_HOST_DOMAIN = "amplitude.com"
 private const val LOCAL_ERROR_STATUS_CODE = 0
 
 class NetworkTrackingPlugin(
-    private val captureRules: List<CaptureRule> = listOf(
-        CaptureRule(
-            hosts = listOf(STAR_WILDCARD),
-            statusCodeRange = (0..0) + (500..599),
-        )
-    ),
-    private val ignoreHosts: List<String> = emptyList(),
-    private val ignoreAmplitudeRequests: Boolean = true,
+    private val options: NetworkTrackingOptions = NetworkTrackingOptions.DEFAULT
 ) : Interceptor, Plugin {
     override val type: Type = Utility
     override lateinit var amplitude: Amplitude
-
-    init {
-        require(captureRules.isNotEmpty()) {
-            "Capture rules must not be empty."
-        }
-        require(captureRules.all { it.hosts.isNotEmpty() }) {
-            "Capture rules must have a non-empty host list."
-        }
-        require(captureRules.all { it.statusCodeRange.isNotEmpty() }) {
-            "Capture rules must have a non-empty status code range."
-        }
-    }
 
     override fun intercept(chain: Chain): Response {
         val request = chain.request()
@@ -82,28 +61,14 @@ class NetworkTrackingPlugin(
     private fun shouldCapture(
         request: Request,
         responseCode: Int,
-    ): Boolean {
+    ): Boolean = with(options) {
         val host = request.url.host
         return when {
-            host in ignoreHosts -> false
+            shouldIgnore(host) -> false
             ignoreAmplitudeRequests && request.amplitudeApiRequest() -> false
             captureRules.matches(host, responseCode) || request.amplitudeApiRequest() -> true
             else -> false
         }
-    }
-
-    /**
-     * Checks if the request matches any of the capture rules.
-     *
-     * @param host The host of the request URL.
-     * @param responseCode The status code of the response, or null if it's an error.
-     */
-    private fun List<CaptureRule>.matches(
-        host: String,
-        responseCode: Int,
-    ): Boolean {
-        val ruleWithMatchingHost = lastOrNull { it.matches(host) } ?: return false
-        return responseCode in ruleWithMatchingHost.statusCodeRange
     }
 
     /**
@@ -171,22 +136,5 @@ class NetworkTrackingPlugin(
             .query(query.ifEmpty { null })
             .build()
             .toString()
-    }
-
-    data class CaptureRule(
-        val hosts: List<String>,
-        val statusCodeRange: List<Int>,
-    ) {
-        private val hostRegexes: List<Regex> = hosts.filter { it.contains(STAR_WILDCARD) }
-            .map { host ->
-                val regexString = host.replace(".", "\\.")
-                    .replace("*", ".*")
-                "^${regexString}$".toRegex(IGNORE_CASE)
-            }
-        private val hostSet: Set<String> = hosts.filter { !it.contains("*") }.toSet()
-
-        fun matches(host: String): Boolean {
-            return hostSet.contains(host) || hostRegexes.any { it.matches(host) }
-        }
     }
 }
