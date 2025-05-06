@@ -11,8 +11,9 @@ import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 
-class CustomOkHttpClient : HttpClientInterface {
-    private val okHttpClient = OkHttpClient()
+class CustomOkHttpClient(
+    private val okHttpClient: OkHttpClient = OkHttpClient()
+) : HttpClientInterface {
     private lateinit var configuration: Configuration
 
     fun initialize(configuration: Configuration) {
