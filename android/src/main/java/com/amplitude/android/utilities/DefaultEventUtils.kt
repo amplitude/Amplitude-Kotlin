@@ -52,7 +52,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
 
     fun trackAppUpdatedInstalledEvent(packageInfo: PackageInfo) {
         // Get current version/build and previously stored version/build information
-        val currentVersion = packageInfo.versionName
+        val currentVersion = packageInfo.versionName ?: "Unknown"
         val currentBuild = packageInfo.getVersionCode().toString()
         val storage = amplitude.storage
         val previousVersion = storage.read(Storage.Constants.APP_VERSION)

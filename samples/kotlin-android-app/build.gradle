@@ -8,6 +8,7 @@ ext {
 }
 
 android {
+    namespace = "com.amplitude.android.sample"
     compileSdk 34
 
     defaultConfig {
@@ -17,9 +18,13 @@ android {
         versionCode 1
         versionName "1.0"
         multiDexEnabled true
-        buildConfigField "String", "AMPLITUDE_API_KEY", "\"${AMPLITUDE_API_KEY}\""
+        buildConfigField "String", "AMPLITUDE_API_KEY", "\"d03f2b4b432e6fd31aa048b1d9c2e90e\""
         buildConfigField "String", "EXPERIMENT_API_KEY", "\"${EXPERIMENT_API_KEY}\""
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     buildTypes {

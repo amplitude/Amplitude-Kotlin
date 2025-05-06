@@ -5,6 +5,7 @@ plugins {
 }
 
 android {
+    namespace = "com.amplitude.common.android"
     compileSdk 34
 
     defaultConfig {
