@@ -13,7 +13,7 @@ import com.amplitude.android.internal.fragments.FragmentActivityHandler
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.registerFragmentLifecycleCallbacks
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.unregisterFragmentLifecycleCallbacks
 import com.amplitude.android.utilities.ActivityLifecycleObserver
-import com.amplitude.android.utilities.DefaultEventUtils
+import com.amplitude.core.Constants.EventTypes
 import com.amplitude.core.Storage
 import com.amplitude.core.utilities.InMemoryStorage
 import io.mockk.coVerify
@@ -87,7 +87,7 @@ class AndroidLifecyclePluginTest {
 
         verify {
             mockedAmplitude.track(
-                DefaultEventUtils.EventTypes.APPLICATION_INSTALLED,
+                EventTypes.APPLICATION_INSTALLED,
                 any(),
                 any()
             )
@@ -109,7 +109,7 @@ class AndroidLifecyclePluginTest {
 
         verify(exactly = 0) {
             mockedAmplitude.track(
-                DefaultEventUtils.EventTypes.APPLICATION_INSTALLED,
+                EventTypes.APPLICATION_INSTALLED,
                 any(),
                 any()
             )
@@ -136,7 +136,7 @@ class AndroidLifecyclePluginTest {
 
         verify {
             mockedAmplitude.track(
-                DefaultEventUtils.EventTypes.APPLICATION_UPDATED,
+                EventTypes.APPLICATION_UPDATED,
                 any(),
                 any()
             )
@@ -162,7 +162,7 @@ class AndroidLifecyclePluginTest {
 
         verify(exactly = 0) {
             mockedAmplitude.track(
-                DefaultEventUtils.EventTypes.APPLICATION_UPDATED,
+                EventTypes.APPLICATION_UPDATED,
                 any(),
             )
         }
@@ -252,7 +252,7 @@ class AndroidLifecyclePluginTest {
 
         verify(exactly = 1) {
             mockedAmplitude.track(
-                eq(DefaultEventUtils.EventTypes.APPLICATION_OPENED),
+                eq(EventTypes.APPLICATION_OPENED),
                 match { param -> param.values.first() == false },
             )
         }
@@ -275,7 +275,7 @@ class AndroidLifecyclePluginTest {
         advanceUntilIdle()
         verify(exactly = 1) {
             mockedAmplitude.track(
-                eq(DefaultEventUtils.EventTypes.APPLICATION_OPENED),
+                eq(EventTypes.APPLICATION_OPENED),
                 match { param -> param.values.first() == false },
                 any()
             )
@@ -285,7 +285,7 @@ class AndroidLifecyclePluginTest {
         advanceUntilIdle()
         verify(exactly = 1) {
             mockedAmplitude.track(
-                eq(DefaultEventUtils.EventTypes.APPLICATION_BACKGROUNDED),
+                eq(EventTypes.APPLICATION_BACKGROUNDED),
                 any(),
                 any()
             )
@@ -295,7 +295,7 @@ class AndroidLifecyclePluginTest {
         advanceUntilIdle()
         verify(exactly = 1) {
             mockedAmplitude.track(
-                DefaultEventUtils.EventTypes.APPLICATION_OPENED,
+                EventTypes.APPLICATION_OPENED,
                 match { param -> param.values.first() == false },
                 any()
             )
@@ -317,7 +317,7 @@ class AndroidLifecyclePluginTest {
         advanceUntilIdle()
         verify(exactly = 0) {
             mockedAmplitude.track(
-                eq(DefaultEventUtils.EventTypes.APPLICATION_OPENED),
+                eq(EventTypes.APPLICATION_OPENED),
                 match { param -> param.values.first() == false },
             )
         }
@@ -326,7 +326,7 @@ class AndroidLifecyclePluginTest {
         advanceUntilIdle()
         verify(exactly = 0) {
             mockedAmplitude.track(
-                eq(DefaultEventUtils.EventTypes.APPLICATION_BACKGROUNDED),
+                eq(EventTypes.APPLICATION_BACKGROUNDED),
                 any(),
                 any()
             )
@@ -354,7 +354,7 @@ class AndroidLifecyclePluginTest {
 
         verify(exactly = 1) {
             mockedAmplitude.track(
-                eq(DefaultEventUtils.EventTypes.SCREEN_VIEWED),
+                eq(EventTypes.SCREEN_VIEWED),
                 any(),
             )
         }
@@ -380,7 +380,7 @@ class AndroidLifecyclePluginTest {
 
         verify(exactly = 0) {
             mockedAmplitude.track(
-                eq(DefaultEventUtils.EventTypes.SCREEN_VIEWED),
+                eq(EventTypes.SCREEN_VIEWED),
                 any(),
             )
         }
@@ -411,7 +411,7 @@ class AndroidLifecyclePluginTest {
 
         verify(exactly = 1) {
             mockedAmplitude.track(
-                eq(DefaultEventUtils.EventTypes.DEEP_LINK_OPENED),
+                eq(EventTypes.DEEP_LINK_OPENED),
                 any(),
             )
         }
@@ -441,7 +441,7 @@ class AndroidLifecyclePluginTest {
 
         verify(exactly = 0) {
             mockedAmplitude.track(
-                eq(DefaultEventUtils.EventTypes.DEEP_LINK_OPENED),
+                eq(EventTypes.DEEP_LINK_OPENED),
                 any(),
             )
         }
