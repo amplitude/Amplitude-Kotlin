@@ -50,27 +50,29 @@ data class NetworkTrackingOptions(
 }
 
 private class HostMatcher(hosts: List<String>) {
-    private val hostRegexes: List<Regex> = hosts
-        .filter { it.contains(STAR_WILDCARD) }
-        .map { host ->
-            val regexString =
-                if (host == STAR_WILDCARD) {
-                    // Single wildcard matches everything
-                    ".*"
-                } else {
-                    // For domain or multiple wildcards, e.g. "*.example.com", "*.sub.*.example.com"
-                    // it matches "api.example.com" but not "api.test.example.com"
-                    // it matches "api.sub.domain.example.com" but not "api.test.sub.domain.example.com"
-                    host
-                        .replace(".", "\\.")
-                        .replace(STAR_WILDCARD, "[^.]+")
-                }
-            "^$regexString$".toRegex(IGNORE_CASE)
-        }
-    private val hostSet: Set<String> = hosts
-        .filter { !it.contains("*") }
-        .map { it.lowercase() }
-        .toSet()
+    private val hostRegexes: List<Regex> by lazy {
+        hosts.filter { it.contains(STAR_WILDCARD) }
+            .map { host ->
+                val regexString =
+                    if (host == STAR_WILDCARD) {
+                        // Single wildcard matches everything
+                        ".*"
+                    } else {
+                        // For domain or multiple wildcards, e.g. "*.example.com", "*.sub.*.example.com"
+                        // it matches "api.example.com" but not "api.test.example.com"
+                        // it matches "api.sub.domain.example.com" but not "api.test.sub.domain.example.com"
+                        host
+                            .replace(".", "\\.")
+                            .replace(STAR_WILDCARD, "[^.]+")
+                    }
+                "^$regexString$".toRegex(IGNORE_CASE)
+            }
+    }
+    private val hostSet: Set<String> by lazy {
+        hosts.filter { !it.contains("*") }
+            .map { it.lowercase() }
+            .toSet()
+    }
 
     fun matches(host: String): Boolean {
         return hostSet.contains(host.lowercase()) || hostRegexes.any { it.matches(host) }
