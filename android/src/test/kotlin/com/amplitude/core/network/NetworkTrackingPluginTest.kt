@@ -22,7 +22,6 @@ import io.mockk.verify
 import io.mockk.verifyOrder
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import okhttp3.Interceptor.Chain
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Protocol.HTTP_1_1
@@ -359,7 +358,7 @@ class NetworkTrackingPluginTest {
             mockAmplitude.track(
                 eq(NETWORK_TRACKING),
                 withArg { eventProperties ->
-                    assertEquals(url, eventProperties[NETWORK_TRACKING_URL])
+                    assertEquals("https://example.com/test", eventProperties[NETWORK_TRACKING_URL])
                     assertEquals(
                         "param1=value1&param2=value2&param3=123",
                         eventProperties[NETWORK_TRACKING_URL_QUERY]
@@ -527,14 +526,13 @@ class NetworkTrackingPluginTest {
     }
 
     @Test
-    fun `mask sensitive URL params`() {
+    fun `mask sensitive URL params with fragment`() {
         val plugin = networkTrackingPlugin(
             statusCodeRange = (200..299).toList(),
             ignoreAmplitudeRequests = false
         )
 
-        val url =
-            "https://sample_username:sample_password@example.com/test?username=johndoe&password=1234&email=test@example.com&phone=1234567890&token=abcd1234"
+        val url = "https://example.com/test?username=johndoe&password=1234#email"
         plugin.intercept(
             mockInterceptorChain(
                 statusCode = 200,
@@ -547,7 +545,71 @@ class NetworkTrackingPluginTest {
                 eq(NETWORK_TRACKING),
                 withArg { eventProperties ->
                     assertEquals(
-                        "https://mask:mask@example.com/test?username=[mask]&password=[mask]&email=[mask]&phone=[mask]&token=abcd1234",
+                        "https://example.com/test",
+                        eventProperties[NETWORK_TRACKING_URL]
+                    )
+                    assertEquals(
+                        "username=[mask]&password=[mask]",
+                        eventProperties[NETWORK_TRACKING_URL_QUERY]
+                    )
+                    assertEquals(
+                        "email",
+                        eventProperties[NETWORK_TRACKING_URL_FRAGMENT]
+                    )
+                }
+            )
+        }
+    }
+
+    @Test
+    fun `mask sensitive URL params with empty query`() {
+        val plugin = networkTrackingPlugin(
+            statusCodeRange = (200..299).toList(),
+            ignoreAmplitudeRequests = false
+        )
+
+        val url = "https://example.com/test"
+        plugin.intercept(
+            mockInterceptorChain(
+                statusCode = 200,
+                url = url
+            )
+        )
+
+        verify {
+            mockAmplitude.track(
+                eq(NETWORK_TRACKING),
+                withArg { eventProperties ->
+                    assertEquals(
+                        "https://example.com/test",
+                        eventProperties[NETWORK_TRACKING_URL]
+                    )
+                }
+            )
+        }
+    }
+
+    @Test
+    fun `mask sensitive URL params with credentials only`() {
+        val plugin = networkTrackingPlugin(
+            statusCodeRange = (200..299).toList(),
+            ignoreAmplitudeRequests = false
+        )
+
+        val url = "https://sample_username:sample_password@example.com/test"
+        plugin.intercept(
+            mockInterceptorChain(
+                statusCode = 200,
+                url = url
+            )
+        )
+
+        verify {
+            mockAmplitude.track(
+                eq(NETWORK_TRACKING),
+                withArg { eventProperties ->
+                    assertEquals(
+                        "https://mask:mask@example.com/test",
                         eventProperties[NETWORK_TRACKING_URL]
                     )
                 }
