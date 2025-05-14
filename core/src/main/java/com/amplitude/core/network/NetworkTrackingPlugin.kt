@@ -98,12 +98,13 @@ class NetworkTrackingPlugin(
         completionTime: Long,
         error: IOException? = null,
     ) {
+        val maskedHttpUrl = request.url.mask()
         amplitude.track(
             NETWORK_TRACKING,
             eventProperties = mapOf(
-                NETWORK_TRACKING_URL to request.url.toMaskedString(),
-                NETWORK_TRACKING_URL_QUERY to request.url.query,
-                NETWORK_TRACKING_URL_FRAGMENT to request.url.fragment,
+                NETWORK_TRACKING_URL to maskedHttpUrl.toUrlOnlyString(),
+                NETWORK_TRACKING_URL_QUERY to maskedHttpUrl.query,
+                NETWORK_TRACKING_URL_FRAGMENT to maskedHttpUrl.fragment,
                 NETWORK_TRACKING_REQUEST_METHOD to request.method,
                 NETWORK_TRACKING_STATUS_CODE to response?.code,
                 NETWORK_TRACKING_ERROR_MESSAGE to error?.message,
@@ -117,23 +118,40 @@ class NetworkTrackingPlugin(
     }
 
     /**
-     * Converts the URL to a masked string for sensitive params
+     * Masks sensitive information in the URL by replacing values of sensitive query parameters and
+     * credentials with "[mask]". The following are considered sensitive:
+     * - Username and password in URL credentials
+     * - Query parameter values where the parameter name matches: username, password, email, phone
+     *
+     * Example:
+     * Original URL: https://user:pass@example.com/path?email=test@email.com&id=123#password-reset
+     * Masked URL: https://mask:mask@example.com/path?email=[mask]&id=123#password-reset
+     *
+     * Note: The fragment portion of the URL is preserved and not masked.
+     *
+     * @return A new [HttpUrl] with sensitive information masked
      */
-    private fun HttpUrl.toMaskedString(): String {
-        val sensitiveQueryParams = setOf("username", "password", "email", "phone")
-
+    private fun HttpUrl.mask(): HttpUrl {
+        val sensitiveKeys = setOf("username", "password", "email", "phone")
         val query = queryParameterNames.joinToString("&") { name ->
-            if (sensitiveQueryParams.contains(name.lowercase())) {
+            if (sensitiveKeys.contains(name.lowercase())) {
                 "$name=[mask]"
             } else {
                 "$name=${queryParameter(name)}"
             }
-        }
+        }.ifBlank { null }
 
         return newBuilder()
             .username("mask".takeIf { username.isNotEmpty() } ?: "")
             .password("mask".takeIf { password.isNotEmpty() } ?: "")
-            .query(query.ifEmpty { null })
+            .query(query)
+            .build()
+    }
+
+    private fun HttpUrl.toUrlOnlyString(): String {
+        return mask().newBuilder()
+            .query(null)
+            .fragment(null)
             .build()
             .toString()
     }
