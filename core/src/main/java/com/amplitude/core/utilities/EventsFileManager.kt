@@ -329,26 +329,28 @@ class EventsFileManager(
                 directory.listFiles { _, name ->
                     name.contains(storageKey) && !name.endsWith(".properties")
                 } ?: emptyArray()
-            unFinishedFiles.forEach {
-                val content = it.readText()
-                if (!content.endsWith(DELIMITER)) {
-                    // handle earlier versions
-                    val normalizedContent = "[${content.trimStart('[', ',').trimEnd(']', ',')}]"
-                    try {
-                        val jsonArray = JSONArray(normalizedContent)
-                        val list = jsonArray.toJSONObjectList()
-                        writeEventsToSplitFile(list, it, false)
-                        if (it.extension == "tmp") {
-                            finish(it)
+            unFinishedFiles
+                .filter { it.exists() }
+                .forEach {
+                    val content = it.readText()
+                    if (!content.endsWith(DELIMITER)) {
+                        // handle earlier versions
+                        val normalizedContent = "[${content.trimStart('[', ',').trimEnd(']', ',')}]"
+                        try {
+                            val jsonArray = JSONArray(normalizedContent)
+                            val list = jsonArray.toJSONObjectList()
+                            writeEventsToSplitFile(list, it, false)
+                            if (it.extension == "tmp") {
+                                finish(it)
+                            }
+                        } catch (e: JSONException) {
+                            logger.error(
+                                "Failed to parse events: $normalizedContent, dropping file: ${it.path}"
+                            )
+                            this.remove(it.path)
                         }
-                    } catch (e: JSONException) {
-                        logger.error(
-                            "Failed to parse events: $normalizedContent, dropping file: ${it.path}"
-                        )
-                        this.remove(it.path)
                     }
                 }
-            }
             kvs.putLong(storageVersionKey, 2)
         }
 
