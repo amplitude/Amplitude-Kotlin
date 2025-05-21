@@ -22,7 +22,7 @@ object Constants {
         const val SCREEN_VIEWED = "[Amplitude] Screen Viewed"
         const val FRAGMENT_VIEWED = "[Amplitude] Fragment Viewed"
         const val ELEMENT_INTERACTED = "[Amplitude] Element Interacted"
-        const val NETWORK_TRACKING = "[Amplitude] Network Tracking"
+        const val NETWORK_TRACKING = "[Amplitude] Network Request"
     }
 
     object EventProperties {
