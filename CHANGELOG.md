@@ -1,3 +1,18 @@
+# [1.21.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.20.7...v1.21.0) (2025-05-21)
+
+
+### Bug Fixes
+
+* event type name for network tracking ([#275](https://github.com/amplitude/Amplitude-Kotlin/issues/275)) ([0bfc126](https://github.com/amplitude/Amplitude-Kotlin/commit/0bfc1266a868296305e05a17281ce0e089e55070))
+* filter unfinished files that don't exist ([#273](https://github.com/amplitude/Amplitude-Kotlin/issues/273)) ([c1f7ab5](https://github.com/amplitude/Amplitude-Kotlin/commit/c1f7ab5900fea18f11a1184de55e92ba2a4d55c6))
+* make sure that amplitude is built before writing on storage ([#274](https://github.com/amplitude/Amplitude-Kotlin/issues/274)) ([aab8e29](https://github.com/amplitude/Amplitude-Kotlin/commit/aab8e2982392d1b0f9641f4bca057d7826758b2c))
+* send URL without fragment/query ([#271](https://github.com/amplitude/Amplitude-Kotlin/issues/271)) ([1ad5ddb](https://github.com/amplitude/Amplitude-Kotlin/commit/1ad5ddb9a1a8bbe1d687f89e0859d7307958e51f))
+
+
+### Features
+
+* add network tracking plugin ([#265](https://github.com/amplitude/Amplitude-Kotlin/issues/265)) ([d19a941](https://github.com/amplitude/Amplitude-Kotlin/commit/d19a941a1977e87c7e0ffdcedb1b286134b124cb))
+
 ## [1.20.7](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.20.6...v1.20.7) (2025-05-02)
 
 
