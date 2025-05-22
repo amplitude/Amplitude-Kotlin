@@ -69,7 +69,7 @@ class ResponseHandlerTest {
             FAILED to true
         )
         statuses.forEach { status ->
-            val analyticsResponse = AnalyticsResponse.create(status.code, responseBody = "{}")
+            val analyticsResponse = AnalyticsResponse.create(status.range.first, responseBody = "{}")
             val shouldRetryUploadOnFailure = fakeResponseHandler.handle(
                 response = analyticsResponse,
                 events = emptyList<AnalyticsResponse>(),
@@ -84,7 +84,7 @@ class ResponseHandlerTest {
 
     @Test
     fun `shouldRetryUploadOnFailure - handleBadRequestResponse`() {
-        val badRequestResponse = AnalyticsResponse.create(BAD_REQUEST.code, responseBody = "{}")
+        val badRequestResponse = AnalyticsResponse.create(BAD_REQUEST.range.first, responseBody = "{}")
 
         fakeResponseHandler.badRequestResult = false
         var shouldRetryUploadOnFailure = fakeResponseHandler.handle(

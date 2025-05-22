@@ -14,6 +14,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -22,7 +23,7 @@ import java.util.concurrent.TimeUnit
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class HttpClientTest {
     private lateinit var server: MockWebServer
-    val apiKey = "API_KEY"
+    private val apiKey = "API_KEY"
 
     @ExperimentalCoroutinesApi
     @BeforeEach
@@ -49,7 +50,7 @@ class HttpClientTest {
         event.eventType = "test"
 
         val httpClient = spyk(HttpClient(config))
-        val response = httpClient.upload(JSONUtil.eventsToString(listOf(event)))
+        httpClient.upload(JSONUtil.eventsToString(listOf(event)))
 
         val request = runRequest()
         val result = JSONObject(request?.body?.readUtf8())
@@ -73,7 +74,7 @@ class HttpClientTest {
 
         val httpClient = spyk(HttpClient(config))
 
-        val response = httpClient.upload(JSONUtil.eventsToString(listOf(event)))
+        httpClient.upload(JSONUtil.eventsToString(listOf(event)))
 
         val request = runRequest()
         val result = JSONObject(request?.body?.readUtf8())
@@ -100,7 +101,7 @@ class HttpClientTest {
         diagnostics.addErrorLog("error")
         diagnostics.addMalformedEvent("malformed-event")
 
-        val response = httpClient.upload(JSONUtil.eventsToString(listOf(event)), diagnostics.extractDiagnostics())
+        httpClient.upload(JSONUtil.eventsToString(listOf(event)), diagnostics.extractDiagnostics())
 
         val request = runRequest()
         val result = JSONObject(request?.body?.readUtf8())
@@ -133,10 +134,10 @@ class HttpClientTest {
         val response = httpClient.upload(JSONUtil.eventsToString(listOf(event)), diagnostics.extractDiagnostics())
 
         runRequest()
-        assertEquals(200, response.status.code)
+        assertTrue(200 in response.status.range)
 
         runRequest()
-        assertEquals(200, response.status.code)
+        assertTrue(200 in response.status.range)
     }
 
     @Test
@@ -156,8 +157,7 @@ class HttpClientTest {
         val response = httpClient.upload(JSONUtil.eventsToString(listOf(event)))
 
         runRequest()
-        // Error code 503 is converted to a 500 in the http client
-        assertEquals(500, response.status.code)
+        assertTrue(503 in response.status.range)
         val responseBody = response as FailedResponse
         assertEquals("<html>Error occurred</html>", responseBody.error)
     }

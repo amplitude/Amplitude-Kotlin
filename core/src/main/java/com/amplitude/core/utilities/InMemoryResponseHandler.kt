@@ -33,7 +33,7 @@ internal class InMemoryResponseHandler(
         eventsString: String,
     ) {
         triggerEventsCallback(
-            events as List<BaseEvent>, HttpStatus.SUCCESS.code, "Event sent success."
+            events as List<BaseEvent>, HttpStatus.SUCCESS.range.first, "Event sent success."
         )
     }
 
@@ -44,7 +44,7 @@ internal class InMemoryResponseHandler(
     ): Boolean {
         val eventsList = events as List<BaseEvent>
         if (badRequestResponse.isInvalidApiKeyResponse()) {
-            triggerEventsCallback(eventsList, HttpStatus.BAD_REQUEST.code, badRequestResponse.error)
+            triggerEventsCallback(eventsList, HttpStatus.BAD_REQUEST.range.first, badRequestResponse.error)
             return false
         }
         val droppedIndices = badRequestResponse.getEventIndicesToDrop()
@@ -57,7 +57,7 @@ internal class InMemoryResponseHandler(
                 eventsToRetry.add(event)
             }
         }
-        triggerEventsCallback(eventsToDrop, HttpStatus.BAD_REQUEST.code, badRequestResponse.error)
+        triggerEventsCallback(eventsToDrop, HttpStatus.BAD_REQUEST.range.first, badRequestResponse.error)
         eventsToRetry.forEach {
             eventPipeline.put(it)
         }
@@ -72,7 +72,7 @@ internal class InMemoryResponseHandler(
         val eventsList = events as List<BaseEvent>
         if (eventsList.size == 1) {
             triggerEventsCallback(
-                eventsList, HttpStatus.PAYLOAD_TOO_LARGE.code, payloadTooLargeResponse.error
+                eventsList, HttpStatus.PAYLOAD_TOO_LARGE.range.first, payloadTooLargeResponse.error
             )
             return
         }
@@ -105,7 +105,7 @@ internal class InMemoryResponseHandler(
             }
         }
         triggerEventsCallback(
-            eventsToDrop, HttpStatus.TOO_MANY_REQUESTS.code, tooManyRequestsResponse.error
+            eventsToDrop, HttpStatus.TOO_MANY_REQUESTS.range.first, tooManyRequestsResponse.error
         )
         eventsToRetryNow.forEach {
             eventPipeline.put(it)
@@ -147,7 +147,7 @@ internal class InMemoryResponseHandler(
                 eventsToRetry.add(event)
             }
         }
-        triggerEventsCallback(eventsToDrop, HttpStatus.FAILED.code, failedResponse.error)
+        triggerEventsCallback(eventsToDrop, HttpStatus.FAILED.range.first, failedResponse.error)
         eventsToRetry.forEach {
             eventPipeline.put(it)
         }

@@ -3,43 +3,13 @@ package com.amplitude.core.utilities.http
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.collectIndices
 import com.amplitude.core.utilities.getStringWithDefault
+import com.amplitude.core.utilities.http.HttpStatus.BAD_REQUEST
+import com.amplitude.core.utilities.http.HttpStatus.PAYLOAD_TOO_LARGE
+import com.amplitude.core.utilities.http.HttpStatus.SUCCESS
+import com.amplitude.core.utilities.http.HttpStatus.TIMEOUT
+import com.amplitude.core.utilities.http.HttpStatus.TOO_MANY_REQUESTS
 import com.amplitude.core.utilities.toIntArray
 import org.json.JSONObject
-
-internal object HttpResponse {
-    fun createHttpResponse(
-        code: Int,
-        responseBody: String?,
-    ): AnalyticsResponse {
-        return when (code) {
-            HttpStatus.SUCCESS.code -> SuccessResponse()
-
-            HttpStatus.BAD_REQUEST.code -> BadRequestResponse(JSONObject(responseBody))
-
-            HttpStatus.PAYLOAD_TOO_LARGE.code -> PayloadTooLargeResponse(JSONObject(responseBody))
-
-            HttpStatus.TOO_MANY_REQUESTS.code -> TooManyRequestsResponse(JSONObject(responseBody))
-
-            HttpStatus.TIMEOUT.code -> TimeoutResponse()
-
-            else -> FailedResponse(parseResponseBodyOrGetDefault(responseBody))
-        }
-    }
-
-    private fun parseResponseBodyOrGetDefault(responseBody: String?): JSONObject {
-        val defaultObject = JSONObject()
-        if (responseBody.isNullOrEmpty()) {
-            return defaultObject
-        }
-
-        return try {
-            JSONObject(responseBody)
-        } catch (ignored: Exception) {
-            defaultObject.put("error", responseBody)
-            defaultObject
-        }
-    }
-}
 
 sealed class AnalyticsResponse(val status: HttpStatus) {
     companion object {
@@ -47,14 +17,33 @@ sealed class AnalyticsResponse(val status: HttpStatus) {
             responseCode: Int,
             responseBody: String?,
         ): AnalyticsResponse {
-            return HttpResponse.createHttpResponse(responseCode, responseBody)
+            return when (responseCode) {
+                in SUCCESS.range -> SuccessResponse()
+                in BAD_REQUEST.range -> BadRequestResponse(JSONObject(responseBody))
+                in PAYLOAD_TOO_LARGE.range -> PayloadTooLargeResponse(JSONObject(responseBody))
+                in TOO_MANY_REQUESTS.range -> TooManyRequestsResponse(JSONObject(responseBody))
+                in TIMEOUT.range -> TimeoutResponse()
+                else -> FailedResponse(parseResponseBodyOrGetDefault(responseBody))
+            }
+        }
+
+        private fun parseResponseBodyOrGetDefault(responseBody: String?): JSONObject {
+            val defaultObject = JSONObject()
+            if (responseBody.isNullOrEmpty()) return defaultObject
+
+            return try {
+                JSONObject(responseBody)
+            } catch (ignored: Exception) {
+                defaultObject.put("error", responseBody)
+                defaultObject
+            }
         }
     }
 }
 
-class SuccessResponse : AnalyticsResponse(HttpStatus.SUCCESS)
+class SuccessResponse : AnalyticsResponse(SUCCESS)
 
-class BadRequestResponse(response: JSONObject) : AnalyticsResponse(HttpStatus.BAD_REQUEST) {
+class BadRequestResponse(response: JSONObject) : AnalyticsResponse(BAD_REQUEST) {
     val error: String = response.getStringWithDefault("error", "")
     private var eventsWithInvalidFields: Set<Int> = setOf()
     private var eventsWithMissingFields: Set<Int> = setOf()
@@ -102,12 +91,12 @@ class BadRequestResponse(response: JSONObject) : AnalyticsResponse(HttpStatus.BA
 }
 
 class PayloadTooLargeResponse(response: JSONObject) :
-    AnalyticsResponse(HttpStatus.PAYLOAD_TOO_LARGE) {
+    AnalyticsResponse(PAYLOAD_TOO_LARGE) {
     val error: String = response.getStringWithDefault("error", "")
 }
 
 class TooManyRequestsResponse(response: JSONObject) :
-    AnalyticsResponse(HttpStatus.TOO_MANY_REQUESTS) {
+    AnalyticsResponse(TOO_MANY_REQUESTS) {
     private var exceededDailyQuotaUsers: Set<String> = setOf()
     private var exceededDailyQuotaDevices: Set<String> = setOf()
     private var throttledDevices: Set<String> = setOf()
@@ -141,7 +130,7 @@ class TooManyRequestsResponse(response: JSONObject) :
     }
 }
 
-class TimeoutResponse : AnalyticsResponse(HttpStatus.TIMEOUT)
+class TimeoutResponse : AnalyticsResponse(TIMEOUT)
 
 class FailedResponse(response: JSONObject) : AnalyticsResponse(HttpStatus.FAILED) {
     val error: String = response.getStringWithDefault("error", "")
@@ -268,12 +257,13 @@ interface ResponseHandler {
  * A request requires a retry if the event file/s are still present and we want to attempt to upload them again.
  */
 enum class HttpStatus(
-    val code: Int
+    code: Int,
+    val range: IntRange = code..code,
 ) {
-    SUCCESS(200),
+    SUCCESS(200, range = 200..299),
     BAD_REQUEST(400),
     TIMEOUT(408),
     PAYLOAD_TOO_LARGE(413),
     TOO_MANY_REQUESTS(429),
-    FAILED(500),
+    FAILED(500, 500..599),
 }
