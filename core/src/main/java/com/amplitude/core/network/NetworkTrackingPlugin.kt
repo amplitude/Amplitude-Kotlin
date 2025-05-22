@@ -77,8 +77,8 @@ class NetworkTrackingPlugin(
      * [okhttp3.OkHttpClient] instance is used for both Amplitude and other network requests.
      */
     private fun Request.amplitudeApiRequest(): Boolean {
-        return url.host.endsWith(AMPLITUDE_HOST_DOMAIN) &&
-            body?.contains(NETWORK_TRACKING) == false
+        val containsTrackingEvent = body?.contains(NETWORK_TRACKING) ?: false
+        return url.host.endsWith(AMPLITUDE_HOST_DOMAIN) && !containsTrackingEvent
     }
 
     /**
