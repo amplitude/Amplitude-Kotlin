@@ -19,8 +19,6 @@ test {
 }
 
 dependencies {
-    api project(":event-bridge")
-    api project(':id')
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 
     // MAIN DEPS

@@ -3,12 +3,8 @@ include 'core'
 project(':core').projectDir = file('core')
 include 'samples:kotlin-jvm-app'
 project(':samples:kotlin-jvm-app').projectDir = file('samples/kotlin-jvm-app')
-include 'event-bridge'
-project(':event-bridge').projectDir = file('event-bridge')
 include 'android'
 project(':android').projectDir = file('android')
-include 'id'
-project(':id').projectDir = file('id')
 include 'samples:kotlin-android-app'
 project(':samples:kotlin-android-app').projectDir = file('samples/kotlin-android-app')
 include 'samples:java-android-app'
