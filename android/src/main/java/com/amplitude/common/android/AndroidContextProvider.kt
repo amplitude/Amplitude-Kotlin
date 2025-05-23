@@ -1,6 +1,7 @@
 package com.amplitude.common.android
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
@@ -322,6 +323,7 @@ class AndroidContextProvider(
     // It's possible that the location service is running out of process
     // and the remote getProviders call fails. Handle null provider lists.
     val mostRecentLocation: Location?
+        @SuppressLint("MissingPermission")
         get() {
             if (!locationListening) {
                 return null
