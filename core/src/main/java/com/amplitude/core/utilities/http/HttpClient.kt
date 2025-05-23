@@ -25,7 +25,7 @@ internal class HttpClient(
         connection.doOutput = true
         connection.doInput = true
         connection.connectTimeout = 15_000 // 15s
-        connection.readTimeout = 20_1000 // 20s
+        connection.readTimeout = 20_000 // 20s
         return connection
     }
 
