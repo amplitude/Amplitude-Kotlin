@@ -35,7 +35,7 @@ class FileResponseHandler(
         val eventFilePath = events as String
         logger?.debug("Handle response, status: ${successResponse.status}")
         val eventsList = parseEvents(eventsString, eventFilePath).toEvents()
-        triggerEventsCallback(eventsList, HttpStatus.SUCCESS.code, "Event sent success.")
+        triggerEventsCallback(eventsList, HttpStatus.SUCCESS.statusCode, "Event sent success.")
         scope.launch(storageDispatcher) {
             storage.removeFile(eventFilePath)
         }
@@ -52,7 +52,7 @@ class FileResponseHandler(
         val eventFilePath = events as String
         val eventsList = parseEvents(eventsString, eventFilePath).toEvents()
         if (badRequestResponse.isInvalidApiKeyResponse()) {
-            triggerEventsCallback(eventsList, HttpStatus.BAD_REQUEST.code, badRequestResponse.error)
+            triggerEventsCallback(eventsList, HttpStatus.BAD_REQUEST.statusCode, badRequestResponse.error)
             scope.launch(storageDispatcher) {
                 storage.removeFile(eventFilePath)
             }
@@ -77,7 +77,7 @@ class FileResponseHandler(
             return true
         }
 
-        triggerEventsCallback(eventsToDrop, HttpStatus.BAD_REQUEST.code, badRequestResponse.error)
+        triggerEventsCallback(eventsToDrop, HttpStatus.BAD_REQUEST.statusCode, badRequestResponse.error)
         eventsToRetry.forEach {
             eventPipeline.put(it)
         }
@@ -104,7 +104,7 @@ class FileResponseHandler(
         if (rawEvents.length() == 1) {
             val eventsList = rawEvents.toEvents()
             triggerEventsCallback(
-                eventsList, HttpStatus.PAYLOAD_TOO_LARGE.code, payloadTooLargeResponse.error
+                eventsList, HttpStatus.PAYLOAD_TOO_LARGE.statusCode, payloadTooLargeResponse.error
             )
             scope.launch(storageDispatcher) {
                 storage.removeFile(eventFilePath)
