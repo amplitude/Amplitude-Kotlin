@@ -21,7 +21,6 @@ test {
 dependencies {
     api project(":common")
     api project(":common-jvm")
-    api project(':id')
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
 
     // MAIN DEPS
