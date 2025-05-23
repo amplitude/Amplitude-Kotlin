@@ -114,7 +114,7 @@ class ResponseHandlerIntegrationTest {
         amplitude.isBuilt.await()
 
         // verify it will attempt to retry, but single event file will be removed
-        val code = HttpStatus.PAYLOAD_TOO_LARGE.range.first
+        val code = HttpStatus.PAYLOAD_TOO_LARGE.statusCode
         val body = "{\"code\": \"$code\", \"error\": \"payload too large\"}"
         server.enqueue(MockResponse().setBody(body).setResponseCode(code))
         amplitude.track("test event 1", options = options)
@@ -271,22 +271,22 @@ class ResponseHandlerIntegrationTest {
 
     @Test
     fun `test handle bad request response retry`() = runTest {
-        testRequestFailureAndRetry(HttpStatus.BAD_REQUEST.range.first)
+        testRequestFailureAndRetry(HttpStatus.BAD_REQUEST.statusCode)
     }
 
     @Test
     fun `test handle too many requests response retry`() = runTest {
-        testRequestFailureAndRetry(HttpStatus.TOO_MANY_REQUESTS.range.first)
+        testRequestFailureAndRetry(HttpStatus.TOO_MANY_REQUESTS.statusCode)
     }
 
     @Test
     fun `test handle timeout response retry`() = runTest {
-        testRequestFailureAndRetry(HttpStatus.TIMEOUT.range.first)
+        testRequestFailureAndRetry(HttpStatus.TIMEOUT.statusCode)
     }
 
     @Test
     fun `test handle failed response retry`() = runTest {
-        testRequestFailureAndRetry(HttpStatus.FAILED.range.first)
+        testRequestFailureAndRetry(HttpStatus.FAILED.statusCode)
     }
 
     private suspend fun TestScope.testRequestFailureAndRetry(code: Int) {

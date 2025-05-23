@@ -265,5 +265,8 @@ enum class HttpStatus(
     TIMEOUT(408),
     PAYLOAD_TOO_LARGE(413),
     TOO_MANY_REQUESTS(429),
-    FAILED(500, 500..599),
+    FAILED(500, 500..599);
+
+    val statusCode: Int
+        get() = range.first
 }
