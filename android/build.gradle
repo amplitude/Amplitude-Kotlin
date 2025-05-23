@@ -53,9 +53,6 @@ android {
 }
 
 dependencies {
-    embed project(':common')
-    embed project(':common-jvm')
-    embed project(':common-android')
     embed project(':core')
     embed project(':event-bridge')
     embed project(':id')
@@ -71,7 +68,6 @@ dependencies {
 
     testImplementation 'io.mockk:mockk:1.12.4'
     testImplementation project(':core')
-    testImplementation project(path: ':common-android')
     testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.6.4'
     testImplementation 'com.squareup.okhttp3:mockwebserver:4.10.0'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.7.2'

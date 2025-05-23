@@ -13,7 +13,6 @@ test {
 }
 
 dependencies {
-    api project(":common")
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     testImplementation platform("org.junit:junit-bom:5.7.2")
     testImplementation "org.junit.jupiter:junit-jupiter"
