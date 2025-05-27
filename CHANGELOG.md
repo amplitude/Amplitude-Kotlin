@@ -1,3 +1,11 @@
+## [1.21.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.21.0...v1.21.1) (2025-05-27)
+
+
+### Bug Fixes
+
+* use range for common success/failure status codes ([#276](https://github.com/amplitude/Amplitude-Kotlin/issues/276)) ([52197b2](https://github.com/amplitude/Amplitude-Kotlin/commit/52197b2f87fcaa3c5fa210f3da39e3afe6fe4667))
+* **httpclient:** correct read timeout ([#278](https://github.com/amplitude/Amplitude-Kotlin/issues/278)) ([ccbb4df](https://github.com/amplitude/Amplitude-Kotlin/commit/ccbb4df0d4245dc299a091c2a38de3178a11cc7a))
+
 # [1.21.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.20.7...v1.21.0) (2025-05-21)
 
 
