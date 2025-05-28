@@ -77,6 +77,22 @@ class AndroidLifecyclePluginTest {
     }
 
     @Test
+    fun `test eventJob is created even if APP_LIFECYCLES is not enabled`() = runTest {
+        every { mockedConfig.autocapture } returns emptySet()
+        every { mockedAmplitude.amplitudeScope } returns this
+
+        plugin.setup(mockedAmplitude)
+
+        advanceUntilIdle()
+
+        assert(
+            plugin.eventJob != null
+        ) { "eventJob should be created even if APP_LIFECYCLES is not enabled" }
+
+        close()
+    }
+
+    @Test
     fun `test application installed event is tracked`() = runTest {
         every { mockedConfig.autocapture } returns setOf(AutocaptureOption.APP_LIFECYCLES)
         every { mockedAmplitude.amplitudeScope } returns this

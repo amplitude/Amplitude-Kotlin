@@ -7,6 +7,10 @@ import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.annotation.VisibleForTesting
 import com.amplitude.android.AutocaptureOption
+import com.amplitude.android.AutocaptureOption.APP_LIFECYCLES
+import com.amplitude.android.AutocaptureOption.DEEP_LINKS
+import com.amplitude.android.AutocaptureOption.ELEMENT_INTERACTIONS
+import com.amplitude.android.AutocaptureOption.SCREEN_VIEWS
 import com.amplitude.android.Configuration
 import com.amplitude.android.ExperimentalAmplitudeFeature
 import com.amplitude.android.utilities.ActivityCallbackType
@@ -18,10 +22,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import com.amplitude.android.Amplitude as AndroidAmplitude
-import com.amplitude.android.AutocaptureOption.APP_LIFECYCLES
-import com.amplitude.android.AutocaptureOption.DEEP_LINKS
-import com.amplitude.android.AutocaptureOption.ELEMENT_INTERACTIONS
-import com.amplitude.android.AutocaptureOption.SCREEN_VIEWS
 
 class AndroidLifecyclePlugin(
     private val activityLifecycleObserver: ActivityLifecycleObserver
@@ -58,21 +58,21 @@ class AndroidLifecyclePlugin(
             }
 
             DefaultEventUtils(androidAmplitude).trackAppUpdatedInstalledEvent(packageInfo)
+        }
 
-            eventJob = amplitude.amplitudeScope.launch(Dispatchers.Main) {
-                for (event in activityLifecycleObserver.eventChannel) {
-                    event.activity.get()?.let { activity ->
-                        when (event.type) {
-                            ActivityCallbackType.Created -> onActivityCreated(
-                                activity,
-                                activity.intent?.extras
-                            )
-                            ActivityCallbackType.Started -> onActivityStarted(activity)
-                            ActivityCallbackType.Resumed -> onActivityResumed(activity)
-                            ActivityCallbackType.Paused -> onActivityPaused(activity)
-                            ActivityCallbackType.Stopped -> onActivityStopped(activity)
-                            ActivityCallbackType.Destroyed -> onActivityDestroyed(activity)
-                        }
+        eventJob = amplitude.amplitudeScope.launch(Dispatchers.Main) {
+            for (event in activityLifecycleObserver.eventChannel) {
+                event.activity.get()?.let { activity ->
+                    when (event.type) {
+                        ActivityCallbackType.Created -> onActivityCreated(
+                            activity,
+                            activity.intent?.extras
+                        )
+                        ActivityCallbackType.Started -> onActivityStarted(activity)
+                        ActivityCallbackType.Resumed -> onActivityResumed(activity)
+                        ActivityCallbackType.Paused -> onActivityPaused(activity)
+                        ActivityCallbackType.Stopped -> onActivityStopped(activity)
+                        ActivityCallbackType.Destroyed -> onActivityDestroyed(activity)
                     }
                 }
             }
