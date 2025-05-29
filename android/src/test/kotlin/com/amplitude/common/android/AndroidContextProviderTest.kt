@@ -34,7 +34,7 @@ import org.robolectric.util.ReflectionHelpers
 import java.util.Locale
 
 @RunWith(RobolectricTestRunner::class)
-@Config(manifest = Config.NONE)
+@Config(manifest = Config.NONE, sdk = [Build.VERSION_CODES.Q])
 class AndroidContextProviderTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
     private val TEST_BRAND = "brand"
