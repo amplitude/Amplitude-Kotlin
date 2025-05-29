@@ -20,14 +20,19 @@ import io.mockk.mockkObject
 import io.mockk.slot
 import io.mockk.unmockkObject
 import kotlin.concurrent.thread
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestCoroutineDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.io.File
 
@@ -44,6 +49,7 @@ internal class FakeEventPlugin : EventPlugin {
 
 @ExperimentalCoroutinesApi
 class AmplitudeTest {
+
     private fun createConfiguration(
         minTimeBetweenSessionsMillis: Long? = null,
         storageProvider: StorageProvider = InMemoryStorageProvider(),
@@ -86,6 +92,11 @@ class AmplitudeTest {
         }
 
         return configuration
+    }
+
+    @BeforeEach
+    fun setUp() {
+        Dispatchers.setMain(StandardTestDispatcher())
     }
 
     @Test
