@@ -19,12 +19,13 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.verify
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
+import org.junit.Before // Added import
 import org.junit.Test
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Assertions.fail
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows
@@ -44,9 +45,10 @@ class AndroidContextProviderTest {
     private val TEST_COUNTRY = "FR"
     private val TEST_LANGUAGE = "fr"
     private val TEST_NETWORK_COUNTRY = "GB"
-    private val androidContextProvider: AndroidContextProvider
+    private lateinit var androidContextProvider: AndroidContextProvider // Changed to lateinit var
 
-    init {
+    @Before // Added annotation
+    fun setUp() { // Renamed init to setUp and made it a function
         ReflectionHelpers.setStaticField(Build::class.java, "BRAND", TEST_BRAND)
         ReflectionHelpers.setStaticField(Build::class.java, "MANUFACTURER", TEST_MANUFACTURER)
         ReflectionHelpers.setStaticField(Build::class.java, "MODEL", TEST_MODEL)
