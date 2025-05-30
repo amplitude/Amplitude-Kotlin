@@ -288,7 +288,7 @@ class AmplitudeTest {
         // Fire a foreground event. This is fired using the delayed timeline. The event is
         // actually processed after 500ms
         val thread1 = thread {
-            amplitude.onEnterForeground(1120)
+            enterForeground(amplitude, 1120)
         }
         Thread.sleep(100)
         // Un-mock the object so that there's no delay anymore
@@ -313,5 +313,25 @@ class AmplitudeTest {
 
     companion object {
         private const val INSTANCE_NAME = "testInstance"
+    }
+
+    // simulates the dummy event for android lifecycle onActivityResumed
+    private fun enterForeground(amplitude: Amplitude, timestamp: Long) {
+        amplitude.timeline.process(
+            BaseEvent().apply {
+                eventType = Amplitude.DUMMY_ENTER_FOREGROUND_EVENT
+                this.timestamp = timestamp
+            }
+        )
+    }
+
+    // simulates the dummy event for android lifecycle onActivityPaused
+    private fun exitForeground(amplitude: Amplitude, timestamp: Long) {
+        amplitude.timeline.process(
+            BaseEvent().apply {
+                eventType = Amplitude.DUMMY_EXIT_FOREGROUND_EVENT
+                this.timestamp = timestamp
+            }
+        )
     }
 }

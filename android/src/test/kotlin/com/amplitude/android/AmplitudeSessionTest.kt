@@ -173,7 +173,7 @@ class AmplitudeSessionTest {
 
         amplitude.isBuilt.await()
 
-        amplitude.onEnterForeground(1000)
+        enterForeground(amplitude, 1000)
         amplitude.track(createEvent(1050, "test event 1"))
         amplitude.track(createEvent(2000, "test event 2"))
 
@@ -219,7 +219,7 @@ class AmplitudeSessionTest {
         amplitude.isBuilt.await()
 
         amplitude.track(createEvent(1000, "test event 1"))
-        amplitude.onEnterForeground(1050)
+        enterForeground(amplitude, 1050)
         amplitude.track(createEvent(2000, "test event 2"))
 
         advanceUntilIdle()
@@ -264,7 +264,7 @@ class AmplitudeSessionTest {
         amplitude.isBuilt.await()
 
         amplitude.track(createEvent(1000, "test event 1"))
-        amplitude.onEnterForeground(2000)
+        enterForeground(amplitude, 2000)
         amplitude.track(createEvent(3000, "test event 2"))
 
         advanceUntilIdle()
@@ -318,9 +318,9 @@ class AmplitudeSessionTest {
 
         amplitude.isBuilt.await()
 
-        amplitude.onEnterForeground(1000)
+        enterForeground(amplitude, 1000)
         amplitude.track(createEvent(1500, "test event 1"))
-        amplitude.onExitForeground(2000)
+        exitForeground(amplitude, 2000)
         amplitude.track(createEvent(2050, "test event 2"))
 
         advanceUntilIdle()
@@ -364,9 +364,9 @@ class AmplitudeSessionTest {
 
         amplitude.isBuilt.await()
 
-        amplitude.onEnterForeground(1000)
+        enterForeground(amplitude, 1000)
         amplitude.track(createEvent(1500, "test event 1"))
-        amplitude.onExitForeground(2000)
+        exitForeground(amplitude, 2000)
         amplitude.track(createEvent(3000, "test event 2"))
 
         advanceUntilIdle()
@@ -417,7 +417,7 @@ class AmplitudeSessionTest {
         )
         amplitude1.isBuilt.await()
 
-        amplitude1.onEnterForeground(1000)
+        enterForeground(amplitude1, 1000)
 
         advanceUntilIdle()
         Thread.sleep(100)
@@ -647,6 +647,26 @@ class AmplitudeSessionTest {
         event.eventType = eventType
         event.sessionId = sessionId
         return event
+    }
+
+    // simulates the dummy event for android lifecycle onActivityResumed
+    private fun enterForeground(amplitude: Amplitude, timestamp: Long) {
+        amplitude.timeline.process(
+            BaseEvent().apply {
+                eventType = Amplitude.DUMMY_ENTER_FOREGROUND_EVENT
+                this.timestamp = timestamp
+            }
+        )
+    }
+
+    // simulates the dummy event for android lifecycle onActivityPaused
+    private fun exitForeground(amplitude: Amplitude, timestamp: Long) {
+        amplitude.timeline.process(
+            BaseEvent().apply {
+                eventType = Amplitude.DUMMY_EXIT_FOREGROUND_EVENT
+                this.timestamp = timestamp
+            }
+        )
     }
 }
 

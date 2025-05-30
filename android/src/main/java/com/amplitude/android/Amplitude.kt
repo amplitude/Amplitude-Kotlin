@@ -11,7 +11,6 @@ import com.amplitude.android.plugins.AndroidNetworkConnectivityCheckerPlugin
 import com.amplitude.android.storage.AndroidStorageContextV3
 import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.core.State
-import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
 import com.amplitude.id.IdentityConfiguration
@@ -126,22 +125,14 @@ open class Amplitude internal constructor(
         return this
     }
 
+    @Deprecated("This method is deprecated and a no-op.")
     fun onEnterForeground(timestamp: Long) {
-        val dummyEnterForegroundEvent = BaseEvent()
-        dummyEnterForegroundEvent.eventType = DUMMY_ENTER_FOREGROUND_EVENT
-        dummyEnterForegroundEvent.timestamp = timestamp
-        timeline.process(dummyEnterForegroundEvent)
+        // no-op
     }
 
+    @Deprecated("This method is deprecated and a no-op.")
     fun onExitForeground(timestamp: Long) {
-        val dummyExitForegroundEvent = BaseEvent()
-        dummyExitForegroundEvent.eventType = DUMMY_EXIT_FOREGROUND_EVENT
-        dummyExitForegroundEvent.timestamp = timestamp
-        timeline.process(dummyExitForegroundEvent)
-
-        if ((configuration as Configuration).flushEventsOnClose) {
-            flush()
-        }
+        // no-op
     }
 
     private fun registerShutdownHook() {
