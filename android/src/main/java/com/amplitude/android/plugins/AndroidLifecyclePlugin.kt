@@ -17,12 +17,12 @@ import com.amplitude.android.utilities.ActivityCallbackType
 import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.android.utilities.DefaultEventUtils
 import com.amplitude.core.Amplitude
+import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import com.amplitude.android.Amplitude as AndroidAmplitude
-import com.amplitude.core.events.BaseEvent
 
 class AndroidLifecyclePlugin(
     private val activityLifecycleObserver: ActivityLifecycleObserver
