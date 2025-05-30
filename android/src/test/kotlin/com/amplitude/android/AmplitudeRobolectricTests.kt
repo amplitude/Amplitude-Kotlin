@@ -54,14 +54,14 @@ class AmplitudeRobolectricTests {
         event1.timestamp = 1000
         amplitudeInstance.track(event1)
 
-        amplitudeInstance.onEnterForeground(1500)
+        enterForeground(amplitudeInstance, 1500)
 
         val event2 = BaseEvent()
         event2.eventType = "test event 2"
         event2.timestamp = 1700
         amplitudeInstance.track(event2)
 
-        amplitudeInstance.onExitForeground(2000)
+        exitForeground(amplitudeInstance, 2000)
 
         assertTrue { fakeEventPlugin.trackedEvents.isEmpty() }
     }
@@ -80,6 +80,26 @@ class AmplitudeRobolectricTests {
             optOut = optOut ?: false,
             minTimeBetweenSessionsMillis = minTimeBetweenSessionsMillis
                 ?: Configuration.MIN_TIME_BETWEEN_SESSIONS_MILLIS,
+        )
+    }
+
+    // simulates the dummy event for android lifecycle onActivityResumed
+    private fun enterForeground(amplitude: Amplitude, timestamp: Long) {
+        amplitude.timeline.process(
+            BaseEvent().apply {
+                eventType = Amplitude.DUMMY_ENTER_FOREGROUND_EVENT
+                this.timestamp = timestamp
+            }
+        )
+    }
+
+    // simulates the dummy event for android lifecycle onActivityPaused
+    private fun exitForeground(amplitude: Amplitude, timestamp: Long) {
+        amplitude.timeline.process(
+            BaseEvent().apply {
+                eventType = Amplitude.DUMMY_EXIT_FOREGROUND_EVENT
+                this.timestamp = timestamp
+            }
         )
     }
 }
