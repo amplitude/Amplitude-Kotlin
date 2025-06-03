@@ -23,12 +23,12 @@ module.exports = {
       {
         "replacements": [
           {
-            "files": ["android/build.gradle"],
-            "from": "PUBLISH_VERSION = \'.*\'",
-            "to": "PUBLISH_VERSION = \'${nextRelease.version}\'",
+            "files": ["gradle.properties"],
+            "from": "PUBLISH_VERSION=.*",
+            "to": "PUBLISH_VERSION=${nextRelease.version}",
             "results": [
               {
-                "file": "android/build.gradle",
+                "file": "gradle.properties",
                 "hasChanged": true,
                 "numMatches": 1,
                 "numReplacements": 1
@@ -40,8 +40,8 @@ module.exports = {
       }
     ],
     ["@semantic-release/git", {
-      "assets": ["android/build.gradle", "CHANGELOG.md"],
-      "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+      "assets": ["gradle.properties", "CHANGELOG.md"],
+      "message": "chore(release): ${nextRelease.version} [skip ci]\\n\\n${nextRelease.notes}"
     }],
     ["@semantic-release/exec", {
       "publishCmd": "./gradlew android:publishReleasePublicationToSonatypeRepository",
