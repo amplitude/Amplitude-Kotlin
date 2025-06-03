@@ -14,6 +14,7 @@ import com.amplitude.core.platform.Timeline
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicBoolean
 
 class Timeline(
     private val initialSessionId: Long? = null,
@@ -21,7 +22,7 @@ class Timeline(
     private val eventMessageChannel: Channel<EventQueueMessage> = Channel(Channel.UNLIMITED)
 
     private val _sessionId = AtomicLong(initialSessionId ?: -1L)
-    private var _foreground = false
+    private val foreground = AtomicBoolean(false)
     val sessionId: Long
         get() {
             return _sessionId.get()
@@ -80,17 +81,17 @@ class Timeline(
 
             DUMMY_ENTER_FOREGROUND_EVENT -> {
                 localSessionEvents = startNewSessionIfNeeded(eventTimestamp)
-                _foreground = true
+                foreground.set(true)
             }
 
             DUMMY_EXIT_FOREGROUND_EVENT -> {
                 refreshSessionTime(eventTimestamp)
-                _foreground = false
+                foreground.set(false)
             }
 
             else -> {
                 // Regular event
-                if (!_foreground) {
+                if (!foreground.get()) {
                     localSessionEvents = startNewSessionIfNeeded(eventTimestamp)
                 } else {
                     refreshSessionTime(eventTimestamp)
