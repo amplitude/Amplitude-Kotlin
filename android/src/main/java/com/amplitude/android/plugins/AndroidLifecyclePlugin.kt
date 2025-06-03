@@ -17,6 +17,7 @@ import com.amplitude.android.utilities.ActivityCallbackType
 import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.android.utilities.DefaultEventUtils
 import com.amplitude.core.Amplitude
+import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -112,7 +113,14 @@ class AndroidLifecyclePlugin(
     }
 
     override fun onActivityResumed(activity: Activity) {
-        androidAmplitude.onEnterForeground(getCurrentTimeMillis())
+        with(androidAmplitude) {
+            timeline.process(
+                BaseEvent().apply {
+                    eventType = AndroidAmplitude.DUMMY_ENTER_FOREGROUND_EVENT
+                    timestamp = System.currentTimeMillis()
+                }
+            )
+        }
 
         @OptIn(ExperimentalAmplitudeFeature::class)
         if (ELEMENT_INTERACTIONS in autocapture) {
@@ -121,7 +129,18 @@ class AndroidLifecyclePlugin(
     }
 
     override fun onActivityPaused(activity: Activity) {
-        androidAmplitude.onExitForeground(getCurrentTimeMillis())
+        with(androidAmplitude) {
+            timeline.process(
+                BaseEvent().apply {
+                    eventType = AndroidAmplitude.DUMMY_EXIT_FOREGROUND_EVENT
+                    timestamp = System.currentTimeMillis()
+                }
+            )
+
+            if ((configuration as Configuration).flushEventsOnClose) {
+                flush()
+            }
+        }
 
         @OptIn(ExperimentalAmplitudeFeature::class)
         if (ELEMENT_INTERACTIONS in autocapture) {
@@ -152,12 +171,5 @@ class AndroidLifecyclePlugin(
     override fun teardown() {
         super.teardown()
         eventJob?.cancel()
-    }
-
-    companion object {
-        @JvmStatic
-        fun getCurrentTimeMillis(): Long {
-            return System.currentTimeMillis()
-        }
     }
 }
