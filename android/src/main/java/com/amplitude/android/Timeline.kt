@@ -1,7 +1,5 @@
 package com.amplitude.android
 
-import com.amplitude.android.Amplitude.Companion.DUMMY_ENTER_FOREGROUND_EVENT
-import com.amplitude.android.Amplitude.Companion.DUMMY_EXIT_FOREGROUND_EVENT
 import com.amplitude.android.Amplitude.Companion.END_SESSION_EVENT
 import com.amplitude.android.Amplitude.Companion.START_SESSION_EVENT
 import com.amplitude.core.Storage
@@ -13,8 +11,8 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Timeline
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
-import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
 class Timeline(
     private val initialSessionId: Long? = null,
@@ -62,12 +60,32 @@ class Timeline(
         eventMessageChannel.trySend(EventQueueMessage(incomingEvent))
     }
 
+    internal fun onEnterForeground(timestamp: Long) {
+        amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
+            val localSessionEvents = startNewSessionIfNeeded(timestamp)
+            foreground.set(true)
+
+            // Process any local session events
+            for (sessionEvent in localSessionEvents) {
+                sessionEvent.eventId = sessionEvent.eventId ?: ++lastEventId
+                super.process(sessionEvent)
+                amplitude.storage.write(LAST_EVENT_ID, lastEventId.toString())
+            }
+        }
+    }
+
+    internal fun onExitForeground(timestamp: Long) {
+        amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
+            refreshSessionTime(timestamp)
+            foreground.set(false)
+        }
+    }
+
     private suspend fun processEventMessage(message: EventQueueMessage) {
         val event = message.event
         val eventTimestamp = event.timestamp!! // Guaranteed non-null by process()
         val eventSessionId = event.sessionId
-
-        var localSessionEvents: List<BaseEvent> = emptyList()
+        val initialLastEventId = lastEventId
 
         when (event.eventType) {
             START_SESSION_EVENT -> {
@@ -79,45 +97,27 @@ class Timeline(
                 // No specific action needed before processing this event type
             }
 
-            DUMMY_ENTER_FOREGROUND_EVENT -> {
-                localSessionEvents = startNewSessionIfNeeded(eventTimestamp)
-                foreground.set(true)
-            }
-
-            DUMMY_EXIT_FOREGROUND_EVENT -> {
-                refreshSessionTime(eventTimestamp)
-                foreground.set(false)
-            }
-
             else -> {
                 // Regular event
                 if (!foreground.get()) {
-                    localSessionEvents = startNewSessionIfNeeded(eventTimestamp)
+                    val localSessionEvents = startNewSessionIfNeeded(eventTimestamp)
+
+                    // Process any local session events first
+                    for (sessionEvent in localSessionEvents) {
+                        sessionEvent.eventId = sessionEvent.eventId ?: ++lastEventId
+                        super.process(sessionEvent)
+                    }
                 } else {
                     refreshSessionTime(eventTimestamp)
                 }
             }
         }
 
-        val initialLastEventId = lastEventId
-
-        // Process any local session events first
-        for (sessionEvent in localSessionEvents) {
-            sessionEvent.eventId = sessionEvent.eventId ?: ++lastEventId
-            super.process(sessionEvent)
-        }
-
         // Process the incoming event
-        val dummyEvent = event.eventType == DUMMY_ENTER_FOREGROUND_EVENT ||
-            event.eventType == DUMMY_EXIT_FOREGROUND_EVENT
-        if (!dummyEvent) {
-            event.eventId = event.eventId ?: ++lastEventId
-            // Assign sessionId to the current event if it's not a dummy event and doesn't have one
-            if (event.sessionId == null) {
-                event.sessionId = this.sessionId // Use this.sessionId for clarity
-            }
-            super.process(event)
-        }
+        event.eventId = event.eventId ?: ++lastEventId
+        // Assign sessionId to the current event if it doesn't have one
+        event.sessionId = event.sessionId ?: this.sessionId
+        super.process(event)
 
         // Persist lastEventId if it changed
         if (lastEventId > initialLastEventId) {

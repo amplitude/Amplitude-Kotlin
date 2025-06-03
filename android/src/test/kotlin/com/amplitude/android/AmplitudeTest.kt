@@ -19,9 +19,11 @@ import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.slot
 import io.mockk.unmockkObject
+import io.mockk.verify
 import kotlin.concurrent.thread
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestCoroutineDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -35,6 +37,10 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.io.File
+import com.amplitude.android.Amplitude.Companion.END_SESSION_EVENT
+import com.amplitude.android.Amplitude.Companion.START_SESSION_EVENT
+import java.util.concurrent.atomic.AtomicLong
+import com.amplitude.android.Timeline
 
 internal class FakeEventPlugin : EventPlugin {
     override val type: Plugin.Type = Plugin.Type.Before
@@ -244,9 +250,9 @@ class AmplitudeTest {
     /**
      * Here is what we want to test. In the older version of the SDK, we were unintentionally
      * extending a session. Here's how enter foreground was being handled before.
-     *  - Application is entering foreground
-     *  - Amplitude.inForeground flag is set to true.
-     *  - Immediately after this, we expect the dummy foreground event to be processed and create
+     *  1. Application is entering foreground
+     *  2. Amplitude.inForeground flag is set to true.
+     *  3. Immediately after this, we expect the foreground event to be processed and create
      *    a new session if needed.
      *
      *  If another event is fired between 2 and 3 from a different thread, we would unintentionally
@@ -263,38 +269,19 @@ class AmplitudeTest {
     fun amplitude_should_correctly_start_new_session() = runTest {
         val testSessionId = 1000L
 
-        // Creates a mocked timeline that waits for 500ms before processing the event. This
-        // is to create an artificial delay
-        val baseEventParam = slot<BaseEvent>()
-        val timeline = Timeline(testSessionId)
-        mockkObject(timeline)
-        every { timeline.process(incomingEvent = capture(baseEventParam)) } answers {
-            if (baseEventParam.captured.eventType == Amplitude.DUMMY_ENTER_FOREGROUND_EVENT) {
-                Thread.sleep(500)
-            }
-            callOriginal()
-        }
-
         val amplitude = object : Amplitude(
             createConfiguration(sessionId = testSessionId, minTimeBetweenSessionsMillis = 50)
-        ) {
-            override fun createTimeline(): Timeline {
-                timeline.amplitude = this
-                return timeline
-            }
-        }
+        ) {}
 
         amplitude.isBuilt.await()
-        // Fire a foreground event. This is fired using the delayed timeline. The event is
-        // actually processed after 500ms
+        // Fire a delayed foreground event.
         val thread1 = thread {
-            enterForeground(amplitude, 1120)
+            Thread.sleep(500)
+            (amplitude.timeline as Timeline).onEnterForeground(1120)
         }
         Thread.sleep(100)
-        // Un-mock the object so that there's no delay anymore
-        unmockkObject(timeline)
 
-        // Fire a test event that will be added to the queue before the foreground event.
+        // Fire a test event that will be before the foreground event.
         val thread2 = thread {
             val event = BaseEvent()
             event.eventType = "test_event"
@@ -313,25 +300,5 @@ class AmplitudeTest {
 
     companion object {
         private const val INSTANCE_NAME = "testInstance"
-    }
-
-    // simulates the dummy event for android lifecycle onActivityResumed
-    private fun enterForeground(amplitude: Amplitude, timestamp: Long) {
-        amplitude.timeline.process(
-            BaseEvent().apply {
-                eventType = Amplitude.DUMMY_ENTER_FOREGROUND_EVENT
-                this.timestamp = timestamp
-            }
-        )
-    }
-
-    // simulates the dummy event for android lifecycle onActivityPaused
-    private fun exitForeground(amplitude: Amplitude, timestamp: Long) {
-        amplitude.timeline.process(
-            BaseEvent().apply {
-                eventType = Amplitude.DUMMY_EXIT_FOREGROUND_EVENT
-                this.timestamp = timestamp
-            }
-        )
     }
 }
