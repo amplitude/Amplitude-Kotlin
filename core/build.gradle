@@ -4,11 +4,18 @@ plugins {
     id 'org.jetbrains.kotlin.jvm'
 }
 
+ext {
+    PUBLISH_NAME = 'Amplitude Kotlin Core'
+    PUBLISH_DESCRIPTION = 'Amplitude Kotlin core library'
+    PUBLISH_ARTIFACT_ID = 'analytics-core'
+}
+
+apply from: "${rootDir}/gradle/publish-module.gradle"
+
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
 }
-group 'com.amplitude'
 
 repositories {
     mavenCentral()

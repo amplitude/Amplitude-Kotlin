@@ -1,7 +1,6 @@
 plugins {
     id 'com.android.library'
     id 'kotlin-android'
-    id 'com.kezong.fat-aar'
 }
 
 ext {
@@ -11,7 +10,6 @@ ext {
 }
 
 apply from: "${rootDir}/gradle/publish-module.gradle"
-version = PUBLISH_VERSION
 
 android {
     compileSdk 34
@@ -51,7 +49,7 @@ android {
 }
 
 dependencies {
-    embed project(':core')
+    implementation project(':core')
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.5.2'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.5.2'
     implementation 'com.amplitude:analytics-connector:1.0.0'
