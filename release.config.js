@@ -44,7 +44,8 @@ module.exports = {
       "message": "chore(release): ${nextRelease.version} [skip ci]\\n\\n${nextRelease.notes}"
     }],
     ["@semantic-release/exec", {
-      "publishCmd": "./gradlew android:publishReleasePublicationToSonatypeRepository",
+      "publishCmd": "./gradlew publishReleasePublicationToSonatypeRepository closeAndReleaseSonatypeStagingRepository",
     }],
   ],
 }
+
