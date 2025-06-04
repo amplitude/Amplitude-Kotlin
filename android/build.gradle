@@ -12,6 +12,8 @@ ext {
 apply from: "${rootDir}/gradle/publish-module.gradle"
 
 android {
+    namespace = "com.amplitude.android"
+
     compileSdk 34
 
     defaultConfig {
@@ -58,7 +60,7 @@ dependencies {
     compileOnly 'androidx.fragment:fragment-ktx:1.8.2'
     compileOnly 'androidx.compose.ui:ui:1.6.8'
 
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.5'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
 
     testImplementation 'io.mockk:mockk:1.12.4'
     testImplementation project(':core')
