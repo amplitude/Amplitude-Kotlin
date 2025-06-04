@@ -1,3 +1,10 @@
+## [1.21.2-beta.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.21.2-beta.1...v1.21.2-beta.2) (2025-06-04)
+
+
+### Bug Fixes
+
+* expose core as api for dependencies. ([1dd27ef](https://github.com/amplitude/Amplitude-Kotlin/commit/1dd27efd340b5d0073b7d6050b070e54dd70331e))
+
 ## [1.21.2-beta.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.21.1...v1.21.2-beta.1) (2025-06-03)
 
 
