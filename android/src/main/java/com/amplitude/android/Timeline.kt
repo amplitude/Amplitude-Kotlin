@@ -27,7 +27,9 @@ class Timeline(
         }
 
     internal var lastEventId: Long = 0
-    var lastEventTime: Long = -1L
+        private set
+    internal var lastEventTime: Long = -1L
+        private set
 
     internal fun start() {
         with(amplitude) {
