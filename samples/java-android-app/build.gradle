@@ -7,6 +7,8 @@ ext {
 }
 
 android {
+    namespace = "com.amplitude.android.sample"
+
     compileSdk 34
 
     defaultConfig {
