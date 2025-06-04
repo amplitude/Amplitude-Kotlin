@@ -13,17 +13,18 @@ import com.amplitude.android.internal.fragments.FragmentActivityHandler.unregist
 import com.amplitude.android.internal.gestures.AutocaptureWindowCallback
 import com.amplitude.android.internal.gestures.NoCaptureWindowCallback
 import com.amplitude.android.internal.locators.ViewTargetLocators.ALL
-import com.amplitude.core.Constants.EventProperties
-import com.amplitude.core.Constants.EventTypes
+import com.amplitude.core.Constants
 import com.amplitude.core.Storage
 import kotlinx.coroutines.launch
+import com.amplitude.core.Constants.EventProperties as ConstantsEventProperties
+import com.amplitude.core.Constants.EventTypes as ConstantsEventTypes
 
 @Deprecated("This class is deprecated and will be removed in future releases.")
 class DefaultEventUtils(private val amplitude: Amplitude) {
 
     fun trackAppUpdatedInstalledEvent(packageInfo: PackageInfo) {
         // Get current version/build and previously stored version/build information
-        val currentVersion = packageInfo.versionName
+        val currentVersion = packageInfo.versionName ?: "Unknown"
         val currentBuild = packageInfo.getVersionCode().toString()
         val storage = amplitude.storage
         val previousVersion = storage.read(Storage.Constants.APP_VERSION)
@@ -32,21 +33,21 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         if (previousBuild == null) {
             // No stored build, treat it as fresh installed
             amplitude.track(
-                EventTypes.APPLICATION_INSTALLED,
+                ConstantsEventTypes.APPLICATION_INSTALLED,
                 mapOf(
-                    EventProperties.VERSION to currentVersion,
-                    EventProperties.BUILD to currentBuild,
+                    ConstantsEventProperties.VERSION to currentVersion,
+                    ConstantsEventProperties.BUILD to currentBuild,
                 ),
             )
         } else if (currentBuild != previousBuild) {
             // Has stored build, but different from current build
             amplitude.track(
-                EventTypes.APPLICATION_UPDATED,
+                ConstantsEventTypes.APPLICATION_UPDATED,
                 mapOf(
-                    EventProperties.PREVIOUS_VERSION to previousVersion,
-                    EventProperties.PREVIOUS_BUILD to previousBuild,
-                    EventProperties.VERSION to currentVersion,
-                    EventProperties.BUILD to currentBuild,
+                    ConstantsEventProperties.PREVIOUS_VERSION to previousVersion,
+                    ConstantsEventProperties.PREVIOUS_BUILD to previousBuild,
+                    ConstantsEventProperties.VERSION to currentVersion,
+                    ConstantsEventProperties.BUILD to currentBuild,
                 ),
             )
         }
@@ -69,17 +70,17 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         val currentBuild = packageInfo.getVersionCode().toString()
 
         amplitude.track(
-            EventTypes.APPLICATION_OPENED,
+            ConstantsEventTypes.APPLICATION_OPENED,
             mapOf(
-                EventProperties.FROM_BACKGROUND to isFromBackground,
-                EventProperties.VERSION to currentVersion,
-                EventProperties.BUILD to currentBuild,
+                ConstantsEventProperties.FROM_BACKGROUND to isFromBackground,
+                ConstantsEventProperties.VERSION to currentVersion,
+                ConstantsEventProperties.BUILD to currentBuild,
             ),
         )
     }
 
     fun trackAppBackgroundedEvent() {
-        amplitude.track(EventTypes.APPLICATION_BACKGROUNDED)
+        amplitude.track(ConstantsEventTypes.APPLICATION_BACKGROUNDED)
     }
 
     fun trackDeepLinkOpenedEvent(activity: Activity) {
@@ -89,10 +90,10 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             it.data?.let { uri ->
                 val url = uri.toString()
                 amplitude.track(
-                    EventTypes.DEEP_LINK_OPENED,
+                    ConstantsEventTypes.DEEP_LINK_OPENED,
                     mapOf(
-                        EventProperties.LINK_URL to url,
-                        EventProperties.LINK_REFERRER to referrer,
+                        ConstantsEventProperties.LINK_URL to url,
+                        ConstantsEventProperties.LINK_REFERRER to referrer,
                     ),
                 )
             }
@@ -102,9 +103,9 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
     fun trackScreenViewedEvent(activity: Activity) {
         try {
             amplitude.track(
-                EventTypes.SCREEN_VIEWED,
+                ConstantsEventTypes.SCREEN_VIEWED,
                 mapOf(
-                    EventProperties.SCREEN_NAME to activity.screenName
+                    ConstantsEventProperties.SCREEN_NAME to activity.screenName
                 )
             )
         } catch (e: PackageManager.NameNotFoundException) {
@@ -192,6 +193,222 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             }
             return referrerUri
         }
+    }
+
+    @Deprecated("This object is deprecated. Use Constants.EventTypes.* instead.")
+    object EventTypes {
+        @Deprecated(
+            "Use Constants.EventTypes.APPLICATION_INSTALLED instead",
+            ReplaceWith(
+                "Constants.EventTypes.APPLICATION_INSTALLED",
+                "com.amplitude.core.Constants.EventTypes.APPLICATION_INSTALLED"
+            )
+        )
+        const val APPLICATION_INSTALLED = Constants.EventTypes.APPLICATION_INSTALLED
+        @Deprecated(
+            "Use Constants.EventTypes.APPLICATION_UPDATED instead",
+            ReplaceWith(
+                "Constants.EventTypes.APPLICATION_UPDATED",
+                "com.amplitude.core.Constants.EventTypes.APPLICATION_UPDATED"
+            )
+        )
+        const val APPLICATION_UPDATED = Constants.EventTypes.APPLICATION_UPDATED
+        @Deprecated(
+            "Use Constants.EventTypes.APPLICATION_OPENED instead",
+            ReplaceWith(
+                "Constants.EventTypes.APPLICATION_OPENED",
+                "com.amplitude.core.Constants.EventTypes.APPLICATION_OPENED"
+            )
+        )
+        const val APPLICATION_OPENED = Constants.EventTypes.APPLICATION_OPENED
+        @Deprecated(
+            "Use Constants.EventTypes.APPLICATION_BACKGROUNDED instead",
+            ReplaceWith(
+                "Constants.EventTypes.APPLICATION_BACKGROUNDED",
+                "com.amplitude.core.Constants.EventTypes.APPLICATION_BACKGROUNDED"
+            )
+        )
+        const val APPLICATION_BACKGROUNDED = Constants.EventTypes.APPLICATION_BACKGROUNDED
+        @Deprecated(
+            "Use Constants.EventTypes.DEEP_LINK_OPENED instead",
+            ReplaceWith(
+                "Constants.EventTypes.DEEP_LINK_OPENED",
+                "com.amplitude.core.Constants.EventTypes.DEEP_LINK_OPENED"
+            )
+        )
+        const val DEEP_LINK_OPENED = Constants.EventTypes.DEEP_LINK_OPENED
+        @Deprecated(
+            "Use Constants.EventTypes.SCREEN_VIEWED instead",
+            ReplaceWith(
+                "Constants.EventTypes.SCREEN_VIEWED",
+                "com.amplitude.core.Constants.EventTypes.SCREEN_VIEWED"
+            )
+        )
+        const val SCREEN_VIEWED = Constants.EventTypes.SCREEN_VIEWED
+        @Deprecated(
+            "Use Constants.EventTypes.FRAGMENT_VIEWED instead",
+            ReplaceWith(
+                "Constants.EventTypes.FRAGMENT_VIEWED",
+                "com.amplitude.core.Constants.EventTypes.FRAGMENT_VIEWED"
+            )
+        )
+        const val FRAGMENT_VIEWED = Constants.EventTypes.FRAGMENT_VIEWED
+        @Deprecated(
+            "Use Constants.EventTypes.ELEMENT_INTERACTED instead",
+            ReplaceWith(
+                "Constants.EventTypes.ELEMENT_INTERACTED",
+                "com.amplitude.core.Constants.EventTypes.ELEMENT_INTERACTED"
+            )
+        )
+        const val ELEMENT_INTERACTED = Constants.EventTypes.ELEMENT_INTERACTED
+    }
+
+    @Deprecated("This object is deprecated. Use Constants.EventProperties.* instead.")
+    object EventProperties {
+        @Deprecated(
+            "Use Constants.EventProperties.VERSION instead",
+            ReplaceWith(
+                "Constants.EventProperties.VERSION",
+                "com.amplitude.core.Constants.EventProperties.VERSION"
+            )
+        )
+        const val VERSION = Constants.EventProperties.VERSION
+        @Deprecated(
+            "Use Constants.EventProperties.BUILD instead",
+            ReplaceWith(
+                "Constants.EventProperties.BUILD",
+                "com.amplitude.core.Constants.EventProperties.BUILD"
+            )
+        )
+        const val BUILD = Constants.EventProperties.BUILD
+        @Deprecated(
+            "Use Constants.EventProperties.PREVIOUS_VERSION instead",
+            ReplaceWith(
+                "Constants.EventProperties.PREVIOUS_VERSION",
+                "com.amplitude.core.Constants.EventProperties.PREVIOUS_VERSION"
+            )
+        )
+        const val PREVIOUS_VERSION = Constants.EventProperties.PREVIOUS_VERSION
+        @Deprecated(
+            "Use Constants.EventProperties.PREVIOUS_BUILD instead",
+            ReplaceWith(
+                "Constants.EventProperties.PREVIOUS_BUILD",
+                "com.amplitude.core.Constants.EventProperties.PREVIOUS_BUILD"
+            )
+        )
+        const val PREVIOUS_BUILD = Constants.EventProperties.PREVIOUS_BUILD
+        @Deprecated(
+            "Use Constants.EventProperties.FROM_BACKGROUND instead",
+            ReplaceWith(
+                "Constants.EventProperties.FROM_BACKGROUND",
+                "com.amplitude.core.Constants.EventProperties.FROM_BACKGROUND"
+            )
+        )
+        const val FROM_BACKGROUND = Constants.EventProperties.FROM_BACKGROUND
+        @Deprecated(
+            "Use Constants.EventProperties.LINK_URL instead",
+            ReplaceWith(
+                "Constants.EventProperties.LINK_URL",
+                "com.amplitude.core.Constants.EventProperties.LINK_URL"
+            )
+        )
+        const val LINK_URL = Constants.EventProperties.LINK_URL
+        @Deprecated(
+            "Use Constants.EventProperties.LINK_REFERRER instead",
+            ReplaceWith(
+                "Constants.EventProperties.LINK_REFERRER",
+                "com.amplitude.core.Constants.EventProperties.LINK_REFERRER"
+            )
+        )
+        const val LINK_REFERRER = Constants.EventProperties.LINK_REFERRER
+        @Deprecated(
+            "Use Constants.EventProperties.SCREEN_NAME instead",
+            ReplaceWith(
+                "Constants.EventProperties.SCREEN_NAME",
+                "com.amplitude.core.Constants.EventProperties.SCREEN_NAME"
+            )
+        )
+        const val SCREEN_NAME = Constants.EventProperties.SCREEN_NAME
+        @Deprecated(
+            "Use Constants.EventProperties.FRAGMENT_CLASS instead",
+            ReplaceWith(
+                "Constants.EventProperties.FRAGMENT_CLASS",
+                "com.amplitude.core.Constants.EventProperties.FRAGMENT_CLASS"
+            )
+        )
+        const val FRAGMENT_CLASS = Constants.EventProperties.FRAGMENT_CLASS
+        @Deprecated(
+            "Use Constants.EventProperties.FRAGMENT_IDENTIFIER instead",
+            ReplaceWith(
+                "Constants.EventProperties.FRAGMENT_IDENTIFIER",
+                "com.amplitude.core.Constants.EventProperties.FRAGMENT_IDENTIFIER"
+            )
+        )
+        const val FRAGMENT_IDENTIFIER = Constants.EventProperties.FRAGMENT_IDENTIFIER
+        @Deprecated(
+            "Use Constants.EventProperties.FRAGMENT_TAG instead",
+            ReplaceWith(
+                "Constants.EventProperties.FRAGMENT_TAG",
+                "com.amplitude.core.Constants.EventProperties.FRAGMENT_TAG"
+            )
+        )
+        const val FRAGMENT_TAG = Constants.EventProperties.FRAGMENT_TAG
+        @Deprecated(
+            "Use Constants.EventProperties.ACTION instead",
+            ReplaceWith(
+                "Constants.EventProperties.ACTION",
+                "com.amplitude.core.Constants.EventProperties.ACTION"
+            )
+        )
+        const val ACTION = Constants.EventProperties.ACTION
+        @Deprecated(
+            "Use Constants.EventProperties.TARGET_CLASS instead",
+            ReplaceWith(
+                "Constants.EventProperties.TARGET_CLASS",
+                "com.amplitude.core.Constants.EventProperties.TARGET_CLASS"
+            )
+        )
+        const val TARGET_CLASS = Constants.EventProperties.TARGET_CLASS
+        @Deprecated(
+            "Use Constants.EventProperties.TARGET_RESOURCE instead",
+            ReplaceWith(
+                "Constants.EventProperties.TARGET_RESOURCE",
+                "com.amplitude.core.Constants.EventProperties.TARGET_RESOURCE"
+            )
+        )
+        const val TARGET_RESOURCE = Constants.EventProperties.TARGET_RESOURCE
+        @Deprecated(
+            "Use Constants.EventProperties.TARGET_TAG instead",
+            ReplaceWith(
+                "Constants.EventProperties.TARGET_TAG",
+                "com.amplitude.core.Constants.EventProperties.TARGET_TAG"
+            )
+        )
+        const val TARGET_TAG = Constants.EventProperties.TARGET_TAG
+        @Deprecated(
+            "Use Constants.EventProperties.TARGET_TEXT instead",
+            ReplaceWith(
+                "Constants.EventProperties.TARGET_TEXT",
+                "com.amplitude.core.Constants.EventProperties.TARGET_TEXT"
+            )
+        )
+        const val TARGET_TEXT = Constants.EventProperties.TARGET_TEXT
+        @Deprecated(
+            "Use Constants.EventProperties.TARGET_SOURCE instead",
+            ReplaceWith(
+                "Constants.EventProperties.TARGET_SOURCE",
+                "com.amplitude.core.Constants.EventProperties.TARGET_SOURCE"
+            )
+        )
+        const val TARGET_SOURCE = Constants.EventProperties.TARGET_SOURCE
+        @Deprecated(
+            "Use Constants.EventProperties.HIERARCHY instead",
+            ReplaceWith(
+                "Constants.EventProperties.HIERARCHY",
+                "com.amplitude.core.Constants.EventProperties.HIERARCHY"
+            )
+        )
+        const val HIERARCHY = Constants.EventProperties.HIERARCHY
     }
 }
 
