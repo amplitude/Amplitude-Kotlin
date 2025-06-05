@@ -68,11 +68,7 @@ class Timeline(
             foreground.set(true)
 
             // Process any local session events
-            for (sessionEvent in localSessionEvents) {
-                sessionEvent.eventId = sessionEvent.eventId ?: ++lastEventId
-                super.process(sessionEvent)
-                amplitude.storage.write(LAST_EVENT_ID, lastEventId.toString())
-            }
+            processAndPersistEvents(localSessionEvents)
         }
     }
 
@@ -87,7 +83,6 @@ class Timeline(
         val event = message.event
         val eventTimestamp = event.timestamp!! // Guaranteed non-null by process()
         val eventSessionId = event.sessionId
-        val initialLastEventId = lastEventId
 
         when (event.eventType) {
             START_SESSION_EVENT -> {
@@ -100,26 +95,30 @@ class Timeline(
             }
 
             else -> {
-                // Regular event
                 if (!foreground.get()) {
                     val localSessionEvents = startNewSessionIfNeeded(eventTimestamp)
-
-                    // Process any local session events first
-                    for (sessionEvent in localSessionEvents) {
-                        sessionEvent.eventId = sessionEvent.eventId ?: ++lastEventId
-                        super.process(sessionEvent)
-                    }
+                    processAndPersistEvents(localSessionEvents)
                 } else {
                     refreshSessionTime(eventTimestamp)
                 }
             }
         }
 
-        // Process the incoming event
-        event.eventId = event.eventId ?: ++lastEventId
         // Assign sessionId to the current event if it doesn't have one
         event.sessionId = event.sessionId ?: this.sessionId
-        super.process(event)
+
+        // Process the incoming event
+        processAndPersistEvents(listOf(event))
+    }
+
+    private suspend fun processAndPersistEvents(events: List<BaseEvent>) {
+        if (events.isEmpty()) return
+
+        val initialLastEventId = lastEventId
+        for (event in events) {
+            event.eventId = event.eventId ?: ++lastEventId
+            super.process(event)
+        }
 
         // Persist lastEventId if it changed
         if (lastEventId > initialLastEventId) {
