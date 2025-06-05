@@ -35,7 +35,6 @@ android {
         }
     }
     compileOptions {
-        coreLibraryDesugaringEnabled true
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
@@ -59,8 +58,6 @@ dependencies {
     implementation 'androidx.activity:activity-ktx:1.9.1'
     compileOnly 'androidx.fragment:fragment-ktx:1.8.2'
     compileOnly 'androidx.compose.ui:ui:1.6.8'
-
-    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
 
     testImplementation 'io.mockk:mockk:1.12.4'
     testImplementation project(':core')
