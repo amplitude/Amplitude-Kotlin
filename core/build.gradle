@@ -6,7 +6,7 @@ plugins {
 
 ext {
     PUBLISH_NAME = 'Amplitude Kotlin Core'
-    PUBLISH_DESCRIPTION = 'Amplitude Kotlin core library'
+    PUBLISH_DESCRIPTION = 'Amplitude Kotlin Core library'
     PUBLISH_ARTIFACT_ID = 'analytics-core'
 }
 
