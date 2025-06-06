@@ -26,7 +26,7 @@ test {
 }
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    implementation libs.kotlin.stdlib
 
     // MAIN DEPS
     compileOnly libs.json
