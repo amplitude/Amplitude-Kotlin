@@ -14,21 +14,24 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
+private const val DEFAULT_SESSION_ID = -1L
+private const val DEFAULT = 0L
+
 class Timeline(
     private val initialSessionId: Long? = null,
 ) : Timeline() {
     private val eventMessageChannel: Channel<EventQueueMessage> = Channel(Channel.UNLIMITED)
 
-    private val _sessionId = AtomicLong(initialSessionId ?: -1L)
+    private val _sessionId = AtomicLong(initialSessionId ?: DEFAULT_SESSION_ID)
     private val foreground = AtomicBoolean(false)
     val sessionId: Long
         get() {
             return _sessionId.get()
         }
 
-    internal var lastEventId: Long = 0
+    internal var lastEventId: Long = DEFAULT
         private set
-    internal var lastEventTime: Long = -1L
+    internal var lastEventTime: Long = DEFAULT
         private set
 
     internal fun start() {
@@ -38,10 +41,10 @@ class Timeline(
                 isBuilt.await()
 
                 if (initialSessionId == null) {
-                    _sessionId.set(storage.readLong(PREVIOUS_SESSION_ID, -1))
+                    _sessionId.set(storage.readLong(PREVIOUS_SESSION_ID, DEFAULT_SESSION_ID))
                 }
-                lastEventId = storage.readLong(LAST_EVENT_ID, 0)
-                lastEventTime = storage.readLong(LAST_EVENT_TIME, -1)
+                lastEventId = storage.readLong(LAST_EVENT_ID, DEFAULT)
+                lastEventTime = storage.readLong(LAST_EVENT_TIME, DEFAULT)
 
                 for (message in eventMessageChannel) {
                     processEventMessage(message)
@@ -148,7 +151,7 @@ class Timeline(
         if (trackingSessionEvents && inSession()) {
             val sessionEndEvent = BaseEvent()
             sessionEndEvent.eventType = END_SESSION_EVENT
-            sessionEndEvent.timestamp = if (lastEventTime > 0) lastEventTime else null
+            sessionEndEvent.timestamp = lastEventTime.takeIf { lastEventTime > DEFAULT }
             sessionEndEvent.sessionId = sessionId
             sessionEvents.add(sessionEndEvent)
         }
@@ -182,7 +185,7 @@ class Timeline(
     }
 
     private fun inSession(): Boolean {
-        return sessionId >= 0
+        return sessionId > DEFAULT_SESSION_ID
     }
 
     private fun Storage.readLong(key: Constants, default: Long): Long {
