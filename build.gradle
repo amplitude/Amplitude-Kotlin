@@ -1,5 +1,6 @@
 buildscript {
-    ext.kotlin_version = "1.8.0"
+    // Use the latest Kotlin version that is still in the 1.x line.
+    ext.kotlin_version = "1.9.23"
     ext.dokka_version = '1.6.10'
     repositories {
         maven { url "https://plugins.gradle.org/m2/" }
