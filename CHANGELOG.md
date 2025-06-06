@@ -1,3 +1,17 @@
+## [1.21.2-beta.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.21.2-beta.1...v1.21.2-beta.2) (2025-06-04)
+
+
+### Bug Fixes
+
+* expose core as api for dependencies. ([1dd27ef](https://github.com/amplitude/Amplitude-Kotlin/commit/1dd27efd340b5d0073b7d6050b070e54dd70331e))
+
+## [1.21.2-beta.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.21.1...v1.21.2-beta.1) (2025-06-03)
+
+
+### Bug Fixes
+
+* decouple app lifecycle from sessions autocapture ([#284](https://github.com/amplitude/Amplitude-Kotlin/issues/284)) ([1521eb7](https://github.com/amplitude/Amplitude-Kotlin/commit/1521eb717c5188eab3ea00dc6d975bf7891d8abc))
+
 ## [1.21.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.21.0...v1.21.1) (2025-05-27)
 
 

@@ -19,5 +19,5 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
-play-services-ads.-keep class com.google.android.gms.ads.** { *; }
+#play-services-ads.-keep class com.google.android.gms.ads.** { *; }
 
