@@ -17,12 +17,12 @@ import com.amplitude.android.utilities.ActivityCallbackType
 import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.android.utilities.DefaultEventUtils
 import com.amplitude.core.Amplitude
-import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import com.amplitude.android.Amplitude as AndroidAmplitude
+import com.amplitude.android.Timeline as AndroidTimeline
 
 class AndroidLifecyclePlugin(
     private val activityLifecycleObserver: ActivityLifecycleObserver
@@ -114,12 +114,7 @@ class AndroidLifecyclePlugin(
 
     override fun onActivityResumed(activity: Activity) {
         with(androidAmplitude) {
-            timeline.process(
-                BaseEvent().apply {
-                    eventType = AndroidAmplitude.DUMMY_ENTER_FOREGROUND_EVENT
-                    timestamp = System.currentTimeMillis()
-                }
-            )
+            (timeline as AndroidTimeline).onEnterForeground(System.currentTimeMillis())
         }
 
         @OptIn(ExperimentalAmplitudeFeature::class)
@@ -130,12 +125,7 @@ class AndroidLifecyclePlugin(
 
     override fun onActivityPaused(activity: Activity) {
         with(androidAmplitude) {
-            timeline.process(
-                BaseEvent().apply {
-                    eventType = AndroidAmplitude.DUMMY_EXIT_FOREGROUND_EVENT
-                    timestamp = System.currentTimeMillis()
-                }
-            )
+            (timeline as AndroidTimeline).onExitForeground(System.currentTimeMillis())
 
             if ((configuration as Configuration).flushEventsOnClose) {
                 flush()

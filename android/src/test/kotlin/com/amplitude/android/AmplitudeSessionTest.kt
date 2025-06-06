@@ -4,6 +4,8 @@ import android.app.Application
 import android.content.Context
 import android.net.ConnectivityManager
 import com.amplitude.android.utilities.createFakeAmplitude
+import com.amplitude.android.utilities.enterForeground
+import com.amplitude.android.utilities.exitForeground
 import com.amplitude.android.utilities.setupMockAndroidContext
 import com.amplitude.core.Storage
 import com.amplitude.core.StorageProvider
@@ -647,26 +649,6 @@ class AmplitudeSessionTest {
         event.eventType = eventType
         event.sessionId = sessionId
         return event
-    }
-
-    // simulates the dummy event for android lifecycle onActivityResumed
-    private fun enterForeground(amplitude: Amplitude, timestamp: Long) {
-        amplitude.timeline.process(
-            BaseEvent().apply {
-                eventType = Amplitude.DUMMY_ENTER_FOREGROUND_EVENT
-                this.timestamp = timestamp
-            }
-        )
-    }
-
-    // simulates the dummy event for android lifecycle onActivityPaused
-    private fun exitForeground(amplitude: Amplitude, timestamp: Long) {
-        amplitude.timeline.process(
-            BaseEvent().apply {
-                eventType = Amplitude.DUMMY_EXIT_FOREGROUND_EVENT
-                this.timestamp = timestamp
-            }
-        )
     }
 }
 

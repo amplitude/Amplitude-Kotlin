@@ -152,15 +152,6 @@ open class Amplitude internal constructor(
          * The event type for end session events.
          */
         const val END_SESSION_EVENT = "session_end"
-
-        /**
-         * The event type for dummy enter foreground events.
-         */
-        internal const val DUMMY_ENTER_FOREGROUND_EVENT = "dummy_enter_foreground"
-        /**
-         * The event type for dummy exit foreground events.
-         */
-        internal const val DUMMY_EXIT_FOREGROUND_EVENT = "dummy_exit_foreground"
     }
 }
 /**

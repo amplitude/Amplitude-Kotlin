@@ -1,7 +1,5 @@
 package com.amplitude.android
 
-import com.amplitude.android.Amplitude.Companion.DUMMY_ENTER_FOREGROUND_EVENT
-import com.amplitude.android.Amplitude.Companion.DUMMY_EXIT_FOREGROUND_EVENT
 import com.amplitude.android.Amplitude.Companion.END_SESSION_EVENT
 import com.amplitude.android.Amplitude.Companion.START_SESSION_EVENT
 import com.amplitude.core.Storage
@@ -13,22 +11,28 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Timeline
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
+
+private const val DEFAULT_SESSION_ID = -1L
+private const val DEFAULT = 0L
 
 class Timeline(
     private val initialSessionId: Long? = null,
 ) : Timeline() {
     private val eventMessageChannel: Channel<EventQueueMessage> = Channel(Channel.UNLIMITED)
 
-    private val _sessionId = AtomicLong(initialSessionId ?: -1L)
-    private var _foreground = false
+    private val _sessionId = AtomicLong(initialSessionId ?: DEFAULT_SESSION_ID)
+    private val foreground = AtomicBoolean(false)
     val sessionId: Long
         get() {
             return _sessionId.get()
         }
 
-    internal var lastEventId: Long = 0
-    var lastEventTime: Long = -1L
+    internal var lastEventId: Long = DEFAULT
+        private set
+    internal var lastEventTime: Long = DEFAULT
+        private set
 
     internal fun start() {
         with(amplitude) {
@@ -37,10 +41,10 @@ class Timeline(
                 isBuilt.await()
 
                 if (initialSessionId == null) {
-                    _sessionId.set(storage.readLong(PREVIOUS_SESSION_ID, -1))
+                    _sessionId.set(storage.readLong(PREVIOUS_SESSION_ID, DEFAULT_SESSION_ID))
                 }
-                lastEventId = storage.readLong(LAST_EVENT_ID, 0)
-                lastEventTime = storage.readLong(LAST_EVENT_TIME, -1)
+                lastEventId = storage.readLong(LAST_EVENT_ID, DEFAULT)
+                lastEventTime = storage.readLong(LAST_EVENT_TIME, DEFAULT)
 
                 for (message in eventMessageChannel) {
                     processEventMessage(message)
@@ -61,12 +65,27 @@ class Timeline(
         eventMessageChannel.trySend(EventQueueMessage(incomingEvent))
     }
 
+    internal fun onEnterForeground(timestamp: Long) {
+        amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
+            val localSessionEvents = startNewSessionIfNeeded(timestamp)
+            foreground.set(true)
+
+            // Process any local session events
+            processAndPersistEvents(localSessionEvents)
+        }
+    }
+
+    internal fun onExitForeground(timestamp: Long) {
+        amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
+            refreshSessionTime(timestamp)
+            foreground.set(false)
+        }
+    }
+
     private suspend fun processEventMessage(message: EventQueueMessage) {
         val event = message.event
         val eventTimestamp = event.timestamp!! // Guaranteed non-null by process()
         val eventSessionId = event.sessionId
-
-        var localSessionEvents: List<BaseEvent> = emptyList()
 
         when (event.eventType) {
             START_SESSION_EVENT -> {
@@ -78,43 +97,29 @@ class Timeline(
                 // No specific action needed before processing this event type
             }
 
-            DUMMY_ENTER_FOREGROUND_EVENT -> {
-                localSessionEvents = startNewSessionIfNeeded(eventTimestamp)
-                _foreground = true
-            }
-
-            DUMMY_EXIT_FOREGROUND_EVENT -> {
-                refreshSessionTime(eventTimestamp)
-                _foreground = false
-            }
-
             else -> {
-                // Regular event
-                if (!_foreground) {
-                    localSessionEvents = startNewSessionIfNeeded(eventTimestamp)
+                if (!foreground.get()) {
+                    val localSessionEvents = startNewSessionIfNeeded(eventTimestamp)
+                    processAndPersistEvents(localSessionEvents)
                 } else {
                     refreshSessionTime(eventTimestamp)
                 }
             }
         }
 
-        val initialLastEventId = lastEventId
-
-        // Process any local session events first
-        for (sessionEvent in localSessionEvents) {
-            sessionEvent.eventId = sessionEvent.eventId ?: ++lastEventId
-            super.process(sessionEvent)
-        }
+        // Assign sessionId to the current event if it doesn't have one
+        event.sessionId = event.sessionId ?: this.sessionId
 
         // Process the incoming event
-        val dummyEvent = event.eventType == DUMMY_ENTER_FOREGROUND_EVENT ||
-            event.eventType == DUMMY_EXIT_FOREGROUND_EVENT
-        if (!dummyEvent) {
+        processAndPersistEvents(listOf(event))
+    }
+
+    private suspend fun processAndPersistEvents(events: List<BaseEvent>) {
+        if (events.isEmpty()) return
+
+        val initialLastEventId = lastEventId
+        for (event in events) {
             event.eventId = event.eventId ?: ++lastEventId
-            // Assign sessionId to the current event if it's not a dummy event and doesn't have one
-            if (event.sessionId == null) {
-                event.sessionId = this.sessionId // Use this.sessionId for clarity
-            }
             super.process(event)
         }
 
@@ -146,7 +151,7 @@ class Timeline(
         if (trackingSessionEvents && inSession()) {
             val sessionEndEvent = BaseEvent()
             sessionEndEvent.eventType = END_SESSION_EVENT
-            sessionEndEvent.timestamp = if (lastEventTime > 0) lastEventTime else null
+            sessionEndEvent.timestamp = lastEventTime.takeIf { lastEventTime > DEFAULT }
             sessionEndEvent.sessionId = sessionId
             sessionEvents.add(sessionEndEvent)
         }
@@ -180,7 +185,7 @@ class Timeline(
     }
 
     private fun inSession(): Boolean {
-        return sessionId >= 0
+        return sessionId > DEFAULT_SESSION_ID
     }
 
     private fun Storage.readLong(key: Constants, default: Long): Long {

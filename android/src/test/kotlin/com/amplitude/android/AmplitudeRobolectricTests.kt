@@ -3,6 +3,8 @@ package com.amplitude.android
 import android.app.Application
 import android.content.Context
 import android.net.ConnectivityManager
+import com.amplitude.android.utilities.enterForeground
+import com.amplitude.android.utilities.exitForeground
 import com.amplitude.core.Amplitude as CoreAmplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.ConsoleLoggerProvider
@@ -12,15 +14,19 @@ import io.mockk.mockk
 import kotlin.io.path.absolutePathString
 import kotlin.test.assertTrue
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import org.robolectric.util.TempDirectory
 import java.io.File
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
+@Config(manifest = Config.NONE)
 class AmplitudeRobolectricTests {
     private lateinit var amplitude: CoreAmplitude
     private var context: Context? = null
@@ -44,7 +50,7 @@ class AmplitudeRobolectricTests {
     }
 
     @Test
-    fun `test optOut is true no event should be send`() {
+    fun `test optOut is true no event should be send`() = runTest {
         val fakeEventPlugin = FakeEventPlugin()
         val amplitudeInstance = Amplitude(createConfiguration(100, true))
         amplitudeInstance.add(fakeEventPlugin)
@@ -80,26 +86,6 @@ class AmplitudeRobolectricTests {
             optOut = optOut ?: false,
             minTimeBetweenSessionsMillis = minTimeBetweenSessionsMillis
                 ?: Configuration.MIN_TIME_BETWEEN_SESSIONS_MILLIS,
-        )
-    }
-
-    // simulates the dummy event for android lifecycle onActivityResumed
-    private fun enterForeground(amplitude: Amplitude, timestamp: Long) {
-        amplitude.timeline.process(
-            BaseEvent().apply {
-                eventType = Amplitude.DUMMY_ENTER_FOREGROUND_EVENT
-                this.timestamp = timestamp
-            }
-        )
-    }
-
-    // simulates the dummy event for android lifecycle onActivityPaused
-    private fun exitForeground(amplitude: Amplitude, timestamp: Long) {
-        amplitude.timeline.process(
-            BaseEvent().apply {
-                eventType = Amplitude.DUMMY_EXIT_FOREGROUND_EVENT
-                this.timestamp = timestamp
-            }
         )
     }
 }
