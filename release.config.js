@@ -41,7 +41,7 @@ module.exports = {
     ],
     ["@semantic-release/git", {
       "assets": ["gradle.properties", "CHANGELOG.md"],
-      "message": "chore(release): ${nextRelease.version} [skip ci]\\n\\n${nextRelease.notes}"
+      "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
     }],
     ["@semantic-release/exec", {
       "publishCmd": "./gradlew publishReleasePublicationToSonatypeRepository closeAndReleaseStagingRepositories",
