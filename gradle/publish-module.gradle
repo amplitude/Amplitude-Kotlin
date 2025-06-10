@@ -2,12 +2,10 @@ apply plugin: 'maven-publish'
 apply plugin: 'signing'
 apply plugin: 'org.jetbrains.dokka'
 
-tasks.register('androidSourcesJar', Jar) {
-    archiveClassifier.set('sources')
-    if (project.plugins.findPlugin("com.android.library")) {
-        from android.sourceSets.main.java.srcDirs
-        from android.sourceSets.main.kotlin.srcDirs
-    } else {
+// Use Android's built-in source jar for libraries, create custom one for non-Android modules
+if (!project.plugins.findPlugin("com.android.library")) {
+    tasks.register('sourcesJar', Jar) {
+        archiveClassifier.set('sources')
         from sourceSets.main.java.srcDirs
         from sourceSets.main.kotlin.srcDirs
     }
@@ -25,11 +23,6 @@ tasks.register('javadocJar', Jar) {
     from dokkaJavadoc.outputDirectory
 }
 
-artifacts {
-    archives androidSourcesJar
-    archives javadocJar
-}
-
 group = PUBLISH_GROUP_ID
 version = PUBLISH_VERSION
 
@@ -42,12 +35,13 @@ afterEvaluate {
                 version PUBLISH_VERSION
                 if (project.plugins.findPlugin("com.android.library")) {
                     from components.release
+                    // Android plugin automatically provides source jars
                 } else {
                     from components.java
+                    artifact tasks.sourcesJar
                 }
 
-                artifact androidSourcesJar
-                artifact javadocJar
+                artifact tasks.javadocJar
 
                 pom {
                     name = PUBLISH_NAME
