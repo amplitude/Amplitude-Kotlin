@@ -1,3 +1,11 @@
+## [1.21.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.21.1...v1.21.2) (2025-06-10)
+
+
+### Bug Fixes
+
+* decouple app lifecycle from sessions autocapture ([#284](https://github.com/amplitude/Amplitude-Kotlin/issues/284)) ([1521eb7](https://github.com/amplitude/Amplitude-Kotlin/commit/1521eb717c5188eab3ea00dc6d975bf7891d8abc))
+* deprecate on enter / exit foreground ([#286](https://github.com/amplitude/Amplitude-Kotlin/issues/286)) ([c94d583](https://github.com/amplitude/Amplitude-Kotlin/commit/c94d583883688f1ac14b6d168d06ad6be304f8d8))
+
 ## [1.21.2-beta.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.21.2-beta.1...v1.21.2-beta.2) (2025-06-04)
 
 
