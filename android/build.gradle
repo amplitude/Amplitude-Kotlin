@@ -84,7 +84,6 @@ dependencies {
     testImplementation libs.play.services.appset
     testImplementation libs.junit.jupiter.api
     testImplementation libs.test.runner
-    testImplementation libs.mockito.core
 }
 
 tasks.dokkaHtmlPartial.configure {

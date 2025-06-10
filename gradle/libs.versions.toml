@@ -11,7 +11,6 @@ json = "20211205"
 junit = "5.7.2"
 junit4 = "4.13.2"
 kotlin = "1.8.0"
-mockito = "4.3.1"
 mockk = "1.12.4"
 mockwebserver = "4.10.0"
 okhttp = "4.12.0"
@@ -43,7 +42,6 @@ junit-vintage-engine = { module = "org.junit.vintage:junit-vintage-engine" }
 junit4 = { module = "junit:junit", version.ref = "junit4" }
 kotlin-stdlib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin" }
 kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
-mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 mockwebserver = { module = "com.squareup.okhttp3:mockwebserver", version.ref = "mockwebserver" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
