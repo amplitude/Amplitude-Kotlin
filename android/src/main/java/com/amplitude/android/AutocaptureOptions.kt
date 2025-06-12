@@ -23,7 +23,6 @@ enum class AutocaptureOption {
     /**
      * Enable element interaction tracking.
      */
-    @ExperimentalAmplitudeFeature
     ELEMENT_INTERACTIONS
 }
 
@@ -38,7 +37,6 @@ class AutocaptureOptionsBuilder {
     val appLifecycles = AutocaptureOption.APP_LIFECYCLES
     val deepLinks = AutocaptureOption.DEEP_LINKS
     val screenViews = AutocaptureOption.SCREEN_VIEWS
-    @ExperimentalAmplitudeFeature
     val elementInteractions = AutocaptureOption.ELEMENT_INTERACTIONS
 
     fun build(): Set<AutocaptureOption> = options.toSet()
