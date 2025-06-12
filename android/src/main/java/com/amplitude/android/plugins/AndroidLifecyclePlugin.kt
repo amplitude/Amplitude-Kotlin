@@ -12,7 +12,6 @@ import com.amplitude.android.AutocaptureOption.DEEP_LINKS
 import com.amplitude.android.AutocaptureOption.ELEMENT_INTERACTIONS
 import com.amplitude.android.AutocaptureOption.SCREEN_VIEWS
 import com.amplitude.android.Configuration
-import com.amplitude.android.ExperimentalAmplitudeFeature
 import com.amplitude.android.utilities.ActivityCallbackType
 import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.android.utilities.DefaultEventUtils
@@ -117,7 +116,6 @@ class AndroidLifecyclePlugin(
             (timeline as AndroidTimeline).onEnterForeground(System.currentTimeMillis())
         }
 
-        @OptIn(ExperimentalAmplitudeFeature::class)
         if (ELEMENT_INTERACTIONS in autocapture) {
             DefaultEventUtils(androidAmplitude).startUserInteractionEventTracking(activity)
         }
@@ -132,7 +130,6 @@ class AndroidLifecyclePlugin(
             }
         }
 
-        @OptIn(ExperimentalAmplitudeFeature::class)
         if (ELEMENT_INTERACTIONS in autocapture) {
             DefaultEventUtils(androidAmplitude).stopUserInteractionEventTracking(activity)
         }
