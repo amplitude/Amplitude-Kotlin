@@ -1,3 +1,5 @@
+import org.jetbrains.dokka.gradle.DokkaMultiModuleTask
+
 buildscript {
     repositories {
         maven(url = "https://plugins.gradle.org/m2/")
@@ -34,20 +36,13 @@ allprojects {
     group = project.findProperty("PUBLISH_GROUP_ID") ?: ""
 }
 
-tasks.named<org.jetbrains.dokka.gradle.DokkaMultiModuleTask>("dokkaHtmlMultiModule") {
+apply(plugin = "io.github.gradle-nexus.publish-plugin")
+apply(from = "${rootDir}/gradle/publish-root.gradle")
+
+tasks.named<DokkaMultiModuleTask>("dokkaHtmlMultiModule") {
     outputDirectory.set(file("${'$'}rootDir/docs"))
 }
 
-apply(plugin = "io.github.gradle-nexus.publish-plugin")
-
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
-}
-
-apply(from = "${rootDir}/gradle/publish-root.gradle")
-
-tasks.register("printProjectGroup") {
-    doLast {
-        println("Project group is: ${project.group}")
-    }
 }
