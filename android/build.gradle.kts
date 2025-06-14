@@ -1,13 +1,15 @@
 plugins {
     id("com.android.library")
     id("kotlin-android")
+//    id("com.amplitude.publish-module-plugin")
+    id("publish-module")
 }
 
 ext.set("PUBLISH_NAME", "Amplitude Android Kotlin SDK")
 ext.set("PUBLISH_DESCRIPTION", "Amplitude Kotlin client-side SDK for Android")
 ext.set("PUBLISH_ARTIFACT_ID", "analytics-android")
 
-apply(from = rootDir.resolve("gradle/publish-module.gradle"))
+//apply(from = rootDir.resolve("gradle/publish-module.gradle"))
 
 android {
     namespace = "com.amplitude.android"
@@ -78,6 +80,12 @@ dependencies {
     testImplementation(libs.junit.jupiter.api)
     testImplementation(libs.test.runner)
 }
+
+//publication {
+//    name = "Amplitude Android Kotlin SDK"
+//    description = "Amplitude Kotlin client-side SDK for Android"
+//    artifactId = "analytics-android"
+//}
 
 tasks.dokkaHtmlPartial.configure {
     failOnWarning.set(true)

@@ -8,7 +8,7 @@ extra.set("PUBLISH_NAME", "Amplitude Kotlin Core")
 extra.set("PUBLISH_DESCRIPTION", "Amplitude Kotlin Core library")
 extra.set("PUBLISH_ARTIFACT_ID", "analytics-core")
 
-apply(from = rootDir.resolve("gradle/publish-module.gradle"))
+//apply(from = rootDir.resolve("gradle/publish-module.gradle"))
 
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
@@ -17,10 +17,6 @@ java {
 
 repositories {
     mavenCentral()
-}
-
-tasks.test {
-    useJUnitPlatform()
 }
 
 dependencies {
@@ -38,6 +34,10 @@ dependencies {
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.mockwebserver)
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 tasks.dokkaHtmlPartial.configure {

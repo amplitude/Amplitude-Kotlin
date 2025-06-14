@@ -31,8 +31,10 @@ afterEvaluate {
         publications {
             release(MavenPublication) {
                 groupId PUBLISH_GROUP_ID
-                artifactId PUBLISH_ARTIFACT_ID
                 version PUBLISH_VERSION
+
+                artifactId PUBLISH_ARTIFACT_ID
+
                 if (project.plugins.findPlugin("com.android.library")) {
                     from components.release
                     // Android plugin automatically provides source jars
