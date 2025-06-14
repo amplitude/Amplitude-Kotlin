@@ -2,6 +2,7 @@ plugins {
     id("java")
     id("kotlin")
     id("org.jetbrains.kotlin.jvm")
+    id("com.amplitude.publish-module-plugin")
 }
 
 extra.set("PUBLISH_NAME", "Amplitude Kotlin Core")
@@ -34,6 +35,12 @@ dependencies {
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testImplementation(libs.mockwebserver)
+}
+
+publication {
+    name = "Amplitude Kotlin Core"
+    description = "Amplitude Kotlin Core library"
+    artifactId = "analytics-core"
 }
 
 tasks.test {
