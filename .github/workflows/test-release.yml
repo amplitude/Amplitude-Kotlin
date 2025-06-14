@@ -1,12 +1,8 @@
 name: Test Release
 
 on:
-  workflow_dispatch:
-    inputs:
-      dryRun:
-        description: 'Do a dry run to preview instead of a real release'
-        required: true
-        default: 'true'
+  pull_request:
+    types: [opened, synchronize, edited]
 
 jobs:
   authorize:
