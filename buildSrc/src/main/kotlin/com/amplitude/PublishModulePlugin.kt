@@ -6,6 +6,9 @@ import org.gradle.plugins.signing.SigningExtension
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.publish.maven.MavenPublication
+import org.gradle.api.tasks.bundling.Jar
+import org.jetbrains.dokka.gradle.DokkaTask
+import org.jetbrains.dokka.gradle.DokkaTaskPartial
 
 open class PublicationExtension(
     project: Project,
@@ -24,7 +27,26 @@ class PublishModulePlugin : Plugin<Project> {
         // Apply core plugins
         project.plugins.apply("maven-publish")
         project.plugins.apply("signing")
+        project.plugins.apply("org.jetbrains.dokka")
 
+        // Register source and javadoc jar tasks used in publication
+        if (project.plugins.findPlugin("com.android.library") == null) {
+            project.tasks.register("sourcesJar", Jar::class.java) {
+                archiveClassifier.set("sources")
+                val javaExtension = project.extensions.getByType(org.gradle.api.plugins.JavaPluginExtension::class.java)
+                from(javaExtension.sourceSets.getByName("main").allSource)
+            }
+        }
+
+        project.tasks.withType(DokkaTaskPartial::class.java).configureEach {
+            pluginsMapConfiguration.set(mapOf("org.jetbrains.dokka.base.DokkaBase" to """{ \"separateInheritedMembers\": true }"""))
+        }
+
+        val javadocJar = project.tasks.register("javadocJar", Jar::class.java) {
+            dependsOn(project.tasks.named("dokkaJavadoc"))
+            archiveClassifier.set("javadoc")
+            from(project.tasks.named("dokkaJavadoc").flatMap { (it as DokkaTask).outputDirectory })
+        }
         project.afterEvaluate {
             // Configure the maven-publish extension
             extensions.configure<PublishingExtension> {
@@ -46,6 +68,8 @@ class PublishModulePlugin : Plugin<Project> {
                             from(components["java"])
                             artifact(tasks.named("sourcesJar"))
                         }
+
+                        artifact(javadocJar.get())
 
                         // Configure POM metadata
                         pom {
