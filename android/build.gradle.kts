@@ -2,14 +2,7 @@ plugins {
     id("com.android.library")
     id("kotlin-android")
     id("com.amplitude.publish-module-plugin")
-//    id("publish-module")
 }
-
-ext.set("PUBLISH_NAME", "Amplitude Android Kotlin SDK")
-ext.set("PUBLISH_DESCRIPTION", "Amplitude Kotlin client-side SDK for Android")
-ext.set("PUBLISH_ARTIFACT_ID", "analytics-android")
-
-//apply(from = rootDir.resolve("gradle/publish-module.gradle"))
 
 android {
     namespace = "com.amplitude.android"

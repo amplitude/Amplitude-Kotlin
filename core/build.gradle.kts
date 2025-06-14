@@ -5,12 +5,6 @@ plugins {
     id("com.amplitude.publish-module-plugin")
 }
 
-extra.set("PUBLISH_NAME", "Amplitude Kotlin Core")
-extra.set("PUBLISH_DESCRIPTION", "Amplitude Kotlin Core library")
-extra.set("PUBLISH_ARTIFACT_ID", "analytics-core")
-
-//apply(from = rootDir.resolve("gradle/publish-module.gradle"))
-
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8

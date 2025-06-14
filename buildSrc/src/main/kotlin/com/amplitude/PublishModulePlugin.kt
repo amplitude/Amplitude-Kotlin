@@ -125,9 +125,8 @@ class PublishModulePlugin : Plugin<Project> {
 
             // Configure signing to sign the Maven publication
             extensions.configure<SigningExtension> {
-                val publishing = extensions.getByType(PublishingExtension::class)
-                sign(publishing.publications)
-                println("Publications: ${publishing.publications.joinToString { it.name }}")
+                val publishing = extensions.findByType<PublishingExtension>()
+                sign(publishing?.publications)
             }
         }
     }
