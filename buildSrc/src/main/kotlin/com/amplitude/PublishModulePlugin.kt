@@ -10,19 +10,38 @@ import org.gradle.api.tasks.bundling.Jar
 import org.jetbrains.dokka.gradle.DokkaTask
 import org.jetbrains.dokka.gradle.DokkaTaskPartial
 
-open class PublicationExtension(
-    project: Project,
-) {
+open class PublicationExtension {
     var name: String? = null
     var description: String? = null
     var artifactId: String? = null
 }
+const val RELEASE = "release"
+const val SOURCES_JAR = "sourcesJar"
+const val JAVADOC_JAR = "javadocJar"
+const val DOKKA_JAVADOC = "dokkaJavadoc"
 
+/**
+ * PublishModulePlugin is a Gradle plugin that simplifies the process of publishing Android libraries and modules
+ * to a Maven repository. It handles the configuration of the maven-publish and signing plugins,
+ * creates source and Javadoc JARs, and sets up the necessary POM metadata.
+ * Usage:
+ * ```kotlin
+ * plugins {
+ *     id("com.amplitude.publish-module")
+ * }
+ * Configure the publication extension:
+ * publication {
+ *    name = "My Library"
+ *    description = "A description of my library"
+ *    artifactId = "my-library-artifact-id"
+ * }
+ * ```
+ */
 class PublishModulePlugin : Plugin<Project> {
     override fun apply(project: Project) {
         println("Applying PublishModulePlugin to project: ${project.name}")
         // Create extension for module-specific overrides
-        val ext = project.extensions.create("publication", PublicationExtension::class.java, project)
+        val ext = project.extensions.create("publication", PublicationExtension::class.java)
 
         // Apply core plugins
         project.plugins.apply("maven-publish")
@@ -31,7 +50,7 @@ class PublishModulePlugin : Plugin<Project> {
 
         // Register source and javadoc jar tasks used in publication
         if (project.plugins.findPlugin("com.android.library") == null) {
-            project.tasks.register("sourcesJar", Jar::class.java) {
+            project.tasks.register(SOURCES_JAR, Jar::class.java) {
                 archiveClassifier.set("sources")
                 val javaExtension = project.extensions.getByType(org.gradle.api.plugins.JavaPluginExtension::class.java)
                 from(javaExtension.sourceSets.getByName("main").allSource)
@@ -42,16 +61,17 @@ class PublishModulePlugin : Plugin<Project> {
             pluginsMapConfiguration.set(mapOf("org.jetbrains.dokka.base.DokkaBase" to """{ \"separateInheritedMembers\": true }"""))
         }
 
-        val javadocJar = project.tasks.register("javadocJar", Jar::class.java) {
-            dependsOn(project.tasks.named("dokkaJavadoc"))
+        val javadocJar = project.tasks.register(JAVADOC_JAR, Jar::class.java) {
+            dependsOn(project.tasks.named(DOKKA_JAVADOC))
             archiveClassifier.set("javadoc")
-            from(project.tasks.named("dokkaJavadoc").flatMap { (it as DokkaTask).outputDirectory })
+            from(project.tasks.named(DOKKA_JAVADOC).flatMap { (it as DokkaTask).outputDirectory })
         }
+
         project.afterEvaluate {
             // Configure the maven-publish extension
             extensions.configure<PublishingExtension> {
                 publications {
-                    create<MavenPublication>("release") {
+                    create<MavenPublication>(RELEASE) {
                         groupId = rootProject.property("PUBLISH_GROUP_ID") as String
                         version = rootProject.property("PUBLISH_VERSION") as String
 
@@ -63,10 +83,10 @@ class PublishModulePlugin : Plugin<Project> {
                         artifactId = ext.artifactId
 
                         if (plugins.hasPlugin("com.android.library")) {
-                            from(components["release"])
+                            from(components[RELEASE])
                         } else {
                             from(components["java"])
-                            artifact(tasks.named("sourcesJar"))
+                            artifact(tasks.named(SOURCES_JAR))
                         }
 
                         artifact(javadocJar.get())
@@ -107,6 +127,7 @@ class PublishModulePlugin : Plugin<Project> {
             extensions.configure<SigningExtension> {
                 val publishing = extensions.getByType(PublishingExtension::class)
                 sign(publishing.publications)
+                println("Publications: ${publishing.publications.joinToString { it.name }}")
             }
         }
     }

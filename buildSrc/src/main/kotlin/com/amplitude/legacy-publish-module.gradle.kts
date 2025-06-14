@@ -3,6 +3,19 @@ import org.gradle.api.tasks.bundling.Jar
 import org.jetbrains.dokka.gradle.DokkaTask
 import org.jetbrains.dokka.gradle.DokkaTaskPartial
 
+/**
+ * This is a legacy Gradle plugin for publishing Android and Java modules.
+ * Usage:
+ * ```kotlin
+ * plugins {
+ *     id("com.amplitude.legacy-publish-module")
+ *}
+ * Configure the publication extension:
+ * extra["PUBLISH_NAME"] = "My Library"
+ * extra["PUBLISH_DESCRIPTION"] = "A description of my library"
+ * extra["PUBLISH_ARTIFACT_ID"] = "my-library-artifact-id"
+ * ```
+ */
 plugins {
     `maven-publish`
     signing
