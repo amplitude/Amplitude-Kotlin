@@ -1,5 +1,4 @@
 import org.jetbrains.dokka.gradle.DokkaMultiModuleTask
-import java.util.Properties
 
 buildscript {
     repositories {
@@ -44,18 +43,13 @@ plugins {
 }
 
 // Load local properties for Sonatype credentials
-val localPropsFile = rootProject.file("local.properties")
-val localProps = Properties().apply {
-    if (localPropsFile.exists()) {
-        load(localPropsFile.inputStream())
-    }
-}
-val sonatypeStagingProfileId: String? = localProps.getProperty("SONATYPE_STAGING_PROFILE_ID")
-    ?: System.getenv("SONATYPE_STAGING_PROFILE_ID")
+val sonatypeStagingProfileId: String? =
+    project.findProperty("SONATYPE_STAGING_PROFILE_ID") as? String
+        ?: System.getenv("SONATYPE_STAGING_PROFILE_ID")
 val sonatypeUsername: String? =
-    localProps.getProperty("SONATYPE_USERNAME") ?: System.getenv("SONATYPE_USERNAME")
+    project.findProperty("SONATYPE_USERNAME") as? String ?: System.getenv("SONATYPE_USERNAME")
 val sonatypePassword: String? =
-    localProps.getProperty("SONATYPE_PASSWORD") ?: System.getenv("SONATYPE_PASSWORD")
+    project.findProperty("SONATYPE_PASSWORD") as? String ?: System.getenv("SONATYPE_PASSWORD")
 
 nexusPublishing {
     repositories {
@@ -67,10 +61,10 @@ nexusPublishing {
     }
 }
 
-tasks.named<DokkaMultiModuleTask>("dokkaHtmlMultiModule") {
-    outputDirectory.set(file("${'$'}rootDir/docs"))
+tasks.named("dokkaHtmlMultiModule") {
+    (this as DokkaMultiModuleTask).outputDirectory.set(file("$rootDir/docs"))
 }
 
 tasks.register<Delete>("clean") {
-    delete(rootProject.layout.buildDirectory)
+    delete(layout.buildDirectory)
 }

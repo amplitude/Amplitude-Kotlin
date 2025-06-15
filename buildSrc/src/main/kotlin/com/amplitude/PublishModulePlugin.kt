@@ -22,7 +22,7 @@ const val DOKKA_JAVADOC = "dokkaJavadoc"
 
 /**
  * PublishModulePlugin is a Gradle plugin that simplifies the process of publishing Android libraries and modules
- * to a Maven repository. It handles the configuration of the maven-publish and signing plugins,
+ * to a Maven repository. It handles the configuration of the maven-publish, signing and dokka plugins,
  * creates source and Javadoc JARs, and sets up the necessary POM metadata.
  * Usage:
  * ```kotlin
