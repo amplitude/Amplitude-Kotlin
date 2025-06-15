@@ -9,6 +9,8 @@ import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.tasks.bundling.Jar
 import org.jetbrains.dokka.gradle.DokkaTask
 import org.jetbrains.dokka.gradle.DokkaTaskPartial
+import java.util.Properties
+import java.io.FileInputStream
 
 open class PublicationExtension {
     var name: String? = null
@@ -68,6 +70,15 @@ class PublishModulePlugin : Plugin<Project> {
         }
 
         project.afterEvaluate {
+            // Load properties from local.properties
+            val localProperties = Properties()
+            val localPropertiesFile = project.rootProject.file("local.properties")
+            if (localPropertiesFile.exists()) {
+                FileInputStream(localPropertiesFile).use { fis ->
+                    localProperties.load(fis)
+                }
+            }
+
             // Configure the maven-publish extension
             extensions.configure<PublishingExtension> {
                 publications {
@@ -86,10 +97,14 @@ class PublishModulePlugin : Plugin<Project> {
                             from(components["release"])
                         } else {
                             from(components["java"])
-                            artifact(tasks.named(SOURCES_JAR))
+                            val sourcesJarTask = tasks.named(SOURCES_JAR)
+                            project.logger.quiet("Sources JAR task outputs: ${sourcesJarTask.get().outputs.files.files}")
+                            artifact(sourcesJarTask)
                         }
 
-                        artifact(tasks.named(JAVADOC_JAR))
+                        val javadocJarTask = tasks.named(JAVADOC_JAR)
+                        project.logger.quiet("Javadoc JAR task outputs: ${javadocJarTask.get().outputs.files.files}")
+                        artifact(javadocJarTask)
 
                         // Configure POM metadata
                         pom {
@@ -125,9 +140,15 @@ class PublishModulePlugin : Plugin<Project> {
 
             // Load signing properties from project properties or environment variables
             // and set them to project.extra. This makes them available for the SigningExtension.
-            val keyId = project.findProperty("signing.keyId")?.toString() ?: System.getenv("SIGNING_KEY_ID")
-            val password = project.findProperty("signing.password")?.toString() ?: System.getenv("SIGNING_PASSWORD")
-            val secretKeyRingFile = project.findProperty("signing.secretKeyRingFile")?.toString() ?: System.getenv("SIGNING_SECRET_KEY_RING_FILE")
+            val keyId = project.findProperty("signing.keyId")?.toString()
+                ?: localProperties.getProperty("signing.keyId")
+                ?: System.getenv("SIGNING_KEY_ID")
+            val password = project.findProperty("signing.password")?.toString()
+                ?: localProperties.getProperty("signing.password")
+                ?: System.getenv("SIGNING_PASSWORD")
+            val secretKeyRingFile = project.findProperty("signing.secretKeyRingFile")?.toString()
+                ?: localProperties.getProperty("signing.secretKeyRingFile")
+                ?: System.getenv("SIGNING_SECRET_KEY_RING_FILE")
 
             if (keyId != null) {
                 project.extra.set("signing.keyId", keyId)

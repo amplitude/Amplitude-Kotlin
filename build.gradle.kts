@@ -1,4 +1,6 @@
 import org.jetbrains.dokka.gradle.DokkaMultiModuleTask
+import java.io.FileInputStream
+import java.util.Properties
 
 buildscript {
     repositories {
@@ -43,13 +45,28 @@ plugins {
 }
 
 // Load local properties for Sonatype credentials
+
+// Load properties from local.properties
+val localProperties = Properties()
+val localPropertiesFile = project.rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    FileInputStream(localPropertiesFile).use { fis ->
+        localProperties.load(fis)
+    }
+}
+
 val sonatypeStagingProfileId: String? =
-    project.findProperty("SONATYPE_STAGING_PROFILE_ID") as? String
+    project.findProperty("sonatypeStagingProfileId") as? String
+        ?: localProperties.getProperty("sonatypeStagingProfileId")
         ?: System.getenv("SONATYPE_STAGING_PROFILE_ID")
 val sonatypeUsername: String? =
-    project.findProperty("SONATYPE_USERNAME") as? String ?: System.getenv("SONATYPE_USERNAME")
+    project.findProperty("ossrhUsername") as? String
+        ?: localProperties.getProperty("ossrhUsername")
+        ?: System.getenv("SONATYPE_USERNAME")
 val sonatypePassword: String? =
-    project.findProperty("SONATYPE_PASSWORD") as? String ?: System.getenv("SONATYPE_PASSWORD")
+    project.findProperty("ossrhPassword") as? String
+        ?: localProperties.getProperty("ossrhPassword")
+        ?: System.getenv("SONATYPE_PASSWORD")
 
 nexusPublishing {
     repositories {
