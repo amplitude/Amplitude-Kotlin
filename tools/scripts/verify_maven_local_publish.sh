@@ -3,9 +3,9 @@ set -e # Exit immediately if a command exits with a non-zero status.
 
 LOCAL_PROPERTIES_FILE="local.properties"
 MAVEN_LOCAL_REPO="$HOME/.m2/repository"
-# Assuming the script is in the workspace root.
+# Assuming the script is in the tools/scripts directory relative to workspace root.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WORKSPACE_ROOT="$SCRIPT_DIR"
+WORKSPACE_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)" # Adjusted WORKSPACE_ROOT
 
 # ANSI color codes
 RED='\033[0;31m'
@@ -125,40 +125,50 @@ verify_publications() {
         # This assumes the Android module's project name as reported by printPublishCoordinates is 'android'.
         # Adjust this condition if the project name is different (e.g., derived from artifact_id or a different naming convention).
         if [ "$project_name" == "android" ]; then
+            # For Android projects, the main artifact is an AAR file.
             main_artifact_filename="$artifact_id-$version.aar"
         else
+            # For other projects, the main artifact is a JAR file.
             main_artifact_filename="$artifact_id-$version.jar"
         fi
 
+        # Define a list of expected file basenames for each module.
         local files_to_check_basenames=(
-            "$artifact_id-$version.pom"
-            "$main_artifact_filename" # Use the dynamically determined filename
-            "$artifact_id-$version-sources.jar"
-            "$artifact_id-$version-javadoc.jar"
-            "$artifact_id-$version.module"
+            "$artifact_id-$version.pom" # POM file
+            "$main_artifact_filename" # Use the dynamically determined filename (AAR or JAR)
+            "$artifact_id-$version-sources.jar" # Sources JAR
+            "$artifact_id-$version-javadoc.jar" # Javadoc JAR
+            "$artifact_id-$version.module" # Gradle module metadata
         )
 
+        # Check if the base directory for the module exists.
         if [ ! -d "$module_path_base" ]; then
             echo_error "  Directory not found for module: $module_path_base"
             all_checks_passed=false
-            continue
+            continue # Skip to the next module
         fi
 
+        # Iterate over the list of expected files.
         for file_basename in "${files_to_check_basenames[@]}"; do
             local file_full_path="$module_path_base/$file_basename"
-            local sig_file_full_path="$file_full_path.asc"
+            local sig_file_full_path="$file_full_path.asc" # Signature file path
 
+            # Check if the main artifact file exists.
             if [ -f "$file_full_path" ]; then
                 echo_info "  Found: $file_basename"
             else
+                # Handle missing files.
                 if [[ "$file_basename" == *".module" ]]; then
+                    # .module files are optional, so issue a warning if not found.
                     echo_warn "  Optional file not found: $file_basename at $file_full_path"
                 else
+                    # Other files are mandatory, so issue an error if not found.
                     echo_error "  File not found: $file_basename at $file_full_path"
                     all_checks_passed=false
                 fi
             fi
 
+            # Check for signature files, except for .module files.
             if [[ "$file_basename" != *".module" ]]; then # .module files are typically not signed
                 if [ -f "$sig_file_full_path" ]; then
                     echo_info "  Found signature: $file_basename.asc"
@@ -186,7 +196,7 @@ verify_publications() {
 
 # Main script execution
 main() {
-    cd "$WORKSPACE_ROOT"
+    cd "$WORKSPACE_ROOT" # Ensure we are in the workspace root for gradlew commands
 
     check_local_properties
 
