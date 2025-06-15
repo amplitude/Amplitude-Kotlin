@@ -15,7 +15,7 @@ open class PublicationExtension {
     var description: String? = null
     var artifactId: String? = null
 }
-const val RELEASE = "release"
+
 const val SOURCES_JAR = "sourcesJar"
 const val JAVADOC_JAR = "javadocJar"
 const val DOKKA_JAVADOC = "dokkaJavadoc"
@@ -61,7 +61,7 @@ class PublishModulePlugin : Plugin<Project> {
             pluginsMapConfiguration.set(mapOf("org.jetbrains.dokka.base.DokkaBase" to """{ \"separateInheritedMembers\": true }"""))
         }
 
-        val javadocJar = project.tasks.register(JAVADOC_JAR, Jar::class.java) {
+        project.tasks.register(JAVADOC_JAR, Jar::class.java) {
             dependsOn(project.tasks.named(DOKKA_JAVADOC))
             archiveClassifier.set("javadoc")
             from(project.tasks.named(DOKKA_JAVADOC).flatMap { (it as DokkaTask).outputDirectory })
@@ -71,7 +71,7 @@ class PublishModulePlugin : Plugin<Project> {
             // Configure the maven-publish extension
             extensions.configure<PublishingExtension> {
                 publications {
-                    create<MavenPublication>(RELEASE) {
+                    create<MavenPublication>("release") {
                         groupId = rootProject.property("PUBLISH_GROUP_ID") as String
                         version = rootProject.property("PUBLISH_VERSION") as String
 
@@ -83,13 +83,13 @@ class PublishModulePlugin : Plugin<Project> {
                         artifactId = ext.artifactId
 
                         if (plugins.hasPlugin("com.android.library")) {
-                            from(components[RELEASE])
+                            from(components["release"])
                         } else {
                             from(components["java"])
                             artifact(tasks.named(SOURCES_JAR))
                         }
 
-                        artifact(javadocJar.get())
+                        artifact(tasks.named(JAVADOC_JAR))
 
                         // Configure POM metadata
                         pom {
@@ -124,6 +124,7 @@ class PublishModulePlugin : Plugin<Project> {
             }
 
             // Configure signing to sign the Maven publication
+            // Signing read the signing key and password from local.properties
             extensions.configure<SigningExtension> {
                 val publishing = extensions.findByType<PublishingExtension>()
                 sign(publishing?.publications)

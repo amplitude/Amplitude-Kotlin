@@ -34,6 +34,7 @@ allprojects {
     apply(plugin = "org.jetbrains.dokka")
 
     group = project.findProperty("PUBLISH_GROUP_ID") ?: ""
+    version = project.findProperty("PUBLISH_VERSION") ?: "0.0.1-SNAPSHOT"
 }
 
 apply(plugin = "io.github.gradle-nexus.publish-plugin")
