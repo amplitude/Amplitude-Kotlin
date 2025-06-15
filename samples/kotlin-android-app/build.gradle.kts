@@ -22,8 +22,8 @@ if (localPropertiesFile.exists() && localPropertiesFile.isFile) {
 // Get AMPLITUDE_API_KEY from localProps. Fail build if not found.
 val AMPLITUDE_API_KEY: String = localProps.getProperty("AMPLITUDE_API_KEY")
     ?: throw GradleException(
-        "AMPLITUDE_API_KEY not found in root project's local.properties (${localPropertiesFile.absolutePath}). " +
-        "Please ensure it is defined in that file."
+        "AMPLITUDE_API_KEY not found in root project\'s local.properties (${localPropertiesFile.absolutePath}). " +
+            "Please ensure it is defined in that file."
     )
 
 val EXPERIMENT_API_KEY: String = ""
