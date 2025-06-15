@@ -85,3 +85,35 @@ tasks.named("dokkaHtmlMultiModule") {
 tasks.register<Delete>("clean") {
     delete(layout.buildDirectory)
 }
+
+tasks.register("printPublishCoordinates") {
+    description = "Prints the GAV (GroupId:ArtifactId:Version) and project name for all publishable subprojects."
+    group = "publishing" // Optional: assign to a task group
+
+    doLast {
+        val publishableProjects = subprojects.filter { proj ->
+            // A project is considered publishable if it applies the 'maven-publish' plugin
+            // and is not the 'buildSrc' project itself (as buildSrc usually has plugin publications not intended for this script).
+            proj.plugins.hasPlugin("maven-publish") && proj.name != "buildSrc"
+        }
+
+        if (publishableProjects.isEmpty()) {
+            println("INFO: No publishable subprojects found by the printPublishCoordinates task.")
+        } else {
+            publishableProjects.forEach { proj ->
+                val publishing = proj.extensions.findByType(PublishingExtension::class.java)
+                publishing?.publications?.filterIsInstance<MavenPublication>()?.forEach { publication ->
+                    // Output format: groupId:artifactId:version:projectName
+                    // This format is expected by the verify_maven_local_publish.sh script.
+                    // proj.name is the Gradle project name (e.g., "core", "android")
+                    // publication.artifactId is the artifactId defined in the publication
+                    if (publication.groupId != null && publication.artifactId != null && publication.version != null) {
+                        println("${publication.groupId}:${publication.artifactId}:${publication.version}:${proj.name}")
+                    } else {
+                        println("WARN: Insufficient GAV information for publication '${publication.name}' in project '${proj.name}'. Skipping.")
+                    }
+                }
+            }
+        }
+    }
+}
