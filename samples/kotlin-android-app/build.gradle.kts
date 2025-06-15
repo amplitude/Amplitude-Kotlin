@@ -67,16 +67,15 @@ android {
 }
 
 dependencies {
-    implementation(project(":core"))
     implementation(project(":android"))
-    implementation("androidx.core:core-ktx:1.7.0")
-    implementation("androidx.appcompat:appcompat:1.4.1")
-    implementation("com.google.android.material:material:1.5.0")
-    implementation("androidx.constraintlayout:constraintlayout:2.1.3")
-    implementation("com.google.android.gms:play-services-ads:20.6.0")
-    implementation("com.google.android.gms:play-services-appset:16.0.2")
-    implementation("com.amplitude:experiment-android-client:1.6.3")
+    implementation(libs.core.ktx)
+    implementation(libs.appcompat)
+    implementation(libs.material)
+    implementation(libs.constraintlayout)
+    implementation(libs.play.services.ads)
+    implementation(libs.play.services.appset)
+    implementation(libs.experiment.android.client)
     // For trouble shooting plugin
-    implementation(group = "com.google.code.gson", name = "gson", version = "2.10")
-    implementation(group = "com.squareup.okhttp3", name = "okhttp", version = "4.12.0")
+    implementation(libs.gson)
+    implementation(libs.okhttp)
 }
