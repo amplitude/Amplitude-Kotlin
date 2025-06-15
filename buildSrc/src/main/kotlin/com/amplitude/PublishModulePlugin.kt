@@ -42,14 +42,25 @@ const val DOKKA_JAVADOC = "dokkaJavadoc"
 class PublishModulePlugin : Plugin<Project> {
     override fun apply(project: Project) {
         project.logger.quiet("Applying PublishModulePlugin to project: ${project.name}")
-        // Create extension for module-specific overrides
         val ext = project.extensions.create("publication", PublicationExtension::class.java)
 
-        // Apply core plugins
+        applyCorePlugins(project)
+        registerJarTasks(project)
+
+        project.afterEvaluate {
+            val localProperties = loadLocalProperties(project)
+            configurePublication(project, ext)
+            configureSigning(project, localProperties)
+        }
+    }
+
+    private fun applyCorePlugins(project: Project) {
         project.plugins.apply("maven-publish")
         project.plugins.apply("signing")
         project.plugins.apply("org.jetbrains.dokka")
+    }
 
+    private fun registerJarTasks(project: Project) {
         // Register source and javadoc jar tasks used in publication
         if (project.plugins.findPlugin("com.android.library") == null) {
             project.tasks.register(SOURCES_JAR, Jar::class.java) {
@@ -68,113 +79,116 @@ class PublishModulePlugin : Plugin<Project> {
             archiveClassifier.set("javadoc")
             from(project.tasks.named(DOKKA_JAVADOC).flatMap { (it as DokkaTask).outputDirectory })
         }
+    }
 
-        project.afterEvaluate {
-            // Load properties from local.properties
-            val localProperties = Properties()
-            val localPropertiesFile = project.rootProject.file("local.properties")
-            if (localPropertiesFile.exists()) {
-                FileInputStream(localPropertiesFile).use { fis ->
-                    localProperties.load(fis)
-                }
+    private fun loadLocalProperties(project: Project): Properties {
+        val localProperties = Properties()
+        val localPropertiesFile = project.rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            FileInputStream(localPropertiesFile).use { fis ->
+                localProperties.load(fis)
             }
+        }
+        return localProperties
+    }
 
-            // Configure the maven-publish extension
-            extensions.configure<PublishingExtension> {
-                publications {
-                    create<MavenPublication>("release") {
-                        groupId = rootProject.property("PUBLISH_GROUP_ID") as String
-                        version = rootProject.property("PUBLISH_VERSION") as String
+    private fun configurePublication(project: Project, ext: PublicationExtension) {
+        project.extensions.configure<PublishingExtension> {
+            publications {
+                create<MavenPublication>("release") {
+                    groupId = project.rootProject.property("PUBLISH_GROUP_ID") as String
+                    version = project.rootProject.property("PUBLISH_VERSION") as String
 
-                        // Log extension properties for debugging
-                        project.logger.quiet("Publication name: ${ext.name}")
-                        project.logger.quiet("Publication description: ${ext.description}")
-                        project.logger.quiet("Publication artifactId: ${ext.artifactId}")
+                    // Log extension properties for debugging
+                    project.logger.quiet("Publication name: ${ext.name}")
+                    project.logger.quiet("Publication description: ${ext.description}")
+                    project.logger.quiet("Publication artifactId: ${ext.artifactId}")
 
-                        artifactId = ext.artifactId
+                    artifactId = ext.artifactId
 
-                        if (plugins.hasPlugin("com.android.library")) {
-                            from(components["release"])
-                        } else {
-                            from(components["java"])
-                            val sourcesJarTask = tasks.named(SOURCES_JAR)
-                            project.logger.quiet("Sources JAR task outputs: ${sourcesJarTask.get().outputs.files.files}")
-                            artifact(sourcesJarTask)
+                    if (project.plugins.hasPlugin("com.android.library")) {
+                        from(project.components["release"])
+                    } else {
+                        from(project.components["java"])
+                        val sourcesJarTask = project.tasks.named(SOURCES_JAR)
+                        project.logger.quiet("Sources JAR task outputs: ${sourcesJarTask.get().outputs.files.files}")
+                        artifact(sourcesJarTask)
+                    }
+
+                    val javadocJarTask = project.tasks.named(JAVADOC_JAR)
+                    project.logger.quiet("Javadoc JAR task outputs: ${javadocJarTask.get().outputs.files.files}")
+                    artifact(javadocJarTask)
+
+                    // Configure POM metadata
+                    pom {
+                        name.set(ext.name)
+                        description.set(ext.description)
+                        url.set(project.rootProject.property("POM_URL") as String)
+
+                        licenses {
+                            license {
+                                name.set(project.rootProject.property("POM_LICENCE_NAME") as String)
+                                url.set(project.rootProject.property("POM_LICENCE_URL") as String)
+                                distribution.set(project.rootProject.property("POM_LICENCE_DIST") as String)
+                            }
                         }
 
-                        val javadocJarTask = tasks.named(JAVADOC_JAR)
-                        project.logger.quiet("Javadoc JAR task outputs: ${javadocJarTask.get().outputs.files.files}")
-                        artifact(javadocJarTask)
-
-                        // Configure POM metadata
-                        pom {
-                            name.set(ext.name)
-                            description.set(ext.description)
-                            url.set(rootProject.property("POM_URL") as String)
-
-                            licenses {
-                                license {
-                                    name.set(rootProject.property("POM_LICENCE_NAME") as String)
-                                    url.set(rootProject.property("POM_LICENCE_URL") as String)
-                                    distribution.set(rootProject.property("POM_LICENCE_DIST") as String)
-                                }
+                        developers {
+                            developer {
+                                id.set(project.rootProject.property("POM_DEVELOPER_ID") as String)
+                                name.set(project.rootProject.property("POM_DEVELOPER_NAME") as String)
+                                email.set(project.rootProject.property("POM_DEVELOPER_EMAIL") as String)
                             }
+                        }
 
-                            developers {
-                                developer {
-                                    id.set(rootProject.property("POM_DEVELOPER_ID") as String)
-                                    name.set(rootProject.property("POM_DEVELOPER_NAME") as String)
-                                    email.set(rootProject.property("POM_DEVELOPER_EMAIL") as String)
-                                }
-                            }
-
-                            scm {
-                                connection.set(rootProject.property("POM_SCM_CONNECTION") as String)
-                                developerConnection.set(rootProject.property("POM_SCM_DEV_CONNECTION") as String)
-                                url.set(rootProject.property("POM_SCM_URL") as String)
-                            }
+                        scm {
+                            connection.set(project.rootProject.property("POM_SCM_CONNECTION") as String)
+                            developerConnection.set(project.rootProject.property("POM_SCM_DEV_CONNECTION") as String)
+                            url.set(project.rootProject.property("POM_SCM_URL") as String)
                         }
                     }
                 }
             }
+        }
+    }
 
-            // Load signing properties from project properties or environment variables
-            // and set them to project.extra. This makes them available for the SigningExtension.
-            val keyId = project.findProperty("signing.keyId")?.toString()
-                ?: localProperties.getProperty("signing.keyId")
-                ?: System.getenv("SIGNING_KEY_ID")
-            val password = project.findProperty("signing.password")?.toString()
-                ?: localProperties.getProperty("signing.password")
-                ?: System.getenv("SIGNING_PASSWORD")
-            val secretKeyRingFile = project.findProperty("signing.secretKeyRingFile")?.toString()
-                ?: localProperties.getProperty("signing.secretKeyRingFile")
-                ?: System.getenv("SIGNING_SECRET_KEY_RING_FILE")
+    private fun configureSigning(project: Project, localProperties: Properties) {
+        // Load signing properties from project properties or environment variables
+        // and set them to project.extra. This makes them available for the SigningExtension.
+        val keyId = project.findProperty("signing.keyId")?.toString()
+            ?: localProperties.getProperty("signing.keyId")
+            ?: System.getenv("SIGNING_KEY_ID")
+        val password = project.findProperty("signing.password")?.toString()
+            ?: localProperties.getProperty("signing.password")
+            ?: System.getenv("SIGNING_PASSWORD")
+        val secretKeyRingFile = project.findProperty("signing.secretKeyRingFile")?.toString()
+            ?: localProperties.getProperty("signing.secretKeyRingFile")
+            ?: System.getenv("SIGNING_SECRET_KEY_RING_FILE")
 
-            if (keyId != null) {
-                project.extra.set("signing.keyId", keyId)
-            }
-            if (password != null) {
-                project.extra.set("signing.password", password)
-            }
-            if (secretKeyRingFile != null) {
-                project.extra.set("signing.secretKeyRingFile", secretKeyRingFile)
-            }
+        if (keyId != null) {
+            project.extra.set("signing.keyId", keyId)
+        }
+        if (password != null) {
+            project.extra.set("signing.password", password)
+        }
+        if (secretKeyRingFile != null) {
+            project.extra.set("signing.secretKeyRingFile", secretKeyRingFile)
+        }
 
-            // Configure signing to sign the Maven publication, only if all properties are available
-            if (project.extra.has("signing.keyId") &&
-                project.extra.has("signing.password") &&
-                project.extra.has("signing.secretKeyRingFile")) {
-                project.extensions.configure<SigningExtension> {
-                    val publishing = project.extensions.findByType<PublishingExtension>()
-                    sign(publishing?.publications)
-                }
-            } else {
-                project.logger.error(
-                    "Signing properties (signing.keyId, signing.password, signing.secretKeyRingFile) \n" +
-                    "not fully available in project.extra (expected from rootProject.extra). \n" +
-                    "Skipping signing for project ${project.name}."
-                )
+        // Configure signing to sign the Maven publication, only if all properties are available
+        if (project.extra.has("signing.keyId") &&
+            project.extra.has("signing.password") &&
+            project.extra.has("signing.secretKeyRingFile")) {
+            project.extensions.configure<SigningExtension> {
+                val publishing = project.extensions.findByType<PublishingExtension>()
+                sign(publishing?.publications)
             }
+        } else {
+            project.logger.error(
+                "Signing properties (signing.keyId, signing.password, signing.secretKeyRingFile) \\n" +
+                "not fully available in project.extra (expected from rootProject.extra). \\n" +
+                "Skipping signing for project ${project.name}."
+            )
         }
     }
 }
