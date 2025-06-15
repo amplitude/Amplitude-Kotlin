@@ -55,7 +55,7 @@ check_local_properties() {
 }
 
 get_publish_coordinates() {
-    echo_info "Retrieving publish coordinates from Gradle..."
+    echo_info "Retrieving publish coordinates from Gradle... " >&2
     if [ ! -x "$WORKSPACE_ROOT/gradlew" ]; then
         echo_warn "$WORKSPACE_ROOT/gradlew is not executable. Attempting to make it executable..."
         chmod +x "$WORKSPACE_ROOT/gradlew"
@@ -73,17 +73,18 @@ get_publish_coordinates() {
     if [ $? -ne 0 ]; then
         echo_error "Gradle task printPublishCoordinates failed."
         echo_error "Output from Gradle:"
-        echo "$coordinates_output"
+        echo "$coordinates_output" >&2
         exit 1
     fi
 
     # Filter for lines that look like coordinates (G:A:V:ProjectName)
-    echo "$coordinates_output" | grep -E "^[^:]+:[^:]+:[^:]+:[^:]+"
+    # AND filter out lines that start with "[INFO]" to avoid malformed entries
+    echo "$coordinates_output" | grep -E "^[^:]+:[^:]+:[^:]+:[^:]+" | grep -E -v "^\\[INFO\\]"
 }
 
 publish_to_maven_local() {
     echo_info "Publishing to Maven Local using root project task './gradlew publishToMavenLocal'..."
-    if ! "$WORKSPACE_ROOT/gradlew" -p "$WORKSPACE_ROOT" publishToMavenLocal; then
+    if ! "$WORKSPACE_ROOT/gradlew" -p "$WORKSPACE_ROOT" publishReleasePublicationToMavenLocal; then
         echo_error "Gradle task publishToMavenLocal failed."
         exit 1
     fi
@@ -109,13 +110,29 @@ verify_publications() {
         version=$(echo "$line" | cut -d: -f3)
         project_name=$(echo "$line" | cut -d: -f4)
 
+        if [ -z "$project_name" ] || [ -z "$group_id" ] || [ -z "$artifact_id" ] || [ -z "$version" ]; then
+            echo_warn "  Skipping verification for line: '$line' due to missing GAV or project name."
+            continue
+        fi
+
         echo_info "Verifying module: $project_name ($group_id:$artifact_id:$version)"
 
-        local module_path_base="$MAVEN_LOCAL_REPO/$(echo "$group_id" | tr '.' '/')/$artifact_id/$version"
+        local module_path_base
+        module_path_base="$MAVEN_LOCAL_REPO/$(echo "$group_id" | tr '.' '/')/$artifact_id/$version"
+
+        local main_artifact_filename
+        # Check if the project is the Android project.
+        # This assumes the Android module's project name as reported by printPublishCoordinates is 'android'.
+        # Adjust this condition if the project name is different (e.g., derived from artifact_id or a different naming convention).
+        if [ "$project_name" == "android" ]; then
+            main_artifact_filename="$artifact_id-$version.aar"
+        else
+            main_artifact_filename="$artifact_id-$version.jar"
+        fi
 
         local files_to_check_basenames=(
             "$artifact_id-$version.pom"
-            "$artifact_id-$version.jar"
+            "$main_artifact_filename" # Use the dynamically determined filename
             "$artifact_id-$version-sources.jar"
             "$artifact_id-$version-javadoc.jar"
             "$artifact_id-$version.module"
@@ -196,4 +213,3 @@ main() {
 }
 
 main
-
