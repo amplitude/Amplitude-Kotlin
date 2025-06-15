@@ -39,7 +39,7 @@ const val DOKKA_JAVADOC = "dokkaJavadoc"
  */
 class PublishModulePlugin : Plugin<Project> {
     override fun apply(project: Project) {
-        println("Applying PublishModulePlugin to project: ${project.name}")
+        project.logger.quiet("Applying PublishModulePlugin to project: ${project.name}")
         // Create extension for module-specific overrides
         val ext = project.extensions.create("publication", PublicationExtension::class.java)
 
@@ -76,9 +76,9 @@ class PublishModulePlugin : Plugin<Project> {
                         version = rootProject.property("PUBLISH_VERSION") as String
 
                         // Log extension properties for debugging
-                        println("Publication name: ${ext.name}")
-                        println("Publication description: ${ext.description}")
-                        println("Publication artifactId: ${ext.artifactId}")
+                        project.logger.quiet("Publication name: ${ext.name}")
+                        project.logger.quiet("Publication description: ${ext.description}")
+                        project.logger.quiet("Publication artifactId: ${ext.artifactId}")
 
                         artifactId = ext.artifactId
 
@@ -123,11 +123,36 @@ class PublishModulePlugin : Plugin<Project> {
                 }
             }
 
-            // Configure signing to sign the Maven publication
-            // Signing read the signing key and password from local.properties
-            extensions.configure<SigningExtension> {
-                val publishing = extensions.findByType<PublishingExtension>()
-                sign(publishing?.publications)
+            // Load signing properties from project properties or environment variables
+            // and set them to project.extra. This makes them available for the SigningExtension.
+            val keyId = project.findProperty("signing.keyId")?.toString() ?: System.getenv("SIGNING_KEY_ID")
+            val password = project.findProperty("signing.password")?.toString() ?: System.getenv("SIGNING_PASSWORD")
+            val secretKeyRingFile = project.findProperty("signing.secretKeyRingFile")?.toString() ?: System.getenv("SIGNING_SECRET_KEY_RING_FILE")
+
+            if (keyId != null) {
+                project.extra.set("signing.keyId", keyId)
+            }
+            if (password != null) {
+                project.extra.set("signing.password", password)
+            }
+            if (secretKeyRingFile != null) {
+                project.extra.set("signing.secretKeyRingFile", secretKeyRingFile)
+            }
+
+            // Configure signing to sign the Maven publication, only if all properties are available
+            if (project.extra.has("signing.keyId") &&
+                project.extra.has("signing.password") &&
+                project.extra.has("signing.secretKeyRingFile")) {
+                project.extensions.configure<SigningExtension> {
+                    val publishing = project.extensions.findByType<PublishingExtension>()
+                    sign(publishing?.publications)
+                }
+            } else {
+                project.logger.error(
+                    "Signing properties (signing.keyId, signing.password, signing.secretKeyRingFile) \n" +
+                    "not fully available in project.extra (expected from rootProject.extra). \n" +
+                    "Skipping signing for project ${project.name}."
+                )
             }
         }
     }

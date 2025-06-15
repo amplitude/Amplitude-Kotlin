@@ -1,10 +1,12 @@
 import org.jetbrains.dokka.gradle.DokkaMultiModuleTask
+import java.util.Properties
 
 buildscript {
     repositories {
         maven(url = "https://plugins.gradle.org/m2/")
         mavenCentral()
         google()
+        gradlePluginPortal()
     }
     dependencies {
         classpath("com.android.tools.build:gradle:8.10.1")
@@ -37,8 +39,33 @@ allprojects {
     version = project.findProperty("PUBLISH_VERSION") ?: "0.0.1-SNAPSHOT"
 }
 
-apply(plugin = "io.github.gradle-nexus.publish-plugin")
-apply(from = "${rootDir}/gradle/publish-root.gradle")
+plugins {
+    id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
+}
+
+// Load local properties for Sonatype credentials
+val localPropsFile = rootProject.file("local.properties")
+val localProps = Properties().apply {
+    if (localPropsFile.exists()) {
+        load(localPropsFile.inputStream())
+    }
+}
+val sonatypeStagingProfileId: String? = localProps.getProperty("SONATYPE_STAGING_PROFILE_ID")
+    ?: System.getenv("SONATYPE_STAGING_PROFILE_ID")
+val sonatypeUsername: String? =
+    localProps.getProperty("SONATYPE_USERNAME") ?: System.getenv("SONATYPE_USERNAME")
+val sonatypePassword: String? =
+    localProps.getProperty("SONATYPE_PASSWORD") ?: System.getenv("SONATYPE_PASSWORD")
+
+nexusPublishing {
+    repositories {
+        sonatype {
+            stagingProfileId.set(sonatypeStagingProfileId)
+            username.set(sonatypeUsername)
+            password.set(sonatypePassword)
+        }
+    }
+}
 
 tasks.named<DokkaMultiModuleTask>("dokkaHtmlMultiModule") {
     outputDirectory.set(file("${'$'}rootDir/docs"))
