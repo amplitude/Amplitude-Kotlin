@@ -53,7 +53,6 @@ class ConfigurationTest {
     }
 
     @Test
-    @OptIn(ExperimentalAmplitudeFeature::class)
     fun configuration_defaultTracking_quick_update() {
         val configuration = Configuration(
             "test-apikey",
