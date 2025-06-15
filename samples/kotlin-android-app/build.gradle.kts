@@ -19,14 +19,8 @@ if (localPropertiesFile.exists() && localPropertiesFile.isFile) {
     }
 }
 
-// Get AMPLITUDE_API_KEY from localProps. Fail build if not found.
-val AMPLITUDE_API_KEY: String = localProps.getProperty("AMPLITUDE_API_KEY")
-    ?: throw GradleException(
-        "AMPLITUDE_API_KEY not found in root project\'s local.properties (${localPropertiesFile.absolutePath}). " +
-            "Please ensure it is defined in that file."
-    )
-
-val EXPERIMENT_API_KEY: String = ""
+val AMPLITUDE_API_KEY: String = localProps.getProperty("AMPLITUDE_API_KEY") ?: ""
+val EXPERIMENT_API_KEY: String = localProps.getProperty("EXPERIMENT_API_KEY") ?: ""
 
 android {
     namespace = "com.amplitude.android.sample"
