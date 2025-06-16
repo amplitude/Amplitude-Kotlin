@@ -26,6 +26,40 @@ This script is particularly useful for:
 1.  **Signing Configuration**: The script checks for signing credentials (`signing.keyId`, `signing.password`, `signing.secretKeyRingFile`) in the `local.properties` file at the root of the repository. Ensure this file is present and correctly configured if you intend to verify signed artifacts.
 2.  **Gradle Task `printPublishCoordinates`**: The script relies on a Gradle task named `printPublishCoordinates`. This task must be defined in your root Gradle build configuration (e.g., `build.gradle.kts`). Its purpose is to print the publishing coordinates (in the format `groupId:artifactId:version:projectName`) for each module that should be published.
 
+#### Creating and Configuring Local Signing Credentials
+
+To generate and use local signing keys for artifact verification, follow these steps:
+
+1.  **Generate a GPG Key**: If you don't have one, create a GPG key. You can use a command like:
+    ```bash
+    gpg --full-generate-key
+    ```
+    Follow the prompts. It's recommended to use an RSA key type.
+
+2.  **List Your Keys**: To find your `signing.keyId`, list your GPG keys:
+    ```bash
+    gpg --list-secret-keys --keyid-format LONG
+    ```
+    Your key ID is the long string after `sec` and before the date (e.g., `rsa4096/XXXXXXXXXXXXXXXX`). You'll need the last 8 or 16 characters of this ID.
+
+3.  **Export the Secret Keyring**: Export your secret keyring file.
+    ```bash
+    gpg --export-secret-keys -o ~/.gnupg/secring.gpg
+    ```
+    This command saves the keyring to `~/.gnupg/secring.gpg`. You can choose a different location if preferred.
+
+4.  **Configure `local.properties`**: Create or update the `local.properties` file in the root directory of the Amplitude-Kotlin repository with the following content, replacing the placeholder values with your actual credentials:
+    ```properties
+    signing.keyId=YOUR_KEY_ID 
+    signing.password=YOUR_GPG_KEY_PASSPHRASE
+    signing.secretKeyRingFile=/path/to/your/secring.gpg 
+    ```
+    *   `signing.keyId`: The last 8 or 16 characters of your GPG key ID.
+    *   `signing.password`: The passphrase for your GPG key.
+    *   `signing.secretKeyRingFile`: The absolute path to your exported secret keyring file (e.g., `/Users/yourusername/.gnupg/secring.gpg` or the path you chose in step 3).
+
+    **Important Security Note**: The `local.properties` file should **never** be committed to version control, as it contains sensitive credentials. Ensure it is listed in your project's `.gitignore` file.
+
 ### How to Use
 
 1.  **Make the script executable**:
@@ -55,4 +89,3 @@ The `verify_maven_local_publish.sh` script is tightly coupled with a Gradle task
 4.  **Verification Logic**: It then parses each line of this output to determine the `groupId`, `artifactId`, `version`, and `projectName`. These details are used to construct the expected file paths within the local Maven repository (`~/.m2/repository/group/id/path/artifact-id/version/`) and check for the existence of the artifact files and their corresponding `.asc` signature files.
 
 Therefore, the accuracy and completeness of the `printPublishCoordinates` task's output are crucial for the verification script to function correctly. If new modules are added or publishing details change, this Gradle task might need to be updated accordingly.
-
