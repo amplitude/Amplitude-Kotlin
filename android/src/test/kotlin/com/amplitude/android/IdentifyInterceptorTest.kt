@@ -3,6 +3,7 @@ package com.amplitude.android
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
+import com.amplitude.android.utilities.FakeAndroidAmplitude
 import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.core.Constants
 import com.amplitude.core.events.BaseEvent
@@ -15,6 +16,10 @@ import io.mockk.mockkConstructor
 import io.mockk.mockkStatic
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
@@ -32,10 +37,12 @@ import org.robolectric.RobolectricTestRunner
 import java.lang.Thread.sleep
 import java.util.concurrent.TimeUnit
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 class IdentifyInterceptorTest {
+
     private lateinit var server: MockWebServer
-    private lateinit var amplitude: Amplitude
+    private lateinit var amplitude: FakeAndroidAmplitude
 
     @ExperimentalCoroutinesApi
     @Before
@@ -45,14 +52,16 @@ class IdentifyInterceptorTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         mockContextProvider()
 
-        val apiKey = "test-api-key"
-        amplitude = Amplitude(apiKey, context) {
-            this.serverUrl = server.url("/").toString()
-            @Suppress("DEPRECATION")
-            this.trackingSessionEvents = false
-            this.flushIntervalMillis = 1000
-            this.identifyBatchIntervalMillis = 1000
-        }
+        amplitude = FakeAndroidAmplitude(
+            configuration = Configuration(
+                apiKey = "test-api-key",
+                context = context,
+                serverUrl = server.url("/").toString(),
+                trackingSessionEvents = false,
+                flushIntervalMillis = 1000,
+                identifyBatchIntervalMillis = 1000
+            )
+        )
     }
 
     @After
@@ -61,13 +70,14 @@ class IdentifyInterceptorTest {
     }
 
     @Test
-    fun `test multiple identify with set action only send one identify event`() {
+    fun `test multiple identify with set action only send one identify event`() = runTest(amplitude.androidTestDispatcher) {
         server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+        advanceUntilIdle()
         amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
         amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
         amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
         amplitude.identify(Identify().set("key3", "key3-value2").set("key4", "key4-value2"))
-
+        advanceUntilIdle()
         val request = runRequest()
         assertNotNull(request)
         val events = getEventsFromRequest(request!!)
@@ -88,8 +98,9 @@ class IdentifyInterceptorTest {
     }
 
     @Test
-    fun `test multiple identify with set action only and one event`() {
+    fun `test multiple identify with set action only and one event`() = runTest(amplitude.androidTestDispatcher) {
         server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+        advanceUntilIdle()
         amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
         amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
         amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
@@ -98,6 +109,7 @@ class IdentifyInterceptorTest {
         testEvent.eventType = "test_event"
         testEvent.userProperties = mutableMapOf("test_key" to "test_value", "key1" to "key1-value3", "key2" to "key2-value3")
         amplitude.track(testEvent)
+        advanceUntilIdle()
         val request: RecordedRequest? = runRequest()
         assertNotNull(request)
         val events = getEventsFromRequest(request!!)
@@ -111,8 +123,9 @@ class IdentifyInterceptorTest {
     }
 
     @Test
-    fun `test multiple identify with set action only and one event and identify`() {
+    fun `test multiple identify with set action only and one event and identify`() = runTest(amplitude.androidTestDispatcher) {
         server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+        advanceUntilIdle()
         amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
         amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
         amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
@@ -122,6 +135,7 @@ class IdentifyInterceptorTest {
         testEvent.userProperties = mutableMapOf("test_key" to "test_value", "key1" to "key1-value3", "key2" to "key2-value3")
         amplitude.track(testEvent)
         amplitude.identify(mapOf("key1" to "key1-value4"))
+        advanceUntilIdle()
         val request: RecordedRequest? = runRequest()
         assertNotNull(request)
         val events = getEventsFromRequest(request!!)
@@ -138,13 +152,15 @@ class IdentifyInterceptorTest {
     }
 
     @Test
-    fun `test multiple identify with set action and clear all`() {
+    fun `test multiple identify with set action and clear all`() = runTest(amplitude.androidTestDispatcher) {
         server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+        advanceUntilIdle()
         amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
         amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
         amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
         amplitude.identify(Identify().set("key3", "key3-value2").set("key4", "key4-value2"))
         amplitude.identify(Identify().clearAll())
+        advanceUntilIdle()
         val request: RecordedRequest? = runRequest()
         assertNotNull(request)
         val events = getEventsFromRequest(request!!)
@@ -155,13 +171,15 @@ class IdentifyInterceptorTest {
     }
 
     @Test
-    fun `test multiple identify with set action and another identify`() {
+    fun `test multiple identify with set action and another identify`() = runTest(amplitude.androidTestDispatcher) {
         server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+        advanceUntilIdle()
         amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
         amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
         amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
         amplitude.identify(Identify().set("key3", "key3-value2").set("key4", "key4-value2"))
         amplitude.identify(Identify().add("key5", 2))
+        advanceUntilIdle()
         val request: RecordedRequest? = runRequest()
         assertNotNull(request)
         val events = getEventsFromRequest(request!!)
@@ -180,13 +198,15 @@ class IdentifyInterceptorTest {
     }
 
     @Test
-    fun `test flush send intercepted identify`() {
+    fun `test flush send intercepted identify`() = runTest(amplitude.androidTestDispatcher) {
         server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+        advanceUntilIdle()
         amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
         amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
         amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
         amplitude.identify(Identify().set("key3", "key3-value2").set("key4", "key4-value2"))
         amplitude.flush()
+        advanceUntilIdle()
         val request: RecordedRequest? = runRequest()
         assertNotNull(request)
         val events = getEventsFromRequest(request!!)
@@ -200,14 +220,16 @@ class IdentifyInterceptorTest {
     }
 
     @Test
-    fun `test multiple identify with set action only and set group and identify`() {
+    fun `test multiple identify with set action only and set group and identify`() = runTest(amplitude.androidTestDispatcher) {
         server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+        advanceUntilIdle()
         amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
         amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
         amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
         amplitude.identify(Identify().set("key3", "key3-value2").set("key4", "key4-value2"))
         amplitude.setGroup("test-group-type", "test-group-value")
         amplitude.identify(mapOf("key3" to "key3-value3", "key4" to "key4-value3"))
+        advanceUntilIdle()
         val request: RecordedRequest? = runRequest()
         assertNotNull(request)
         val events = getEventsFromRequest(request!!)
@@ -236,8 +258,9 @@ class IdentifyInterceptorTest {
     }
 
     @Test
-    fun `test multiple identify with user id update`() {
+    fun `test multiple identify with user id update`() = runTest(amplitude.androidTestDispatcher) {
         server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+        advanceUntilIdle()
         amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
         amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
         amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
@@ -249,6 +272,7 @@ class IdentifyInterceptorTest {
             }
             amplitude.identify(mapOf("key3" to "key3-value3", "key4" to "key4-value3"), options)
         }
+        advanceUntilIdle()
         val request: RecordedRequest? = runRequest()
         assertNotNull(request)
         val events = getEventsFromRequest(request!!)
@@ -270,12 +294,14 @@ class IdentifyInterceptorTest {
     }
 
     @Test
-    fun `test null user properties filtered out`() {
+    fun `test null user properties filtered out`() = runTest(amplitude.androidTestDispatcher) {
         server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+        advanceUntilIdle()
         amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
         amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
         amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
         amplitude.identify(Identify().set("key3", "key3-value2").set("key4", "key4-value2"))
+        advanceUntilIdle()
         val testEvent = BaseEvent()
         testEvent.eventType = "test_event"
         testEvent.userProperties = mutableMapOf("key1" to null, "key2" to null)
