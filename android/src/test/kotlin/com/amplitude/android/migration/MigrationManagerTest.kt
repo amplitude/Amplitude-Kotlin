@@ -300,6 +300,7 @@ class MigrationManagerTest {
     }
 
     private fun copyStream(src: InputStream, dst: File) {
+        dst.parentFile?.mkdirs()
         src.use { srcStream ->
             FileOutputStream(dst).use { dstStream ->
                 // Transfer bytes from in to out
