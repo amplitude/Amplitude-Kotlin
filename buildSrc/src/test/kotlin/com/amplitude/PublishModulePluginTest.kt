@@ -6,7 +6,7 @@ import io.mockk.spyk
 import io.mockk.verify
 import org.gradle.api.Project
 import org.gradle.api.plugins.ExtensionContainer
-import org.gradle.api.plugins.PluginContainer // Changed from PluginManager
+import org.gradle.api.plugins.PluginContainer
 import org.gradle.api.tasks.TaskContainer
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.jupiter.api.BeforeEach
@@ -68,13 +68,15 @@ class PublishModulePluginTest {
         tempLocalPropertiesFile.delete()
     }
 
-    /*@Test
+    @Test
     fun `loadLocalProperties returns empty when file does not exist`() {
+        val tempLocalPropertiesFile = File(project.rootDir, "local.properties")
+        if (tempLocalPropertiesFile.exists()) {
+            tempLocalPropertiesFile.delete()
+        }
 
-    }*/
+        val loadedProperties = plugin.loadLocalProperties(project)
 
-    // TODO: Add tests for registerJarTasks
-    // TODO: Add tests for configurePublication
-    // TODO: Add tests for configureSigning
-    // TODO: Add test for the main apply method (integration style)
+        assert(loadedProperties.isEmpty) { "Properties should be empty when file does not exist" }
+    }
 }
