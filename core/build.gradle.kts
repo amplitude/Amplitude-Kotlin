@@ -37,8 +37,12 @@ publication {
     artifactId = "analytics-core"
 }
 
-tasks.test {
+tasks.withType<Test> {
     useJUnitPlatform()
+    testLogging {
+        events("passed", "skipped", "failed")
+        showStandardStreams = true
+    }
 }
 
 tasks.dokkaHtmlPartial.configure {

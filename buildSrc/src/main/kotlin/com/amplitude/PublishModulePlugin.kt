@@ -7,6 +7,7 @@ import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.tasks.bundling.Jar
+import org.jetbrains.annotations.VisibleForTesting
 import org.jetbrains.dokka.gradle.DokkaTask
 import org.jetbrains.dokka.gradle.DokkaTaskPartial
 import java.util.Properties
@@ -54,13 +55,15 @@ class PublishModulePlugin : Plugin<Project> {
         }
     }
 
-    private fun applyCorePlugins(project: Project) {
+    @VisibleForTesting
+    internal fun applyCorePlugins(project: Project) {
         project.plugins.apply("maven-publish")
         project.plugins.apply("signing")
         project.plugins.apply("org.jetbrains.dokka")
     }
 
-    private fun registerJarTasks(project: Project) {
+    @VisibleForTesting
+    internal fun registerJarTasks(project: Project) {
         // Register source and javadoc jar tasks used in publication
         if (project.plugins.findPlugin("com.android.library") == null) {
             project.tasks.register(SOURCES_JAR, Jar::class.java) {
@@ -81,7 +84,8 @@ class PublishModulePlugin : Plugin<Project> {
         }
     }
 
-    private fun loadLocalProperties(project: Project): Properties {
+    @VisibleForTesting
+    internal fun loadLocalProperties(project: Project): Properties {
         val localProperties = Properties()
         val localPropertiesFile = project.rootProject.file("local.properties")
         if (localPropertiesFile.exists()) {
@@ -92,7 +96,8 @@ class PublishModulePlugin : Plugin<Project> {
         return localProperties
     }
 
-    private fun configurePublication(project: Project, ext: PublicationExtension) {
+    @VisibleForTesting
+    internal fun configurePublication(project: Project, ext: PublicationExtension) {
         project.extensions.configure<PublishingExtension> {
             publications {
                 create<MavenPublication>("release") {
@@ -152,7 +157,8 @@ class PublishModulePlugin : Plugin<Project> {
         }
     }
 
-    private fun configureSigning(project: Project, localProperties: Properties) {
+    @VisibleForTesting
+    internal fun configureSigning(project: Project, localProperties: Properties) {
         // Load signing properties from project properties or environment variables
         // and set them to project.extra. This makes them available for the SigningExtension.
         val keyId = project.findProperty("signing.keyId")?.toString()
