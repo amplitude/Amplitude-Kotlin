@@ -62,6 +62,13 @@ class PublishModulePlugin : Plugin<Project> {
         project.plugins.apply("org.jetbrains.dokka")
     }
 
+    /**
+     * Registers the source and Javadoc JAR tasks for the project.
+     * If the project is an Android library, it registers a Dokka task for generating Javadoc.
+     * It also configures the Dokka task to separate inherited members.
+     *
+     * @param project The Gradle project to register tasks for.
+     */
     @VisibleForTesting
     internal fun registerJarTasks(project: Project) {
         // Register source and javadoc jar tasks used in publication
@@ -84,6 +91,14 @@ class PublishModulePlugin : Plugin<Project> {
         }
     }
 
+    /**
+     * Loads local properties from the `local.properties` file in the root project directory.
+     * If the file exists, it reads the properties and returns them as a Properties object.
+     * If the file does not exist, it returns an empty Properties object.
+     *
+     * @param project The Gradle project to load local properties for.
+     * @return A Properties object containing the local properties.
+     */
     @VisibleForTesting
     internal fun loadLocalProperties(project: Project): Properties {
         val localProperties = Properties()
@@ -96,6 +111,14 @@ class PublishModulePlugin : Plugin<Project> {
         return localProperties
     }
 
+    /**
+     * Configures the Maven publication with the provided properties from the PublicationExtension.
+     * It sets the groupId, version, artifactId, and POM metadata.
+     * It also configures the sources and Javadoc JARs if applicable.
+     *
+     * @param project The Gradle project to configure.
+     * @param ext The PublicationExtension containing publication properties.
+     */
     @VisibleForTesting
     internal fun configurePublication(project: Project, ext: PublicationExtension) {
         project.extensions.configure<PublishingExtension> {
@@ -169,6 +192,14 @@ class PublishModulePlugin : Plugin<Project> {
         }
     }
 
+    /**
+     * Configures signing for the Maven publication.
+     * It reads signing properties from project properties, local.properties, or environment variables,
+     * and sets them to project.extra for use in the SigningExtension.
+     * If all required properties are available, it configures the SigningExtension to sign the publication.
+     * @param project The Gradle project to configure.
+     * @param localProperties The local properties loaded from local.properties file.
+     */
     @VisibleForTesting
     internal fun configureSigning(project: Project, localProperties: Properties) {
         // Load signing properties from project properties or environment variables
