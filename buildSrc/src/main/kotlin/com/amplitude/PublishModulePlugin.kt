@@ -45,22 +45,36 @@ class PublishModulePlugin : Plugin<Project> {
         project.logger.quiet("Applying PublishModulePlugin to project: ${project.name}")
         val ext = project.extensions.create("publication", PublicationExtension::class.java)
 
-        applyCorePlugins(project)
-        registerJarTasks(project)
-
-        project.afterEvaluate {
-            val localProperties = loadLocalProperties(project)
-            configurePublication(project, ext)
-            // Only configure signing if the signReleasePublication task is requested
-            if (project.gradle.taskGraph.hasTask(":${project.name}:signReleasePublication")) {
+        if (isSignReleasePublicationTaskRequested(project)) {
+            applyCorePlugins(project)
+            registerJarTasks(project)
+            project.afterEvaluate {
+                val localProperties = loadLocalProperties(project)
+                configurePublication(project, ext)
                 configureSigning(project, localProperties)
-            } else {
-                project.logger.warn(
-                    "Skipping signing configuration for project ${project.name} " +
-                    "because signReleasePublication task is not requested."
-                )
+            }
+        } else {
+            project.logger.warn(
+                "Skipping signing configuration for project ${project.name} " +
+                        "because signReleasePublication task is not requested."
+            )
+            // Validate publication extension properties even if not signing
+            project.afterEvaluate {
+                if (ext.name.isNullOrEmpty()) {
+                    throw org.gradle.api.GradleException("Publication name is required but was not provided in the 'publication' extension.")
+                }
+                if (ext.description.isNullOrEmpty()) {
+                    throw org.gradle.api.GradleException("Publication description is required but was not provided in the 'publication' extension.")
+                }
+                if (ext.artifactId.isNullOrEmpty()) {
+                    throw org.gradle.api.GradleException("Publication artifactId is required but was not provided in the 'publication' extension.")
+                }
             }
         }
+    }
+
+    private fun isSignReleasePublicationTaskRequested(project: Project): Boolean {
+        return project.gradle.taskGraph.hasTask(":${project.name}:signReleasePublication")
     }
 
     @VisibleForTesting

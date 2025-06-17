@@ -104,8 +104,8 @@ tasks.register("printPublishCoordinates") {
                 val publishing = proj.extensions.findByType(PublishingExtension::class.java)
                 publishing?.publications?.filterIsInstance<MavenPublication>()?.forEach { publication ->
                     // Output format: groupId:artifactId:version:projectName
-                    // This format is expected by the verify_maven_local_publish.sh script.
-                    // proj.name is the Gradle project name (e.g., "core", "android")
+                    // This format is expected by the tools/scripts/verify_maven_local_publish.sh script.
+                    // proj.name is the Gradle project name (e.g., "core", "android", etc...)
                     // publication.artifactId is the artifactId defined in the publication
                     if (publication.groupId != null && publication.artifactId != null && publication.version != null) {
                         println("${publication.groupId}:${publication.artifactId}:${publication.version}:${proj.name}")
