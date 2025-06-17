@@ -51,7 +51,15 @@ class PublishModulePlugin : Plugin<Project> {
         project.afterEvaluate {
             val localProperties = loadLocalProperties(project)
             configurePublication(project, ext)
-            configureSigning(project, localProperties)
+            // Only configure signing if the signReleasePublication task is requested
+            if (project.gradle.taskGraph.hasTask(":${project.name}:signReleasePublication")) {
+                configureSigning(project, localProperties)
+            } else {
+                project.logger.warn(
+                    "Skipping signing configuration for project ${project.name} " +
+                    "because signReleasePublication task is not requested."
+                )
+            }
         }
     }
 
