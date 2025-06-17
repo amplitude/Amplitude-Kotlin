@@ -2,7 +2,6 @@ package com.amplitude.android.utilities
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.pm.PackageManager
 import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.net.ConnectivityManager
 import android.net.ConnectivityManager.NetworkCallback
@@ -197,4 +196,3 @@ class AndroidNetworkListener(
         }
     }
 }
-
