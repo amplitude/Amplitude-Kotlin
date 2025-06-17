@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import com.amplitude.android.Amplitude
 import com.amplitude.android.AutocaptureOption
 import com.amplitude.android.Configuration
@@ -35,6 +36,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @ExperimentalCoroutinesApi
 @RunWith(RobolectricTestRunner::class)
@@ -49,7 +51,6 @@ class AndroidLifecyclePluginTest {
     private val mockedPackageManager = mockk<PackageManager>()
     private val packageInfo = PackageInfo().apply {
         versionCode = 66
-        longVersionCode = 66
         versionName = "6.0.0"
     }
 
@@ -189,6 +190,7 @@ class AndroidLifecyclePluginTest {
         close()
     }
 
+    @Config(sdk = [Build.VERSION_CODES.LOLLIPOP])
     @Test
     fun `test fragment activity is tracked if enabled`() = runTest {
         every { mockedConfig.autocapture } returns setOf(
