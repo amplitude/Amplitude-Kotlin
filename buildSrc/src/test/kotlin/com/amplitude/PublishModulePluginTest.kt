@@ -20,7 +20,7 @@ class PublishModulePluginTest {
     private lateinit var project: Project
     private lateinit var plugin: PublishModulePlugin
     private lateinit var mockExtensions: ExtensionContainer
-    private lateinit var mockPlugins: PluginContainer // Changed from PluginManager
+    private lateinit var mockPlugins: PluginContainer
     private lateinit var mockTasks: TaskContainer
 
     @BeforeEach
@@ -29,14 +29,11 @@ class PublishModulePluginTest {
         project = spyk(realProject) // Use a spy of the real project instance
 
         plugin = PublishModulePlugin()
-        // Mocking PluginContainer instead of PluginManager
         mockPlugins = mockk<PluginContainer>(relaxed = true)
-        // Stubbing project.plugins to return the mock
         every { project.plugins } returns mockPlugins
         mockExtensions = mockk<ExtensionContainer>(relaxed = true)
         every { project.extensions } returns mockExtensions
         mockTasks = mockk<TaskContainer>(relaxed = true)
-        // This stubbing should now work correctly on the spyk
         every { project.tasks } returns mockTasks
     }
 
