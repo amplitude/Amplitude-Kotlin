@@ -12,7 +12,7 @@ android {
         minSdk = 19
         multiDexEnabled = true
 
-        testInstrumentationRunner = "android.support.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
 
         buildConfigField("String", "AMPLITUDE_VERSION", "\"${version}\"")
@@ -68,8 +68,8 @@ dependencies {
     androidTestImplementation(libs.espresso.core)
     testImplementation(libs.json)
     testImplementation(libs.play.services.base)
-    testImplementation(libs.play.services.ads.identifier)
-    testImplementation(libs.play.services.appset)
+    testImplementation(libs.playServicesAdsIdentifier)
+    testImplementation(libs.playServicesAppset)
     testImplementation(libs.junit.jupiter.api)
     testImplementation(libs.test.runner)
 }

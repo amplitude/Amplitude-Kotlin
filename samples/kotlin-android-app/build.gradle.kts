@@ -66,8 +66,8 @@ dependencies {
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.constraintlayout)
-    implementation(libs.play.services.ads)
-    implementation(libs.play.services.appset)
+    implementation(libs.playServicesAds)
+    implementation(libs.playServicesAppset)
     implementation(libs.experiment.android.client)
     // For trouble shooting plugin
     implementation(libs.gson)

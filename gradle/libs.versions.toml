@@ -56,9 +56,9 @@ material = { module = "com.google.android.material:material", version.ref = "mat
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 mockwebserver = { module = "com.squareup.okhttp3:mockwebserver", version.ref = "mockwebserver" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
-play-services-ads = { module = "com.google.android.gms:play-services-ads", version.ref = "playServicesAds" } # Added
-play-services-ads-identifier = { module = "com.google.android.gms:play-services-ads-identifier", version.ref = "playServicesAdsIdentifier" }
-play-services-appset = { module = "com.google.android.gms:play-services-appset", version.ref = "playServicesAppset" }
+playServicesAds = { module = "com.google.android.gms:play-services-ads", version.ref = "playServicesAds" }
+playServicesAdsIdentifier = { module = "com.google.android.gms:play-services-ads-identifier", version.ref = "playServicesAdsIdentifier" }
+playServicesAppset = { module = "com.google.android.gms:play-services-appset", version.ref = "playServicesAppset" }
 play-services-base = { module = "com.google.android.gms:play-services-base", version.ref = "playServicesBase" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 test-core = { module = "androidx.test:core", version.ref = "testCore" }
