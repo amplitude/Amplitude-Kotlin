@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.amplitude.android"
-    compileSdk = 35
+    compileSdk = 34
 
     defaultConfig {
         minSdk = 19

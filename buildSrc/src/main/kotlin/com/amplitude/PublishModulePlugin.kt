@@ -30,7 +30,7 @@ const val DOKKA_JAVADOC = "dokkaJavadoc"
  * Usage:
  * ```kotlin
  * plugins {
- *     id("com.amplitude.publish-module")
+ *     id("com.amplitude.publish-module-plugin")
  * }
  * Configure the publication extension:
  * publication {
@@ -105,9 +105,21 @@ class PublishModulePlugin : Plugin<Project> {
                     version = project.rootProject.property("PUBLISH_VERSION") as String
 
                     // Log extension properties for debugging
-                    project.logger.quiet("Publication name: ${ext.name}")
-                    project.logger.quiet("Publication description: ${ext.description}")
-                    project.logger.quiet("Publication artifactId: ${ext.artifactId}")
+                    if (ext.name.isNullOrEmpty()) {
+                        throw org.gradle.api.GradleException("Publication name is required but was not provided in the 'publication' extension.")
+                    } else {
+                        project.logger.quiet("Publication name: ${ext.name}")
+                    }
+                    if (ext.description.isNullOrEmpty()) {
+                        throw org.gradle.api.GradleException("Publication description is required but was not provided in the 'publication' extension.")
+                    } else {
+                        project.logger.quiet("Publication description: ${ext.description}")
+                    }
+                    if (ext.artifactId.isNullOrEmpty()) {
+                        throw org.gradle.api.GradleException("Publication artifactId is required but was not provided in the 'publication' extension.")
+                    } else {
+                        project.logger.quiet("Publication artifactId: ${ext.artifactId}")
+                    }
 
                     artifactId = ext.artifactId
 
@@ -173,12 +185,18 @@ class PublishModulePlugin : Plugin<Project> {
 
         if (keyId != null) {
             project.extra.set("signing.keyId", keyId)
+        } else {
+            throw org.gradle.api.GradleException("Signing keyId is required but was not provided in the 'signing.keyId' property or environment variable.")
         }
         if (password != null) {
             project.extra.set("signing.password", password)
+        } else {
+            throw org.gradle.api.GradleException("Signing password is required but was not provided in the 'signing.password' property or environment variable.")
         }
         if (secretKeyRingFile != null) {
             project.extra.set("signing.secretKeyRingFile", secretKeyRingFile)
+        } else {
+            throw org.gradle.api.GradleException("Signing secretKeyRingFile is required but was not provided in the 'signing.secretKeyRingFile' property or environment variable.")
         }
 
         // Configure signing to sign the Maven publication, only if all properties are available
