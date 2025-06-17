@@ -143,13 +143,13 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
     }
 
     fun startFragmentViewedEventTracking(activity: Activity) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && isFragmentActivityAvailable) {
+        if (isFragmentActivityAvailable) {
             activity.registerFragmentLifecycleCallbacks(amplitude::track, amplitude.logger)
         }
     }
 
     fun stopFragmentViewedEventTracking(activity: Activity) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && isFragmentActivityAvailable) {
+        if (isFragmentActivityAvailable) {
             activity.unregisterFragmentLifecycleCallbacks(amplitude.logger)
         }
     }
