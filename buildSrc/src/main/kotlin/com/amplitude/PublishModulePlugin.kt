@@ -183,20 +183,22 @@ class PublishModulePlugin : Plugin<Project> {
             ?: localProperties.getProperty("signing.secretKeyRingFile")
             ?: System.getenv("SIGNING_SECRET_KEY_RING_FILE")
 
+        // We place keyId, password, and secretKeyRingFile in project.extra for signing configuration.
+        // TODO: In future migrate to use in memory PGP keys instead of secretKeyRingFile.
         if (keyId != null) {
             project.extra.set("signing.keyId", keyId)
         } else {
-            throw org.gradle.api.GradleException("Signing keyId is required but was not provided in the 'signing.keyId' property or environment variable.")
+            project.logger.error("Signing keyId is not set. Please provide it in the 'signing.keyId' property or environment variable.")
         }
         if (password != null) {
             project.extra.set("signing.password", password)
         } else {
-            throw org.gradle.api.GradleException("Signing password is required but was not provided in the 'signing.password' property or environment variable.")
+            project.logger.error("Signing password is not set. Please provide it in the 'signing.password' property or environment variable.")
         }
         if (secretKeyRingFile != null) {
             project.extra.set("signing.secretKeyRingFile", secretKeyRingFile)
         } else {
-            throw org.gradle.api.GradleException("Signing secretKeyRingFile is required but was not provided in the 'signing.secretKeyRingFile' property or environment variable.")
+            project.logger.error("Signing secretKeyRingFile is not set. Please provide it in the 'signing.secretKeyRingFile' property or environment variable.")
         }
 
         // Configure signing to sign the Maven publication, only if all properties are available
