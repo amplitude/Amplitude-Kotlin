@@ -42,7 +42,6 @@ class AndroidNetworkConnectivityCheckerPluginTest {
         // amplitude.configuration.offline defaults to false
         plugin.setup(amplitude)
         assertEquals(amplitude, plugin.amplitude)
-        assertNotNull(plugin.networkConnectivityChecker)
         // Unit tests are run on JVM so default to online
         assertEquals(false, amplitude.configuration.offline)
         assertNotNull(plugin.networkListener)
@@ -52,7 +51,7 @@ class AndroidNetworkConnectivityCheckerPluginTest {
     fun `should teardown correctly`() {
         plugin.setup(amplitude)
         assertNotNull(plugin.networkListener)
-        plugin.networkListener?.let { networkListener ->
+        plugin.networkListener.let { networkListener ->
             spyk(networkListener)
             plugin.teardown()
             verify { networkListener.stopListening() }

@@ -1,8 +1,8 @@
 package com.amplitude.android.utilities
 
+import android.Manifest.permission.ACCESS_NETWORK_STATE
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.net.ConnectivityManager
 import android.net.ConnectivityManager.NetworkCallback
 import android.net.Network
@@ -14,6 +14,7 @@ import android.os.Build.VERSION
 import android.os.Build.VERSION_CODES
 import androidx.annotation.RequiresPermission
 import androidx.annotation.VisibleForTesting
+import com.amplitude.android.utilities.AndroidNetworkConnectivityChecker.Companion.hasNetworkPermission
 import com.amplitude.common.Logger
 
 /**
@@ -25,14 +26,6 @@ class AndroidNetworkListener(
     private val networkCallback: NetworkChangeCallback,
 ) {
     private var networkCallbackForApiLevel21Plus: NetworkCallback? = null
-
-    companion object {
-        private const val ACCESS_NETWORK_STATE = "android.permission.ACCESS_NETWORK_STATE"
-
-        private fun hasNetworkPermission(context: Context): Boolean {
-            return context.checkCallingOrSelfPermission(ACCESS_NETWORK_STATE) == PERMISSION_GRANTED
-        }
-    }
 
     interface NetworkChangeCallback {
         fun onNetworkAvailable()
