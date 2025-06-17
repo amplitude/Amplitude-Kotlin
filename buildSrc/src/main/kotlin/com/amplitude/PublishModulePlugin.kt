@@ -39,6 +39,9 @@ const val DOKKA_JAVADOC = "dokkaJavadoc"
  *    artifactId = "my-library-artifact-id"
  * }
  * ```
+ * Note: Signing properties such as `signing.keyId`, `signing.password`, and `signing.secretKeyRingFile`
+ * are required to be set in the `local.properties` file or as environment variables in order to sign the publication.
+ * If these properties are not set, the plugin will log an warning and skip signing configuration.
  */
 class PublishModulePlugin : Plugin<Project> {
     override fun apply(project: Project) {
