@@ -10,7 +10,6 @@ import kotlinx.coroutines.launch
 class AndroidNetworkConnectivityCheckerPlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Before
     override lateinit var amplitude: Amplitude
-    internal lateinit var networkConnectivityChecker: AndroidNetworkConnectivityChecker
     internal lateinit var networkListener: AndroidNetworkListener
 
     companion object {
@@ -20,7 +19,10 @@ class AndroidNetworkConnectivityCheckerPlugin : Plugin {
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
         amplitude.logger.debug("Installing AndroidNetworkConnectivityPlugin, offline feature should be supported.")
-        networkConnectivityChecker = AndroidNetworkConnectivityChecker((amplitude.configuration as Configuration).context, amplitude.logger)
+        val networkConnectivityChecker = AndroidNetworkConnectivityChecker(
+            (amplitude.configuration as Configuration).context,
+            amplitude.logger
+        )
         amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
             amplitude.configuration.offline = !networkConnectivityChecker.isConnected()
         }

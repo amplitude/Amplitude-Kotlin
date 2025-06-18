@@ -1,24 +1,28 @@
 package com.amplitude.android.utilities
 
+import android.Manifest.permission.ACCESS_NETWORK_STATE
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.pm.PackageManager
+import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.NetworkCapabilities.TRANSPORT_CELLULAR
+import android.net.NetworkCapabilities.TRANSPORT_WIFI
 import android.os.Build
 import com.amplitude.common.Logger
 
+/**
+ * Checks whether the Android device has [TRANSPORT_WIFI] or [TRANSPORT_CELLULAR] capability.
+ */
 class AndroidNetworkConnectivityChecker(private val context: Context, private val logger: Logger) {
     companion object {
-        private const val ACCESS_NETWORK_STATE = "android.permission.ACCESS_NETWORK_STATE"
+        internal fun hasNetworkPermission(context: Context): Boolean {
+            return context.checkCallingOrSelfPermission(ACCESS_NETWORK_STATE) == PERMISSION_GRANTED
+        }
     }
 
-    private val hasPermission: Boolean
-    internal var isMarshmallowAndAbove: Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
-
     init {
-        hasPermission = hasPermission(context, ACCESS_NETWORK_STATE)
-        if (!hasPermission) {
+        if (!hasNetworkPermission(context)) {
             logger.warn(
                 @Suppress("ktlint:standard:max-line-length")
                 "No ACCESS_NETWORK_STATE permission, offline mode is not supported. To enable, add <uses-permission android:name=\"android.permission.ACCESS_NETWORK_STATE\" /> to your AndroidManifest.xml. Learn more at https://www.docs.developers.amplitude.com/data/sdks/android-kotlin/#offline-mode",
@@ -26,28 +30,33 @@ class AndroidNetworkConnectivityChecker(private val context: Context, private va
         }
     }
 
-    @SuppressLint("MissingPermission", "NewApi")
+    /**
+     * Checks whether the device has network transport capabilities (either Wi-Fi or Cellular).
+     * @return true if the device has Wi-Fi or Cellular transport, or there is no permission to check network state.
+     */
+    @SuppressLint("MissingPermission")
     fun isConnected(): Boolean {
         // Assume connection and proceed.
         // Events will be treated like online
         // regardless network connectivity
-        if (!hasPermission) {
+        if (!hasNetworkPermission(context)) {
             return true
         }
 
         try {
             val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE)
             if (cm is ConnectivityManager) {
-                if (isMarshmallowAndAbove) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     val network = cm.activeNetwork ?: return false
                     val capabilities = cm.getNetworkCapabilities(network) ?: return false
-
-                    return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-                        capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+                    return hasNetworkTransport(capabilities)
                 } else {
-                    @SuppressLint("MissingPermission")
-                    val networkInfo = cm.activeNetworkInfo
-                    return networkInfo != null && networkInfo.isConnectedOrConnecting
+                    @Suppress("DEPRECATION")
+                    val networks = cm.allNetworks
+                    return networks.any { network ->
+                        val capabilities = cm.getNetworkCapabilities(network)
+                        capabilities != null && hasNetworkTransport(capabilities)
+                    }
                 }
             } else {
                 logger.debug("Service is not an instance of ConnectivityManager. Offline mode is not supported")
@@ -66,10 +75,8 @@ class AndroidNetworkConnectivityChecker(private val context: Context, private va
         }
     }
 
-    private fun hasPermission(
-        context: Context,
-        permission: String,
-    ): Boolean {
-        return context.checkCallingOrSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
+    private fun hasNetworkTransport(capabilities: NetworkCapabilities): Boolean {
+        return capabilities.hasTransport(TRANSPORT_WIFI) ||
+            capabilities.hasTransport(TRANSPORT_CELLULAR)
     }
 }
