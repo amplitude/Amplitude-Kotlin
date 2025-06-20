@@ -1,17 +1,21 @@
 plugins {
     id("com.android.library")
     id("kotlin-android")
+    id("com.amplitude.publish-module-plugin")
 }
 
 android {
     namespace = "com.amplitude.android.unified"
-    compileSdk = 35
+    compileSdk = BuildConfig.Versions.Android.COMPILE_SDK
 
     defaultConfig {
-        minSdk = 19
+        minSdk = BuildConfig.Versions.Android.MIN_SDK
+        multiDexEnabled = true
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
+
+        buildConfigField("String", "AMPLITUDE_VERSION", "\"${version}\"")
     }
 
     buildTypes {
@@ -24,16 +28,28 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
     kotlinOptions {
-        jvmTarget = "11"
+        jvmTarget = "1.8"
+    }
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+        unitTests.isReturnDefaultValues = true
+    }
+    buildFeatures {
+        buildConfig = true
     }
 }
 
-dependencies {
+publication {
+    name = "Amplitude Android Unified SDK"
+    description = "Amplitude Kotlin client-side SDK for Android"
+    artifactId = "analytics-android"
+}
 
+dependencies {
     implementation(libs.core.ktx)
     implementation(libs.appcompat)
     implementation(libs.material)

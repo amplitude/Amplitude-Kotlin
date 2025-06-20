@@ -25,12 +25,12 @@ val EXPERIMENT_API_KEY: String = localProps.getProperty("EXPERIMENT_API_KEY") ?:
 android {
     namespace = "com.amplitude.android.sample"
 
-    compileSdk = 35
+    compileSdk = BuildConfig.Versions.Android.COMPILE_SDK
 
     defaultConfig {
         applicationId = "com.amplitude.android.sample"
-        minSdk = 21
-        targetSdk = 35
+        minSdk = BuildConfig.Versions.Android.MIN_SDK
+        targetSdk = BuildConfig.Versions.Android.TARGET_SDK
         versionCode = 1
         versionName = "1.0"
         multiDexEnabled = true
