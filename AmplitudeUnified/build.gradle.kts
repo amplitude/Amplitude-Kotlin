@@ -44,9 +44,9 @@ android {
 }
 
 publication {
-    name = "Amplitude Android Unified SDK"
-    description = "Amplitude Kotlin client-side SDK for Android"
-    artifactId = "analytics-android"
+    name = "Amplitude Unified Android SDK"
+    description = "Amplitude Unified client-side SDK for Android"
+    artifactId = "analytics-unified-android"
 }
 
 dependencies {
