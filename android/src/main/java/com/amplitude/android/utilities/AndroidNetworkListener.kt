@@ -1,10 +1,8 @@
 package com.amplitude.android.utilities
 
+import android.Manifest.permission.ACCESS_NETWORK_STATE
 import android.annotation.SuppressLint
-import android.content.BroadcastReceiver
 import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 import android.net.ConnectivityManager
 import android.net.ConnectivityManager.NetworkCallback
 import android.net.Network
@@ -14,16 +12,20 @@ import android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED
 import android.net.NetworkRequest
 import android.os.Build.VERSION
 import android.os.Build.VERSION_CODES
+import androidx.annotation.RequiresPermission
 import androidx.annotation.VisibleForTesting
+import com.amplitude.android.utilities.AndroidNetworkConnectivityChecker.Companion.hasNetworkPermission
 import com.amplitude.common.Logger
 
+/**
+ * [ACCESS_NETWORK_STATE] permission should be added manually by users to enable this feature.
+ */
 class AndroidNetworkListener(
     private val context: Context,
     private val logger: Logger,
     private val networkCallback: NetworkChangeCallback,
 ) {
-    private var networkCallbackForLowerApiLevels: BroadcastReceiver? = null
-    private var networkCallbackForHigherApiLevels: NetworkCallback? = null
+    private var networkCallbackForApiLevel21Plus: NetworkCallback? = null
 
     interface NetworkChangeCallback {
         fun onNetworkAvailable()
@@ -31,13 +33,17 @@ class AndroidNetworkListener(
         fun onNetworkUnavailable()
     }
 
+    @SuppressLint("MissingPermission")
     fun startListening() {
+        if (!hasNetworkPermission(context)) {
+            logger.debug(
+                "ACCESS_NETWORK_STATE permission not granted, skipping network listener setup"
+            )
+            return
+        }
+
         try {
-            if (VERSION.SDK_INT >= VERSION_CODES.LOLLIPOP) {
-                setupNetworkCallback()
-            } else {
-                setupBroadcastReceiver()
-            }
+            setupNetworkCallback()
         } catch (throwable: Throwable) {
             // We've seen issues where we see exceptions being thrown by connectivity manager
             // which crashes an app. Its safe to ignore these exceptions since we try our best
@@ -49,9 +55,7 @@ class AndroidNetworkListener(
         }
     }
 
-    @SuppressLint("NewApi", "MissingPermission")
-    // startListening() checks API level
-    // ACCESS_NETWORK_STATE permission should be added manually by users to enable this feature
+    @SuppressLint("MissingPermission")
     @VisibleForTesting
     internal fun setupNetworkCallback() {
         val connectivityManager = context
@@ -60,9 +64,10 @@ class AndroidNetworkListener(
             .addCapability(NET_CAPABILITY_INTERNET)
             .build()
 
-        networkCallbackForHigherApiLevels = object : NetworkCallback() {
+        networkCallbackForApiLevel21Plus = object : NetworkCallback() {
             private var networkState: NetworkState? = null
 
+            @RequiresPermission(ACCESS_NETWORK_STATE)
             override fun onAvailable(network: Network) {
                 // A default network is available, set the network state and callback
                 val capabilities = connectivityManager.getNetworkCapabilities(network)
@@ -106,53 +111,20 @@ class AndroidNetworkListener(
                 }
                 return hasCapability(NET_CAPABILITY_INTERNET) && validated
             }
-        }.also { callbackForHigherApiLevels ->
+        }.also { callback ->
             connectivityManager.registerNetworkCallback(
                 networkRequest,
-                callbackForHigherApiLevels
+                callback
             )
         }
     }
 
-    private fun setupBroadcastReceiver() {
-        networkCallbackForLowerApiLevels =
-            object : BroadcastReceiver() {
-                @SuppressLint("MissingPermission")
-                override fun onReceive(
-                    context: Context,
-                    intent: Intent,
-                ) {
-                    if (ConnectivityManager.CONNECTIVITY_ACTION == intent.action) {
-                        val connectivityManager = context
-                            .getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-                        val activeNetwork = connectivityManager.activeNetworkInfo
-                        val isConnected = activeNetwork?.isConnectedOrConnecting == true
-
-                        if (isConnected) {
-                            networkCallback.onNetworkAvailable()
-                        } else {
-                            networkCallback.onNetworkUnavailable()
-                        }
-                    }
-                }
-            }
-
-        val filter = IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION)
-        context.registerReceiver(networkCallbackForLowerApiLevels, filter)
-    }
-
     fun stopListening() {
         try {
-            if (VERSION.SDK_INT >= VERSION_CODES.LOLLIPOP) {
-                val connectivityManager =
-                    context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-                networkCallbackForHigherApiLevels?.let {
-                    connectivityManager.unregisterNetworkCallback(
-                        it
-                    )
-                }
-            } else {
-                networkCallbackForLowerApiLevels?.let { context.unregisterReceiver(it) }
+            val connectivityManager =
+                context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            networkCallbackForApiLevel21Plus?.let {
+                connectivityManager.unregisterNetworkCallback(it)
             }
         } catch (e: IllegalArgumentException) {
             // callback was already unregistered.
@@ -206,7 +178,6 @@ class AndroidNetworkListener(
             available: Boolean = this.available,
             blocked: Boolean = this.blocked,
         ) {
-            @SuppressLint("NewApi")
             if (this.network != network) return
             val toggled = this.available != available || this.blocked != blocked
             this.available = available
