@@ -1,49 +1,41 @@
-package com.amplitude.android.internal.locators;
+@file:Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE") // to access internal LayoutNode class
 
-import androidx.annotation.OptIn;
-import androidx.compose.ui.InternalComposeUiApi;
-import androidx.compose.ui.geometry.Rect;
-import androidx.compose.ui.layout.LayoutCoordinatesKt;
-import androidx.compose.ui.node.LayoutNode;
-import androidx.compose.ui.node.LayoutNodeLayoutDelegate;
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.node.LayoutNode
+import androidx.compose.ui.node.LayoutNodeLayoutDelegate
+import com.amplitude.common.Logger
+import java.lang.reflect.Field
 
-import com.amplitude.common.Logger;
+internal class ComposeLayoutNodeBoundsHelper(private val logger: Logger) {
+    private var layoutDelegateField: Field? = null
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-import java.lang.reflect.Field;
-
-@SuppressWarnings("KotlinInternalInJava")
-@OptIn(markerClass = InternalComposeUiApi.class)
-public class ComposeLayoutNodeBoundsHelper {
-  private Field layoutDelegateField = null;
-  private final @NotNull Logger logger;
-
-  public ComposeLayoutNodeBoundsHelper(@NotNull Logger logger) {
-    this.logger = logger;
-    try {
-      final Class<?> clazz = Class.forName("androidx.compose.ui.node.LayoutNode");
-      layoutDelegateField = clazz.getDeclaredField("layoutDelegate");
-      layoutDelegateField.setAccessible(true);
-    } catch (Exception e) {
-      logger.info("Could not find LayoutNode.layoutDelegate field");
-    }
-  }
-
-  public @Nullable Rect getLayoutNodeWindowBounds(@NotNull final LayoutNode node) {
-    if (layoutDelegateField == null) {
-      return null;
-    }
-    try {
-      final LayoutNodeLayoutDelegate delegate = (LayoutNodeLayoutDelegate) layoutDelegateField.get(node);
-        if (delegate == null) {
-          return null;
+    init {
+        try {
+            val clazz = Class.forName("androidx.compose.ui.node.LayoutNode")
+            layoutDelegateField = clazz.getDeclaredField("layoutDelegate")
+            layoutDelegateField?.isAccessible = true
+        } catch (e: Exception) {
+            logger.info("Could not find LayoutNode.layoutDelegate field")
         }
-        return LayoutCoordinatesKt.boundsInWindow(delegate.getOuterCoordinator().getCoordinates());
-    } catch (Exception e) {
-      logger.warn("Could not fetch position for LayoutNode");
     }
-    return null;
-  }
+
+    internal fun getLayoutNodeWindowBounds(node: LayoutNode): Rect? {
+        val field = layoutDelegateField ?: return null
+
+        return try {
+            val delegate = field.get(node) as? LayoutNodeLayoutDelegate ?: return null
+            delegate.outerCoordinator.coordinates.boundsInWindow()
+        } catch (e: Exception) {
+            logger.warn("Could not fetch position for LayoutNode")
+            null
+        }
+    }
+
+    internal fun layoutNodeBoundsContain(node: LayoutNode, position: Pair<Float, Float>): Boolean {
+        val bounds = getLayoutNodeWindowBounds(node) ?: return false
+        val (x, y) = position
+        return x >= bounds.left && x <= bounds.right && y >= bounds.top && y <= bounds.bottom
+    }
 }
+

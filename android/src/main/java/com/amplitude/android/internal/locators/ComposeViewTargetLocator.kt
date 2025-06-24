@@ -1,149 +1,110 @@
-package com.amplitude.android.internal.locators;
+@file:Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
 
-import androidx.annotation.OptIn;
-import androidx.compose.ui.InternalComposeUiApi;
-import androidx.compose.ui.Modifier;
-import androidx.compose.ui.geometry.Rect;
-import androidx.compose.ui.layout.ModifierInfo;
-import androidx.compose.ui.node.LayoutNode;
-import androidx.compose.ui.node.Owner;
-import androidx.compose.ui.platform.InspectableValue;
-import androidx.compose.ui.platform.ValueElement;
+package com.amplitude.android.internal.locators
 
-import com.amplitude.android.internal.ViewTarget;
-import com.amplitude.common.Logger;
+import ComposeLayoutNodeBoundsHelper
+import androidx.compose.ui.node.LayoutNode
+import androidx.compose.ui.node.Owner
+import androidx.compose.ui.platform.InspectableValue
+import com.amplitude.android.internal.ViewTarget
+import com.amplitude.common.Logger
+import java.util.ArrayDeque
+import java.util.Queue
 
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTargetLocator {
 
-import java.util.ArrayDeque;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-
-import kotlin.Pair;
-
-@SuppressWarnings("KotlinInternalInJava")
-@OptIn(markerClass = InternalComposeUiApi.class)
-public class ComposeViewTargetLocator implements ViewTargetLocator {
-    private volatile @Nullable ComposeLayoutNodeBoundsHelper composeLayoutNodeBoundsHelper;
-    private static final String SOURCE = "jetpack_compose";
-    private final @NotNull Logger logger;
-
-    public ComposeViewTargetLocator(@NotNull Logger logger) {
-        this.logger = logger;
+    private val composeLayoutNodeBoundsHelper by lazy { 
+        ComposeLayoutNodeBoundsHelper(logger) 
     }
 
-    @Nullable
-    @Override
-    public ViewTarget locate(
-            @NotNull Object root,
-            @NotNull Pair<Float, Float> targetPosition,
-            @NotNull ViewTarget.Type targetType) {
+    companion object {
+        private const val SOURCE = "jetpack_compose"
+    }
 
-        // lazy init composeHelper as it's using some reflection under the hood
-        if (composeLayoutNodeBoundsHelper == null) {
-            synchronized (this) {
-                if (composeLayoutNodeBoundsHelper == null) {
-                    composeLayoutNodeBoundsHelper = new ComposeLayoutNodeBoundsHelper(logger);
-                }
-            }
-        }
+    override fun Any.locate(
+        targetPosition: Pair<Float, Float>,
+        targetType: ViewTarget.Type,
+    ): ViewTarget? {
+        val root = this as? Owner ?: return null
 
-        if (!(root instanceof Owner)) {
-            return null;
-        }
-
-        final @NotNull Queue<LayoutNode> queue = new ArrayDeque<>();
-        queue.add(((Owner) root).getRoot());
+        val queue: Queue<LayoutNode> = ArrayDeque()
+        queue.add(root.root)
 
         // the final tag to return
-        @Nullable String targetTag = null;
+        var targetTag: String? = null
 
         // the last known tag when iterating the node tree
-        @Nullable String lastKnownTag = null;
-        while (!queue.isEmpty()) {
-            final @Nullable LayoutNode node = queue.poll();
-            if (node == null) {
-                continue;
-            }
+        var lastKnownTag: String? = null
 
-            if (node.isPlaced() && layoutNodeBoundsContain(composeLayoutNodeBoundsHelper, node, targetPosition.component1(), targetPosition.component2())) {
-                boolean isClickable = false;
-                final List<ModifierInfo> modifiers = node.getModifierInfo();
-                for (ModifierInfo modifierInfo : modifiers) {
-                    final Modifier modifier = modifierInfo.getModifier();
-                    if (modifier instanceof InspectableValue) {
-                        final InspectableValue inspectableValue = (InspectableValue) modifier;
-                        if ("testTag".equals(inspectableValue.getNameFallback())) {
-                            Iterator<ValueElement> iterator = inspectableValue.getInspectableElements().iterator();
-                            while (iterator.hasNext()) {
-                                final ValueElement element = iterator.next();
-                                if ("tag".equals(element.getName())) {
-                                    lastKnownTag = (String) element.getValue();
-                                    break;
+        while (queue.isNotEmpty()) {
+            val node = queue.poll() ?: continue
+
+            if (node.isPlaced &&
+                composeLayoutNodeBoundsHelper.layoutNodeBoundsContain(node, targetPosition)
+            ) {
+                var isClickable = false
+                val modifiers = node.getModifierInfo()
+
+                for (modifierInfo in modifiers) {
+                    val modifier = modifierInfo.modifier
+                    if (modifier is InspectableValue) {
+                        when (modifier.nameFallback) {
+                            "testTag" -> {
+                                for (element in modifier.inspectableElements) {
+                                    if (element.name == "tag") {
+                                        lastKnownTag = element.value as? String
+                                        break
+                                    }
                                 }
                             }
-                        } else if ("semantics".equals(inspectableValue.getNameFallback())) {
-                            Iterator<ValueElement> iterator = inspectableValue.getInspectableElements().iterator();
-                            while (iterator.hasNext()) {
-                                final ValueElement element = iterator.next();
-                                if ("properties".equals(element.getName())) {
-                                    final Object elementValue = element.getValue();
-                                    if (elementValue instanceof LinkedHashMap) {
-                                        final LinkedHashMap<Object, Object> properties = (LinkedHashMap<Object, Object>) elementValue;
-                                        for (Map.Entry<Object, Object> entry : properties.entrySet()) {
-                                            if ("TestTag".equals(entry.getKey())) {
-                                                lastKnownTag = (String) entry.getValue();
-                                                break;
+
+                            "semantics" -> {
+                                for (element in modifier.inspectableElements) {
+                                    if (element.name == "properties") {
+                                        val elementValue = element.value
+                                        if (elementValue is LinkedHashMap<*, *>) {
+                                            for ((key, value) in elementValue.entries) {
+                                                if (key == "TestTag") {
+                                                    lastKnownTag = value as? String
+                                                    break
+                                                }
                                             }
                                         }
                                     }
                                 }
                             }
-                        }
-                        if ("clickable".equals(inspectableValue.getNameFallback())) {
-                            isClickable = true;
-                        } else {
-                            final @Nullable String type = modifier.getClass().getCanonicalName();
-                            if ("androidx.compose.foundation.ClickableElement".equals(type)
-                                    || "androidx.compose.foundation.CombinedClickableElement".equals(type)) {
-                                isClickable = true;
+
+                            "clickable" -> {
+                                isClickable = true
                             }
+                        }
+
+                        val type = modifier.javaClass.name
+                        if (type == "androidx.compose.foundation.ClickableElement" ||
+                            type == "androidx.compose.foundation.CombinedClickableElement"
+                        ) {
+                            isClickable = true
                         }
                     }
                 }
 
                 if (isClickable && targetType == ViewTarget.Type.Clickable) {
-                    targetTag = lastKnownTag;
+                    targetTag = lastKnownTag
                 }
             }
-            queue.addAll(node.getZSortedChildren().asMutableList());
+            queue.addAll(node.zSortedChildren.asMutableList())
         }
 
-        if (targetTag == null) {
-            return null;
-        } else {
-            return new ViewTarget(null, null, null, targetTag, null, SOURCE, null);
-        }
-    }
-
-    private static boolean layoutNodeBoundsContain(
-            @NotNull ComposeLayoutNodeBoundsHelper composeLayoutNodeBoundsHelper,
-            @NotNull LayoutNode node,
-            final float x,
-            final float y) {
-
-        final @Nullable Rect bounds = composeLayoutNodeBoundsHelper.getLayoutNodeWindowBounds(node);
-        if (bounds == null) {
-            return false;
-        } else {
-            return x >= bounds.getLeft()
-                    && x <= bounds.getRight()
-                    && y >= bounds.getTop()
-                    && y <= bounds.getBottom();
+        return targetTag?.let {
+            ViewTarget(
+                _view = null,
+                className = null,
+                resourceName = null,
+                tag = it,
+                text = null,
+                source = SOURCE,
+                hierarchy = null
+            )
         }
     }
 }
