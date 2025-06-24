@@ -141,4 +141,3 @@ class ComposeActivity : ComponentActivity() {
         }
     }
 }
-

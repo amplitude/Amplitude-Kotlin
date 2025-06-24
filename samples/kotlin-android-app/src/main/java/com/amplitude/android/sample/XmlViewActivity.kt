@@ -30,4 +30,4 @@ class XmlViewActivity : AppCompatActivity() {
             startActivity(intent)
         }
     }
-} 
+}
