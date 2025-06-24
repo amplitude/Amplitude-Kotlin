@@ -68,7 +68,3 @@ open class Configuration @JvmOverloads constructor(
         }
     }
 }
-
-enum class ServerZone {
-    US, EU
-}

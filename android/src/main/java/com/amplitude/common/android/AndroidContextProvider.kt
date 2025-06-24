@@ -13,7 +13,6 @@ import android.os.Build
 import android.provider.Settings.Secure
 import android.telephony.TelephonyManager
 import androidx.core.content.ContextCompat
-import com.amplitude.common.ContextProvider
 import java.io.IOException
 import java.lang.reflect.InvocationTargetException
 import java.util.Locale
@@ -23,7 +22,7 @@ class AndroidContextProvider(
     private val locationListening: Boolean,
     private val shouldTrackAdid: Boolean,
     private val shouldTrackAppSetId: Boolean
-) : ContextProvider {
+) {
     private val cachedInfo: CachedInfo by lazy { CachedInfo() }
 
     /**

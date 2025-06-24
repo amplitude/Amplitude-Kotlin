@@ -50,9 +50,13 @@ publication {
 }
 
 dependencies {
+    api(project(":android"))
+    api(libs.pluginSessionReplayAndroid)
+
     implementation(libs.core.ktx)
     implementation(libs.appcompat)
     implementation(libs.material)
+
     testImplementation(libs.junit4)
     androidTestImplementation(libs.test.ext.junit)
     androidTestImplementation(libs.espresso.core)
