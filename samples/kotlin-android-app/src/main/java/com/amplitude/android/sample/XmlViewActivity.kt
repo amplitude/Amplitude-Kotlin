@@ -7,7 +7,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.amplitude.core.events.EventOptions
 import com.amplitude.core.events.Plan
 
-class MainActivity : AppCompatActivity() {
+class XmlViewActivity : AppCompatActivity() {
     private val amplitude = MainApplication.amplitude
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,8 +26,8 @@ class MainActivity : AppCompatActivity() {
         // navigate to the advanced events view
         val naviToAdvancedActivityButton: Button = findViewById(R.id.navi_to_advanced_activity_button)
         naviToAdvancedActivityButton.setOnClickListener {
-            val intent = Intent(this, AdvancedActivity::class.java)
+            val intent = Intent(this, XmlAdvancedActivity::class.java)
             startActivity(intent)
         }
     }
-}
+} 

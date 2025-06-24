@@ -6,7 +6,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.amplitude.core.events.Identify
 import com.amplitude.core.events.Revenue
 
-class AdvancedActivity : AppCompatActivity() {
+class XmlAdvancedActivity : AppCompatActivity() {
     private val amplitude = MainApplication.amplitude
 
     override fun onCreate(savedInstanceState: Bundle?) {

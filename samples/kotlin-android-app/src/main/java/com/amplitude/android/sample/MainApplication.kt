@@ -29,6 +29,7 @@ class MainApplication : Application() {
                 +appLifecycles
                 +deepLinks
                 +screenViews
+                +elementInteractions
             },
             httpClient = httpClient,
         )
