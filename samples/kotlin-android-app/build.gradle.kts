@@ -57,6 +57,10 @@ android {
     }
     buildFeatures {
         buildConfig = true
+        compose = true
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.8"
     }
 }
 
@@ -72,4 +76,15 @@ dependencies {
     // For trouble shooting plugin
     implementation(libs.gson)
     implementation(libs.okhttp)
+
+    // Compose BOM
+    implementation(platform(libs.compose.bom))
+    implementation(libs.ui)
+    implementation(libs.ui.tooling.preview)
+    implementation(libs.material3)
+    implementation(libs.activity.compose)
+
+    // Optional - Compose UI tooling for debugging
+    debugImplementation(libs.ui.tooling)
+    debugImplementation(libs.ui.test.manifest)
 }
