@@ -38,4 +38,3 @@ internal class ComposeLayoutNodeBoundsHelper(private val logger: Logger) {
         return x >= bounds.left && x <= bounds.right && y >= bounds.top && y <= bounds.bottom
     }
 }
-

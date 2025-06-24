@@ -1,4 +1,4 @@
-@file:Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE")
+@file:Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE") // to access internal LayoutNode class
 
 package com.amplitude.android.internal.locators
 
@@ -13,8 +13,8 @@ import java.util.Queue
 
 internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTargetLocator {
 
-    private val composeLayoutNodeBoundsHelper by lazy { 
-        ComposeLayoutNodeBoundsHelper(logger) 
+    private val composeLayoutNodeBoundsHelper by lazy {
+        ComposeLayoutNodeBoundsHelper(logger)
     }
 
     companion object {
@@ -30,8 +30,11 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
         val queue: Queue<LayoutNode> = ArrayDeque()
         queue.add(root.root)
 
-        // the final tag to return
+        // the final tag to return (can be null if no test tag is found)
         var targetTag: String? = null
+
+        // track if we found a clickable element
+        var foundClickableElement = false
 
         // the last known tag when iterating the node tree
         var lastKnownTag: String? = null
@@ -89,18 +92,21 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
                 }
 
                 if (isClickable && targetType == ViewTarget.Type.Clickable) {
-                    targetTag = lastKnownTag
+                    foundClickableElement = true
+                    targetTag = lastKnownTag // can be null if no test tag is found
                 }
             }
             queue.addAll(node.zSortedChildren.asMutableList())
         }
 
-        return targetTag?.let {
+        return if (!foundClickableElement) {
+            null
+        } else {
             ViewTarget(
                 _view = null,
                 className = null,
                 resourceName = null,
-                tag = it,
+                tag = targetTag,
                 text = null,
                 source = SOURCE,
                 hierarchy = null
