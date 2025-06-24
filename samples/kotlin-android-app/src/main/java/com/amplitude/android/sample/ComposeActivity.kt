@@ -7,14 +7,12 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.Icons.AutoMirrored.Filled
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,7 +22,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -81,7 +78,8 @@ class ComposeActivity : ComponentActivity() {
                         }
                     }
                 )
-            }
+            },
+            modifier = Modifier.padding(32.dp)
         ) { innerPadding ->
             Column(
                 modifier = Modifier
@@ -109,7 +107,9 @@ class ComposeActivity : ComponentActivity() {
                                 options
                             )
                         },
-                        modifier = Modifier.padding(bottom = 8.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 16.dp)
                     ) {
                         Text("Send Event")
                     }
@@ -123,7 +123,7 @@ class ComposeActivity : ComponentActivity() {
                             containerColor = Color(0xFF03A9F4)
                         ),
                         modifier = Modifier
-                            .padding(top = 12.dp)
+                            .fillMaxWidth()
                             .testTag("advanced_events_button")
                     ) {
                         Text("Advanced Events")
@@ -141,3 +141,4 @@ class ComposeActivity : ComponentActivity() {
         }
     }
 }
+

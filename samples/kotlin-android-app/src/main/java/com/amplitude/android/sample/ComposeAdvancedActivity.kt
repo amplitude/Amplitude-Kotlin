@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -20,7 +21,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,7 +63,7 @@ class ComposeAdvancedActivity : ComponentActivity() {
                 "Compose - Advanced Events"
             }
         }
-        
+
         Scaffold(
             topBar = {
                 CenterAlignedTopAppBar(
@@ -103,7 +103,9 @@ class ComposeAdvancedActivity : ComponentActivity() {
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFF4CAF50)
                         ),
-                        modifier = Modifier.padding(bottom = 16.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 32.dp, vertical = 8.dp)
                     ) {
                         Text("Send Advanced Events")
                     }
@@ -145,4 +147,4 @@ class ComposeAdvancedActivity : ComponentActivity() {
             ComposeAdvancedView()
         }
     }
-} 
+}
