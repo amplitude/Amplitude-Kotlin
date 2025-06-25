@@ -1,5 +1,6 @@
 @file:Suppress("INVISIBLE_MEMBER", "INVISIBLE_REFERENCE") // to access internal LayoutNode class
 
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.node.LayoutNode
@@ -20,7 +21,7 @@ internal class ComposeLayoutNodeBoundsHelper(private val logger: Logger) {
         }
     }
 
-    internal fun getLayoutNodeWindowBounds(node: LayoutNode): Rect? {
+    private fun getLayoutNodeWindowBounds(node: LayoutNode): Rect? {
         val field = layoutDelegateField ?: return null
 
         return try {
@@ -35,6 +36,6 @@ internal class ComposeLayoutNodeBoundsHelper(private val logger: Logger) {
     internal fun layoutNodeBoundsContain(node: LayoutNode, position: Pair<Float, Float>): Boolean {
         val bounds = getLayoutNodeWindowBounds(node) ?: return false
         val (x, y) = position
-        return x >= bounds.left && x <= bounds.right && y >= bounds.top && y <= bounds.bottom
+        return bounds.contains(Offset(x, y))
     }
 }
