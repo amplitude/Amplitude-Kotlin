@@ -19,10 +19,6 @@
 -keepnames interface androidx.compose.ui.node.Owner
 -keep class com.amplitude.android.internal.locators.ComposeViewTargetLocator
 
--keepclassmembers class androidx.compose.ui.node.LayoutNode {
-    private androidx.compose.ui.node.LayoutNodeLayoutDelegate layoutDelegate;
-}
-
 -keepnames class androidx.compose.foundation.ClickableElement
 -keepnames class androidx.compose.foundation.CombinedClickableElement
 
