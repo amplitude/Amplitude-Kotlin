@@ -1,3 +1,10 @@
+## [1.21.3](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.21.2...v1.21.3) (2025-06-26)
+
+
+### Bug Fixes
+
+* AMP-126899: auto-capture everything in compose ([#304](https://github.com/amplitude/Amplitude-Kotlin/issues/304)) ([f4812ed](https://github.com/amplitude/Amplitude-Kotlin/commit/f4812ed15e287a32f9823865ff97a2a5b840c080))
+
 ## [1.21.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.21.1...v1.21.2) (2025-06-10)
 
 
