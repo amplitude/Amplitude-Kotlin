@@ -14,22 +14,16 @@ internal class ComposeLayoutNodeBoundsHelper(private val logger: Logger) {
 
             // Fast path: check first modifier (most common case)
             val firstModifier = modifierInfo.firstOrNull()
-            if (firstModifier?.coordinates?.isAttached == true) {
-                return firstModifier.coordinates.boundsInWindow()
-            }
+                .takeIf { it?.coordinates?.isAttached == true }
 
             // Fallback: find any attached modifier
-            val attachedModifier = modifierInfo.find { it.coordinates.isAttached }
-            if (attachedModifier != null) {
-                return attachedModifier.coordinates.boundsInWindow()
+            val attachedModifier by lazy {
+                modifierInfo.find { it.coordinates.isAttached }
             }
 
-            // Last resort: use node coordinates if attached
-            if (node.coordinates.isAttached) {
-                node.coordinates.boundsInWindow()
-            } else {
-                null
-            }
+            // Last resort: use node coordinates
+            val modifierCoordinates = (firstModifier ?: attachedModifier)?.coordinates
+            return (modifierCoordinates ?: node.coordinates).boundsInWindow()
         } catch (e: Exception) {
             logger.warn("Could not fetch position for LayoutNode")
             null
