@@ -46,14 +46,14 @@ class AndroidLifecyclePlugin(
         val androidConfiguration = amplitude.configuration as Configuration
         autocapture = androidConfiguration.autocapture
 
-        val application = androidConfiguration.context as Application
+        val context = androidConfiguration.context
 
         if (APP_LIFECYCLES in autocapture) {
             packageInfo = try {
-                application.packageManager.getPackageInfo(application.packageName, 0)
+                context.packageManager.getPackageInfo(context.packageName, 0)
             } catch (e: PackageManager.NameNotFoundException) {
                 // This shouldn't happen, but in case it happens, fallback to empty package info.
-                amplitude.logger.error("Cannot find package with application.packageName: " + application.packageName)
+                amplitude.logger.error("Cannot find package with application.packageName: " + context.packageName)
                 PackageInfo()
             }
 
