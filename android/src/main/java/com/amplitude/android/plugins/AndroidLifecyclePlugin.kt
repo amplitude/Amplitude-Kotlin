@@ -46,7 +46,7 @@ class AndroidLifecyclePlugin(
         val androidConfiguration = amplitude.configuration as Configuration
         autocapture = androidConfiguration.autocapture
 
-        val application = androidConfiguration.context as Application
+        val application = androidConfiguration.context
 
         if (APP_LIFECYCLES in autocapture) {
             packageInfo = try {
