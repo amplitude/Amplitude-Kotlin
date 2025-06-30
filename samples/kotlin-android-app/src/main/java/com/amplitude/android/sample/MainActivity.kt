@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import com.amplitude.core.events.EventOptions
+import com.amplitude.core.events.Identify
 import com.amplitude.core.events.Plan
 
 class MainActivity : AppCompatActivity() {
@@ -29,5 +30,15 @@ class MainActivity : AppCompatActivity() {
             val intent = Intent(this, AdvancedActivity::class.java)
             startActivity(intent)
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        amplitude.identify(
+            identify = Identify().apply {
+                set("test", "test value")
+            },
+            options = EventOptions()
+        )
     }
 }

@@ -10,7 +10,6 @@ import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.android.plugins.AndroidNetworkConnectivityCheckerPlugin
 import com.amplitude.android.storage.AndroidStorageContextV3
 import com.amplitude.android.utilities.ActivityLifecycleObserver
-import com.amplitude.core.State
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
 import com.amplitude.id.IdentityConfiguration
@@ -23,29 +22,29 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 import com.amplitude.core.Amplitude as CoreAmplitude
 
-open class Amplitude internal constructor(
+open class Amplitude (
     configuration: Configuration,
-    state: State,
     amplitudeScope: CoroutineScope = CoroutineScope(SupervisorJob()),
     amplitudeDispatcher: CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher(),
     networkIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
     storageIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
 ) : CoreAmplitude(
     configuration = configuration,
-    store = state,
     amplitudeScope = amplitudeScope,
     amplitudeDispatcher = amplitudeDispatcher,
     networkIODispatcher = networkIODispatcher,
     storageIODispatcher = storageIODispatcher
 ) {
-    constructor(configuration: Configuration) : this(configuration, State())
 
     private lateinit var androidContextPlugin: AndroidContextPlugin
 
-    val sessionId: Long
-        get() {
-            return (timeline as Timeline).sessionId
-        }
+    override fun track(eventType: String, eventProperties: Map<String, Any>?) {
+        track(
+            eventType = eventType,
+            eventProperties = eventProperties,
+            options = null
+        )
+    }
 
     private lateinit var activityLifecycleCallbacks: ActivityLifecycleObserver
 
@@ -68,7 +67,7 @@ open class Amplitude internal constructor(
     }
 
     override fun createTimeline(): Timeline {
-        return Timeline(configuration.sessionId).also { it.amplitude = this }
+        return Timeline(this)
     }
 
     override fun createIdentityConfiguration(): IdentityConfiguration {
@@ -88,7 +87,7 @@ open class Amplitude internal constructor(
         val migrationManager = MigrationManager(this)
         migrationManager.migrateOldStorage()
 
-        this.createIdentityContainer(identityConfiguration)
+        createIdentityContainer(identityConfiguration)
 
         if (this.configuration.offline != AndroidNetworkConnectivityCheckerPlugin.Disabled) {
             add(AndroidNetworkConnectivityCheckerPlugin())
@@ -106,7 +105,7 @@ open class Amplitude internal constructor(
         add(AnalyticsConnectorPlugin())
         add(AmplitudeDestination())
 
-        (timeline as Timeline).start()
+        timeline.start()
     }
 
     /**
@@ -116,10 +115,12 @@ open class Amplitude internal constructor(
      * @return the Amplitude instance
      */
     override fun reset(): Amplitude {
-        this.setUserId(null)
         amplitudeScope.launch(amplitudeDispatcher) {
             isBuilt.await()
-            idContainer.identityManager.editIdentity().setDeviceId(null).commit()
+            idContainer.identityManager.editIdentity()
+                .setUserId(null)
+                .setDeviceId(null)
+                .commit()
             androidContextPlugin.initializeDeviceId(configuration as Configuration)
         }
         return this
@@ -138,7 +139,7 @@ open class Amplitude internal constructor(
     private fun registerShutdownHook() {
         Runtime.getRuntime().addShutdownHook(object : Thread() {
             override fun run() {
-                (this@Amplitude.timeline as Timeline).stop()
+                timeline.stop()
             }
         })
     }
@@ -170,5 +171,5 @@ open class Amplitude internal constructor(
 fun Amplitude(apiKey: String, context: Context, configs: Configuration.() -> Unit): com.amplitude.android.Amplitude {
     val config = Configuration(apiKey, context)
     configs.invoke(config)
-    return com.amplitude.android.Amplitude(config)
+    return Amplitude(config)
 }

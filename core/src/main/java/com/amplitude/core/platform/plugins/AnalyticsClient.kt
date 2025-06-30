@@ -1,9 +1,9 @@
 package com.amplitude.core.platform.plugins
 
-interface AnalyticsClient<I : AnalyticsIdentity> {
-    val identity: I
-    val sessionId: Long
-    val optOut: Boolean
+interface AnalyticsClient {
+    var identity: AnalyticsIdentity
+    var sessionId: Long
+    var optOut: Boolean
 
-    fun track(eventType: String, eventProperties: Map<String, Any?>? = null)
+    fun track(eventType: String, eventProperties: Map<String, Any>?) {}
 }

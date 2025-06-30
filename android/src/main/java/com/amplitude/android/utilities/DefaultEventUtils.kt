@@ -42,9 +42,9 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         } else if (currentBuild != previousBuild) {
             // Has stored build, but different from current build
             amplitude.track(
-                ConstantsEventTypes.APPLICATION_UPDATED,
-                mapOf(
-                    ConstantsEventProperties.PREVIOUS_VERSION to previousVersion,
+                eventType = ConstantsEventTypes.APPLICATION_UPDATED,
+                eventProperties = mapOf(
+                    ConstantsEventProperties.PREVIOUS_VERSION to previousVersion.orEmpty(),
                     ConstantsEventProperties.PREVIOUS_BUILD to previousBuild,
                     ConstantsEventProperties.VERSION to currentVersion,
                     ConstantsEventProperties.BUILD to currentBuild,
@@ -70,10 +70,10 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         val currentBuild = packageInfo.getVersionCode().toString()
 
         amplitude.track(
-            ConstantsEventTypes.APPLICATION_OPENED,
-            mapOf(
+            eventType = ConstantsEventTypes.APPLICATION_OPENED,
+            eventProperties = mapOf(
                 ConstantsEventProperties.FROM_BACKGROUND to isFromBackground,
-                ConstantsEventProperties.VERSION to currentVersion,
+                ConstantsEventProperties.VERSION to currentVersion.orEmpty(),
                 ConstantsEventProperties.BUILD to currentBuild,
             ),
         )
@@ -90,10 +90,10 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             it.data?.let { uri ->
                 val url = uri.toString()
                 amplitude.track(
-                    ConstantsEventTypes.DEEP_LINK_OPENED,
-                    mapOf(
+                    eventType = ConstantsEventTypes.DEEP_LINK_OPENED,
+                    eventProperties = mapOf(
                         ConstantsEventProperties.LINK_URL to url,
-                        ConstantsEventProperties.LINK_REFERRER to referrer,
+                        ConstantsEventProperties.LINK_REFERRER to referrer.orEmpty(),
                     ),
                 )
             }
@@ -103,9 +103,9 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
     fun trackScreenViewedEvent(activity: Activity) {
         try {
             amplitude.track(
-                ConstantsEventTypes.SCREEN_VIEWED,
-                mapOf(
-                    ConstantsEventProperties.SCREEN_NAME to activity.screenName
+                eventType = ConstantsEventTypes.SCREEN_VIEWED,
+                eventProperties = mapOf(
+                    ConstantsEventProperties.SCREEN_NAME to activity.screenName.orEmpty()
                 )
             )
         } catch (e: PackageManager.NameNotFoundException) {

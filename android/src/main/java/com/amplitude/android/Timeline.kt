@@ -8,25 +8,36 @@ import com.amplitude.core.Storage.Constants.LAST_EVENT_ID
 import com.amplitude.core.Storage.Constants.LAST_EVENT_TIME
 import com.amplitude.core.Storage.Constants.PREVIOUS_SESSION_ID
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.platform.DEFAULT_SESSION_ID
 import com.amplitude.core.platform.Timeline
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
-private const val DEFAULT_SESSION_ID = -1L
 private const val DEFAULT = 0L
 
 class Timeline(
-    private val initialSessionId: Long? = null,
-) : Timeline() {
+    amplitude: Amplitude,
+) : Timeline(amplitude) {
     private val eventMessageChannel: Channel<EventQueueMessage> = Channel(Channel.UNLIMITED)
 
+    private val initialSessionId = amplitude.configuration.sessionId
     private val _sessionId = AtomicLong(initialSessionId ?: DEFAULT_SESSION_ID)
     private val foreground = AtomicBoolean(false)
-    val sessionId: Long
+
+    override var sessionId: Long
         get() {
             return _sessionId.get()
+        }
+        set(value) {
+            with(amplitude) {
+                amplitudeScope.launch(storageIODispatcher) {
+                    isBuilt.await()
+                    _sessionId.set(value)
+                    amplitude.storage.write(PREVIOUS_SESSION_ID, value.toString())
+                }
+            }
         }
 
     internal var lastEventId: Long = DEFAULT
@@ -34,7 +45,7 @@ class Timeline(
     internal var lastEventTime: Long = DEFAULT
         private set
 
-    internal fun start() {
+    override fun start() {
         with(amplitude) {
             amplitudeScope.launch(storageIODispatcher) {
                 // Wait until build (including possible legacy data migration) is finished.
@@ -53,7 +64,7 @@ class Timeline(
         }
     }
 
-    internal fun stop() {
+    override fun stop() {
         this.eventMessageChannel.cancel()
     }
 
@@ -139,7 +150,7 @@ class Timeline(
 
     private suspend fun setSessionId(timestamp: Long) {
         _sessionId.set(timestamp)
-        amplitude.storage.write(PREVIOUS_SESSION_ID, sessionId.toString())
+        amplitude.storage.write(PREVIOUS_SESSION_ID, timestamp.toString())
     }
 
     private suspend fun startNewSession(timestamp: Long): List<BaseEvent> {

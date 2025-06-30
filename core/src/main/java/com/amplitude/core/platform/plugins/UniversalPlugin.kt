@@ -6,12 +6,15 @@ interface UniversalPlugin {
     val name: String?
 
     fun setup(
-        analyticsClient: AnalyticsClient<AnalyticsIdentity>,
+        analyticsClient: AnalyticsClient,
         amplitudeContext: AmplitudeContext
     ) {}
 
-    fun <Event : AnalyticsEvent> execute(event: Event) {}
-    fun teardown() {}
+    fun execute(event: AnalyticsEvent) {}
+
+    fun teardown() {
+        // Clean up any resources from setup if necessary
+    }
 
     fun onIdentityChanged(identity: AnalyticsIdentity) {}
     fun onSessionIdChanged(sessionId: Long) {}

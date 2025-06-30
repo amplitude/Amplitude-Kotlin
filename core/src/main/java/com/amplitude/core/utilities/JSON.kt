@@ -17,10 +17,13 @@ internal fun Map<*, *>?.toJSONObject(): JSONObject? {
     return jsonObject
 }
 
-internal fun JSONObject.toMapObj(): Map<String, Any?> {
-    val map = mutableMapOf<String, Any?>()
+internal fun JSONObject.toMapObj(): Map<String, Any> {
+    val map = mutableMapOf<String, Any>()
     for (key in this.keys()) {
-        map[key] = this[key].fromJSON()
+        val value = this[key].fromJSON()
+        if (value != null) {
+            map[key] = value
+        }
     }
     return map
 }

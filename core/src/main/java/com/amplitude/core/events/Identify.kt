@@ -18,18 +18,9 @@ enum class IdentifyOperation(val operationType: String) {
 open class Identify {
 
     private val propertySet: MutableSet<String> = mutableSetOf()
-
-    private val _properties = mutableMapOf<String, Any?>()
-    val properties: MutableMap<String, Any?>
-        @Synchronized get() {
-            val clonedProperties = _properties.toMutableMap()
-            for ((key, value) in clonedProperties) {
-                if (value is Map<*, *>) {
-                    clonedProperties[key] = value.toMutableMap()
-                }
-            }
-            return clonedProperties
-        }
+    private val _properties = mutableMapOf<String, MutableMap<String, Any>>()
+    val properties: Map<String, Map<String, Any>>
+        @Synchronized get() = _properties.toMap()
 
     fun set(property: String, value: Boolean): Identify {
         setUserProperty(IdentifyOperation.SET, property, value)
@@ -553,7 +544,7 @@ open class Identify {
 
     @Synchronized fun clearAll(): Identify {
         _properties.clear()
-        _properties.put(IdentifyOperation.CLEAR_ALL.operationType, UNSET_VALUE)
+        _properties[IdentifyOperation.CLEAR_ALL.operationType] = mutableMapOf()
         return this
     }
 
@@ -576,14 +567,33 @@ open class Identify {
             ConsoleLogger.logger.warn("Already used property $property in previous operation, ignoring operation ${operation.operationType}")
             return
         }
-        if (!_properties.containsKey(operation.operationType)) {
-            _properties[operation.operationType] = mutableMapOf<String, Any>()
-        }
-        (_properties[operation.operationType] as MutableMap<String, Any>)[property] = value
+        _properties.getOrPut(operation.operationType) { mutableMapOf() }[property] = value
         propertySet.add(property)
     }
 
     companion object {
         const val UNSET_VALUE = "-"
+    }
+}
+
+fun Map<String, Any>.applyUserProperties(userProperties: Map<String, Any> = emptyMap()): Map<String, Any> {
+    if (userProperties.isEmpty()) return this
+
+    val clearAll = userProperties.filterKeys { key -> key == IdentifyOperation.CLEAR_ALL.operationType }
+    if (clearAll.isNotEmpty()) return emptyMap()
+    try {
+        val set = userProperties[IdentifyOperation.SET.operationType] as? Map<String, Any> ?: emptyMap()
+        val unset = userProperties[IdentifyOperation.UNSET.operationType] as? Map<String, Any> ?: emptyMap()
+
+        return toMutableMap().apply {
+            set.forEach { (key, value) ->
+                this[key] = value
+            }
+            unset.forEach { (key, _) ->
+                this.remove(key)
+            }
+        }
+    } catch (e: ClassCastException) {
+        return this
     }
 }

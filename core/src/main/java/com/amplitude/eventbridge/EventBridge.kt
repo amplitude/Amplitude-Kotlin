@@ -4,10 +4,10 @@ import java.util.concurrent.ArrayBlockingQueue
 
 data class Event(
     val eventType: String,
-    val eventProperties: Map<String, Any?>? = null,
-    val userProperties: Map<String, Any?>? = null,
-    val groups: Map<String, Any?>? = null,
-    var groupProperties: Map<String, Any?>? = null
+    val eventProperties: Map<String, Any>? = null,
+    val userProperties: Map<String, Any>? = null,
+    val groups: Map<String, Any>? = null,
+    var groupProperties: Map<String, Any>? = null
 )
 
 enum class EventChannel {

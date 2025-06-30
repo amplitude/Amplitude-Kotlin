@@ -5,7 +5,7 @@ import androidx.fragment.app.FragmentActivity
 import com.amplitude.common.Logger
 import java.util.WeakHashMap
 
-internal typealias TrackEventCallback = (String, Map<String, Any?>) -> Unit
+internal typealias TrackEventCallback = (String, Map<String, Any>) -> Unit
 
 internal object FragmentActivityHandler {
     private val callbacksMap =

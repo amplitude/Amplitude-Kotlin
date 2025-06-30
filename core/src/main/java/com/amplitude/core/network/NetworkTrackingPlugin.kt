@@ -100,19 +100,19 @@ class NetworkTrackingPlugin(
     ) {
         val maskedHttpUrl = request.url.mask()
         amplitude.track(
-            NETWORK_TRACKING,
+            eventType = NETWORK_TRACKING,
             eventProperties = mapOf(
                 NETWORK_TRACKING_URL to maskedHttpUrl.toUrlOnlyString(),
-                NETWORK_TRACKING_URL_QUERY to maskedHttpUrl.query,
-                NETWORK_TRACKING_URL_FRAGMENT to maskedHttpUrl.fragment,
+                NETWORK_TRACKING_URL_QUERY to maskedHttpUrl.query.orEmpty(),
+                NETWORK_TRACKING_URL_FRAGMENT to maskedHttpUrl.fragment.orEmpty(),
                 NETWORK_TRACKING_REQUEST_METHOD to request.method,
-                NETWORK_TRACKING_STATUS_CODE to response?.code,
-                NETWORK_TRACKING_ERROR_MESSAGE to error?.message,
+                NETWORK_TRACKING_STATUS_CODE to (response?.code ?: 0),
+                NETWORK_TRACKING_ERROR_MESSAGE to error?.message.orEmpty(),
                 NETWORK_TRACKING_START_TIME to startTime,
                 NETWORK_TRACKING_COMPLETION_TIME to completionTime,
                 NETWORK_TRACKING_DURATION to completionTime - startTime,
-                NETWORK_TRACKING_REQUEST_BODY_SIZE to request.body?.contentLength(),
-                NETWORK_TRACKING_RESPONSE_BODY_SIZE to response?.body?.contentLength(),
+                NETWORK_TRACKING_REQUEST_BODY_SIZE to (request.body?.contentLength() ?: 0L),
+                NETWORK_TRACKING_RESPONSE_BODY_SIZE to (response?.body?.contentLength() ?: 0L),
             )
         )
     }

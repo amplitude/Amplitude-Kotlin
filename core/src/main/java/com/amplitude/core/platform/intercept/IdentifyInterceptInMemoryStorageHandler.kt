@@ -2,7 +2,6 @@ package com.amplitude.core.platform.intercept
 
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.IdentifyOperation
-import com.amplitude.core.platform.intercept.IdentifyInterceptorUtil.filterNonNullValues
 import com.amplitude.core.utilities.InMemoryStorage
 
 class IdentifyInterceptInMemoryStorageHandler(
@@ -15,10 +14,13 @@ class IdentifyInterceptInMemoryStorageHandler(
         }
         val events = eventsData[0]
         val identifyEvent = events[0]
-        val identifyEventUserProperties = filterNonNullValues(identifyEvent.userProperties!!.get(IdentifyOperation.SET.operationType) as MutableMap<String, Any?>)
+        val identifyEventUserProperties = identifyEvent.userProperties!!.get(IdentifyOperation.SET.operationType) as? MutableMap<String, Any>
         val userProperties = IdentifyInterceptorUtil.mergeIdentifyList(events.subList(1, events.size))
-        identifyEventUserProperties.putAll(userProperties)
-        identifyEvent.userProperties!!.put(IdentifyOperation.SET.operationType, identifyEventUserProperties)
+        identifyEventUserProperties?.putAll(userProperties)
+        identifyEvent.userProperties?.put(
+            IdentifyOperation.SET.operationType,
+            identifyEventUserProperties ?: mutableMapOf<String, Any>()
+        )
         return identifyEvent
     }
 

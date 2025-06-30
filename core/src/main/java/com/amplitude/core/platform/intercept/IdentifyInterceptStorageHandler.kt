@@ -32,15 +32,14 @@ interface IdentifyInterceptStorageHandler {
 }
 
 object IdentifyInterceptorUtil {
-    fun mergeIdentifyList(events: List<BaseEvent>): MutableMap<String, Any?> {
-        val userProperties = mutableMapOf<String, Any?>()
-        events.forEach {
-            userProperties.putAll(filterNonNullValues(it.userProperties!!.get(IdentifyOperation.SET.operationType) as MutableMap<String, Any?>))
-        }
-        return userProperties
-    }
-
-    fun filterNonNullValues(map: MutableMap<String, Any?>): MutableMap<String, Any?> {
-        return map.filterValues { it != null }.toMutableMap()
+    fun mergeIdentifyList(events: List<BaseEvent>): MutableMap<String, Any> {
+        return buildMap {
+            events.onEach { event ->
+                val setOp = event.userProperties?.get(IdentifyOperation.SET.operationType) as? Map<String, Any>
+                setOp?.entries?.onEach { (key, value) ->
+                    put(key, value)
+                }
+            }
+        }.toMutableMap()
     }
 }

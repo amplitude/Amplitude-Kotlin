@@ -39,8 +39,7 @@ open class AndroidContextPlugin : Plugin {
             return
         }
 
-        // Check store
-        deviceId = amplitude.store.deviceId
+        deviceId = amplitude.identity.deviceId
         if (deviceId != null && validDeviceId(deviceId) && !deviceId.endsWith("S")) {
             return
         }
@@ -82,10 +81,10 @@ open class AndroidContextPlugin : Plugin {
             event.library = "$SDK_LIBRARY/$SDK_VERSION"
         }
         event.userId ?: let {
-            event.userId = amplitude.store.userId
+            event.userId = amplitude.identity.userId
         }
         event.deviceId ?: let {
-            event.deviceId = amplitude.store.deviceId
+            event.deviceId = amplitude.identity.deviceId
         }
         val trackingOptions = configuration.trackingOptions
         if (configuration.enableCoppaControl) {

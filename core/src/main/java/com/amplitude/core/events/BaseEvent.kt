@@ -1,14 +1,16 @@
 package com.amplitude.core.events
 
+import com.amplitude.core.platform.plugins.AnalyticsEvent
+
 /**
  * BaseEvent for SDK
  */
-open class BaseEvent : EventOptions() {
-    open lateinit var eventType: String
-    var eventProperties: MutableMap<String, Any?>? = null
-    var userProperties: MutableMap<String, Any?>? = null
-    var groups: MutableMap<String, Any?>? = null
-    var groupProperties: MutableMap<String, Any?>? = null
+open class BaseEvent : EventOptions(), AnalyticsEvent {
+    override lateinit var eventType: String
+    override var eventProperties: MutableMap<String, Any>? = null
+    var userProperties: MutableMap<String, Any>? = null
+    var groups: MutableMap<String, Any>? = null
+    var groupProperties: MutableMap<String, Any>? = null
 
     fun mergeEventOptions(options: EventOptions) {
         options.userId?.let { userId = it }

@@ -54,7 +54,7 @@ open class Revenue {
     /**
      * The Revenue Event Properties field with (optional).
      */
-    var properties: MutableMap<String, Any?>? = null
+    var properties: MutableMap<String, Any>? = null
 
     /**
      * The revenue amount
@@ -98,7 +98,7 @@ open class Revenue {
 
     fun toRevenueEvent(): RevenueEvent {
         val event = RevenueEvent()
-        val eventProperties = properties ?: mutableMapOf<String, Any?>()
+        val eventProperties = properties ?: mutableMapOf()
         productId?.let { eventProperties.put(REVENUE_PRODUCT_ID, it) }
         eventProperties.put(REVENUE_QUANTITY, quantity)
         price?.let { eventProperties.put(REVENUE_PRICE, it) }
