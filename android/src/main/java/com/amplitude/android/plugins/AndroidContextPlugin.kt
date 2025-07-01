@@ -46,7 +46,10 @@ open class AndroidContextPlugin : Plugin {
         }
 
         // Check new device id per install
-        if (!configuration.newDeviceIdPerInstall && configuration.useAdvertisingIdForDeviceId && !contextProvider.isLimitAdTrackingEnabled()) {
+        if (!configuration.newDeviceIdPerInstall &&
+            configuration.useAdvertisingIdForDeviceId &&
+            !contextProvider.isLimitAdTrackingEnabled()
+        ) {
             val advertisingId = contextProvider.advertisingId
             if (advertisingId != null && validDeviceId(advertisingId)) {
                 setDeviceId(advertisingId)
