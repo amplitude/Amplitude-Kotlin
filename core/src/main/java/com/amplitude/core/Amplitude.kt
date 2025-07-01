@@ -547,12 +547,12 @@ open class Amplitude(
     }
 
     private fun convertPropertiesToIdentify(userProperties: Map<String, Any>?): Identify {
-        val identify = Identify().apply {
-            userProperties?.onEach { property ->
-                set(property.key, property.value)
+        return Identify()
+            .apply {
+                userProperties?.onEach { property ->
+                    set(property.key, property.value)
+                }
             }
-        }
-        return identify
     }
 
     override fun onIdentityChanged(identity: Identity) {

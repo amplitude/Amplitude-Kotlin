@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<baseline version="1.0">
+    <file name="src/main/java/com/amplitude/android/Amplitude.kt">
+        <error line="178" column="5" source="standard:function-naming" />
+    </file>
+    <file name="src/test/kotlin/com/amplitude/android/utilities/AndroidStorageTest.kt">
+        <error line="303" column="1" source="standard:max-line-length" />
+        <error line="307" column="1" source="standard:max-line-length" />
+        <error line="311" column="1" source="standard:max-line-length" />
+        <error line="315" column="1" source="standard:max-line-length" />
+        <error line="319" column="1" source="standard:max-line-length" />
+        <error line="323" column="1" source="standard:max-line-length" />
+    </file>
+    <file name="src/test/kotlin/com/amplitude/core/utilities/http/AnalyticsRequestTest.kt">
+        <error line="33" column="1" source="standard:max-line-length" />
+        <error line="49" column="1" source="standard:max-line-length" />
+    </file>
+</baseline>

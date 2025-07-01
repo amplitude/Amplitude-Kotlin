@@ -64,6 +64,7 @@ internal class AmplitudeTest {
         server.shutdown()
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     @Nested
     inner class TestConfiguration {
         @Test
@@ -339,7 +340,7 @@ internal class AmplitudeTest {
             amplitude.remove(middleware)
             amplitude.timeline.plugins[Plugin.Type.Enrichment]?.size()?.let {
                 assertEquals(
-                    1, // SegmentLog is the other added at startup
+                    1,
                     it,
                 )
             } ?: fail()

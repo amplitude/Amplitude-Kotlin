@@ -19,8 +19,8 @@ if (localPropertiesFile.exists() && localPropertiesFile.isFile) {
     }
 }
 
-val AMPLITUDE_API_KEY: String = localProps.getProperty("AMPLITUDE_API_KEY") ?: ""
-val EXPERIMENT_API_KEY: String = localProps.getProperty("EXPERIMENT_API_KEY") ?: ""
+val amplitudeApiKey: String = localProps.getProperty("AMPLITUDE_API_KEY") ?: ""
+val experimentApiKey: String = localProps.getProperty("EXPERIMENT_API_KEY") ?: ""
 
 android {
     namespace = "com.amplitude.android.sample"
@@ -34,8 +34,8 @@ android {
         versionCode = 1
         versionName = "1.0"
         multiDexEnabled = true
-        buildConfigField("String", "AMPLITUDE_API_KEY", "\"${AMPLITUDE_API_KEY}\"")
-        buildConfigField("String", "EXPERIMENT_API_KEY", "\"${EXPERIMENT_API_KEY}\"")
+        buildConfigField("String", "AMPLITUDE_API_KEY", "\"${amplitudeApiKey}\"")
+        buildConfigField("String", "EXPERIMENT_API_KEY", "\"${experimentApiKey}\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 

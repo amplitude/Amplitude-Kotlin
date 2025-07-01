@@ -230,12 +230,14 @@ class AndroidContextProvider(
         private fun fetchAndCacheGoogleAdvertisingId(): String? {
             try {
                 val advertisingIdClient = Class.forName("com.google.android.gms.ads.identifier.AdvertisingIdClient")
-                val getAdvertisingInfo = advertisingIdClient.getMethod(
+                val getAdvertisingInfo =
+                    advertisingIdClient.getMethod(
                         "getAdvertisingIdInfo",
                         Context::class.java,
                     )
                 val advertisingInfo = getAdvertisingInfo.invoke(null, context)
-                val isLimitAdTrackingEnabled = advertisingInfo.javaClass.getMethod(
+                val isLimitAdTrackingEnabled =
+                    advertisingInfo.javaClass.getMethod(
                         "isLimitAdTrackingEnabled",
                     )
                 val limitAdTrackingEnabled =
@@ -263,7 +265,8 @@ class AndroidContextProvider(
             // This should not be called on the main thread.
             try {
                 val gpsUtil = Class.forName("com.google.android.gms.common.GooglePlayServicesUtil")
-                val getGPSAvailable = gpsUtil.getMethod(
+                val getGPSAvailable =
+                    gpsUtil.getMethod(
                         "isGooglePlayServicesAvailable",
                         Context::class.java,
                     )

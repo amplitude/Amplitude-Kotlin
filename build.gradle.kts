@@ -12,7 +12,7 @@ buildscript {
     dependencies {
         classpath("com.android.tools.build:gradle:8.10.1")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.25")
-        classpath("org.jetbrains.dokka:dokka-gradle-plugin:1.9.20")
+        classpath("org.jetbrains.dokka:dokka-gradle-plugin:2.0.0")
         classpath("org.jlleitschuh.gradle:ktlint-gradle:12.3.0")
         classpath("io.github.gradle-nexus:publish-plugin:2.0.0")
         classpath("de.mannodermaus.gradle.plugins:android-junit5:1.12.2.0")

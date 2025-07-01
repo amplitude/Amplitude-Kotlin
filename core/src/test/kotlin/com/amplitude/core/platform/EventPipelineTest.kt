@@ -41,10 +41,6 @@ class EventPipelineTest {
         Configuration(
             apiKey = "API_KEY",
             flushIntervalMillis = 1,
-            /**
-             * Take note that [com.amplitude.core.utilities.InMemoryStorage] will not persist data and
-             * clear the buffer after a call to `readEventsContent()` is made.
-             */
             storageProvider = InMemoryStorageProvider(),
             loggerProvider = ConsoleLoggerProvider(),
             identifyInterceptStorageProvider = InMemoryStorageProvider(),

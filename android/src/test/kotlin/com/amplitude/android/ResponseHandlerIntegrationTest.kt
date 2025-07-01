@@ -145,7 +145,7 @@ class ResponseHandlerIntegrationTest {
                     scheduler = testScheduler,
                     configuration =
                         Configuration(
-                            flushQueueSize = 2, // required for in memory storage testing
+                            flushQueueSize = 2,
                             apiKey = "test-api-key",
                             context =
                                 ApplicationProvider.getApplicationContext<Context?>()
