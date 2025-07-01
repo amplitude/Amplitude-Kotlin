@@ -5,7 +5,7 @@ import com.amplitude.core.events.IdentifyOperation
 import com.amplitude.core.utilities.InMemoryStorage
 
 class IdentifyInterceptInMemoryStorageHandler(
-    private val storage: InMemoryStorage
+    private val storage: InMemoryStorage,
 ) : IdentifyInterceptStorageHandler {
     override suspend fun getTransferIdentifyEvent(): BaseEvent? {
         val eventsData = storage.readEventsContent() as List<List<BaseEvent>>
@@ -14,12 +14,15 @@ class IdentifyInterceptInMemoryStorageHandler(
         }
         val events = eventsData[0]
         val identifyEvent = events[0]
-        val identifyEventUserProperties = identifyEvent.userProperties!!.get(IdentifyOperation.SET.operationType) as? MutableMap<String, Any>
+        val identifyEventUserProperties =
+            identifyEvent.userProperties!!.get(
+                IdentifyOperation.SET.operationType,
+            ) as? MutableMap<String, Any>
         val userProperties = IdentifyInterceptorUtil.mergeIdentifyList(events.subList(1, events.size))
         identifyEventUserProperties?.putAll(userProperties)
         identifyEvent.userProperties?.put(
             IdentifyOperation.SET.operationType,
-            identifyEventUserProperties ?: mutableMapOf<String, Any>()
+            identifyEventUserProperties ?: mutableMapOf<String, Any>(),
         )
         return identifyEvent
     }

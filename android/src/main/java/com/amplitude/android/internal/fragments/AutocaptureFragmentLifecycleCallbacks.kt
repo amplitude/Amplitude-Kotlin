@@ -9,24 +9,29 @@ import com.amplitude.core.Constants.EventTypes
 
 internal class AutocaptureFragmentLifecycleCallbacks(
     private val track: TrackEventCallback,
-    private val logger: Logger
+    private val logger: Logger,
 ) : FragmentManager.FragmentLifecycleCallbacks() {
-    override fun onFragmentResumed(fm: FragmentManager, f: Fragment) {
+    override fun onFragmentResumed(
+        fm: FragmentManager,
+        f: Fragment,
+    ) {
         super.onFragmentResumed(fm, f)
 
         val className = f.javaClass.canonicalName ?: f.javaClass.simpleName ?: null
-        val fragmentIdentifier = runCatching {
-            // The id could be the `android:id` value supplied in a layout or the container view ID
-            // supplied when adding the fragment.
-            f.resources.getResourceEntryName(f.id)
-        }.onFailure {
-            logger.error("Failed to get resource entry name: $it")
-        }.getOrNull()
-        val screenName = runCatching {
-            f.activity?.screenName
-        }.onFailure {
-            logger.error("Failed to get screen name: $it")
-        }.getOrNull()
+        val fragmentIdentifier =
+            runCatching {
+                // The id could be the `android:id` value supplied in a layout or the container view ID
+                // supplied when adding the fragment.
+                f.resources.getResourceEntryName(f.id)
+            }.onFailure {
+                logger.error("Failed to get resource entry name: $it")
+            }.getOrNull()
+        val screenName =
+            runCatching {
+                f.activity?.screenName
+            }.onFailure {
+                logger.error("Failed to get screen name: $it")
+            }.getOrNull()
         val fragmentTag = f.tag
 
         track(
@@ -36,7 +41,7 @@ internal class AutocaptureFragmentLifecycleCallbacks(
                 EventProperties.FRAGMENT_IDENTIFIER to fragmentIdentifier.orEmpty(),
                 EventProperties.SCREEN_NAME to screenName.orEmpty(),
                 EventProperties.FRAGMENT_TAG to fragmentTag.orEmpty(),
-            )
+            ),
         )
     }
 }

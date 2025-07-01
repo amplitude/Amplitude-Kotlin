@@ -19,11 +19,13 @@ class TimelineTest {
 
     @BeforeEach
     fun setUp() {
-        mockAmplitude = mockk<Amplitude>(relaxed = true) {
-            every { configuration } returns mockk(relaxed = true) {
-                every { optOut } returns false
+        mockAmplitude =
+            mockk<Amplitude>(relaxed = true) {
+                every { configuration } returns
+                    mockk(relaxed = true) {
+                        every { optOut } returns false
+                    }
             }
-        }
         timeline = Timeline(mockAmplitude)
     }
 
@@ -32,7 +34,7 @@ class TimelineTest {
      */
     private class FakePlugin(
         override val type: Plugin.Type,
-        override val name: String = "FakePlugin"
+        override val name: String = "FakePlugin",
     ) : Plugin {
         override lateinit var amplitude: Amplitude
         val executeCallCount = AtomicInteger(0)
@@ -64,7 +66,7 @@ class TimelineTest {
      * Fake destination plugin for testing
      */
     private class FakeDestinationPlugin(
-        override val name: String = "FakeDestinationPlugin"
+        override val name: String = "FakeDestinationPlugin",
     ) : DestinationPlugin() {
         val processCallCount = AtomicInteger(0)
         var shouldReturnNull = false
@@ -91,7 +93,7 @@ class TimelineTest {
     @Test
     fun `add plugin should setup plugin and add to correct mediator`() {
         val plugin = FakePlugin(Plugin.Type.Before)
-        
+
         timeline.add(plugin)
 
         assertEquals(1, plugin.setupCallCount.get())
@@ -103,10 +105,10 @@ class TimelineTest {
     fun `add multiple plugins of same type should add to same mediator`() {
         val plugin1 = FakePlugin(Plugin.Type.Before, "Plugin1")
         val plugin2 = FakePlugin(Plugin.Type.Before, "Plugin2")
-        
+
         timeline.add(plugin1)
         timeline.add(plugin2)
-        
+
         assertEquals(2, timeline.plugins[Plugin.Type.Before]?.size() ?: 0)
     }
 
@@ -116,12 +118,12 @@ class TimelineTest {
         val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment, "EnrichmentPlugin")
         val destinationPlugin = FakePlugin(Plugin.Type.Destination, "DestinationPlugin")
         val utilityPlugin = FakePlugin(Plugin.Type.Utility, "UtilityPlugin")
-        
+
         timeline.add(beforePlugin)
         timeline.add(enrichmentPlugin)
         timeline.add(destinationPlugin)
         timeline.add(utilityPlugin)
-        
+
         assertEquals(1, timeline.plugins[Plugin.Type.Before]?.size() ?: 0)
         assertEquals(1, timeline.plugins[Plugin.Type.Enrichment]?.size() ?: 0)
         assertEquals(1, timeline.plugins[Plugin.Type.Destination]?.size() ?: 0)
@@ -133,16 +135,16 @@ class TimelineTest {
         val beforePlugin = FakePlugin(Plugin.Type.Before, "BeforePlugin")
         val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment, "EnrichmentPlugin")
         val destinationPlugin = FakeDestinationPlugin("DestinationPlugin")
-        
+
         timeline.add(beforePlugin)
         timeline.add(enrichmentPlugin)
         timeline.add(destinationPlugin)
-        
+
         val event = BaseEvent()
         event.eventType = "test_event"
-        
+
         timeline.process(event)
-        
+
         assertEquals(1, beforePlugin.executeCallCount.get())
         assertEquals(1, enrichmentPlugin.executeCallCount.get())
         assertEquals(1, destinationPlugin.processCallCount.get())
@@ -150,17 +152,16 @@ class TimelineTest {
 
     @Test
     fun `process event should return early when opt out is enabled`() {
-
         every { mockAmplitude.configuration.optOut } returns true
-        
+
         val beforePlugin = FakePlugin(Plugin.Type.Before)
         timeline.add(beforePlugin)
-        
+
         val event = BaseEvent()
         event.eventType = "test_event"
-        
+
         timeline.process(event)
-        
+
         assertEquals(0, beforePlugin.executeCallCount.get())
     }
 
@@ -169,15 +170,15 @@ class TimelineTest {
         val beforePlugin = FakePlugin(Plugin.Type.Before)
         beforePlugin.shouldReturnNull = true
         val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment)
-        
+
         timeline.add(beforePlugin)
         timeline.add(enrichmentPlugin)
-        
+
         val event = BaseEvent()
         event.eventType = "test_event"
-        
+
         timeline.process(event)
-        
+
         assertEquals(1, beforePlugin.executeCallCount.get())
         assertEquals(0, enrichmentPlugin.executeCallCount.get())
     }
@@ -188,16 +189,16 @@ class TimelineTest {
         val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment, "EnrichmentPlugin")
         enrichmentPlugin.shouldReturnNull = true
         val destinationPlugin = FakeDestinationPlugin()
-        
+
         timeline.add(beforePlugin)
         timeline.add(enrichmentPlugin)
         timeline.add(destinationPlugin)
-        
+
         val event = BaseEvent()
         event.eventType = "test_event"
-        
+
         timeline.process(event)
-        
+
         assertEquals(1, beforePlugin.executeCallCount.get())
         assertEquals(1, enrichmentPlugin.executeCallCount.get())
         assertEquals(0, destinationPlugin.processCallCount.get())
@@ -209,16 +210,16 @@ class TimelineTest {
         val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment, "EnrichmentPlugin")
         val destinationPlugin = FakeDestinationPlugin()
         destinationPlugin.shouldReturnNull = true
-        
+
         timeline.add(beforePlugin)
         timeline.add(enrichmentPlugin)
         timeline.add(destinationPlugin)
-        
+
         val event = BaseEvent()
         event.eventType = "test_event"
-        
+
         timeline.process(event)
-        
+
         assertEquals(1, beforePlugin.executeCallCount.get())
         assertEquals(1, enrichmentPlugin.executeCallCount.get())
         assertEquals(1, destinationPlugin.processCallCount.get())
@@ -228,9 +229,9 @@ class TimelineTest {
     fun `applyPlugins should return original event when no plugins exist`() {
         val event = BaseEvent()
         event.eventType = "test_event"
-        
+
         val result = timeline.applyPlugins(Plugin.Type.Before, event)
-        
+
         assertSame(event, result)
     }
 
@@ -241,15 +242,15 @@ class TimelineTest {
         val modifiedEvent = BaseEvent()
         modifiedEvent.eventType = "modified_event"
         plugin2.returnEvent = modifiedEvent
-        
+
         timeline.add(plugin1)
         timeline.add(plugin2)
-        
+
         val event = BaseEvent()
         event.eventType = "test_event"
-        
+
         val result = timeline.applyPlugins(Plugin.Type.Before, event)
-        
+
         assertEquals(1, plugin1.executeCallCount.get())
         assertEquals(1, plugin2.executeCallCount.get())
         assertSame(modifiedEvent, result)
@@ -259,14 +260,14 @@ class TimelineTest {
     fun `applyPlugins should return null when plugin returns null`() {
         val plugin = FakePlugin(Plugin.Type.Before)
         plugin.shouldReturnNull = true
-        
+
         timeline.add(plugin)
-        
+
         val event = BaseEvent()
         event.eventType = "test_event"
-        
+
         val result = timeline.applyPlugins(Plugin.Type.Before, event)
-        
+
         assertNull(result)
     }
 
@@ -274,12 +275,12 @@ class TimelineTest {
     fun `remove plugin should remove from all mediators and call teardown`() {
         val beforePlugin = FakePlugin(Plugin.Type.Before, "TestPluginBefore")
         val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment, "TestPluginEnrichment")
-        
+
         timeline.add(beforePlugin)
         timeline.add(enrichmentPlugin)
-        
+
         timeline.remove(beforePlugin)
-        
+
         assertEquals(0, timeline.plugins[Plugin.Type.Before]?.size() ?: 0)
         assertEquals(1, timeline.plugins[Plugin.Type.Enrichment]?.size() ?: 0)
         assertEquals(1, beforePlugin.teardownCallCount.get())
@@ -289,9 +290,9 @@ class TimelineTest {
     @Test
     fun `remove plugin should handle plugins not found gracefully`() {
         val plugin = FakePlugin(Plugin.Type.Before)
-        
+
         timeline.remove(plugin)
-        
+
         assertEquals(0, plugin.teardownCallCount.get())
     }
 
@@ -300,28 +301,28 @@ class TimelineTest {
         val beforePlugin = FakePlugin(Plugin.Type.Before, "BeforePlugin")
         val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment, "EnrichmentPlugin")
         val destinationPlugin = FakeDestinationPlugin("DestinationPlugin")
-        
+
         timeline.add(beforePlugin)
         timeline.add(enrichmentPlugin)
         timeline.add(destinationPlugin)
-        
+
         val closureCallCount = AtomicInteger(0)
-        
-        timeline.applyClosure { 
+
+        timeline.applyClosure {
             closureCallCount.incrementAndGet()
         }
-        
+
         assertEquals(3, closureCallCount.get())
     }
 
     @Test
     fun `applyClosure should work with empty timeline`() {
         val closureCallCount = AtomicInteger(0)
-        
-        timeline.applyClosure { 
+
+        timeline.applyClosure {
             closureCallCount.incrementAndGet()
         }
-        
+
         assertEquals(0, closureCallCount.get())
     }
 
@@ -330,16 +331,16 @@ class TimelineTest {
         val beforePlugin = FakePlugin(Plugin.Type.Before, "BeforePlugin")
         beforePlugin.shouldThrowException = true
         val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment, "EnrichmentPlugin")
-        
+
         timeline.add(beforePlugin)
         timeline.add(enrichmentPlugin)
-        
+
         val event = BaseEvent()
         event.eventType = "test_event"
-        
+
         // Should not throw exception
         timeline.process(event)
-        
+
         assertEquals(1, beforePlugin.executeCallCount.get())
         assertEquals(1, enrichmentPlugin.executeCallCount.get())
     }
@@ -350,17 +351,17 @@ class TimelineTest {
         val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment, "EnrichmentPlugin")
         val destinationPlugin = FakeDestinationPlugin()
         destinationPlugin.shouldThrowException = true
-        
+
         timeline.add(beforePlugin)
         timeline.add(enrichmentPlugin)
         timeline.add(destinationPlugin)
-        
+
         val event = BaseEvent()
         event.eventType = "test_event"
-        
+
         // Should not throw exception
         timeline.process(event)
-        
+
         assertEquals(1, beforePlugin.executeCallCount.get())
         assertEquals(1, enrichmentPlugin.executeCallCount.get())
         assertEquals(1, destinationPlugin.processCallCount.get())
@@ -371,16 +372,16 @@ class TimelineTest {
         val beforePlugin = FakePlugin(Plugin.Type.Before, "BeforePlugin")
         val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment, "EnrichmentPlugin")
         val destinationPlugin = FakeDestinationPlugin()
-        
+
         timeline.add(beforePlugin)
         timeline.add(enrichmentPlugin)
         timeline.add(destinationPlugin)
-        
+
         val event = IdentifyEvent()
         event.eventType = "test_identify"
-        
+
         timeline.process(event)
-        
+
         assertEquals(1, beforePlugin.executeCallCount.get())
         assertEquals(1, enrichmentPlugin.executeCallCount.get())
         assertEquals(1, destinationPlugin.processCallCount.get())
@@ -388,20 +389,21 @@ class TimelineTest {
 
     @Test
     fun `timeline should be extensible`() {
-        val extendedTimeline = object : Timeline(mockAmplitude) {
-            var customProcessCallCount = AtomicInteger(0)
-            
-            override fun process(incomingEvent: BaseEvent) {
-                customProcessCallCount.incrementAndGet()
-                super.process(incomingEvent)
+        val extendedTimeline =
+            object : Timeline(mockAmplitude) {
+                var customProcessCallCount = AtomicInteger(0)
+
+                override fun process(incomingEvent: BaseEvent) {
+                    customProcessCallCount.incrementAndGet()
+                    super.process(incomingEvent)
+                }
             }
-        }
-        
+
         val event = BaseEvent()
         event.eventType = "test_event"
-        
+
         extendedTimeline.process(event)
-        
+
         assertEquals(1, extendedTimeline.customProcessCallCount.get())
     }
-} 
+}

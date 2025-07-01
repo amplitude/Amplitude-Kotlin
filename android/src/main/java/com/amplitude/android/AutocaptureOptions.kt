@@ -8,22 +8,26 @@ enum class AutocaptureOption {
      * Enable session tracking.
      */
     SESSIONS,
+
     /**
      * Enable app lifecycle tracking.
      */
     APP_LIFECYCLES,
+
     /**
      * Enable deep link tracking.
      */
     DEEP_LINKS,
+
     /**
      * Enable screen view tracking.
      */
     SCREEN_VIEWS,
+
     /**
      * Enable element interaction tracking.
      */
-    ELEMENT_INTERACTIONS
+    ELEMENT_INTERACTIONS,
 }
 
 class AutocaptureOptionsBuilder {

@@ -21,7 +21,7 @@ class AndroidContextProvider(
     private val context: Context,
     private val locationListening: Boolean,
     private val shouldTrackAdid: Boolean,
-    private val shouldTrackAppSetId: Boolean
+    private val shouldTrackAppSetId: Boolean,
 ) {
     private val cachedInfo: CachedInfo by lazy { CachedInfo() }
 
@@ -78,8 +78,9 @@ class AndroidContextProvider(
 
         private fun fetchCarrier(): String? {
             try {
-                val manager = context
-                    .getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+                val manager =
+                    context
+                        .getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
                 return manager.networkOperatorName
             } catch (e: Exception) {
                 // Failed to get network operator name from network
@@ -99,7 +100,9 @@ class AndroidContextProvider(
             country = countryFromNetwork
             return if (!country.isNullOrEmpty()) {
                 country
-            } else countryFromLocale
+            } else {
+                countryFromLocale
+            }
         } // Customized Android System without Google Play Service Installed// sometimes the location manager is unavailable// Bad lat / lon values can cause Geocoder to throw IllegalArgumentExceptions// failed to fetch geocoder// Failed to reverse geocode location
 
         // Failed to reverse geocode location
@@ -113,10 +116,12 @@ class AndroidContextProvider(
                     try {
                         if (Geocoder.isPresent()) {
                             val geocoder = geocoder
-                            val addresses = geocoder.getFromLocation(
-                                recent.latitude,
-                                recent.longitude, 1
-                            )
+                            val addresses =
+                                geocoder.getFromLocation(
+                                    recent.latitude,
+                                    recent.longitude,
+                                    1,
+                                )
                             if (addresses != null) {
                                 for (address in addresses) {
                                     if (address != null) {
@@ -146,8 +151,9 @@ class AndroidContextProvider(
         private val countryFromNetwork: String?
             get() {
                 try {
-                    val manager = context
-                        .getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+                    val manager =
+                        context
+                            .getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
                     if (manager.phoneType != TelephonyManager.PHONE_TYPE_CDMA) {
                         val country = manager.networkCountryIso
                         if (country != null) {
@@ -192,8 +198,9 @@ class AndroidContextProvider(
 
         private fun fetchAppSetId(): String? {
             try {
-                val AppSet = Class
-                    .forName("com.google.android.gms.appset.AppSet")
+                val AppSet =
+                    Class
+                        .forName("com.google.android.gms.appset.AppSet")
                 val getClient = AppSet.getMethod("getClient", Context::class.java)
                 val appSetIdClient = getClient.invoke(null, context)
                 val getAppSetIdInfo = appSetIdClient.javaClass.getMethod("getAppSetIdInfo")
@@ -211,7 +218,7 @@ class AndroidContextProvider(
                 LogcatLogger.logger.warn("Google Play Services not available for app set id")
             } catch (e: Exception) {
                 LogcatLogger.logger.error(
-                    "Encountered an error connecting to Google Play Services for app set id"
+                    "Encountered an error connecting to Google Play Services for app set id",
                 )
             }
 
@@ -226,18 +233,22 @@ class AndroidContextProvider(
 
         private fun fetchAndCacheGoogleAdvertisingId(): String? {
             try {
-                val AdvertisingIdClient = Class
-                    .forName("com.google.android.gms.ads.identifier.AdvertisingIdClient")
-                val getAdvertisingInfo = AdvertisingIdClient.getMethod(
-                    "getAdvertisingIdInfo",
-                    Context::class.java
-                )
+                val AdvertisingIdClient =
+                    Class
+                        .forName("com.google.android.gms.ads.identifier.AdvertisingIdClient")
+                val getAdvertisingInfo =
+                    AdvertisingIdClient.getMethod(
+                        "getAdvertisingIdInfo",
+                        Context::class.java,
+                    )
                 val advertisingInfo = getAdvertisingInfo.invoke(null, context)
-                val isLimitAdTrackingEnabled = advertisingInfo.javaClass.getMethod(
-                    "isLimitAdTrackingEnabled"
-                )
-                val limitAdTrackingEnabled = isLimitAdTrackingEnabled
-                    .invoke(advertisingInfo) as? Boolean
+                val isLimitAdTrackingEnabled =
+                    advertisingInfo.javaClass.getMethod(
+                        "isLimitAdTrackingEnabled",
+                    )
+                val limitAdTrackingEnabled =
+                    isLimitAdTrackingEnabled
+                        .invoke(advertisingInfo) as? Boolean
                 this.limitAdTrackingEnabled =
                     limitAdTrackingEnabled != null && limitAdTrackingEnabled
                 val getId = advertisingInfo.javaClass.getMethod("getId")
@@ -250,7 +261,7 @@ class AndroidContextProvider(
                     .warn("Google Play Services not available for advertising id")
             } catch (e: Exception) {
                 LogcatLogger.logger.error(
-                    "Encountered an error connecting to Google Play Services for advertising id"
+                    "Encountered an error connecting to Google Play Services for advertising id",
                 )
             }
             return null
@@ -259,12 +270,14 @@ class AndroidContextProvider(
         private fun checkGPSEnabled(): Boolean {
             // This should not be called on the main thread.
             try {
-                val GPSUtil = Class
-                    .forName("com.google.android.gms.common.GooglePlayServicesUtil")
-                val getGPSAvailable = GPSUtil.getMethod(
-                    "isGooglePlayServicesAvailable",
-                    Context::class.java
-                )
+                val GPSUtil =
+                    Class
+                        .forName("com.google.android.gms.common.GooglePlayServicesUtil")
+                val getGPSAvailable =
+                    GPSUtil.getMethod(
+                        "isGooglePlayServicesAvailable",
+                        Context::class.java,
+                    )
                 val status = getGPSAvailable.invoke(null, context) as? Int
                 // status 0 corresponds to com.google.android.gms.common.ConnectionResult.SUCCESS;
                 return status != null && status == 0
@@ -280,7 +293,7 @@ class AndroidContextProvider(
                 LogcatLogger.logger.warn("Google Play Services not available")
             } catch (e: Exception) {
                 LogcatLogger.logger.warn(
-                    "Error when checking for Google Play Services: $e"
+                    "Error when checking for Google Play Services: $e",
                 )
             }
             return false
@@ -328,21 +341,22 @@ class AndroidContextProvider(
                 return null
             }
             if (!(
-                ContextCompat.checkSelfPermission(
-                        context,
-                        Manifest.permission.ACCESS_COARSE_LOCATION
-                    ) == PackageManager.PERMISSION_GRANTED ||
                     ContextCompat.checkSelfPermission(
                         context,
-                        Manifest.permission.ACCESS_FINE_LOCATION
-                    ) == PackageManager.PERMISSION_GRANTED
+                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                    ) == PackageManager.PERMISSION_GRANTED ||
+                        ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.ACCESS_FINE_LOCATION,
+                        ) == PackageManager.PERMISSION_GRANTED
                 )
             ) {
                 return null
             }
-            val locationManager = context
-                .getSystemService(Context.LOCATION_SERVICE) as? LocationManager
-                ?: return null
+            val locationManager =
+                context
+                    .getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+                    ?: return null
 
             // Don't crash if the device does not have location services.
 

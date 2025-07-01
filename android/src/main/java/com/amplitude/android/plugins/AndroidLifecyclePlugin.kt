@@ -24,7 +24,7 @@ import com.amplitude.android.Amplitude as AndroidAmplitude
 import com.amplitude.android.Timeline as AndroidTimeline
 
 class AndroidLifecyclePlugin(
-    private val activityLifecycleObserver: ActivityLifecycleObserver
+    private val activityLifecycleObserver: ActivityLifecycleObserver,
 ) : Application.ActivityLifecycleCallbacks, Plugin {
     override val type: Plugin.Type = Plugin.Type.Utility
     override lateinit var amplitude: Amplitude
@@ -49,37 +49,43 @@ class AndroidLifecyclePlugin(
         val application = androidConfiguration.context as Application
 
         if (APP_LIFECYCLES in autocapture) {
-            packageInfo = try {
-                application.packageManager.getPackageInfo(application.packageName, 0)
-            } catch (e: PackageManager.NameNotFoundException) {
-                // This shouldn't happen, but in case it happens, fallback to empty package info.
-                amplitude.logger.error("Cannot find package with application.packageName: " + application.packageName)
-                PackageInfo()
-            }
+            packageInfo =
+                try {
+                    application.packageManager.getPackageInfo(application.packageName, 0)
+                } catch (e: PackageManager.NameNotFoundException) {
+                    // This shouldn't happen, but in case it happens, fallback to empty package info.
+                    amplitude.logger.error("Cannot find package with application.packageName: " + application.packageName)
+                    PackageInfo()
+                }
 
             DefaultEventUtils(androidAmplitude).trackAppUpdatedInstalledEvent(packageInfo)
         }
 
-        eventJob = amplitude.amplitudeScope.launch(Dispatchers.Main) {
-            for (event in activityLifecycleObserver.eventChannel) {
-                event.activity.get()?.let { activity ->
-                    when (event.type) {
-                        ActivityCallbackType.Created -> onActivityCreated(
-                            activity,
-                            activity.intent?.extras
-                        )
-                        ActivityCallbackType.Started -> onActivityStarted(activity)
-                        ActivityCallbackType.Resumed -> onActivityResumed(activity)
-                        ActivityCallbackType.Paused -> onActivityPaused(activity)
-                        ActivityCallbackType.Stopped -> onActivityStopped(activity)
-                        ActivityCallbackType.Destroyed -> onActivityDestroyed(activity)
+        eventJob =
+            amplitude.amplitudeScope.launch(Dispatchers.Main) {
+                for (event in activityLifecycleObserver.eventChannel) {
+                    event.activity.get()?.let { activity ->
+                        when (event.type) {
+                            ActivityCallbackType.Created ->
+                                onActivityCreated(
+                                    activity,
+                                    activity.intent?.extras,
+                                )
+                            ActivityCallbackType.Started -> onActivityStarted(activity)
+                            ActivityCallbackType.Resumed -> onActivityResumed(activity)
+                            ActivityCallbackType.Paused -> onActivityPaused(activity)
+                            ActivityCallbackType.Stopped -> onActivityStopped(activity)
+                            ActivityCallbackType.Destroyed -> onActivityDestroyed(activity)
+                        }
                     }
                 }
             }
-        }
     }
 
-    override fun onActivityCreated(activity: Activity, bundle: Bundle?) {
+    override fun onActivityCreated(
+        activity: Activity,
+        bundle: Bundle?,
+    ) {
         created.add(activity.hashCode())
 
         if (SCREEN_VIEWS in autocapture) {
@@ -97,7 +103,7 @@ class AndroidLifecyclePlugin(
         if (APP_LIFECYCLES in autocapture && started.size == 1) {
             DefaultEventUtils(androidAmplitude).trackAppOpenedEvent(
                 packageInfo = packageInfo,
-                isFromBackground = appInBackground
+                isFromBackground = appInBackground,
             )
             appInBackground = false
         }
@@ -144,7 +150,10 @@ class AndroidLifecyclePlugin(
         }
     }
 
-    override fun onActivitySaveInstanceState(activity: Activity, bundle: Bundle) {
+    override fun onActivitySaveInstanceState(
+        activity: Activity,
+        bundle: Bundle,
+    ) {
     }
 
     override fun onActivityDestroyed(activity: Activity) {

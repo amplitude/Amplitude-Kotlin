@@ -3,7 +3,6 @@ package com.amplitude.core.platform.plugins
 import com.amplitude.core.platform.Plugin
 
 interface PluginHost {
-
     fun plugin(name: String): UniversalPlugin? = null
 
     // Generics in Kotlin do not support reified types in interfaces,

@@ -22,16 +22,20 @@ class IdentifyInterceptor(
     private val amplitude: Amplitude,
     private val logger: Logger,
     private val configuration: Configuration,
-    private val plugin: AmplitudeDestination
+    private val plugin: AmplitudeDestination,
 ) {
-
     private var transferScheduled = AtomicBoolean(false)
 
     private var userId: String? = null
     private var deviceId: String? = null
     private val identifySet = AtomicBoolean(false)
 
-    private val storageHandler: IdentifyInterceptStorageHandler? = IdentifyInterceptStorageHandler.getIdentifyInterceptStorageHandler(storage, logger, amplitude)
+    private val storageHandler: IdentifyInterceptStorageHandler? =
+        IdentifyInterceptStorageHandler.getIdentifyInterceptStorageHandler(
+            storage,
+            logger,
+            amplitude,
+        )
 
     /**
      * Intercept the event if it is identify with set action.
@@ -95,14 +99,15 @@ class IdentifyInterceptor(
         return storageHandler!!.getTransferIdentifyEvent()
     }
 
-    private fun scheduleTransfer() = amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
-        if (!transferScheduled.get()) {
-            transferScheduled.getAndSet(true)
-            delay(configuration.identifyBatchIntervalMillis)
-            transferInterceptedIdentify()
-            transferScheduled.getAndSet(false)
+    private fun scheduleTransfer() =
+        amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
+            if (!transferScheduled.get()) {
+                transferScheduled.getAndSet(true)
+                delay(configuration.identifyBatchIntervalMillis)
+                transferInterceptedIdentify()
+                transferScheduled.getAndSet(false)
+            }
         }
-    }
 
     private suspend fun saveIdentifyProperties(event: BaseEvent) {
         try {
@@ -120,7 +125,10 @@ class IdentifyInterceptor(
         return isActionOnly(event, IdentifyOperation.SET)
     }
 
-    private fun isActionOnly(event: BaseEvent, action: IdentifyOperation): Boolean {
+    private fun isActionOnly(
+        event: BaseEvent,
+        action: IdentifyOperation,
+    ): Boolean {
         event.userProperties?.let {
             return it.size == 1 && it.contains(action.operationType)
         }
@@ -149,12 +157,17 @@ class IdentifyInterceptor(
         return isUpdated
     }
 
-    private fun isIdUpdated(id: String?, updateId: String?): Boolean {
+    private fun isIdUpdated(
+        id: String?,
+        updateId: String?,
+    ): Boolean {
         if (id == null && updateId == null) {
             return false
         }
         return if (id == null || updateId == null) {
             true
-        } else id != updateId
+        } else {
+            id != updateId
+        }
     }
 }

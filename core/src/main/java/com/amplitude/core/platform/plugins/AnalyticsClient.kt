@@ -5,5 +5,8 @@ interface AnalyticsClient {
     var sessionId: Long
     var optOut: Boolean
 
-    fun track(eventType: String, eventProperties: Map<String, Any>?) {}
+    fun track(
+        eventType: String,
+        eventProperties: Map<String, Any>?,
+    ) {}
 }

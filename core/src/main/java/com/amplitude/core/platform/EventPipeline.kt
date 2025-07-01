@@ -22,11 +22,12 @@ import java.util.concurrent.atomic.AtomicInteger
 class EventPipeline(
     private val amplitude: Amplitude,
     private val eventCount: AtomicInteger = AtomicInteger(0),
-    private val httpClient: HttpClientInterface = amplitude.configuration.httpClient
-        ?: HttpClient(amplitude.configuration),
+    private val httpClient: HttpClientInterface =
+        amplitude.configuration.httpClient
+            ?: HttpClient(amplitude.configuration),
     private val retryUploadHandler: ExponentialBackoffRetryHandler =
         ExponentialBackoffRetryHandler(
-            maxRetryAttempt = amplitude.configuration.flushMaxRetries
+            maxRetryAttempt = amplitude.configuration.flushMaxRetries,
         ),
     private val storage: Storage = amplitude.storage,
     private val scope: CoroutineScope = amplitude.amplitudeScope,
@@ -34,7 +35,6 @@ class EventPipeline(
     private var uploadChannel: Channel<String> = Channel(UNLIMITED),
     overrideResponseHandler: ResponseHandler? = null,
 ) {
-
     private var running: Boolean
     private var scheduled: Boolean
     var flushSizeDivider: AtomicInteger = AtomicInteger(1)
@@ -92,7 +92,7 @@ class EventPipeline(
                     } catch (e: Exception) {
                         e.logWithStackTrace(
                             amplitude.logger,
-                            "Error when writing event to pipeline"
+                            "Error when writing event to pipeline",
                         )
                     }
                 }
@@ -127,7 +127,7 @@ class EventPipeline(
 
                 if (signal == MAX_RETRY_ATTEMPT_SIG) {
                     amplitude.logger.debug(
-                        "Max retries ${retryUploadHandler.maxRetryAttempt} reached, temporarily stop consuming upload signals."
+                        "Max retries ${retryUploadHandler.maxRetryAttempt} reached, temporarily stop consuming upload signals.",
                     )
                     // Use the max delay when retry attempt is reached
                     delay(retryUploadHandler.maxDelayInMs)

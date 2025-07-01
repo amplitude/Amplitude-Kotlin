@@ -24,7 +24,10 @@ class ConsoleLogger() : Logger {
         log(Logger.LogMode.WARN, message)
     }
 
-    private fun log(logLevel: Logger.LogMode, message: String) {
+    private fun log(
+        logLevel: Logger.LogMode,
+        message: String,
+    ) {
         if (logMode <= logLevel) {
             println(message)
         }

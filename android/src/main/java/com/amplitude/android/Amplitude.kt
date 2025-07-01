@@ -22,27 +22,29 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.Executors
 import com.amplitude.core.Amplitude as CoreAmplitude
 
-open class Amplitude (
+open class Amplitude(
     configuration: Configuration,
     amplitudeScope: CoroutineScope = CoroutineScope(SupervisorJob()),
     amplitudeDispatcher: CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher(),
     networkIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
-    storageIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+    storageIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
 ) : CoreAmplitude(
-    configuration = configuration,
-    amplitudeScope = amplitudeScope,
-    amplitudeDispatcher = amplitudeDispatcher,
-    networkIODispatcher = networkIODispatcher,
-    storageIODispatcher = storageIODispatcher
-) {
-
+        configuration = configuration,
+        amplitudeScope = amplitudeScope,
+        amplitudeDispatcher = amplitudeDispatcher,
+        networkIODispatcher = networkIODispatcher,
+        storageIODispatcher = storageIODispatcher,
+    ) {
     private lateinit var androidContextPlugin: AndroidContextPlugin
 
-    override fun track(eventType: String, eventProperties: Map<String, Any>?) {
+    override fun track(
+        eventType: String,
+        eventProperties: Map<String, Any>?,
+    ) {
         track(
             eventType = eventType,
             eventProperties = eventProperties,
-            options = null
+            options = null,
         )
     }
 
@@ -79,7 +81,7 @@ open class Amplitude (
             identityStorageProvider = configuration.identityStorageProvider,
             storageDirectory = AndroidStorageContextV3.getIdentityStorageDirectory(configuration),
             logger = configuration.loggerProvider.getLogger(this),
-            fileName = AndroidStorageContextV3.getIdentityStorageFileName()
+            fileName = AndroidStorageContextV3.getIdentityStorageFileName(),
         )
     }
 
@@ -92,12 +94,13 @@ open class Amplitude (
         if (this.configuration.offline != AndroidNetworkConnectivityCheckerPlugin.Disabled) {
             add(AndroidNetworkConnectivityCheckerPlugin())
         }
-        androidContextPlugin = object : AndroidContextPlugin() {
-            override fun setDeviceId(deviceId: String) {
-                // call internal method to set deviceId immediately i.e. dont' wait for build() to complete
-                this@Amplitude.setDeviceIdInternal(deviceId)
+        androidContextPlugin =
+            object : AndroidContextPlugin() {
+                override fun setDeviceId(deviceId: String) {
+                    // call internal method to set deviceId immediately i.e. dont' wait for build() to complete
+                    this@Amplitude.setDeviceIdInternal(deviceId)
+                }
             }
-        }
         add(androidContextPlugin)
         add(GetAmpliExtrasPlugin())
         add(AndroidLifecyclePlugin(activityLifecycleCallbacks))
@@ -137,11 +140,13 @@ open class Amplitude (
     }
 
     private fun registerShutdownHook() {
-        Runtime.getRuntime().addShutdownHook(object : Thread() {
-            override fun run() {
-                timeline.stop()
-            }
-        })
+        Runtime.getRuntime().addShutdownHook(
+            object : Thread() {
+                override fun run() {
+                    timeline.stop()
+                }
+            },
+        )
     }
 
     companion object {
@@ -149,12 +154,14 @@ open class Amplitude (
          * The event type for start session events.
          */
         const val START_SESSION_EVENT = "session_start"
+
         /**
          * The event type for end session events.
          */
         const val END_SESSION_EVENT = "session_end"
     }
 }
+
 /**
  * constructor function to build amplitude in dsl format with config options
  * Usage: Amplitude("123", context) {
@@ -168,7 +175,11 @@ open class Amplitude (
  * @param configs Configuration
  * @return Amplitude Android Instance
  */
-fun Amplitude(apiKey: String, context: Context, configs: Configuration.() -> Unit): com.amplitude.android.Amplitude {
+fun Amplitude(
+    apiKey: String,
+    context: Context,
+    configs: Configuration.() -> Unit,
+): com.amplitude.android.Amplitude {
     val config = Configuration(apiKey, context)
     configs.invoke(config)
     return Amplitude(config)

@@ -22,7 +22,6 @@ internal class InMemoryResponseHandler(
     private val scope: CoroutineScope,
     private val storageDispatcher: CoroutineDispatcher,
 ) : ResponseHandler {
-
     companion object {
         const val BACK_OFF: Long = 30000
     }
@@ -33,7 +32,9 @@ internal class InMemoryResponseHandler(
         eventsString: String,
     ) {
         triggerEventsCallback(
-            events as List<BaseEvent>, HttpStatus.SUCCESS.statusCode, "Event sent success."
+            events as List<BaseEvent>,
+            HttpStatus.SUCCESS.statusCode,
+            "Event sent success.",
         )
     }
 
@@ -72,7 +73,9 @@ internal class InMemoryResponseHandler(
         val eventsList = events as List<BaseEvent>
         if (eventsList.size == 1) {
             triggerEventsCallback(
-                eventsList, HttpStatus.PAYLOAD_TOO_LARGE.statusCode, payloadTooLargeResponse.error
+                eventsList,
+                HttpStatus.PAYLOAD_TOO_LARGE.statusCode,
+                payloadTooLargeResponse.error,
             )
             return
         }
@@ -105,7 +108,9 @@ internal class InMemoryResponseHandler(
             }
         }
         triggerEventsCallback(
-            eventsToDrop, HttpStatus.TOO_MANY_REQUESTS.statusCode, tooManyRequestsResponse.error
+            eventsToDrop,
+            HttpStatus.TOO_MANY_REQUESTS.statusCode,
+            tooManyRequestsResponse.error,
         )
         eventsToRetryNow.forEach {
             eventPipeline.put(it)

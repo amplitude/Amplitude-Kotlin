@@ -199,7 +199,10 @@ class Timeline(
         return sessionId > DEFAULT_SESSION_ID
     }
 
-    private fun Storage.readLong(key: Constants, default: Long): Long {
+    private fun Storage.readLong(
+        key: Constants,
+        default: Long,
+    ): Long {
         return read(key)?.toLongOrNull() ?: default
     }
 }

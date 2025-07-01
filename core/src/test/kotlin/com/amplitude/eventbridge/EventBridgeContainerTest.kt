@@ -6,7 +6,6 @@ import org.junit.jupiter.api.TestInstance
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class EventBridgeContainerTest {
-
     @Test
     fun `test getInstance return same instance for certain name`() {
         val eventBridge1 = EventBridgeContainer.getInstance("testInstance")

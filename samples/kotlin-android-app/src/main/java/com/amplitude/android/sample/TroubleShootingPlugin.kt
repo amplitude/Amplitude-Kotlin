@@ -8,6 +8,7 @@ import com.google.gson.Gson
 
 class TroubleShootingPlugin : DestinationPlugin() {
     private lateinit var logger: Logger
+
     override fun setup(amplitude: Amplitude) {
         logger = amplitude.logger
         val apiKey = amplitude.configuration.apiKey

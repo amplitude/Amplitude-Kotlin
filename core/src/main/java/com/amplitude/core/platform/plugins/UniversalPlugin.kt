@@ -7,7 +7,7 @@ interface UniversalPlugin {
 
     fun setup(
         analyticsClient: AnalyticsClient,
-        amplitudeContext: AmplitudeContext
+        amplitudeContext: AmplitudeContext,
     ) {}
 
     fun execute(event: AnalyticsEvent) {}
@@ -17,6 +17,8 @@ interface UniversalPlugin {
     }
 
     fun onIdentityChanged(identity: AnalyticsIdentity) {}
+
     fun onSessionIdChanged(sessionId: Long) {}
+
     fun onOptOutChanged(optOut: Boolean) {}
 }

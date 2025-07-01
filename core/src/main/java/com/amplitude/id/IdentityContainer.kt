@@ -7,13 +7,12 @@ package com.amplitude.id
  * @property configuration IdentityConfiguration for instance
  */
 class IdentityContainer private constructor(configuration: IdentityConfiguration) {
-
-    val identityManager: IdentityManager = IdentityManagerImpl(
-        configuration.identityStorageProvider.getIdentityStorage(configuration)
-    )
+    val identityManager: IdentityManager =
+        IdentityManagerImpl(
+            configuration.identityStorageProvider.getIdentityStorage(configuration),
+        )
 
     companion object {
-
         private val instancesLock = Any()
         private val instances = mutableMapOf<String, IdentityContainer>()
 

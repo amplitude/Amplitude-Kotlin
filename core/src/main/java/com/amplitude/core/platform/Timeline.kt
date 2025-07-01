@@ -7,7 +7,7 @@ import com.amplitude.core.platform.plugins.UniversalPlugin
 const val DEFAULT_SESSION_ID = -1L
 
 open class Timeline(
-    val amplitude: Amplitude
+    val amplitude: Amplitude,
 ) {
     internal val plugins: Map<Plugin.Type, Mediator> =
         Plugin.Type.entries.associateWith { Mediator() }.toMutableMap()
@@ -31,7 +31,7 @@ open class Timeline(
 
         val beforeResult = applyPlugins(Plugin.Type.Before, incomingEvent) ?: return
         val enrichmentResult = applyPlugins(Plugin.Type.Enrichment, beforeResult) ?: return
-        
+
         applyPlugins(Plugin.Type.Destination, enrichmentResult)
     }
 
@@ -43,7 +43,7 @@ open class Timeline(
     fun add(plugin: UniversalPlugin) {
         plugin.setup(
             analyticsClient = amplitude,
-            amplitudeContext = amplitude.amplitudeContext
+            amplitudeContext = amplitude.amplitudeContext,
         )
         if (plugin is Plugin) {
             plugin.setup(amplitude)
@@ -56,7 +56,10 @@ open class Timeline(
         plugins[pluginType]?.add(plugin)
     }
 
-    fun applyPlugins(type: Plugin.Type, event: BaseEvent): BaseEvent? {
+    fun applyPlugins(
+        type: Plugin.Type,
+        event: BaseEvent,
+    ): BaseEvent? {
         return plugins[type]?.execute(event)
     }
 

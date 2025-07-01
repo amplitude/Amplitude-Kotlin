@@ -30,7 +30,7 @@ private const val AMPLITUDE_HOST_DOMAIN = "amplitude.com"
 private const val LOCAL_ERROR_STATUS_CODE = 0
 
 class NetworkTrackingPlugin(
-    private val options: NetworkTrackingOptions = NetworkTrackingOptions.DEFAULT
+    private val options: NetworkTrackingOptions = NetworkTrackingOptions.DEFAULT,
 ) : Interceptor, Plugin {
     override val type: Type = Utility
 
@@ -62,15 +62,16 @@ class NetworkTrackingPlugin(
     private fun shouldCapture(
         request: Request,
         responseCode: Int,
-    ): Boolean = with(options) {
-        val host = request.url.host
-        return when {
-            shouldIgnore(host) -> false
-            ignoreAmplitudeRequests && request.amplitudeApiRequest() -> false
-            captureRules.matches(host, responseCode) || request.amplitudeApiRequest() -> true
-            else -> false
+    ): Boolean =
+        with(options) {
+            val host = request.url.host
+            return when {
+                shouldIgnore(host) -> false
+                ignoreAmplitudeRequests && request.amplitudeApiRequest() -> false
+                captureRules.matches(host, responseCode) || request.amplitudeApiRequest() -> true
+                else -> false
+            }
         }
-    }
 
     /**
      * Checks if the request is an Amplitude request, and not a [NETWORK_TRACKING] event as we don't
@@ -102,31 +103,32 @@ class NetworkTrackingPlugin(
         val maskedHttpUrl = request.url.mask()
         amplitude.track(
             eventType = NETWORK_TRACKING,
-            eventProperties = buildMap {
-                put(NETWORK_TRACKING_URL, maskedHttpUrl.toUrlOnlyString())
-                maskedHttpUrl.query?.let { query ->
-                    put(NETWORK_TRACKING_URL_QUERY, query)
-                }
-                maskedHttpUrl.fragment?.let { fragment ->
-                    put(NETWORK_TRACKING_URL_FRAGMENT, fragment)
-                }
-                put(NETWORK_TRACKING_REQUEST_METHOD, request.method)
-                response?.code?.let { code ->
-                    put(NETWORK_TRACKING_STATUS_CODE, code)
-                }
-                error?.message?.let { errorMessage ->
-                    put(NETWORK_TRACKING_ERROR_MESSAGE, errorMessage)
-                }
-                put(NETWORK_TRACKING_START_TIME, startTime)
-                put(NETWORK_TRACKING_COMPLETION_TIME, completionTime)
-                put(NETWORK_TRACKING_DURATION, completionTime - startTime)
-                request.body?.contentLength()?.let { length ->
-                    put(NETWORK_TRACKING_REQUEST_BODY_SIZE, length)
-                }
-                response?.body?.contentLength()?.let { length ->
-                    put(NETWORK_TRACKING_RESPONSE_BODY_SIZE, length)
-                }
-            }
+            eventProperties =
+                buildMap {
+                    put(NETWORK_TRACKING_URL, maskedHttpUrl.toUrlOnlyString())
+                    maskedHttpUrl.query?.let { query ->
+                        put(NETWORK_TRACKING_URL_QUERY, query)
+                    }
+                    maskedHttpUrl.fragment?.let { fragment ->
+                        put(NETWORK_TRACKING_URL_FRAGMENT, fragment)
+                    }
+                    put(NETWORK_TRACKING_REQUEST_METHOD, request.method)
+                    response?.code?.let { code ->
+                        put(NETWORK_TRACKING_STATUS_CODE, code)
+                    }
+                    error?.message?.let { errorMessage ->
+                        put(NETWORK_TRACKING_ERROR_MESSAGE, errorMessage)
+                    }
+                    put(NETWORK_TRACKING_START_TIME, startTime)
+                    put(NETWORK_TRACKING_COMPLETION_TIME, completionTime)
+                    put(NETWORK_TRACKING_DURATION, completionTime - startTime)
+                    request.body?.contentLength()?.let { length ->
+                        put(NETWORK_TRACKING_REQUEST_BODY_SIZE, length)
+                    }
+                    response?.body?.contentLength()?.let { length ->
+                        put(NETWORK_TRACKING_RESPONSE_BODY_SIZE, length)
+                    }
+                },
         )
     }
 
@@ -146,13 +148,14 @@ class NetworkTrackingPlugin(
      */
     private fun HttpUrl.mask(): HttpUrl {
         val sensitiveKeys = setOf("username", "password", "email", "phone")
-        val query = queryParameterNames.joinToString("&") { name ->
-            if (sensitiveKeys.contains(name.lowercase())) {
-                "$name=[mask]"
-            } else {
-                "$name=${queryParameter(name)}"
-            }
-        }.ifBlank { null }
+        val query =
+            queryParameterNames.joinToString("&") { name ->
+                if (sensitiveKeys.contains(name.lowercase())) {
+                    "$name=[mask]"
+                } else {
+                    "$name=${queryParameter(name)}"
+                }
+            }.ifBlank { null }
 
         return newBuilder()
             .username("mask".takeIf { username.isNotEmpty() } ?: "")

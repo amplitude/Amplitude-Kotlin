@@ -2,6 +2,7 @@ package com.amplitude.android
 
 class TrackingOptions {
     var disabledFields: MutableSet<String> = HashSet()
+
     fun disableAdid(): TrackingOptions {
         disableTrackingField(AMP_TRACKING_OPTION_ADID)
         return this
@@ -213,20 +214,22 @@ class TrackingOptions {
         const val AMP_TRACKING_OPTION_PLATFORM = "platform"
         const val AMP_TRACKING_OPTION_REGION = "region"
         const val AMP_TRACKING_OPTION_VERSION_NAME = "version_name"
-        private val SERVER_SIDE_PROPERTIES = arrayOf<String>(
-            AMP_TRACKING_OPTION_CITY,
-            AMP_TRACKING_OPTION_COUNTRY,
-            AMP_TRACKING_OPTION_DMA,
-            AMP_TRACKING_OPTION_IP_ADDRESS,
-            AMP_TRACKING_OPTION_LAT_LNG,
-            AMP_TRACKING_OPTION_REGION
-        )
-        private val COPPA_CONTROL_PROPERTIES = arrayOf<String>(
-            AMP_TRACKING_OPTION_ADID,
-            AMP_TRACKING_OPTION_CITY,
-            AMP_TRACKING_OPTION_IP_ADDRESS,
-            AMP_TRACKING_OPTION_LAT_LNG
-        )
+        private val SERVER_SIDE_PROPERTIES =
+            arrayOf<String>(
+                AMP_TRACKING_OPTION_CITY,
+                AMP_TRACKING_OPTION_COUNTRY,
+                AMP_TRACKING_OPTION_DMA,
+                AMP_TRACKING_OPTION_IP_ADDRESS,
+                AMP_TRACKING_OPTION_LAT_LNG,
+                AMP_TRACKING_OPTION_REGION,
+            )
+        private val COPPA_CONTROL_PROPERTIES =
+            arrayOf<String>(
+                AMP_TRACKING_OPTION_ADID,
+                AMP_TRACKING_OPTION_CITY,
+                AMP_TRACKING_OPTION_IP_ADDRESS,
+                AMP_TRACKING_OPTION_LAT_LNG,
+            )
 
         fun copyOf(other: TrackingOptions): TrackingOptions {
             val trackingOptions = TrackingOptions()

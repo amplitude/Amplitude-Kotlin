@@ -13,7 +13,7 @@ buildscript {
         classpath("com.android.tools.build:gradle:8.10.1")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.25")
         classpath("org.jetbrains.dokka:dokka-gradle-plugin:1.9.20")
-        classpath("org.jlleitschuh.gradle:ktlint-gradle:10.2.1")
+        classpath("org.jlleitschuh.gradle:ktlint-gradle:12.3.0")
         classpath("io.github.gradle-nexus:publish-plugin:2.0.0")
         classpath("de.mannodermaus.gradle.plugins:android-junit5:1.12.2.0")
     }
@@ -91,11 +91,12 @@ tasks.register("printPublishCoordinates") {
     group = "publishing" // Optional: assign to a task group
 
     doLast {
-        val publishableProjects = subprojects.filter { proj ->
-            // A project is considered publishable if it applies the 'maven-publish' plugin
-            // and is not the 'buildSrc' project itself (as buildSrc usually has plugin publications not intended for this script).
-            proj.plugins.hasPlugin("maven-publish") && proj.name != "buildSrc"
-        }
+        val publishableProjects =
+            subprojects.filter { proj ->
+                // A project is considered publishable if it applies the 'maven-publish' plugin
+                // and is not the 'buildSrc' project itself (as buildSrc usually has plugin publications not intended for this script).
+                proj.plugins.hasPlugin("maven-publish") && proj.name != "buildSrc"
+            }
 
         if (publishableProjects.isEmpty()) {
             println("INFO: No publishable subprojects found by the printPublishCoordinates task.")
@@ -110,7 +111,9 @@ tasks.register("printPublishCoordinates") {
                     if (publication.groupId != null && publication.artifactId != null && publication.version != null) {
                         println("${publication.groupId}:${publication.artifactId}:${publication.version}:${proj.name}")
                     } else {
-                        println("WARN: Insufficient GAV information for publication '${publication.name}' in project '${proj.name}'. Skipping.")
+                        println(
+                            "WARN: Insufficient GAV information for publication '${publication.name}' in project '${proj.name}'. Skipping.",
+                        )
                     }
                 }
             }

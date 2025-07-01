@@ -12,7 +12,7 @@ interface IdentityListener {
 data class Identity(
     override val userId: String? = null,
     override val deviceId: String? = null,
-    override val userProperties: Map<String, Any> = emptyMap()
+    override val userProperties: Map<String, Any> = emptyMap(),
 ) : AnalyticsIdentity
 
 /**
@@ -20,45 +20,47 @@ data class Identity(
  *
  */
 interface IdentityManager {
-
     interface Editor {
         fun setUserId(userId: String?): Editor
+
         fun setDeviceId(deviceId: String?): Editor
+
         fun setUserProperties(userProperties: Map<String, Any>): Editor
+
         fun commit()
     }
 
     fun editIdentity(): Editor
+
     fun setIdentity(newIdentity: Identity)
+
     fun getIdentity(): Identity
+
     fun addIdentityListener(listener: IdentityListener)
+
     fun removeIdentityListener(listener: IdentityListener)
 }
 
 class IdentityEditor(
     var userId: String? = null,
     var deviceId: String? = null,
-    var userProperties: Map<String, Any> = emptyMap()
+    var userProperties: Map<String, Any> = emptyMap(),
 )
 
 internal class IdentityManagerImpl(
-    private val identityStorage: IdentityStorage
+    private val identityStorage: IdentityStorage,
 ) : IdentityManager {
-
     private val identityLock = ReentrantReadWriteLock(true)
-    private var identity : Identity = identityStorage.load()
+    private var identity: Identity = identityStorage.load()
 
     private val listeners: CopyOnWriteArrayList<IdentityListener> = CopyOnWriteArrayList()
 
     override fun editIdentity(): IdentityManager.Editor {
         val editor = getIdentity().run { IdentityEditor(userId, deviceId) }
         return object : IdentityManager.Editor {
+            override fun setUserId(userId: String?): IdentityManager.Editor = this.apply { editor.userId = userId }
 
-            override fun setUserId(userId: String?): IdentityManager.Editor =
-                this.apply { editor.userId = userId }
-
-            override fun setDeviceId(deviceId: String?): IdentityManager.Editor =
-                this.apply { editor.deviceId = deviceId }
+            override fun setDeviceId(deviceId: String?): IdentityManager.Editor = this.apply { editor.deviceId = deviceId }
 
             override fun setUserProperties(userProperties: Map<String, Any>): IdentityManager.Editor =
                 this.apply { editor.userProperties = userProperties }
@@ -70,13 +72,14 @@ internal class IdentityManagerImpl(
     }
 
     override fun setIdentity(newIdentity: Identity) {
-        val originalIdentity = identityLock.write {
-            val oldIdentity = identity
-            if (newIdentity != oldIdentity) {
-                this.identity = newIdentity
+        val originalIdentity =
+            identityLock.write {
+                val oldIdentity = identity
+                if (newIdentity != oldIdentity) {
+                    this.identity = newIdentity
+                }
+                oldIdentity
             }
-            oldIdentity
-        }
         if (newIdentity == originalIdentity) return
 
         if (identity.userId != originalIdentity.userId) {

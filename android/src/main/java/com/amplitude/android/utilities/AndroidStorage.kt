@@ -34,13 +34,14 @@ class AndroidStorage(
         val sharedPreferencesFile = "${getPrefix()}-$storageKey"
         sharedPreferences = context.getSharedPreferences(sharedPreferencesFile, Context.MODE_PRIVATE)
         val storageDirectory = context.getDir(getDir(), Context.MODE_PRIVATE)
-        storageV2 = AndroidStorageV2(
-            storageKey,
-            logger,
-            sharedPreferences,
-            storageDirectory,
-            diagnostics,
-        )
+        storageV2 =
+            AndroidStorageV2(
+                storageKey,
+                logger,
+                sharedPreferences,
+                storageDirectory,
+                diagnostics,
+            )
     }
 
     override suspend fun writeEvent(event: BaseEvent) {

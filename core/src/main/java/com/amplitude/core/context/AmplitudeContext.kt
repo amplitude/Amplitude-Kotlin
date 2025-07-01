@@ -7,5 +7,5 @@ data class AmplitudeContext(
     val apiKey: String,
     val instanceName: String,
     val serverZone: ServerZone,
-    val logger: Logger
+    val logger: Logger,
 )

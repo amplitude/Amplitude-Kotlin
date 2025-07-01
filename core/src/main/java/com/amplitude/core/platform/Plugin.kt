@@ -8,7 +8,6 @@ import com.amplitude.core.events.RevenueEvent
 import com.amplitude.core.platform.plugins.UniversalPlugin
 
 interface Plugin : UniversalPlugin {
-
     override val name: String?
         get() = this::class.simpleName
 
@@ -17,7 +16,7 @@ interface Plugin : UniversalPlugin {
         Enrichment,
         Destination,
         Utility,
-        Observe
+        Observe,
     }
 
     val type: Type
@@ -84,20 +83,21 @@ abstract class DestinationPlugin : EventPlugin {
         val beforeResult = timeline.applyPlugins(Plugin.Type.Before, event) ?: return null
         val enrichmentResult = timeline.applyPlugins(Plugin.Type.Enrichment, beforeResult) ?: return null
 
-        val destinationResult = when (enrichmentResult) {
-            is IdentifyEvent -> {
-                identify(enrichmentResult)
+        val destinationResult =
+            when (enrichmentResult) {
+                is IdentifyEvent -> {
+                    identify(enrichmentResult)
+                }
+                is GroupIdentifyEvent -> {
+                    groupIdentify(enrichmentResult)
+                }
+                is RevenueEvent -> {
+                    revenue(enrichmentResult)
+                }
+                else -> {
+                    track(enrichmentResult)
+                }
             }
-            is GroupIdentifyEvent -> {
-                groupIdentify(enrichmentResult)
-            }
-            is RevenueEvent -> {
-                revenue(enrichmentResult)
-            }
-            else -> {
-                track(enrichmentResult)
-            }
-        }
 
         return destinationResult
     }

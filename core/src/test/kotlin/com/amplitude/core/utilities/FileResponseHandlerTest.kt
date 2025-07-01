@@ -24,19 +24,21 @@ import org.junit.jupiter.api.Test
 class FileResponseHandlerTest {
     private val storage = mockk<EventsFileStorage>()
     private val pipeline = mockk<EventPipeline>(relaxed = true)
-    private val handler = FileResponseHandler(
-        storage = storage,
-        eventPipeline = pipeline,
-        configuration = Configuration(
-            apiKey = "test",
-            callback = { event: BaseEvent, _: Int, _: String ->
-                configCallBackEventTypes.add(event.eventType)
-            }
-        ),
-        scope = TestScope(),
-        storageDispatcher = UnconfinedTestDispatcher(),
-        logger = null
-    )
+    private val handler =
+        FileResponseHandler(
+            storage = storage,
+            eventPipeline = pipeline,
+            configuration =
+                Configuration(
+                    apiKey = "test",
+                    callback = { event: BaseEvent, _: Int, _: String ->
+                        configCallBackEventTypes.add(event.eventType)
+                    },
+                ),
+            scope = TestScope(),
+            storageDispatcher = UnconfinedTestDispatcher(),
+            logger = null,
+        )
     private var configCallBackEventTypes = mutableListOf<String>()
 
     init {
@@ -55,13 +57,14 @@ class FileResponseHandlerTest {
     fun `success single event`() {
         val response = SuccessResponse()
 
-        val events = listOf(
-            generateBaseEvent("test1")
-        )
+        val events =
+            listOf(
+                generateBaseEvent("test1"),
+            )
         handler.handleSuccessResponse(
             successResponse = response,
             events = "file_path",
-            eventsString = JSONUtil.eventsToString(events)
+            eventsString = JSONUtil.eventsToString(events),
         )
 
         assertTrue(configCallBackEventTypes.contains("test1"))
@@ -74,15 +77,16 @@ class FileResponseHandlerTest {
     fun `success multiple events`() {
         val response = SuccessResponse()
 
-        val events = listOf(
-            generateBaseEvent("test1"),
-            generateBaseEvent("test2"),
-            generateBaseEvent("test3"),
-        )
+        val events =
+            listOf(
+                generateBaseEvent("test1"),
+                generateBaseEvent("test2"),
+                generateBaseEvent("test3"),
+            )
         handler.handleSuccessResponse(
             successResponse = response,
             events = "file_path",
-            eventsString = JSONUtil.eventsToString(events)
+            eventsString = JSONUtil.eventsToString(events),
         )
 
         val expectedEventTypes = events.map { it.eventType }
@@ -94,20 +98,23 @@ class FileResponseHandlerTest {
 
     @Test
     fun `bad request for invalid API key`() {
-        val response = BadRequestResponse(
-            JSONObject("{\"error\":\"Invalid API key\"}")
-        )
-
-        val shouldRetryUploadOnFailure = handler.handleBadRequestResponse(
-            badRequestResponse = response,
-            events = "file_path",
-            eventsString = JSONUtil.eventsToString(
-                listOf(
-                    generateBaseEvent("test1"),
-                    generateBaseEvent("test2")
-                )
+        val response =
+            BadRequestResponse(
+                JSONObject("{\"error\":\"Invalid API key\"}"),
             )
-        )
+
+        val shouldRetryUploadOnFailure =
+            handler.handleBadRequestResponse(
+                badRequestResponse = response,
+                events = "file_path",
+                eventsString =
+                    JSONUtil.eventsToString(
+                        listOf(
+                            generateBaseEvent("test1"),
+                            generateBaseEvent("test2"),
+                        ),
+                    ),
+            )
 
         assertTrue(configCallBackEventTypes.contains("test1"))
         verify(exactly = 1) {
@@ -118,20 +125,23 @@ class FileResponseHandlerTest {
 
     @Test
     fun `bad request multiple events`() {
-        val response = BadRequestResponse(
-            JSONObject("{\"error\":\"Some Error\"}")
-        )
+        val response =
+            BadRequestResponse(
+                JSONObject("{\"error\":\"Some Error\"}"),
+            )
 
-        val events = listOf(
-            generateBaseEvent("test1"),
-            generateBaseEvent("test2"),
-            generateBaseEvent("test3"),
-        )
-        val shouldRetryUploadOnFailure = handler.handleBadRequestResponse(
-            badRequestResponse = response,
-            events = "file_path",
-            eventsString = JSONUtil.eventsToString(events)
-        )
+        val events =
+            listOf(
+                generateBaseEvent("test1"),
+                generateBaseEvent("test2"),
+                generateBaseEvent("test3"),
+            )
+        val shouldRetryUploadOnFailure =
+            handler.handleBadRequestResponse(
+                badRequestResponse = response,
+                events = "file_path",
+                eventsString = JSONUtil.eventsToString(events),
+            )
 
         verify(exactly = 1) {
             storage.releaseFile("file_path")
@@ -147,31 +157,35 @@ class FileResponseHandlerTest {
 
     @Test
     fun `bad request multiple events with events_with_invalid_fields and retry`() {
-        val badRequestResponseBody = """
-        {
-          "code": 400,
-          "error": "Request missing required field",
-          "events_with_invalid_fields": {
-            "time": [
-              0
-            ]
-          }
-        }
-        """.trimIndent()
-        val response = BadRequestResponse(
-            JSONObject(badRequestResponseBody)
-        )
+        val badRequestResponseBody =
+            """
+            {
+              "code": 400,
+              "error": "Request missing required field",
+              "events_with_invalid_fields": {
+                "time": [
+                  0
+                ]
+              }
+            }
+            """.trimIndent()
+        val response =
+            BadRequestResponse(
+                JSONObject(badRequestResponseBody),
+            )
 
-        val events = listOf(
-            generateBaseEvent("test1"),
-            generateBaseEvent("test2"),
-            generateBaseEvent("test3"),
-        )
-        val shouldRetryUploadOnFailure = handler.handleBadRequestResponse(
-            badRequestResponse = response,
-            events = "file_path",
-            eventsString = JSONUtil.eventsToString(events)
-        )
+        val events =
+            listOf(
+                generateBaseEvent("test1"),
+                generateBaseEvent("test2"),
+                generateBaseEvent("test3"),
+            )
+        val shouldRetryUploadOnFailure =
+            handler.handleBadRequestResponse(
+                badRequestResponse = response,
+                events = "file_path",
+                eventsString = JSONUtil.eventsToString(events),
+            )
 
         assertTrue(configCallBackEventTypes.contains("test1"))
         verify {
@@ -188,29 +202,33 @@ class FileResponseHandlerTest {
 
     @Test
     fun `bad request multiple events with silenced_events and retry`() {
-        val badRequestResponseBody = """
-        {
-          "code": 400,
-          "error": "Request missing required field",
-          "silenced_events": [
-            0
-          ]
-        }
-        """.trimIndent()
-        val response = BadRequestResponse(
-            JSONObject(badRequestResponseBody)
-        )
+        val badRequestResponseBody =
+            """
+            {
+              "code": 400,
+              "error": "Request missing required field",
+              "silenced_events": [
+                0
+              ]
+            }
+            """.trimIndent()
+        val response =
+            BadRequestResponse(
+                JSONObject(badRequestResponseBody),
+            )
 
-        val events = listOf(
-            generateBaseEvent("test1"),
-            generateBaseEvent("test2"),
-            generateBaseEvent("test3"),
-        )
-        val shouldRetryUploadOnFailure = handler.handleBadRequestResponse(
-            badRequestResponse = response,
-            events = "file_path",
-            eventsString = JSONUtil.eventsToString(events)
-        )
+        val events =
+            listOf(
+                generateBaseEvent("test1"),
+                generateBaseEvent("test2"),
+                generateBaseEvent("test3"),
+            )
+        val shouldRetryUploadOnFailure =
+            handler.handleBadRequestResponse(
+                badRequestResponse = response,
+                events = "file_path",
+                eventsString = JSONUtil.eventsToString(events),
+            )
 
         assertTrue(configCallBackEventTypes.contains("test1"))
         verify {
@@ -227,17 +245,19 @@ class FileResponseHandlerTest {
 
     @Test
     fun `handle payload too large with single event`() {
-        val response = PayloadTooLargeResponse(
-            JSONObject("{\"error\":\"Payload too large\"}")
-        )
+        val response =
+            PayloadTooLargeResponse(
+                JSONObject("{\"error\":\"Payload too large\"}"),
+            )
 
-        val events = listOf(
-            generateBaseEvent("test1")
-        )
+        val events =
+            listOf(
+                generateBaseEvent("test1"),
+            )
         handler.handlePayloadTooLargeResponse(
             payloadTooLargeResponse = response,
             events = "file_path",
-            eventsString = JSONUtil.eventsToString(events)
+            eventsString = JSONUtil.eventsToString(events),
         )
 
         assertTrue(configCallBackEventTypes.contains("test1"))
@@ -248,19 +268,21 @@ class FileResponseHandlerTest {
 
     @Test
     fun `handle payload too large with multiple events`() {
-        val response = PayloadTooLargeResponse(
-            JSONObject("{\"error\":\"Payload too large\"}")
-        )
+        val response =
+            PayloadTooLargeResponse(
+                JSONObject("{\"error\":\"Payload too large\"}"),
+            )
 
-        val events = listOf(
-            generateBaseEvent("test1"),
-            generateBaseEvent("test2"),
-            generateBaseEvent("test3")
-        )
+        val events =
+            listOf(
+                generateBaseEvent("test1"),
+                generateBaseEvent("test2"),
+                generateBaseEvent("test3"),
+            )
         handler.handlePayloadTooLargeResponse(
             payloadTooLargeResponse = response,
             events = "file_path",
-            eventsString = JSONUtil.eventsToString(events)
+            eventsString = JSONUtil.eventsToString(events),
         )
 
         verify(exactly = 1) {
@@ -270,19 +292,21 @@ class FileResponseHandlerTest {
 
     @Test
     fun `handle too many requests with multiple events`() {
-        val response = TooManyRequestsResponse(
-            JSONObject("{\"error\":\"Too many requests\"}")
-        )
+        val response =
+            TooManyRequestsResponse(
+                JSONObject("{\"error\":\"Too many requests\"}"),
+            )
 
-        val events = listOf(
-            generateBaseEvent("test1"),
-            generateBaseEvent("test2"),
-            generateBaseEvent("test3")
-        )
+        val events =
+            listOf(
+                generateBaseEvent("test1"),
+                generateBaseEvent("test2"),
+                generateBaseEvent("test3"),
+            )
         handler.handleTooManyRequestsResponse(
             tooManyRequestsResponse = response,
             events = "file_path",
-            eventsString = JSONUtil.eventsToString(events)
+            eventsString = JSONUtil.eventsToString(events),
         )
 
         verify(exactly = 1) {
@@ -294,15 +318,16 @@ class FileResponseHandlerTest {
     fun `handle timeout with multiple events`() {
         val response = TimeoutResponse()
 
-        val events = listOf(
-            generateBaseEvent("test1"),
-            generateBaseEvent("test2"),
-            generateBaseEvent("test3")
-        )
+        val events =
+            listOf(
+                generateBaseEvent("test1"),
+                generateBaseEvent("test2"),
+                generateBaseEvent("test3"),
+            )
         handler.handleTimeoutResponse(
             timeoutResponse = response,
             events = "file_path",
-            eventsString = JSONUtil.eventsToString(events)
+            eventsString = JSONUtil.eventsToString(events),
         )
 
         verify(exactly = 1) {
@@ -312,19 +337,21 @@ class FileResponseHandlerTest {
 
     @Test
     fun `handle failed response with multiple events`() {
-        val response = FailedResponse(
-            JSONObject("{\"error\":\"Request failed\"}")
-        )
+        val response =
+            FailedResponse(
+                JSONObject("{\"error\":\"Request failed\"}"),
+            )
 
-        val events = listOf(
-            generateBaseEvent("test1"),
-            generateBaseEvent("test2"),
-            generateBaseEvent("test3")
-        )
+        val events =
+            listOf(
+                generateBaseEvent("test1"),
+                generateBaseEvent("test2"),
+                generateBaseEvent("test3"),
+            )
         handler.handleFailedResponse(
             failedResponse = response,
             events = "file_path",
-            eventsString = JSONUtil.eventsToString(events)
+            eventsString = JSONUtil.eventsToString(events),
         )
 
         verify(exactly = 1) {
@@ -332,8 +359,9 @@ class FileResponseHandlerTest {
         }
     }
 
-    private fun generateBaseEvent(eventType: String) = BaseEvent()
-        .apply {
-            this.eventType = eventType
-        }
+    private fun generateBaseEvent(eventType: String) =
+        BaseEvent()
+            .apply {
+                this.eventType = eventType
+            }
 }

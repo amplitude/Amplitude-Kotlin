@@ -12,527 +12,835 @@ enum class IdentifyOperation(val operationType: String) {
     UNSET("\$unset"),
     PRE_INSERT("\$preInsert"),
     POST_INSERT("\$postInsert"),
-    REMOVE("\$remove")
+    REMOVE("\$remove"),
 }
 
 open class Identify {
-
     private val propertySet: MutableSet<String> = mutableSetOf()
     private val _properties = LinkedHashMap<String, MutableMap<String, Any>>()
     val properties: MutableMap<String, Any>
         @Synchronized get() = _properties.toMutableMap()
 
-    fun set(property: String, value: Boolean): Identify {
+    fun set(
+        property: String,
+        value: Boolean,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET, property, value)
         return this
     }
 
-    fun set(property: String, value: Double): Identify {
+    fun set(
+        property: String,
+        value: Double,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET, property, value)
         return this
     }
 
-    fun set(property: String, value: Float): Identify {
+    fun set(
+        property: String,
+        value: Float,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET, property, value)
         return this
     }
 
-    fun set(property: String, value: Int): Identify {
+    fun set(
+        property: String,
+        value: Int,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET, property, value)
         return this
     }
 
-    fun set(property: String, value: Long): Identify {
+    fun set(
+        property: String,
+        value: Long,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET, property, value)
         return this
     }
 
-    fun set(property: String, value: String): Identify {
+    fun set(
+        property: String,
+        value: String,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET, property, value)
         return this
     }
 
-    fun set(property: String, value: Map<String, Any>): Identify {
+    fun set(
+        property: String,
+        value: Map<String, Any>,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET, property, value)
         return this
     }
 
-    fun set(property: String, value: List<Any>): Identify {
+    fun set(
+        property: String,
+        value: List<Any>,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET, property, value)
         return this
     }
 
-    fun set(property: String, value: Array<Boolean>): Identify {
+    fun set(
+        property: String,
+        value: Array<Boolean>,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET, property, value)
         return this
     }
 
-    fun set(property: String, value: Array<Double>): Identify {
+    fun set(
+        property: String,
+        value: Array<Double>,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET, property, value)
         return this
     }
 
-    fun set(property: String, value: Array<Float>): Identify {
+    fun set(
+        property: String,
+        value: Array<Float>,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET, property, value)
         return this
     }
 
-    fun set(property: String, value: Array<Int>): Identify {
+    fun set(
+        property: String,
+        value: Array<Int>,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET, property, value)
         return this
     }
 
-    fun set(property: String, value: Array<Long>): Identify {
+    fun set(
+        property: String,
+        value: Array<Long>,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET, property, value)
         return this
     }
 
-    fun set(property: String, value: Array<String>): Identify {
+    fun set(
+        property: String,
+        value: Array<String>,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET, property, value)
         return this
     }
 
-    fun set(property: String, value: Any): Identify {
+    fun set(
+        property: String,
+        value: Any,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET, property, value)
         return this
     }
 
-    fun setOnce(property: String, value: Boolean): Identify {
+    fun setOnce(
+        property: String,
+        value: Boolean,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET_ONCE, property, value)
         return this
     }
 
-    fun setOnce(property: String, value: Double): Identify {
+    fun setOnce(
+        property: String,
+        value: Double,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET_ONCE, property, value)
         return this
     }
 
-    fun setOnce(property: String, value: Float): Identify {
+    fun setOnce(
+        property: String,
+        value: Float,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET_ONCE, property, value)
         return this
     }
 
-    fun setOnce(property: String, value: Int): Identify {
+    fun setOnce(
+        property: String,
+        value: Int,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET_ONCE, property, value)
         return this
     }
 
-    fun setOnce(property: String, value: Long): Identify {
+    fun setOnce(
+        property: String,
+        value: Long,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET_ONCE, property, value)
         return this
     }
 
-    fun setOnce(property: String, value: String): Identify {
+    fun setOnce(
+        property: String,
+        value: String,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET_ONCE, property, value)
         return this
     }
 
-    fun setOnce(property: String, value: Map<String, Any>): Identify {
+    fun setOnce(
+        property: String,
+        value: Map<String, Any>,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET_ONCE, property, value)
         return this
     }
 
-    fun setOnce(property: String, value: List<Any>): Identify {
+    fun setOnce(
+        property: String,
+        value: List<Any>,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET_ONCE, property, value)
         return this
     }
 
-    fun setOnce(property: String, value: Array<Boolean>): Identify {
+    fun setOnce(
+        property: String,
+        value: Array<Boolean>,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET_ONCE, property, value)
         return this
     }
 
-    fun setOnce(property: String, value: Array<Double>): Identify {
+    fun setOnce(
+        property: String,
+        value: Array<Double>,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET_ONCE, property, value)
         return this
     }
 
-    fun setOnce(property: String, value: Array<Float>): Identify {
+    fun setOnce(
+        property: String,
+        value: Array<Float>,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET_ONCE, property, value)
         return this
     }
 
-    fun setOnce(property: String, value: Array<Int>): Identify {
+    fun setOnce(
+        property: String,
+        value: Array<Int>,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET_ONCE, property, value)
         return this
     }
 
-    fun setOnce(property: String, value: Array<Long>): Identify {
+    fun setOnce(
+        property: String,
+        value: Array<Long>,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET_ONCE, property, value)
         return this
     }
 
-    fun setOnce(property: String, value: Array<String>): Identify {
+    fun setOnce(
+        property: String,
+        value: Array<String>,
+    ): Identify {
         setUserProperty(IdentifyOperation.SET_ONCE, property, value)
         return this
     }
 
-    fun prepend(property: String, value: Boolean): Identify {
+    fun prepend(
+        property: String,
+        value: Boolean,
+    ): Identify {
         setUserProperty(IdentifyOperation.PREPEND, property, value)
         return this
     }
 
-    fun prepend(property: String, value: Double): Identify {
+    fun prepend(
+        property: String,
+        value: Double,
+    ): Identify {
         setUserProperty(IdentifyOperation.PREPEND, property, value)
         return this
     }
 
-    fun prepend(property: String, value: Float): Identify {
+    fun prepend(
+        property: String,
+        value: Float,
+    ): Identify {
         setUserProperty(IdentifyOperation.PREPEND, property, value)
         return this
     }
 
-    fun prepend(property: String, value: Int): Identify {
+    fun prepend(
+        property: String,
+        value: Int,
+    ): Identify {
         setUserProperty(IdentifyOperation.PREPEND, property, value)
         return this
     }
 
-    fun prepend(property: String, value: Long): Identify {
+    fun prepend(
+        property: String,
+        value: Long,
+    ): Identify {
         setUserProperty(IdentifyOperation.PREPEND, property, value)
         return this
     }
 
-    fun prepend(property: String, value: String): Identify {
+    fun prepend(
+        property: String,
+        value: String,
+    ): Identify {
         setUserProperty(IdentifyOperation.PREPEND, property, value)
         return this
     }
 
-    fun prepend(property: String, value: Map<String, Any>): Identify {
+    fun prepend(
+        property: String,
+        value: Map<String, Any>,
+    ): Identify {
         setUserProperty(IdentifyOperation.PREPEND, property, value)
         return this
     }
 
-    fun prepend(property: String, value: List<Any>): Identify {
+    fun prepend(
+        property: String,
+        value: List<Any>,
+    ): Identify {
         setUserProperty(IdentifyOperation.PREPEND, property, value)
         return this
     }
 
-    fun prepend(property: String, value: Array<Boolean>): Identify {
+    fun prepend(
+        property: String,
+        value: Array<Boolean>,
+    ): Identify {
         setUserProperty(IdentifyOperation.PREPEND, property, value)
         return this
     }
 
-    fun prepend(property: String, value: Array<Double>): Identify {
+    fun prepend(
+        property: String,
+        value: Array<Double>,
+    ): Identify {
         setUserProperty(IdentifyOperation.PREPEND, property, value)
         return this
     }
 
-    fun prepend(property: String, value: Array<Float>): Identify {
+    fun prepend(
+        property: String,
+        value: Array<Float>,
+    ): Identify {
         setUserProperty(IdentifyOperation.PREPEND, property, value)
         return this
     }
 
-    fun prepend(property: String, value: Array<Int>): Identify {
+    fun prepend(
+        property: String,
+        value: Array<Int>,
+    ): Identify {
         setUserProperty(IdentifyOperation.PREPEND, property, value)
         return this
     }
 
-    fun prepend(property: String, value: Array<Long>): Identify {
+    fun prepend(
+        property: String,
+        value: Array<Long>,
+    ): Identify {
         setUserProperty(IdentifyOperation.PREPEND, property, value)
         return this
     }
 
-    fun prepend(property: String, value: Array<String>): Identify {
+    fun prepend(
+        property: String,
+        value: Array<String>,
+    ): Identify {
         setUserProperty(IdentifyOperation.PREPEND, property, value)
         return this
     }
 
-    fun append(property: String, value: Boolean): Identify {
+    fun append(
+        property: String,
+        value: Boolean,
+    ): Identify {
         setUserProperty(IdentifyOperation.APPEND, property, value)
         return this
     }
 
-    fun append(property: String, value: Double): Identify {
+    fun append(
+        property: String,
+        value: Double,
+    ): Identify {
         setUserProperty(IdentifyOperation.APPEND, property, value)
         return this
     }
 
-    fun append(property: String, value: Float): Identify {
+    fun append(
+        property: String,
+        value: Float,
+    ): Identify {
         setUserProperty(IdentifyOperation.APPEND, property, value)
         return this
     }
 
-    fun append(property: String, value: Int): Identify {
+    fun append(
+        property: String,
+        value: Int,
+    ): Identify {
         setUserProperty(IdentifyOperation.APPEND, property, value)
         return this
     }
 
-    fun append(property: String, value: Long): Identify {
+    fun append(
+        property: String,
+        value: Long,
+    ): Identify {
         setUserProperty(IdentifyOperation.APPEND, property, value)
         return this
     }
 
-    fun append(property: String, value: String): Identify {
+    fun append(
+        property: String,
+        value: String,
+    ): Identify {
         setUserProperty(IdentifyOperation.APPEND, property, value)
         return this
     }
 
-    fun append(property: String, value: Map<String, Any>): Identify {
+    fun append(
+        property: String,
+        value: Map<String, Any>,
+    ): Identify {
         setUserProperty(IdentifyOperation.APPEND, property, value)
         return this
     }
 
-    fun append(property: String, value: List<Any>): Identify {
+    fun append(
+        property: String,
+        value: List<Any>,
+    ): Identify {
         setUserProperty(IdentifyOperation.APPEND, property, value)
         return this
     }
 
-    fun append(property: String, value: Array<Boolean>): Identify {
+    fun append(
+        property: String,
+        value: Array<Boolean>,
+    ): Identify {
         setUserProperty(IdentifyOperation.APPEND, property, value)
         return this
     }
 
-    fun append(property: String, value: Array<Double>): Identify {
+    fun append(
+        property: String,
+        value: Array<Double>,
+    ): Identify {
         setUserProperty(IdentifyOperation.APPEND, property, value)
         return this
     }
 
-    fun append(property: String, value: Array<Float>): Identify {
+    fun append(
+        property: String,
+        value: Array<Float>,
+    ): Identify {
         setUserProperty(IdentifyOperation.APPEND, property, value)
         return this
     }
 
-    fun append(property: String, value: Array<Int>): Identify {
+    fun append(
+        property: String,
+        value: Array<Int>,
+    ): Identify {
         setUserProperty(IdentifyOperation.APPEND, property, value)
         return this
     }
 
-    fun append(property: String, value: Array<Long>): Identify {
+    fun append(
+        property: String,
+        value: Array<Long>,
+    ): Identify {
         setUserProperty(IdentifyOperation.APPEND, property, value)
         return this
     }
 
-    fun append(property: String, value: Array<String>): Identify {
+    fun append(
+        property: String,
+        value: Array<String>,
+    ): Identify {
         setUserProperty(IdentifyOperation.APPEND, property, value)
         return this
     }
 
-    fun postInsert(property: String, value: Boolean): Identify {
+    fun postInsert(
+        property: String,
+        value: Boolean,
+    ): Identify {
         setUserProperty(IdentifyOperation.POST_INSERT, property, value)
         return this
     }
 
-    fun postInsert(property: String, value: Double): Identify {
+    fun postInsert(
+        property: String,
+        value: Double,
+    ): Identify {
         setUserProperty(IdentifyOperation.POST_INSERT, property, value)
         return this
     }
 
-    fun postInsert(property: String, value: Float): Identify {
+    fun postInsert(
+        property: String,
+        value: Float,
+    ): Identify {
         setUserProperty(IdentifyOperation.POST_INSERT, property, value)
         return this
     }
 
-    fun postInsert(property: String, value: Int): Identify {
+    fun postInsert(
+        property: String,
+        value: Int,
+    ): Identify {
         setUserProperty(IdentifyOperation.POST_INSERT, property, value)
         return this
     }
 
-    fun postInsert(property: String, value: Long): Identify {
+    fun postInsert(
+        property: String,
+        value: Long,
+    ): Identify {
         setUserProperty(IdentifyOperation.POST_INSERT, property, value)
         return this
     }
 
-    fun postInsert(property: String, value: String): Identify {
+    fun postInsert(
+        property: String,
+        value: String,
+    ): Identify {
         setUserProperty(IdentifyOperation.POST_INSERT, property, value)
         return this
     }
 
-    fun postInsert(property: String, value: Map<String, Any>): Identify {
+    fun postInsert(
+        property: String,
+        value: Map<String, Any>,
+    ): Identify {
         setUserProperty(IdentifyOperation.POST_INSERT, property, value)
         return this
     }
 
-    fun postInsert(property: String, value: List<Any>): Identify {
+    fun postInsert(
+        property: String,
+        value: List<Any>,
+    ): Identify {
         setUserProperty(IdentifyOperation.POST_INSERT, property, value)
         return this
     }
 
-    fun postInsert(property: String, value: Array<Boolean>): Identify {
+    fun postInsert(
+        property: String,
+        value: Array<Boolean>,
+    ): Identify {
         setUserProperty(IdentifyOperation.POST_INSERT, property, value)
         return this
     }
 
-    fun postInsert(property: String, value: Array<Double>): Identify {
+    fun postInsert(
+        property: String,
+        value: Array<Double>,
+    ): Identify {
         setUserProperty(IdentifyOperation.POST_INSERT, property, value)
         return this
     }
 
-    fun postInsert(property: String, value: Array<Float>): Identify {
+    fun postInsert(
+        property: String,
+        value: Array<Float>,
+    ): Identify {
         setUserProperty(IdentifyOperation.POST_INSERT, property, value)
         return this
     }
 
-    fun postInsert(property: String, value: Array<Int>): Identify {
+    fun postInsert(
+        property: String,
+        value: Array<Int>,
+    ): Identify {
         setUserProperty(IdentifyOperation.POST_INSERT, property, value)
         return this
     }
 
-    fun postInsert(property: String, value: Array<Long>): Identify {
+    fun postInsert(
+        property: String,
+        value: Array<Long>,
+    ): Identify {
         setUserProperty(IdentifyOperation.POST_INSERT, property, value)
         return this
     }
 
-    fun postInsert(property: String, value: Array<String>): Identify {
+    fun postInsert(
+        property: String,
+        value: Array<String>,
+    ): Identify {
         setUserProperty(IdentifyOperation.POST_INSERT, property, value)
         return this
     }
 
-    fun preInsert(property: String, value: Boolean): Identify {
+    fun preInsert(
+        property: String,
+        value: Boolean,
+    ): Identify {
         setUserProperty(IdentifyOperation.PRE_INSERT, property, value)
         return this
     }
 
-    fun preInsert(property: String, value: Double): Identify {
+    fun preInsert(
+        property: String,
+        value: Double,
+    ): Identify {
         setUserProperty(IdentifyOperation.PRE_INSERT, property, value)
         return this
     }
 
-    fun preInsert(property: String, value: Float): Identify {
+    fun preInsert(
+        property: String,
+        value: Float,
+    ): Identify {
         setUserProperty(IdentifyOperation.PRE_INSERT, property, value)
         return this
     }
 
-    fun preInsert(property: String, value: Int): Identify {
+    fun preInsert(
+        property: String,
+        value: Int,
+    ): Identify {
         setUserProperty(IdentifyOperation.PRE_INSERT, property, value)
         return this
     }
 
-    fun preInsert(property: String, value: Long): Identify {
+    fun preInsert(
+        property: String,
+        value: Long,
+    ): Identify {
         setUserProperty(IdentifyOperation.PRE_INSERT, property, value)
         return this
     }
 
-    fun preInsert(property: String, value: String): Identify {
+    fun preInsert(
+        property: String,
+        value: String,
+    ): Identify {
         setUserProperty(IdentifyOperation.PRE_INSERT, property, value)
         return this
     }
 
-    fun preInsert(property: String, value: Map<String, Any>): Identify {
+    fun preInsert(
+        property: String,
+        value: Map<String, Any>,
+    ): Identify {
         setUserProperty(IdentifyOperation.PRE_INSERT, property, value)
         return this
     }
 
-    fun preInsert(property: String, value: List<Any>): Identify {
+    fun preInsert(
+        property: String,
+        value: List<Any>,
+    ): Identify {
         setUserProperty(IdentifyOperation.PRE_INSERT, property, value)
         return this
     }
 
-    fun preInsert(property: String, value: Array<Boolean>): Identify {
+    fun preInsert(
+        property: String,
+        value: Array<Boolean>,
+    ): Identify {
         setUserProperty(IdentifyOperation.PRE_INSERT, property, value)
         return this
     }
 
-    fun preInsert(property: String, value: Array<Double>): Identify {
+    fun preInsert(
+        property: String,
+        value: Array<Double>,
+    ): Identify {
         setUserProperty(IdentifyOperation.PRE_INSERT, property, value)
         return this
     }
 
-    fun preInsert(property: String, value: Array<Float>): Identify {
+    fun preInsert(
+        property: String,
+        value: Array<Float>,
+    ): Identify {
         setUserProperty(IdentifyOperation.PRE_INSERT, property, value)
         return this
     }
 
-    fun preInsert(property: String, value: Array<Int>): Identify {
+    fun preInsert(
+        property: String,
+        value: Array<Int>,
+    ): Identify {
         setUserProperty(IdentifyOperation.PRE_INSERT, property, value)
         return this
     }
 
-    fun preInsert(property: String, value: Array<Long>): Identify {
+    fun preInsert(
+        property: String,
+        value: Array<Long>,
+    ): Identify {
         setUserProperty(IdentifyOperation.PRE_INSERT, property, value)
         return this
     }
 
-    fun preInsert(property: String, value: Array<String>): Identify {
+    fun preInsert(
+        property: String,
+        value: Array<String>,
+    ): Identify {
         setUserProperty(IdentifyOperation.PRE_INSERT, property, value)
         return this
     }
 
-    fun remove(property: String, value: Boolean): Identify {
+    fun remove(
+        property: String,
+        value: Boolean,
+    ): Identify {
         setUserProperty(IdentifyOperation.REMOVE, property, value)
         return this
     }
 
-    fun remove(property: String, value: Double): Identify {
+    fun remove(
+        property: String,
+        value: Double,
+    ): Identify {
         setUserProperty(IdentifyOperation.REMOVE, property, value)
         return this
     }
 
-    fun remove(property: String, value: Float): Identify {
+    fun remove(
+        property: String,
+        value: Float,
+    ): Identify {
         setUserProperty(IdentifyOperation.REMOVE, property, value)
         return this
     }
 
-    fun remove(property: String, value: Int): Identify {
+    fun remove(
+        property: String,
+        value: Int,
+    ): Identify {
         setUserProperty(IdentifyOperation.REMOVE, property, value)
         return this
     }
 
-    fun remove(property: String, value: Long): Identify {
+    fun remove(
+        property: String,
+        value: Long,
+    ): Identify {
         setUserProperty(IdentifyOperation.REMOVE, property, value)
         return this
     }
 
-    fun remove(property: String, value: String): Identify {
+    fun remove(
+        property: String,
+        value: String,
+    ): Identify {
         setUserProperty(IdentifyOperation.REMOVE, property, value)
         return this
     }
 
-    fun remove(property: String, value: Map<String, Any>): Identify {
+    fun remove(
+        property: String,
+        value: Map<String, Any>,
+    ): Identify {
         setUserProperty(IdentifyOperation.REMOVE, property, value)
         return this
     }
 
-    fun remove(property: String, value: List<Any>): Identify {
+    fun remove(
+        property: String,
+        value: List<Any>,
+    ): Identify {
         setUserProperty(IdentifyOperation.REMOVE, property, value)
         return this
     }
 
-    fun remove(property: String, value: Array<Boolean>): Identify {
+    fun remove(
+        property: String,
+        value: Array<Boolean>,
+    ): Identify {
         setUserProperty(IdentifyOperation.REMOVE, property, value)
         return this
     }
 
-    fun remove(property: String, value: Array<Double>): Identify {
+    fun remove(
+        property: String,
+        value: Array<Double>,
+    ): Identify {
         setUserProperty(IdentifyOperation.REMOVE, property, value)
         return this
     }
 
-    fun remove(property: String, value: Array<Float>): Identify {
+    fun remove(
+        property: String,
+        value: Array<Float>,
+    ): Identify {
         setUserProperty(IdentifyOperation.REMOVE, property, value)
         return this
     }
 
-    fun remove(property: String, value: Array<Int>): Identify {
+    fun remove(
+        property: String,
+        value: Array<Int>,
+    ): Identify {
         setUserProperty(IdentifyOperation.REMOVE, property, value)
         return this
     }
 
-    fun remove(property: String, value: Array<Long>): Identify {
+    fun remove(
+        property: String,
+        value: Array<Long>,
+    ): Identify {
         setUserProperty(IdentifyOperation.REMOVE, property, value)
         return this
     }
 
-    fun remove(property: String, value: Array<String>): Identify {
+    fun remove(
+        property: String,
+        value: Array<String>,
+    ): Identify {
         setUserProperty(IdentifyOperation.REMOVE, property, value)
         return this
     }
 
-    fun add(property: String, value: Double): Identify {
+    fun add(
+        property: String,
+        value: Double,
+    ): Identify {
         setUserProperty(IdentifyOperation.ADD, property, value)
         return this
     }
 
-    fun add(property: String, value: Float): Identify {
+    fun add(
+        property: String,
+        value: Float,
+    ): Identify {
         setUserProperty(IdentifyOperation.ADD, property, value)
         return this
     }
 
-    fun add(property: String, value: Int): Identify {
+    fun add(
+        property: String,
+        value: Int,
+    ): Identify {
         setUserProperty(IdentifyOperation.ADD, property, value)
         return this
     }
 
-    fun add(property: String, value: Long): Identify {
+    fun add(
+        property: String,
+        value: Long,
+    ): Identify {
         setUserProperty(IdentifyOperation.ADD, property, value)
         return this
     }
@@ -548,13 +856,21 @@ open class Identify {
         return this
     }
 
-    @Synchronized private fun setUserProperty(operation: IdentifyOperation, property: String, value: Any?) {
+    @Synchronized private fun setUserProperty(
+        operation: IdentifyOperation,
+        property: String,
+        value: Any?,
+    ) {
         if (property.isEmpty()) {
-            ConsoleLogger.logger.warn("Attempting to perform operation ${operation.operationType} with a null or empty string property, ignoring")
+            ConsoleLogger.logger.warn(
+                "Attempting to perform operation ${operation.operationType} with a null or empty string property, ignoring",
+            )
             return
         }
         if (value == null) {
-            ConsoleLogger.logger.warn("Attempting to perform operation ${operation.operationType} with null value for property $property, ignoring")
+            ConsoleLogger.logger.warn(
+                "Attempting to perform operation ${operation.operationType} with null value for property $property, ignoring",
+            )
             return
         }
         // check that clearAll wasn't already used in this Identify
@@ -564,7 +880,9 @@ open class Identify {
         }
         // check if property already used in previous operation
         if (propertySet.contains(property)) {
-            ConsoleLogger.logger.warn("Already used property $property in previous operation, ignoring operation ${operation.operationType}")
+            ConsoleLogger.logger.warn(
+                "Already used property $property in previous operation, ignoring operation ${operation.operationType}",
+            )
             return
         }
         _properties.getOrPut(operation.operationType) { mutableMapOf() }[property] = value

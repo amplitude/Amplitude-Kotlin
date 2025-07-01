@@ -61,7 +61,7 @@ class MediatorTest {
     private class FakeEventPlugin : EventPlugin {
         override val type: Plugin.Type = Plugin.Type.Before
         override lateinit var amplitude: Amplitude
-        
+
         var trackCallCount = AtomicInteger(0)
         var identifyCallCount = AtomicInteger(0)
         var groupIdentifyCallCount = AtomicInteger(0)
@@ -108,7 +108,7 @@ class MediatorTest {
     private class FakePlugin : Plugin {
         override val type: Plugin.Type = Plugin.Type.Before
         override lateinit var amplitude: Amplitude
-        
+
         var executeCallCount = AtomicInteger(0)
         var shouldReturnNull = false
         var shouldThrowException = false
@@ -128,9 +128,9 @@ class MediatorTest {
     fun `execute with no plugins returns original event`() {
         val event = BaseEvent()
         event.eventType = "test_event"
-        
+
         val result = mediator.execute(event)
-        
+
         assertSame(event, result)
     }
 
@@ -139,12 +139,12 @@ class MediatorTest {
         val destinationPlugin = FakeDestinationPlugin()
         destinationPlugin.amplitude = mockAmplitude
         mediator.add(destinationPlugin)
-        
+
         val event = BaseEvent()
         event.eventType = "test_event"
-        
+
         val result = mediator.execute(event)
-        
+
         assertEquals(1, destinationPlugin.processCallCount.get())
         assertSame(event, result)
     }
@@ -155,12 +155,12 @@ class MediatorTest {
         destinationPlugin.amplitude = mockAmplitude
         destinationPlugin.shouldThrowException = true
         mediator.add(destinationPlugin)
-        
+
         val event = BaseEvent()
         event.eventType = "test_event"
-        
+
         val result = mediator.execute(event)
-        
+
         assertEquals(1, destinationPlugin.processCallCount.get())
         assertSame(event, result)
     }
@@ -170,12 +170,12 @@ class MediatorTest {
         val eventPlugin = FakeEventPlugin()
         eventPlugin.amplitude = mockAmplitude
         mediator.add(eventPlugin)
-        
+
         val event = BaseEvent()
         event.eventType = "test_event"
-        
+
         val result = mediator.execute(event)
-        
+
         assertEquals(1, eventPlugin.trackCallCount.get())
         assertEquals(0, eventPlugin.identifyCallCount.get())
         assertEquals(0, eventPlugin.groupIdentifyCallCount.get())
@@ -188,12 +188,12 @@ class MediatorTest {
         val eventPlugin = FakeEventPlugin()
         eventPlugin.amplitude = mockAmplitude
         mediator.add(eventPlugin)
-        
+
         val event = IdentifyEvent()
         event.eventType = "test_identify"
-        
+
         val result = mediator.execute(event)
-        
+
         assertEquals(0, eventPlugin.trackCallCount.get())
         assertEquals(1, eventPlugin.identifyCallCount.get())
         assertEquals(0, eventPlugin.groupIdentifyCallCount.get())
@@ -206,12 +206,12 @@ class MediatorTest {
         val eventPlugin = FakeEventPlugin()
         eventPlugin.amplitude = mockAmplitude
         mediator.add(eventPlugin)
-        
+
         val event = GroupIdentifyEvent()
         event.eventType = "test_group_identify"
-        
+
         val result = mediator.execute(event)
-        
+
         assertEquals(0, eventPlugin.trackCallCount.get())
         assertEquals(0, eventPlugin.identifyCallCount.get())
         assertEquals(1, eventPlugin.groupIdentifyCallCount.get())
@@ -224,12 +224,12 @@ class MediatorTest {
         val eventPlugin = FakeEventPlugin()
         eventPlugin.amplitude = mockAmplitude
         mediator.add(eventPlugin)
-        
+
         val event = RevenueEvent()
         event.eventType = "test_revenue"
-        
+
         val result = mediator.execute(event)
-        
+
         assertEquals(0, eventPlugin.trackCallCount.get())
         assertEquals(0, eventPlugin.identifyCallCount.get())
         assertEquals(0, eventPlugin.groupIdentifyCallCount.get())
@@ -242,12 +242,12 @@ class MediatorTest {
         val plugin = FakePlugin()
         plugin.amplitude = mockAmplitude
         mediator.add(plugin)
-        
+
         val event = BaseEvent()
         event.eventType = "test_event"
-        
+
         val result = mediator.execute(event)
-        
+
         assertEquals(1, plugin.executeCallCount.get())
         assertSame(event, result)
     }
@@ -258,16 +258,16 @@ class MediatorTest {
         eventPlugin1.amplitude = mockAmplitude
         eventPlugin1.shouldReturnNull = true
         mediator.add(eventPlugin1)
-        
+
         val eventPlugin2 = FakeEventPlugin()
         eventPlugin2.amplitude = mockAmplitude
         mediator.add(eventPlugin2)
-        
+
         val event = BaseEvent()
         event.eventType = "test_event"
-        
+
         val result = mediator.execute(event)
-        
+
         assertEquals(1, eventPlugin1.trackCallCount.get())
         assertEquals(0, eventPlugin2.trackCallCount.get())
         assertNull(result)
@@ -279,16 +279,16 @@ class MediatorTest {
         plugin1.amplitude = mockAmplitude
         plugin1.shouldReturnNull = true
         mediator.add(plugin1)
-        
+
         val plugin2 = FakePlugin()
         plugin2.amplitude = mockAmplitude
         mediator.add(plugin2)
-        
+
         val event = BaseEvent()
         event.eventType = "test_event"
-        
+
         val result = mediator.execute(event)
-        
+
         assertEquals(1, plugin1.executeCallCount.get())
         assertEquals(0, plugin2.executeCallCount.get())
         assertNull(result)
@@ -300,16 +300,16 @@ class MediatorTest {
         eventPlugin1.amplitude = mockAmplitude
         eventPlugin1.shouldThrowException = true
         mediator.add(eventPlugin1)
-        
+
         val eventPlugin2 = FakeEventPlugin()
         eventPlugin2.amplitude = mockAmplitude
         mediator.add(eventPlugin2)
-        
+
         val event = BaseEvent()
         event.eventType = "test_event"
-        
+
         val result = mediator.execute(event)
-        
+
         assertEquals(1, eventPlugin1.trackCallCount.get())
         assertEquals(1, eventPlugin2.trackCallCount.get())
         assertSame(event, result)
@@ -321,16 +321,16 @@ class MediatorTest {
         plugin1.amplitude = mockAmplitude
         plugin1.shouldThrowException = true
         mediator.add(plugin1)
-        
+
         val plugin2 = FakePlugin()
         plugin2.amplitude = mockAmplitude
         mediator.add(plugin2)
-        
+
         val event = BaseEvent()
         event.eventType = "test_event"
 
         val result = mediator.execute(event)
-        
+
         assertEquals(1, plugin1.executeCallCount.get())
         assertEquals(1, plugin2.executeCallCount.get())
         assertSame(event, result)
@@ -341,20 +341,20 @@ class MediatorTest {
         val destinationPlugin = FakeDestinationPlugin()
         destinationPlugin.amplitude = mockAmplitude
         mediator.add(destinationPlugin)
-        
+
         val eventPlugin = FakeEventPlugin()
         eventPlugin.amplitude = mockAmplitude
         mediator.add(eventPlugin)
-        
+
         val plugin = FakePlugin()
         plugin.amplitude = mockAmplitude
         mediator.add(plugin)
-        
+
         val event = BaseEvent()
         event.eventType = "test_event"
-        
+
         val result = mediator.execute(event)
-        
+
         assertEquals(1, destinationPlugin.processCallCount.get())
         assertEquals(1, eventPlugin.trackCallCount.get())
         assertEquals(1, plugin.executeCallCount.get())
@@ -367,16 +367,16 @@ class MediatorTest {
         eventPlugin1.amplitude = mockAmplitude
         eventPlugin1.shouldReturnNull = true
         mediator.add(eventPlugin1)
-        
+
         val destinationPlugin = FakeDestinationPlugin()
         destinationPlugin.amplitude = mockAmplitude
         mediator.add(destinationPlugin)
-        
+
         val event = BaseEvent()
         event.eventType = "test_event"
-        
+
         val result = mediator.execute(event)
-        
+
         assertEquals(1, eventPlugin1.trackCallCount.get())
         assertEquals(0, destinationPlugin.processCallCount.get())
         assertNull(result)
@@ -388,16 +388,16 @@ class MediatorTest {
         plugin1.amplitude = mockAmplitude
         plugin1.shouldReturnNull = true
         mediator.add(plugin1)
-        
+
         val destinationPlugin = FakeDestinationPlugin()
         destinationPlugin.amplitude = mockAmplitude
         mediator.add(destinationPlugin)
-        
+
         val event = BaseEvent()
         event.eventType = "test_event"
-        
+
         val result = mediator.execute(event)
-        
+
         assertEquals(1, plugin1.executeCallCount.get())
         assertEquals(0, destinationPlugin.processCallCount.get())
         assertNull(result)
@@ -408,58 +408,58 @@ class MediatorTest {
         val destinationPlugin = FakeDestinationPlugin()
         destinationPlugin.amplitude = mockAmplitude
         mediator.add(destinationPlugin)
-        
+
         val eventPlugin = FakeEventPlugin()
         eventPlugin.amplitude = mockAmplitude
         mediator.add(eventPlugin)
-        
+
         val plugin = FakePlugin()
         plugin.amplitude = mockAmplitude
         mediator.add(plugin)
-        
+
         // Test with IdentifyEvent
         val identifyEvent = IdentifyEvent()
         identifyEvent.eventType = "test_identify"
-        
+
         val identifyResult = mediator.execute(identifyEvent)
-        
+
         assertEquals(1, destinationPlugin.processCallCount.get())
         assertEquals(0, eventPlugin.trackCallCount.get())
         assertEquals(1, eventPlugin.identifyCallCount.get())
         assertEquals(1, plugin.executeCallCount.get())
         assertSame(identifyEvent, identifyResult)
-        
+
         // Reset counters
         destinationPlugin.processCallCount.set(0)
         eventPlugin.trackCallCount.set(0)
         eventPlugin.identifyCallCount.set(0)
         plugin.executeCallCount.set(0)
-        
+
         // Test with GroupIdentifyEvent
         val groupIdentifyEvent = GroupIdentifyEvent()
         groupIdentifyEvent.eventType = "test_group_identify"
-        
+
         val groupIdentifyResult = mediator.execute(groupIdentifyEvent)
-        
+
         assertEquals(1, destinationPlugin.processCallCount.get())
         assertEquals(0, eventPlugin.trackCallCount.get())
         assertEquals(0, eventPlugin.identifyCallCount.get())
         assertEquals(1, eventPlugin.groupIdentifyCallCount.get())
         assertEquals(1, plugin.executeCallCount.get())
         assertSame(groupIdentifyEvent, groupIdentifyResult)
-        
+
         // Reset counters
         destinationPlugin.processCallCount.set(0)
         eventPlugin.trackCallCount.set(0)
         eventPlugin.groupIdentifyCallCount.set(0)
         plugin.executeCallCount.set(0)
-        
+
         // Test with RevenueEvent
         val revenueEvent = RevenueEvent()
         revenueEvent.eventType = "test_revenue"
-        
+
         val revenueResult = mediator.execute(revenueEvent)
-        
+
         assertEquals(1, destinationPlugin.processCallCount.get())
         assertEquals(0, eventPlugin.trackCallCount.get())
         assertEquals(0, eventPlugin.identifyCallCount.get())
@@ -473,112 +473,120 @@ class MediatorTest {
     fun `execute with empty plugin list returns original event`() {
         val event = BaseEvent()
         event.eventType = "test_event"
-        
+
         val result = mediator.execute(event)
-        
+
         assertSame(event, result)
     }
 
     @Test
     fun `execute with plugin that modifies event returns modified event`() {
-        val modifyingPlugin = object : Plugin {
-            override val type: Plugin.Type = Plugin.Type.Before
-            override lateinit var amplitude: Amplitude
-            
-            override fun execute(event: BaseEvent): BaseEvent {
-                return event.setEventProperty("modified", true)
+        val modifyingPlugin =
+            object : Plugin {
+                override val type: Plugin.Type = Plugin.Type.Before
+                override lateinit var amplitude: Amplitude
+
+                override fun execute(event: BaseEvent): BaseEvent {
+                    return event.setEventProperty("modified", true)
+                }
             }
-        }
         modifyingPlugin.amplitude = mockAmplitude
         mediator.add(modifyingPlugin)
-        
+
         val event = BaseEvent()
         event.eventType = "test_event"
-        
+
         val result = mediator.execute(event)
-        
+
         assertSame(event, result)
         assertEquals(true, event.eventProperties?.get("modified"))
     }
 
     @Test
-    fun `does work twice on two destination plugins`() = runTest {
-        val dispatcher1 = newSingleThreadContext("Thread-1")
-        val dispatcher2 = newSingleThreadContext("Thread-2")
-        try {
-            val fakeDestinationPlugins = List(2) { FakeDestinationPlugin() }
-            fakeDestinationPlugins.forEach {
-                mediator.add(it)
-            }
-
-            val work = suspend {
-                println("Doing work on ${Thread.currentThread().name}")
-                println("Mediator plugins: ${mediator.plugins.size}")
-                mediator.applyClosure {
-                    (it as EventPlugin).flush()
+    fun `does work twice on two destination plugins`() =
+        runTest {
+            val dispatcher1 = newSingleThreadContext("Thread-1")
+            val dispatcher2 = newSingleThreadContext("Thread-2")
+            try {
+                val fakeDestinationPlugins = List(2) { FakeDestinationPlugin() }
+                fakeDestinationPlugins.forEach {
+                    mediator.add(it)
                 }
+
+                val work =
+                    suspend {
+                        println("Doing work on ${Thread.currentThread().name}")
+                        println("Mediator plugins: ${mediator.plugins.size}")
+                        mediator.applyClosure {
+                            (it as EventPlugin).flush()
+                        }
+                    }
+
+                val job1 = async(dispatcher1) { work() }
+                val job2 = async(dispatcher2) { work() }
+
+                job1.await()
+                job2.await()
+
+                fakeDestinationPlugins.forEach {
+                    assertEquals(2, it.amountOfWorkDone.get())
+                }
+            } finally {
+                dispatcher1.close()
+                dispatcher2.close()
             }
-
-            val job1 = async(dispatcher1) { work() }
-            val job2 = async(dispatcher2) { work() }
-
-            job1.await()
-            job2.await()
-
-            fakeDestinationPlugins.forEach {
-                assertEquals(2, it.amountOfWorkDone.get())
-            }
-        } finally {
-            dispatcher1.close()
-            dispatcher2.close()
         }
-    }
 
     @Test
-    fun `work, add a new plugin and work, and work again on two destination plugins`() = runTest {
-        val dispatcher1 = newSingleThreadContext("Thread-1")
-        val dispatcher2 = newSingleThreadContext("Thread-2")
-        val dispatcher3 = newSingleThreadContext("Thread-3")
-        try {
-            val fakeDestinationPlugin1 = FakeDestinationPlugin()
-            val fakeDestinationPlugin2 = FakeDestinationPlugin()
+    fun `work, add a new plugin and work, and work again on two destination plugins`() =
+        runTest {
+            val dispatcher1 = newSingleThreadContext("Thread-1")
+            val dispatcher2 = newSingleThreadContext("Thread-2")
+            val dispatcher3 = newSingleThreadContext("Thread-3")
+            try {
+                val fakeDestinationPlugin1 = FakeDestinationPlugin()
+                val fakeDestinationPlugin2 = FakeDestinationPlugin()
 
-            mediator.add(fakeDestinationPlugin1)
+                mediator.add(fakeDestinationPlugin1)
 
-            val work = suspend {
-                println("Doing work on ${Thread.currentThread().name}")
-                println("Mediator plugins: ${mediator.plugins.size}")
-                mediator.applyClosure {
-                    (it as EventPlugin).flush()
-                }
+                val work =
+                    suspend {
+                        println("Doing work on ${Thread.currentThread().name}")
+                        println("Mediator plugins: ${mediator.plugins.size}")
+                        mediator.applyClosure {
+                            (it as EventPlugin).flush()
+                        }
+                    }
+
+                val job1 =
+                    async(dispatcher1) {
+                        work()
+                        work()
+                    }
+                val job2 =
+                    async(dispatcher2) {
+                        // give time for the first work() to start
+                        delay(UNIT_OF_WORK_IN_MS / 2)
+                        // add plugin 2, 2nd work() should catch up with the newly added plugin
+                        mediator.add(fakeDestinationPlugin2)
+                    }
+
+                job1.await()
+                job2.await()
+
+                // work again
+                val job3 =
+                    async(dispatcher3) {
+                        work()
+                    }
+                job3.await()
+
+                assertEquals(3, fakeDestinationPlugin1.amountOfWorkDone.get())
+                assertEquals(2, fakeDestinationPlugin2.amountOfWorkDone.get())
+            } finally {
+                dispatcher1.close()
+                dispatcher2.close()
+                dispatcher3.close()
             }
-
-            val job1 = async(dispatcher1) {
-                work()
-                work()
-            }
-            val job2 = async(dispatcher2) {
-                // give time for the first work() to start
-                delay(UNIT_OF_WORK_IN_MS / 2)
-                // add plugin 2, 2nd work() should catch up with the newly added plugin
-                mediator.add(fakeDestinationPlugin2)
-            }
-
-            job1.await()
-            job2.await()
-
-            // work again
-            val job3 = async(dispatcher3) {
-                work()
-            }
-            job3.await()
-
-            assertEquals(3, fakeDestinationPlugin1.amountOfWorkDone.get())
-            assertEquals(2, fakeDestinationPlugin2.amountOfWorkDone.get())
-        } finally {
-            dispatcher1.close()
-            dispatcher2.close()
-            dispatcher3.close()
         }
-    }
 }

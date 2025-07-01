@@ -51,9 +51,8 @@ open class Amplitude(
     val amplitudeScope: CoroutineScope = CoroutineScope(SupervisorJob()),
     val amplitudeDispatcher: CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher(),
     val networkIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
-    val storageIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+    val storageIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
 ) : AnalyticsClient, IdentityListener, PluginHost {
-
     val timeline: Timeline
     lateinit var storage: Storage
         private set
@@ -72,10 +71,11 @@ open class Amplitude(
         set(value) {
             identify(
                 userProperties = value.userProperties,
-                options = EventOptions().apply {
-                    userId = value.userId
-                    deviceId = value.deviceId
-                }
+                options =
+                    EventOptions().apply {
+                        userId = value.userId
+                        deviceId = value.deviceId
+                    },
             )
         }
     override var sessionId: Long
@@ -101,12 +101,13 @@ open class Amplitude(
         require(configuration.isValid()) { "invalid configuration" }
         timeline = this.createTimeline()
         logger = configuration.loggerProvider.getLogger(this)
-        amplitudeContext = AmplitudeContext(
-            apiKey = configuration.apiKey,
-            instanceName = configuration.instanceName,
-            serverZone = configuration.serverZone,
-            logger = logger,
-        )
+        amplitudeContext =
+            AmplitudeContext(
+                apiKey = configuration.apiKey,
+                instanceName = configuration.instanceName,
+                serverZone = configuration.serverZone,
+                logger = logger,
+            )
         isBuilt = this.build()
         isBuilt.start()
     }
@@ -127,25 +128,26 @@ open class Amplitude(
     }
 
     protected fun createIdentityContainer(identityConfiguration: IdentityConfiguration) {
-        idContainer = IdentityContainer.getInstance(identityConfiguration).apply {
-            identityManager.addIdentityListener(this@Amplitude)
-        }
+        idContainer =
+            IdentityContainer.getInstance(identityConfiguration).apply {
+                identityManager.addIdentityListener(this@Amplitude)
+            }
     }
 
     protected open fun build(): Deferred<Boolean> {
         return amplitudeScope.async(amplitudeDispatcher, CoroutineStart.LAZY) {
-                storage = configuration.storageProvider.getStorage(this@Amplitude)
-                identifyInterceptStorage =
-                    configuration.identifyInterceptStorageProvider.getStorage(
-                        this@Amplitude,
-                        "amplitude-identify-intercept",
-                    )
-                val identityConfiguration = createIdentityConfiguration()
-                identityStorage = configuration.identityStorageProvider.getIdentityStorage(identityConfiguration)
+            storage = configuration.storageProvider.getStorage(this@Amplitude)
+            identifyInterceptStorage =
+                configuration.identifyInterceptStorageProvider.getStorage(
+                    this@Amplitude,
+                    "amplitude-identify-intercept",
+                )
+            val identityConfiguration = createIdentityConfiguration()
+            identityStorage = configuration.identityStorageProvider.getIdentityStorage(identityConfiguration)
 
-                buildInternal(identityConfiguration)
-                true
-            }
+            buildInternal(identityConfiguration)
+            true
+        }
     }
 
     protected open suspend fun buildInternal(identityConfiguration: IdentityConfiguration) {
@@ -511,8 +513,8 @@ open class Amplitude(
                     .setDeviceId(event.deviceId ?: deviceId)
                     .setUserProperties(
                         identity.userProperties.applyUserProperties(
-                            event.userProperties
-                        )
+                            event.userProperties,
+                        ),
                     )
                     .commit()
             }

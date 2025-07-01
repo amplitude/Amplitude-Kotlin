@@ -47,15 +47,16 @@ internal class AmplitudeTest {
         val testApiKey = "test-123"
         val plan = Plan("test-branch", "test")
         val ingestionMetadata = IngestionMetadata("ampli", "2.0.0")
-        amplitude = FakeAmplitude(
-            Configuration(
-                testApiKey,
-                plan = plan,
-                ingestionMetadata = ingestionMetadata,
-                serverUrl = server.url("/").toString()
-            ),
-            testDispatcher = UnconfinedTestDispatcher()
-        )
+        amplitude =
+            FakeAmplitude(
+                Configuration(
+                    testApiKey,
+                    plan = plan,
+                    ingestionMetadata = ingestionMetadata,
+                    serverUrl = server.url("/").toString(),
+                ),
+                testDispatcher = UnconfinedTestDispatcher(),
+            )
     }
 
     @AfterEach
@@ -68,13 +69,14 @@ internal class AmplitudeTest {
         @Test
         fun `set deviceId`() {
             val deviceId = "test-device-id"
-            amplitude = FakeAmplitude(
-                Configuration(
-                    "api-key",
-                    deviceId = deviceId,
-                    serverUrl = server.url("/").toString()
+            amplitude =
+                FakeAmplitude(
+                    Configuration(
+                        "api-key",
+                        deviceId = deviceId,
+                        serverUrl = server.url("/").toString(),
+                    ),
                 )
-            )
             amplitude.isBuilt.invokeOnCompletion {
                 assertEquals(deviceId, amplitude.identity.deviceId)
                 assertEquals(deviceId, amplitude.getDeviceId())
@@ -84,7 +86,6 @@ internal class AmplitudeTest {
 
     @Nested
     inner class TestTrack {
-
         @Test
         fun `test track`() {
             val mockPlugin = spyk(StubPlugin())
@@ -138,7 +139,6 @@ internal class AmplitudeTest {
 
     @Nested
     inner class TestIdentify {
-
         @Test
         fun `test identify`() {
             val mockPlugin = spyk(StubPlugin())
@@ -236,7 +236,6 @@ internal class AmplitudeTest {
 
     @Nested
     inner class TestGroupIdentify {
-
         @Test
         fun `test groupIdentify`() {
             val mockPlugin = spyk(StubPlugin())
@@ -274,14 +273,16 @@ internal class AmplitudeTest {
                 assertEquals("user_id", it.userId)
                 assertEquals("device_id", it.deviceId)
                 assertEquals("${Constants.SDK_LIBRARY}/${Constants.SDK_VERSION}", it.library)
-                assertEquals(mapOf(Pair(IdentifyOperation.SET.operationType, mapOf(Pair("foo", "bar"), Pair("boolean", true)))), it.groupProperties)
+                assertEquals(
+                    mapOf(Pair(IdentifyOperation.SET.operationType, mapOf(Pair("foo", "bar"), Pair("boolean", true)))),
+                    it.groupProperties,
+                )
             }
         }
     }
 
     @Nested
     inner class TestRevenue {
-
         @Test
         fun `test revenue`() {
             val mockPlugin = spyk(StubPlugin())
@@ -313,31 +314,33 @@ internal class AmplitudeTest {
     inner class TestPlugins {
         @Test
         fun `Can add plugins to amplitude`() {
-            val middleware = object : Plugin {
-                override val type = Plugin.Type.Enrichment
-                override lateinit var amplitude: Amplitude
-            }
+            val middleware =
+                object : Plugin {
+                    override val type = Plugin.Type.Enrichment
+                    override lateinit var amplitude: Amplitude
+                }
             amplitude.add(middleware)
             amplitude.timeline.plugins[Plugin.Type.Enrichment]?.size()?.let {
                 assertEquals(
                     2,
-                    it
+                    it,
                 )
             } ?: fail()
         }
 
         @Test
         fun `Can remove plugins from amplitude`() {
-            val middleware = object : Plugin {
-                override val type = Plugin.Type.Enrichment
-                override lateinit var amplitude: Amplitude
-            }
+            val middleware =
+                object : Plugin {
+                    override val type = Plugin.Type.Enrichment
+                    override lateinit var amplitude: Amplitude
+                }
             amplitude.add(middleware)
             amplitude.remove(middleware)
             amplitude.timeline.plugins[Plugin.Type.Enrichment]?.size()?.let {
                 assertEquals(
                     1, // SegmentLog is the other added at startup
-                    it
+                    it,
                 )
             } ?: fail()
         }
@@ -357,7 +360,6 @@ internal class AmplitudeTest {
 
     @Nested
     inner class TestFlush {
-
         @Test
         fun `test flush`() {
             amplitude.setUserId("user_id")

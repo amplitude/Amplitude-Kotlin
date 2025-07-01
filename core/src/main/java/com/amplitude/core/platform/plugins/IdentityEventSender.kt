@@ -33,6 +33,6 @@ internal fun BaseEvent.toBridgeEvent(): Event {
         this.eventProperties,
         this.userProperties,
         this.groups,
-        this.groupProperties
+        this.groupProperties,
     )
 }

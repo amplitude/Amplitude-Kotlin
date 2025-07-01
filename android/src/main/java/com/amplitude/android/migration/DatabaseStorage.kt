@@ -43,13 +43,13 @@ object DatabaseConstants {
 class DatabaseStorage(
     context: Context,
     databaseName: String,
-    private val logger: Logger
+    private val logger: Logger,
 ) : SQLiteOpenHelper(
-    context,
-    databaseName,
-    null,
-    DatabaseConstants.DATABASE_VERSION
-) {
+        context,
+        databaseName,
+        null,
+        DatabaseConstants.DATABASE_VERSION,
+    ) {
     private var file: File = context.getDatabasePath(databaseName)
     private var isValidDatabaseFile = true
     var currentDbVersion: Int = DatabaseConstants.DATABASE_VERSION
@@ -61,7 +61,11 @@ class DatabaseStorage(
         logger.error("Attempt to re-create existing legacy database file ${file.absolutePath}")
     }
 
-    override fun onUpgrade(db: SQLiteDatabase?, oldVersion: Int, newVersion: Int) {
+    override fun onUpgrade(
+        db: SQLiteDatabase?,
+        oldVersion: Int,
+        newVersion: Int,
+    ) {
         currentDbVersion = oldVersion
     }
 
@@ -133,14 +137,15 @@ class DatabaseStorage(
                 return arrayListOf()
             }
 
-            cursor = queryDb(
-                db,
-                table,
-                arrayOf(DatabaseConstants.ID_FIELD, DatabaseConstants.EVENT_FIELD),
-                null,
-                null,
-                DatabaseConstants.ID_FIELD + " ASC",
-            )
+            cursor =
+                queryDb(
+                    db,
+                    table,
+                    arrayOf(DatabaseConstants.ID_FIELD, DatabaseConstants.EVENT_FIELD),
+                    null,
+                    null,
+                    DatabaseConstants.ID_FIELD + " ASC",
+                )
             while (cursor!!.moveToNext()) {
                 val rowId = cursor.getLong(0)
                 val event = cursor.getString(1)
@@ -153,15 +158,16 @@ class DatabaseStorage(
             }
         } catch (e: SQLiteException) {
             LogcatLogger.logger.error(
-                "read events from $table failed: ${e.message}"
+                "read events from $table failed: ${e.message}",
             )
             closeDb()
         } catch (e: StackOverflowError) {
             LogcatLogger.logger.error(
-                "read events from $table failed: ${e.message}"
+                "read events from $table failed: ${e.message}",
             )
             closeDb()
-        } catch (e: IllegalStateException) { // put before Runtime since IllegalState extends
+        } catch (e: IllegalStateException) {
+            // put before Runtime since IllegalState extends
             handleIfCursorRowTooLargeException(e)
         } catch (e: RuntimeException) {
             convertIfCursorWindowException(e)
@@ -190,22 +196,25 @@ class DatabaseStorage(
         removeEventFromTable(DatabaseConstants.IDENTIFY_INTERCEPTOR_TABLE_NAME, rowId)
     }
 
-    private fun removeEventFromTable(table: String, rowId: Long) {
+    private fun removeEventFromTable(
+        table: String,
+        rowId: Long,
+    ) {
         try {
             val db = writableDatabase
             db.delete(
                 table,
                 "${DatabaseConstants.ID_FIELD} = ?",
-                arrayOf(rowId.toString())
+                arrayOf(rowId.toString()),
             )
         } catch (e: SQLiteException) {
             LogcatLogger.logger.error(
-                "remove events from $table failed: ${e.message}"
+                "remove events from $table failed: ${e.message}",
             )
             closeDb()
         } catch (e: StackOverflowError) {
             LogcatLogger.logger.error(
-                "remove events from $table failed: ${e.message}"
+                "remove events from $table failed: ${e.message}",
             )
             closeDb()
         } finally {
@@ -223,7 +232,10 @@ class DatabaseStorage(
         return getValueFromTable(DatabaseConstants.LONG_STORE_TABLE_NAME, key) as Long?
     }
 
-    private fun getValueFromTable(table: String, key: String): Any? {
+    private fun getValueFromTable(
+        table: String,
+        key: String,
+    ): Any? {
         if (!file.exists()) {
             return null
         }
@@ -236,33 +248,35 @@ class DatabaseStorage(
                 return null
             }
 
-            cursor = queryDb(
-                db,
-                table,
-                arrayOf<String?>(
-                    DatabaseConstants.KEY_FIELD,
-                    DatabaseConstants.VALUE_FIELD
-                ),
-                DatabaseConstants.KEY_FIELD + " = ?",
-                arrayOf(key),
-                null,
-            )
+            cursor =
+                queryDb(
+                    db,
+                    table,
+                    arrayOf<String?>(
+                        DatabaseConstants.KEY_FIELD,
+                        DatabaseConstants.VALUE_FIELD,
+                    ),
+                    DatabaseConstants.KEY_FIELD + " = ?",
+                    arrayOf(key),
+                    null,
+                )
             if (cursor!!.moveToFirst()) {
                 value = if (table == DatabaseConstants.STORE_TABLE_NAME) cursor.getString(1) else cursor.getLong(1)
             }
         } catch (e: SQLiteException) {
             LogcatLogger.logger.error(
-                "getValue from $table failed: ${e.message}"
+                "getValue from $table failed: ${e.message}",
             )
             // Hard to recover from SQLiteExceptions, just start fresh
             closeDb()
         } catch (e: StackOverflowError) {
             LogcatLogger.logger.error(
-                "getValue from $table failed: ${e.message}"
+                "getValue from $table failed: ${e.message}",
             )
             // potential stack overflow error when getting database on custom Android versions
             closeDb()
-        } catch (e: IllegalStateException) { // put before Runtime since IllegalState extends
+        } catch (e: IllegalStateException) {
+            // put before Runtime since IllegalState extends
             // cursor window row too big exception
             handleIfCursorRowTooLargeException(e)
         } catch (e: RuntimeException) {
@@ -285,22 +299,25 @@ class DatabaseStorage(
         removeValueFromTable(DatabaseConstants.LONG_STORE_TABLE_NAME, key)
     }
 
-    private fun removeValueFromTable(table: String, key: String) {
+    private fun removeValueFromTable(
+        table: String,
+        key: String,
+    ) {
         try {
             val db = writableDatabase
             db.delete(
                 table,
                 "${DatabaseConstants.KEY_FIELD} = ?",
-                arrayOf(key)
+                arrayOf(key),
             )
         } catch (e: SQLiteException) {
             LogcatLogger.logger.error(
-                "remove value from $table failed: ${e.message}"
+                "remove value from $table failed: ${e.message}",
             )
             closeDb()
         } catch (e: StackOverflowError) {
             LogcatLogger.logger.error(
-                "remove value from $table failed: ${e.message}"
+                "remove value from $table failed: ${e.message}",
             )
             closeDb()
         } finally {

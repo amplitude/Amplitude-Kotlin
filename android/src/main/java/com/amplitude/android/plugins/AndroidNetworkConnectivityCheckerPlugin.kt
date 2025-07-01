@@ -19,10 +19,11 @@ class AndroidNetworkConnectivityCheckerPlugin : Plugin {
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
         amplitude.logger.debug("Installing AndroidNetworkConnectivityPlugin, offline feature should be supported.")
-        val networkConnectivityChecker = AndroidNetworkConnectivityChecker(
-            (amplitude.configuration as Configuration).context,
-            amplitude.logger
-        )
+        val networkConnectivityChecker =
+            AndroidNetworkConnectivityChecker(
+                (amplitude.configuration as Configuration).context,
+                amplitude.logger,
+            )
         amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
             amplitude.configuration.offline = !networkConnectivityChecker.isConnected()
         }
@@ -39,11 +40,12 @@ class AndroidNetworkConnectivityCheckerPlugin : Plugin {
                     amplitude.configuration.offline = true
                 }
             }
-        networkListener = AndroidNetworkListener(
-            context = (amplitude.configuration as Configuration).context,
-            logger = amplitude.logger,
-            networkCallback = networkChangeHandler
-        )
+        networkListener =
+            AndroidNetworkListener(
+                context = (amplitude.configuration as Configuration).context,
+                logger = amplitude.logger,
+                networkCallback = networkChangeHandler,
+            )
         networkListener.startListening()
     }
 

@@ -62,7 +62,10 @@ open class BaseEvent : EventOptions(), AnalyticsEvent {
         return userId != null || deviceId != null
     }
 
-    fun setEventProperty(key: String, value: Any): BaseEvent {
+    fun setEventProperty(
+        key: String,
+        value: Any,
+    ): BaseEvent {
         eventProperties = eventProperties ?: mutableMapOf()
         eventProperties?.put(key, value)
         return this

@@ -20,8 +20,6 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import io.mockk.verifyOrder
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
 import okhttp3.Interceptor.Chain
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Protocol.HTTP_1_1
@@ -30,8 +28,10 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import okio.IOException
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Test
 
 class NetworkTrackingPluginTest {
     private val mockAmplitude = mockk<Amplitude>(relaxed = true)
@@ -44,23 +44,25 @@ class NetworkTrackingPluginTest {
         ignoreAmplitudeRequests: Boolean = true,
     ) = NetworkTrackingPlugin(
         NetworkTrackingOptions(
-            captureRules = overrideCaptureRules ?: listOf(
-                CaptureRule(
-                    hosts = hosts,
-                    statusCodeRange = statusCodeRange
-                )
-            ),
+            captureRules =
+                overrideCaptureRules ?: listOf(
+                    CaptureRule(
+                        hosts = hosts,
+                        statusCodeRange = statusCodeRange,
+                    ),
+                ),
             ignoreHosts = ignoreHosts,
-            ignoreAmplitudeRequests = ignoreAmplitudeRequests
-        )
+            ignoreAmplitudeRequests = ignoreAmplitudeRequests,
+        ),
     ).apply { amplitude = mockAmplitude }
 
     @Test
     fun `successful response capture`() {
-        val plugin = networkTrackingPlugin(
-            statusCodeRange = (200..299).toList(),
-            ignoreAmplitudeRequests = false
-        )
+        val plugin =
+            networkTrackingPlugin(
+                statusCodeRange = (200..299).toList(),
+                ignoreAmplitudeRequests = false,
+            )
 
         plugin.intercept(mockInterceptorChain(200))
 
@@ -71,17 +73,18 @@ class NetworkTrackingPluginTest {
                     assertEquals("https://example.com/test", eventProperties[NETWORK_TRACKING_URL])
                     assertEquals(200, eventProperties[NETWORK_TRACKING_STATUS_CODE])
                     assertEquals(true, eventProperties[NETWORK_TRACKING_DURATION] != null)
-                }
+                },
             )
         }
     }
 
     @Test
     fun `successful response outside capture range - does not trigger trackEvent`() {
-        val plugin = networkTrackingPlugin(
-            statusCodeRange = (200..299).toList(),
-            ignoreAmplitudeRequests = false
-        )
+        val plugin =
+            networkTrackingPlugin(
+                statusCodeRange = (200..299).toList(),
+                ignoreAmplitudeRequests = false,
+            )
 
         plugin.intercept(mockInterceptorChain(404))
 
@@ -92,10 +95,11 @@ class NetworkTrackingPluginTest {
 
     @Test
     fun `failed response capture`() {
-        val plugin = networkTrackingPlugin(
-            statusCodeRange = listOf(500),
-            ignoreAmplitudeRequests = false
-        )
+        val plugin =
+            networkTrackingPlugin(
+                statusCodeRange = listOf(500),
+                ignoreAmplitudeRequests = false,
+            )
 
         plugin.intercept(mockInterceptorChain(statusCode = 500))
 
@@ -106,17 +110,18 @@ class NetworkTrackingPluginTest {
                     assertEquals("https://example.com/test", eventProperties[NETWORK_TRACKING_URL])
                     assertEquals(500, eventProperties[NETWORK_TRACKING_STATUS_CODE])
                     assertEquals(true, eventProperties[NETWORK_TRACKING_DURATION] != null)
-                }
+                },
             )
         }
     }
 
     @Test
     fun `failed response outside capture range - does not trigger trackEvent`() {
-        val plugin = networkTrackingPlugin(
-            statusCodeRange = (400..499).toList(),
-            ignoreAmplitudeRequests = false
-        )
+        val plugin =
+            networkTrackingPlugin(
+                statusCodeRange = (400..499).toList(),
+                ignoreAmplitudeRequests = false,
+            )
 
         plugin.intercept(mockInterceptorChain(500))
 
@@ -127,10 +132,11 @@ class NetworkTrackingPluginTest {
 
     @Test
     fun `local exception capture`() {
-        val plugin = networkTrackingPlugin(
-            statusCodeRange = (0..0) + (500..599),
-            ignoreAmplitudeRequests = false
-        )
+        val plugin =
+            networkTrackingPlugin(
+                statusCodeRange = (0..0) + (500..599),
+                ignoreAmplitudeRequests = false,
+            )
 
         val exception = IOException("Network error")
         try {
@@ -147,41 +153,42 @@ class NetworkTrackingPluginTest {
                     assertEquals("https://example.com/test", eventProperties[NETWORK_TRACKING_URL])
                     assertEquals("Network error", eventProperties[NETWORK_TRACKING_ERROR_MESSAGE])
                     assertEquals(true, eventProperties[NETWORK_TRACKING_DURATION] != null)
-                }
+                },
             )
         }
     }
 
     @Test
     fun `ignore hosts`() {
-        val plugin = networkTrackingPlugin(
-            statusCodeRange = (200..299).toList(),
-            ignoreAmplitudeRequests = false,
-            ignoreHosts = listOf("ignore.example.com", "*.ignore.com")
-        )
+        val plugin =
+            networkTrackingPlugin(
+                statusCodeRange = (200..299).toList(),
+                ignoreAmplitudeRequests = false,
+                ignoreHosts = listOf("ignore.example.com", "*.ignore.com"),
+            )
 
         // Test exact match ignored host
         plugin.intercept(
             mockInterceptorChain(
                 statusCode = 200,
-                url = "https://ignore.example.com/test"
-            )
+                url = "https://ignore.example.com/test",
+            ),
         )
 
         // Test wildcard match ignored host
         plugin.intercept(
             mockInterceptorChain(
                 statusCode = 200,
-                url = "https://api.ignore.com/test"
-            )
+                url = "https://api.ignore.com/test",
+            ),
         )
 
         // Test accepted/matched host
         plugin.intercept(
             mockInterceptorChain(
                 statusCode = 200,
-                url = "https://example.com/test"
-            )
+                url = "https://example.com/test",
+            ),
         )
 
         // Verify only non-ignored host request was tracked
@@ -191,27 +198,28 @@ class NetworkTrackingPluginTest {
                 withArg { eventProperties ->
                     assertEquals(
                         "https://example.com/test",
-                        eventProperties[NETWORK_TRACKING_URL]
+                        eventProperties[NETWORK_TRACKING_URL],
                     )
                     assertEquals(200, eventProperties[NETWORK_TRACKING_STATUS_CODE])
                     assertEquals(true, eventProperties[NETWORK_TRACKING_DURATION] != null)
-                }
+                },
             )
         }
     }
 
     @Test
     fun `amplitude request ignored`() {
-        val plugin = networkTrackingPlugin(
-            statusCodeRange = (200..299).toList(),
-            ignoreAmplitudeRequests = true
-        )
+        val plugin =
+            networkTrackingPlugin(
+                statusCodeRange = (200..299).toList(),
+                ignoreAmplitudeRequests = true,
+            )
 
         plugin.intercept(
             mockInterceptorChain(
                 statusCode = 200,
                 url = "https://api.amplitude.com/test",
-            )
+            ),
         )
 
         verify(exactly = 0) {
@@ -221,16 +229,17 @@ class NetworkTrackingPluginTest {
 
     @Test
     fun `amplitude request NOT ignored`() {
-        val plugin = networkTrackingPlugin(
-            statusCodeRange = (200..299).toList(),
-            ignoreAmplitudeRequests = false
-        )
+        val plugin =
+            networkTrackingPlugin(
+                statusCodeRange = (200..299).toList(),
+                ignoreAmplitudeRequests = false,
+            )
 
         plugin.intercept(
             mockInterceptorChain(
                 statusCode = 200,
-                url = "https://api.amplitude.com/test"
-            )
+                url = "https://api.amplitude.com/test",
+            ),
         )
 
         verify {
@@ -238,69 +247,72 @@ class NetworkTrackingPluginTest {
                 eq(NETWORK_TRACKING),
                 withArg { eventProperties ->
                     assertEquals(
-                        "https://api.amplitude.com/test", eventProperties[NETWORK_TRACKING_URL]
+                        "https://api.amplitude.com/test",
+                        eventProperties[NETWORK_TRACKING_URL],
                     )
                     assertEquals(200, eventProperties[NETWORK_TRACKING_STATUS_CODE])
                     assertEquals(true, eventProperties[NETWORK_TRACKING_DURATION] != null)
-                }
+                },
             )
         }
     }
 
     @Test
     fun `multiple capture rules`() {
-        val plugin = networkTrackingPlugin(
-            overrideCaptureRules = listOf(
-                CaptureRule(
-                    hosts = listOf("*"),
-                    statusCodeRange = (500..599).toList()
-                ),
-                CaptureRule(
-                    hosts = listOf("api1.example.com"),
-                    statusCodeRange = (200..299).toList()
-                ),
-                CaptureRule(
-                    hosts = listOf("api2.example.com"),
-                    statusCodeRange = (400..499).toList()
-                )
-            ),
-            ignoreAmplitudeRequests = true
-        )
+        val plugin =
+            networkTrackingPlugin(
+                overrideCaptureRules =
+                    listOf(
+                        CaptureRule(
+                            hosts = listOf("*"),
+                            statusCodeRange = (500..599).toList(),
+                        ),
+                        CaptureRule(
+                            hosts = listOf("api1.example.com"),
+                            statusCodeRange = (200..299).toList(),
+                        ),
+                        CaptureRule(
+                            hosts = listOf("api2.example.com"),
+                            statusCodeRange = (400..499).toList(),
+                        ),
+                    ),
+                ignoreAmplitudeRequests = true,
+            )
 
         // Should match second rule
         plugin.intercept(
             mockInterceptorChain(
                 statusCode = 200,
-                url = "https://api1.example.com/test"
-            )
+                url = "https://api1.example.com/test",
+            ),
         )
         // Should match third rule
         plugin.intercept(
             mockInterceptorChain(
                 statusCode = 404,
-                url = "https://api2.example.com/test"
-            )
+                url = "https://api2.example.com/test",
+            ),
         )
         // Should match first rule (wildcard)
         plugin.intercept(
             mockInterceptorChain(
                 statusCode = 503,
-                url = "https://any.domain.com/test"
-            )
+                url = "https://any.domain.com/test",
+            ),
         )
 
         // Should not match any rules (wrong status code ranges)
         plugin.intercept(
             mockInterceptorChain(
                 statusCode = 200,
-                url = "https://api2.example.com/test"
-            )
+                url = "https://api2.example.com/test",
+            ),
         )
         plugin.intercept(
             mockInterceptorChain(
                 statusCode = 404,
-                url = "https://api1.example.com/test"
-            )
+                url = "https://api1.example.com/test",
+            ),
         )
 
         verifyOrder {
@@ -308,31 +320,34 @@ class NetworkTrackingPluginTest {
                 eq(NETWORK_TRACKING),
                 withArg { eventProperties ->
                     assertEquals(
-                        "https://api1.example.com/test", eventProperties[NETWORK_TRACKING_URL]
+                        "https://api1.example.com/test",
+                        eventProperties[NETWORK_TRACKING_URL],
                     )
                     assertEquals(200, eventProperties[NETWORK_TRACKING_STATUS_CODE])
                     assertEquals(true, eventProperties[NETWORK_TRACKING_DURATION] != null)
-                }
+                },
             )
             mockAmplitude.track(
                 eq(NETWORK_TRACKING),
                 withArg { eventProperties ->
                     assertEquals(
-                        "https://api2.example.com/test", eventProperties[NETWORK_TRACKING_URL]
+                        "https://api2.example.com/test",
+                        eventProperties[NETWORK_TRACKING_URL],
                     )
                     assertEquals(404, eventProperties[NETWORK_TRACKING_STATUS_CODE])
                     assertEquals(true, eventProperties[NETWORK_TRACKING_DURATION] != null)
-                }
+                },
             )
             mockAmplitude.track(
                 eq(NETWORK_TRACKING),
                 withArg { eventProperties ->
                     assertEquals(
-                        "https://any.domain.com/test", eventProperties[NETWORK_TRACKING_URL]
+                        "https://any.domain.com/test",
+                        eventProperties[NETWORK_TRACKING_URL],
                     )
                     assertEquals(503, eventProperties[NETWORK_TRACKING_STATUS_CODE])
                     assertEquals(true, eventProperties[NETWORK_TRACKING_DURATION] != null)
-                }
+                },
             )
         }
         confirmVerified(mockAmplitude)
@@ -340,18 +355,19 @@ class NetworkTrackingPluginTest {
 
     @Test
     fun `trackEvent property correctness`() {
-        val plugin = networkTrackingPlugin(
-            statusCodeRange = (200..299).toList(),
-            ignoreAmplitudeRequests = false
-        )
+        val plugin =
+            networkTrackingPlugin(
+                statusCodeRange = (200..299).toList(),
+                ignoreAmplitudeRequests = false,
+            )
 
         val url = "https://example.com/test?param1=value1&param2=value2&param3=123#fragment"
         plugin.intercept(
             mockInterceptorChain(
                 200,
                 url = url,
-                requestBodyString = "{\"event_type\":\"other_event\"}"
-            )
+                requestBodyString = "{\"event_type\":\"other_event\"}",
+            ),
         )
 
         verify {
@@ -361,7 +377,7 @@ class NetworkTrackingPluginTest {
                     assertEquals("https://example.com/test", eventProperties[NETWORK_TRACKING_URL])
                     assertEquals(
                         "param1=value1&param2=value2&param3=123",
-                        eventProperties[NETWORK_TRACKING_URL_QUERY]
+                        eventProperties[NETWORK_TRACKING_URL_QUERY],
                     )
                     assertEquals("fragment", eventProperties[NETWORK_TRACKING_URL_FRAGMENT])
                     assertEquals("POST", eventProperties[NETWORK_TRACKING_REQUEST_METHOD])
@@ -373,17 +389,18 @@ class NetworkTrackingPluginTest {
                     assertEquals(28L, eventProperties[NETWORK_TRACKING_REQUEST_BODY_SIZE])
                     assertEquals(2L, eventProperties[NETWORK_TRACKING_RESPONSE_BODY_SIZE])
                     assertEquals(10, eventProperties.size)
-                }
+                },
             )
         }
     }
 
     @Test
     fun `trackEvent property correctness - exception`() {
-        val plugin = networkTrackingPlugin(
-            statusCodeRange = (0..0) + (500..599),
-            ignoreAmplitudeRequests = false
-        )
+        val plugin =
+            networkTrackingPlugin(
+                statusCodeRange = (0..0) + (500..599),
+                ignoreAmplitudeRequests = false,
+            )
 
         val exception = IOException("Network error")
         try {
@@ -407,17 +424,18 @@ class NetworkTrackingPluginTest {
                     assertNotNull(eventProperties[NETWORK_TRACKING_DURATION])
                     assertEquals(2L, eventProperties[NETWORK_TRACKING_REQUEST_BODY_SIZE])
                     assertNull(eventProperties[NETWORK_TRACKING_RESPONSE_BODY_SIZE])
-                }
+                },
             )
         }
     }
 
     @Test
     fun `large request body`() {
-        val plugin = networkTrackingPlugin(
-            statusCodeRange = (200..299).toList(),
-            ignoreAmplitudeRequests = false
-        )
+        val plugin =
+            networkTrackingPlugin(
+                statusCodeRange = (200..299).toList(),
+                ignoreAmplitudeRequests = false,
+            )
 
         val largeBody = "a".repeat(10_000)
         plugin.intercept(mockInterceptorChain(200, requestBodyString = largeBody))
@@ -430,17 +448,18 @@ class NetworkTrackingPluginTest {
                     assertEquals(200, eventProperties[NETWORK_TRACKING_STATUS_CODE])
                     assertEquals(true, eventProperties[NETWORK_TRACKING_DURATION] != null)
                     assertEquals(10_000L, eventProperties[NETWORK_TRACKING_REQUEST_BODY_SIZE])
-                }
+                },
             )
         }
     }
 
     @Test
     fun `empty request body`() {
-        val plugin = networkTrackingPlugin(
-            statusCodeRange = (200..299).toList(),
-            ignoreAmplitudeRequests = false
-        )
+        val plugin =
+            networkTrackingPlugin(
+                statusCodeRange = (200..299).toList(),
+                ignoreAmplitudeRequests = false,
+            )
 
         plugin.intercept(mockInterceptorChain(200, requestBodyString = ""))
 
@@ -452,32 +471,33 @@ class NetworkTrackingPluginTest {
                     assertEquals(200, eventProperties[NETWORK_TRACKING_STATUS_CODE])
                     assertEquals(true, eventProperties[NETWORK_TRACKING_DURATION] != null)
                     assertEquals(0L, eventProperties[NETWORK_TRACKING_REQUEST_BODY_SIZE])
-                }
+                },
             )
         }
     }
 
     @Test
     fun `only capture amplitude API requests`() {
-        val plugin = networkTrackingPlugin(
-            statusCodeRange = (200..299).toList(),
-            ignoreAmplitudeRequests = false
+        val plugin =
+            networkTrackingPlugin(
+                statusCodeRange = (200..299).toList(),
+                ignoreAmplitudeRequests = false,
+            )
+
+        plugin.intercept(
+            mockInterceptorChain(
+                statusCode = 200,
+                url = "https://test.amplitude.com/api",
+                requestBodyString = "{\"event_type\":\"other_event\"}",
+            ),
         )
 
         plugin.intercept(
             mockInterceptorChain(
                 statusCode = 200,
                 url = "https://test.amplitude.com/api",
-                requestBodyString = "{\"event_type\":\"other_event\"}"
-            )
-        )
-
-        plugin.intercept(
-            mockInterceptorChain(
-                statusCode = 200,
-                url = "https://test.amplitude.com/api",
-                requestBodyString = "{\"event_type\":\"$NETWORK_TRACKING\"}"
-            )
+                requestBodyString = "{\"event_type\":\"$NETWORK_TRACKING\"}",
+            ),
         )
 
         // we're expecting only the API event to be tracked,
@@ -487,28 +507,30 @@ class NetworkTrackingPluginTest {
                 eq(NETWORK_TRACKING),
                 withArg { eventProperties ->
                     assertEquals(
-                        "https://test.amplitude.com/api", eventProperties[NETWORK_TRACKING_URL]
+                        "https://test.amplitude.com/api",
+                        eventProperties[NETWORK_TRACKING_URL],
                     )
                     assertEquals(200, eventProperties[NETWORK_TRACKING_STATUS_CODE])
                     assertEquals(true, eventProperties[NETWORK_TRACKING_DURATION] != null)
-                }
+                },
             )
         }
     }
 
     @Test
     fun `network tracking events are NOT captured`() {
-        val plugin = networkTrackingPlugin(
-            statusCodeRange = (200..299).toList(),
-            ignoreAmplitudeRequests = false
-        )
+        val plugin =
+            networkTrackingPlugin(
+                statusCodeRange = (200..299).toList(),
+                ignoreAmplitudeRequests = false,
+            )
 
         plugin.intercept(
             mockInterceptorChain(
                 statusCode = 200,
                 url = "https://api.example.com/test",
-                requestBodyString = "{\"event_type\":\"$NETWORK_TRACKING\"}"
-            )
+                requestBodyString = "{\"event_type\":\"$NETWORK_TRACKING\"}",
+            ),
         )
 
         verify(exactly = 0) {
@@ -516,28 +538,30 @@ class NetworkTrackingPluginTest {
                 eq(NETWORK_TRACKING),
                 withArg { eventProperties ->
                     assertEquals(
-                        "https://api.example.com/test", eventProperties[NETWORK_TRACKING_URL]
+                        "https://api.example.com/test",
+                        eventProperties[NETWORK_TRACKING_URL],
                     )
                     assertEquals(200, eventProperties[NETWORK_TRACKING_STATUS_CODE])
                     assertEquals(true, eventProperties[NETWORK_TRACKING_DURATION] != null)
-                }
+                },
             )
         }
     }
 
     @Test
     fun `mask sensitive URL params with fragment`() {
-        val plugin = networkTrackingPlugin(
-            statusCodeRange = (200..299).toList(),
-            ignoreAmplitudeRequests = false
-        )
+        val plugin =
+            networkTrackingPlugin(
+                statusCodeRange = (200..299).toList(),
+                ignoreAmplitudeRequests = false,
+            )
 
         val url = "https://example.com/test?username=johndoe&password=1234#email"
         plugin.intercept(
             mockInterceptorChain(
                 statusCode = 200,
-                url = url
-            )
+                url = url,
+            ),
         )
 
         verify {
@@ -546,34 +570,35 @@ class NetworkTrackingPluginTest {
                 withArg { eventProperties ->
                     assertEquals(
                         "https://example.com/test",
-                        eventProperties[NETWORK_TRACKING_URL]
+                        eventProperties[NETWORK_TRACKING_URL],
                     )
                     assertEquals(
                         "username=[mask]&password=[mask]",
-                        eventProperties[NETWORK_TRACKING_URL_QUERY]
+                        eventProperties[NETWORK_TRACKING_URL_QUERY],
                     )
                     assertEquals(
                         "email",
-                        eventProperties[NETWORK_TRACKING_URL_FRAGMENT]
+                        eventProperties[NETWORK_TRACKING_URL_FRAGMENT],
                     )
-                }
+                },
             )
         }
     }
 
     @Test
     fun `mask sensitive URL params with empty query`() {
-        val plugin = networkTrackingPlugin(
-            statusCodeRange = (200..299).toList(),
-            ignoreAmplitudeRequests = false
-        )
+        val plugin =
+            networkTrackingPlugin(
+                statusCodeRange = (200..299).toList(),
+                ignoreAmplitudeRequests = false,
+            )
 
         val url = "https://example.com/test"
         plugin.intercept(
             mockInterceptorChain(
                 statusCode = 200,
-                url = url
-            )
+                url = url,
+            ),
         )
 
         verify {
@@ -582,26 +607,27 @@ class NetworkTrackingPluginTest {
                 withArg { eventProperties ->
                     assertEquals(
                         "https://example.com/test",
-                        eventProperties[NETWORK_TRACKING_URL]
+                        eventProperties[NETWORK_TRACKING_URL],
                     )
-                }
+                },
             )
         }
     }
 
     @Test
     fun `mask sensitive URL params with credentials only`() {
-        val plugin = networkTrackingPlugin(
-            statusCodeRange = (200..299).toList(),
-            ignoreAmplitudeRequests = false
-        )
+        val plugin =
+            networkTrackingPlugin(
+                statusCodeRange = (200..299).toList(),
+                ignoreAmplitudeRequests = false,
+            )
 
         val url = "https://sample_username:sample_password@example.com/test"
         plugin.intercept(
             mockInterceptorChain(
                 statusCode = 200,
-                url = url
-            )
+                url = url,
+            ),
         )
 
         verify {
@@ -610,9 +636,9 @@ class NetworkTrackingPluginTest {
                 withArg { eventProperties ->
                     assertEquals(
                         "https://mask:mask@example.com/test",
-                        eventProperties[NETWORK_TRACKING_URL]
+                        eventProperties[NETWORK_TRACKING_URL],
                     )
-                }
+                },
             )
         }
     }
@@ -624,29 +650,32 @@ class NetworkTrackingPluginTest {
         requestBodyString: String = "{}",
     ): Chain {
         val requestBody = requestBodyString.toRequestBody("application/json".toMediaType())
-        val mockRequest = Builder()
-            .post(requestBody)
-            .url(url)
-            .build()
+        val mockRequest =
+            Builder()
+                .post(requestBody)
+                .url(url)
+                .build()
 
         val statusMessage = if (statusCode in 200..299) "OK" else "Error"
         val emptyResponseBody = "{}".toResponseBody("application/json".toMediaType())
-        val mockResponse = Response.Builder()
-            .request(mockRequest)
-            .protocol(HTTP_1_1)
-            .body(emptyResponseBody)
-            .code(statusCode)
-            .message(statusMessage)
-            .build()
+        val mockResponse =
+            Response.Builder()
+                .request(mockRequest)
+                .protocol(HTTP_1_1)
+                .body(emptyResponseBody)
+                .code(statusCode)
+                .message(statusMessage)
+                .build()
 
-        val mockChain = mockk<Chain> {
-            every { request() } returns mockRequest
-            if (exception == null) {
-                every { proceed(mockRequest) } returns mockResponse
-            } else {
-                every { proceed(mockRequest) } throws exception
+        val mockChain =
+            mockk<Chain> {
+                every { request() } returns mockRequest
+                if (exception == null) {
+                    every { proceed(mockRequest) } returns mockResponse
+                } else {
+                    every { proceed(mockRequest) } throws exception
+                }
             }
-        }
         return mockChain
     }
 }

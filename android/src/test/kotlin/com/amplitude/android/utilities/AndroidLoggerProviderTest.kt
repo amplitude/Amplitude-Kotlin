@@ -25,14 +25,15 @@ class AndroidLoggerProviderTest {
         val context = mockk<Application>(relaxed = true)
         every { context.getDir(any(), any()) } returns File(tempDir!!.absolutePathString())
 
-        val amplitude = Amplitude(
-            Configuration(
-                testApiKey,
-                context = context,
-                identifyInterceptStorageProvider = InMemoryStorageProvider(),
-                identityStorageProvider = IMIdentityStorageProvider(),
+        val amplitude =
+            Amplitude(
+                Configuration(
+                    testApiKey,
+                    context = context,
+                    identifyInterceptStorageProvider = InMemoryStorageProvider(),
+                    identityStorageProvider = IMIdentityStorageProvider(),
+                ),
             )
-        )
         val loggerProvider = AndroidLoggerProvider()
         val logger1 = loggerProvider.getLogger(amplitude)
         val logger2 = loggerProvider.getLogger(amplitude)

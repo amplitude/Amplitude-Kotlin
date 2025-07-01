@@ -46,7 +46,7 @@ class AndroidStorageV2(
             storageKey,
             AndroidKVS(sharedPreferences),
             logger,
-            diagnostics
+            diagnostics,
         )
     private val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
 
@@ -159,10 +159,11 @@ class AndroidIdentifyInterceptStorageProviderV2 : StorageProvider {
         prefix: String?,
     ): Storage {
         val configuration = amplitude.configuration as com.amplitude.android.Configuration
-        val sharedPreferences = configuration.context.getSharedPreferences(
-            "amplitude-identify-intercept-${configuration.instanceName}",
-            Context.MODE_PRIVATE
-        )
+        val sharedPreferences =
+            configuration.context.getSharedPreferences(
+                "amplitude-identify-intercept-${configuration.instanceName}",
+                Context.MODE_PRIVATE,
+            )
         return AndroidStorageV2(
             configuration.instanceName,
             configuration.loggerProvider.getLogger(amplitude),

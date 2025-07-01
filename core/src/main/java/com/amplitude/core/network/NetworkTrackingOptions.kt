@@ -13,11 +13,12 @@ data class NetworkTrackingOptions(
     companion object {
         val DEFAULT by lazy {
             NetworkTrackingOptions(
-                captureRules = listOf(
-                    CaptureRule(
-                        hosts = listOf(STAR_WILDCARD)
-                    )
-                )
+                captureRules =
+                    listOf(
+                        CaptureRule(
+                            hosts = listOf(STAR_WILDCARD),
+                        ),
+                    ),
             )
         }
     }

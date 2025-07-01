@@ -37,10 +37,11 @@ class FileIdentityStorage(val configuration: IdentityConfiguration) : IdentitySt
 
     private fun safetyCheck() {
         if (!(
-            safeForKey(API_KEY, configuration.apiKey) && safeForKey(
-                    EXPERIMENT_API_KEY,
-                    configuration.experimentApiKey
-                )
+                safeForKey(API_KEY, configuration.apiKey) &&
+                    safeForKey(
+                        EXPERIMENT_API_KEY,
+                        configuration.experimentApiKey,
+                    )
             )
         ) {
             // api key not matching saved one, clear current value
@@ -54,7 +55,10 @@ class FileIdentityStorage(val configuration: IdentityConfiguration) : IdentitySt
         }
     }
 
-    private fun safeForKey(apiKey: String, configValue: String?): Boolean {
+    private fun safeForKey(
+        apiKey: String,
+        configValue: String?,
+    ): Boolean {
         if (configValue == null) {
             return true
         }

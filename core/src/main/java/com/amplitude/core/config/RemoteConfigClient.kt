@@ -1,4 +1,3 @@
 package com.amplitude.core.config
 
-class RemoteConfigClient {
-}
+class RemoteConfigClient

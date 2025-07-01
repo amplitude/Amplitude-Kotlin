@@ -14,7 +14,11 @@ interface IdentifyInterceptStorageHandler {
     suspend fun clearIdentifyIntercepts()
 
     companion object {
-        fun getIdentifyInterceptStorageHandler(storage: Storage, logger: Logger, amplitude: Amplitude): IdentifyInterceptStorageHandler? {
+        fun getIdentifyInterceptStorageHandler(
+            storage: Storage,
+            logger: Logger,
+            amplitude: Amplitude,
+        ): IdentifyInterceptStorageHandler? {
             return when (storage) {
                 is EventsFileStorage -> {
                     IdentifyInterceptFileStorageHandler(storage, logger, amplitude)

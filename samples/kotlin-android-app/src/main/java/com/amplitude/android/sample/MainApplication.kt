@@ -21,26 +21,29 @@ class MainApplication : Application() {
         super.onCreate()
 
         val httpClient = CustomOkHttpClient()
-        val configuration = Configuration(
-            apiKey = AMPLITUDE_API_KEY,
-            context = applicationContext,
-            autocapture = autocaptureOptions {
-                +sessions
-                +appLifecycles
-                +deepLinks
-                +screenViews
-            },
-            httpClient = httpClient,
-        )
+        val configuration =
+            Configuration(
+                apiKey = AMPLITUDE_API_KEY,
+                context = applicationContext,
+                autocapture =
+                    autocaptureOptions {
+                        +sessions
+                        +appLifecycles
+                        +deepLinks
+                        +screenViews
+                    },
+                httpClient = httpClient,
+            )
         httpClient.initialize(configuration)
 
         // init instance
         amplitude = Amplitude(configuration)
 
         // Sample for Experiment Integration
-        val experimentConfig = ExperimentConfig.builder()
-            .debug(true)
-            .build()
+        val experimentConfig =
+            ExperimentConfig.builder()
+                .debug(true)
+                .build()
 
         val experimentClient = Experiment.initializeWithAmplitudeAnalytics(this, EXPERIMENT_API_KEY, experimentConfig)
 
@@ -54,16 +57,18 @@ class MainApplication : Application() {
         amplitude.logger.logMode = Logger.LogMode.DEBUG
 
         // add sample plugin
-        amplitude.add(object : Plugin {
-            override val type: Plugin.Type = Plugin.Type.Enrichment
-            override lateinit var amplitude: com.amplitude.core.Amplitude
+        amplitude.add(
+            object : Plugin {
+                override val type: Plugin.Type = Plugin.Type.Enrichment
+                override lateinit var amplitude: com.amplitude.core.Amplitude
 
-            override fun execute(event: BaseEvent): BaseEvent {
-                event.eventProperties = event.eventProperties ?: mutableMapOf()
-                event.eventProperties?.put("custom android event property", "test")
-                return event
-            }
-        })
+                override fun execute(event: BaseEvent): BaseEvent {
+                    event.eventProperties = event.eventProperties ?: mutableMapOf()
+                    event.eventProperties?.put("custom android event property", "test")
+                    return event
+                }
+            },
+        )
 
         // add the trouble shooting plugin for debugging
         amplitude.add(TroubleShootingPlugin())

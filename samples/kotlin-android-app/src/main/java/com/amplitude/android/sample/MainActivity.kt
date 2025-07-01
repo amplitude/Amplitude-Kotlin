@@ -35,10 +35,11 @@ class MainActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         amplitude.identify(
-            identify = Identify().apply {
-                set("test", "test value")
-            },
-            options = EventOptions()
+            identify =
+                Identify().apply {
+                    set("test", "test value")
+                },
+            options = EventOptions(),
         )
     }
 }
