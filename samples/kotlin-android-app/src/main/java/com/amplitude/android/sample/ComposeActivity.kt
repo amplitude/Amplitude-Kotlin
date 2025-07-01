@@ -42,7 +42,7 @@ class ComposeActivity : ComponentActivity() {
             MaterialTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    color = MaterialTheme.colorScheme.background,
                 ) {
                     ComposeView()
                 }
@@ -54,17 +54,20 @@ class ComposeActivity : ComponentActivity() {
     @Composable
     fun ComposeView() {
         val context = LocalContext.current
-        val label = remember {
-            if (context is ComponentActivity) {
-                val activityInfo = context.packageManager.getActivityInfo(
-                    context.componentName, 0
-                )
-                activityInfo.loadLabel(context.packageManager).toString()
-            } else {
-                // Fallback for Compose Preview or non-Activity context
-                "Compose - Basic Event"
+        val label =
+            remember {
+                if (context is ComponentActivity) {
+                    val activityInfo =
+                        context.packageManager.getActivityInfo(
+                            context.componentName,
+                            0,
+                        )
+                    activityInfo.loadLabel(context.packageManager).toString()
+                } else {
+                    // Fallback for Compose Preview or non-Activity context
+                    "Compose - Basic Event"
+                }
             }
-        }
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -73,29 +76,30 @@ class ComposeActivity : ComponentActivity() {
                         IconButton(onClick = { (context as? ComponentActivity)?.finish() }) {
                             Icon(
                                 imageVector = Filled.ArrowBack,
-                                contentDescription = "Back"
+                                contentDescription = "Back",
                             )
                         }
-                    }
+                    },
                 )
             },
-            modifier = Modifier.padding(32.dp)
+            modifier = Modifier.padding(32.dp),
         ) { innerPadding ->
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
             ) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxSize(),
+                    modifier =
+                        Modifier
+                            .fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                    verticalArrangement = Arrangement.Center,
                 ) {
-
                     Text(
                         text = "Welcome to Kotlin Android example!",
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier.padding(16.dp),
                     )
 
                     Button(
@@ -103,13 +107,15 @@ class ComposeActivity : ComponentActivity() {
                             val options = EventOptions()
                             options.plan = Plan(branch = "test")
                             amplitude.track(
-                                "test event properties", mapOf("test" to "test event property value"),
-                                options
+                                "test event properties",
+                                mapOf("test" to "test event property value"),
+                                options,
                             )
                         },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp)
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp),
                     ) {
                         Text("Send Event")
                     }
@@ -119,12 +125,14 @@ class ComposeActivity : ComponentActivity() {
                             val intent = Intent(this@ComposeActivity, ComposeAdvancedActivity::class.java)
                             startActivity(intent)
                         },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF03A9F4)
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("advanced_events_button")
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF03A9F4),
+                            ),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .testTag("advanced_events_button"),
                     ) {
                         Text("Advanced Events")
                     }
