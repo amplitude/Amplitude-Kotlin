@@ -15,18 +15,20 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Kotlinsdk">
         <activity
-            android:name=".AdvancedActivity"
-            android:label="Advanced Events"
-            android:exported="false" />
-        <activity
-            android:name=".MainActivity"
-            android:label="Basic Event"
-            android:exported="true">
+            android:name=".LauncherActivity"
+            android:label="Amplitude SDK Sample"
+            android:exported="true"
+            android:theme="@style/Theme.Kotlinsdk">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+        <activity
+            android:name=".XmlViewActivity"
+            android:label="XML View - Basic Event"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
 
@@ -38,6 +40,18 @@
                     android:scheme="app" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".ComposeActivity"
+            android:label="Compose - Basic Event"
+            android:exported="false" />
+        <activity
+            android:name=".XmlAdvancedActivity"
+            android:label="XML View - Advanced Events"
+            android:exported="false" />
+        <activity
+            android:name=".ComposeAdvancedActivity"
+            android:label="Compose - Advanced Events"
+            android:exported="false" />
 
         <meta-data
             android:name="com.google.android.gms.ads.AD_MANAGER_APP"
