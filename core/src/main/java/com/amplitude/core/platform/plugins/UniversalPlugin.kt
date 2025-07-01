@@ -4,6 +4,7 @@ import com.amplitude.core.context.AmplitudeContext
 
 interface UniversalPlugin {
     val name: String?
+        get() = null
 
     fun setup(
         analyticsClient: AnalyticsClient,

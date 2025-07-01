@@ -34,7 +34,6 @@ class TimelineTest {
      */
     private class FakePlugin(
         override val type: Plugin.Type,
-        override val name: String = "FakePlugin",
     ) : Plugin {
         override lateinit var amplitude: Amplitude
         val executeCallCount = AtomicInteger(0)
@@ -103,8 +102,8 @@ class TimelineTest {
 
     @Test
     fun `add multiple plugins of same type should add to same mediator`() {
-        val plugin1 = FakePlugin(Plugin.Type.Before, "Plugin1")
-        val plugin2 = FakePlugin(Plugin.Type.Before, "Plugin2")
+        val plugin1 = FakePlugin(Plugin.Type.Before)
+        val plugin2 = FakePlugin(Plugin.Type.Before)
 
         timeline.add(plugin1)
         timeline.add(plugin2)
@@ -114,10 +113,10 @@ class TimelineTest {
 
     @Test
     fun `add plugins of different types should add to different mediators`() {
-        val beforePlugin = FakePlugin(Plugin.Type.Before, "BeforePlugin")
-        val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment, "EnrichmentPlugin")
-        val destinationPlugin = FakePlugin(Plugin.Type.Destination, "DestinationPlugin")
-        val utilityPlugin = FakePlugin(Plugin.Type.Utility, "UtilityPlugin")
+        val beforePlugin = FakePlugin(Plugin.Type.Before)
+        val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment)
+        val destinationPlugin = FakePlugin(Plugin.Type.Destination)
+        val utilityPlugin = FakePlugin(Plugin.Type.Utility)
 
         timeline.add(beforePlugin)
         timeline.add(enrichmentPlugin)
@@ -132,8 +131,8 @@ class TimelineTest {
 
     @Test
     fun `process event should execute all plugin stages in order`() {
-        val beforePlugin = FakePlugin(Plugin.Type.Before, "BeforePlugin")
-        val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment, "EnrichmentPlugin")
+        val beforePlugin = FakePlugin(Plugin.Type.Before)
+        val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment)
         val destinationPlugin = FakeDestinationPlugin("DestinationPlugin")
 
         timeline.add(beforePlugin)
@@ -185,8 +184,8 @@ class TimelineTest {
 
     @Test
     fun `process event should return early when enrichment plugin returns null`() {
-        val beforePlugin = FakePlugin(Plugin.Type.Before, "BeforePlugin")
-        val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment, "EnrichmentPlugin")
+        val beforePlugin = FakePlugin(Plugin.Type.Before)
+        val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment)
         enrichmentPlugin.shouldReturnNull = true
         val destinationPlugin = FakeDestinationPlugin()
 
@@ -206,8 +205,8 @@ class TimelineTest {
 
     @Test
     fun `process event should continue when destination plugin returns null`() {
-        val beforePlugin = FakePlugin(Plugin.Type.Before, "BeforePlugin")
-        val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment, "EnrichmentPlugin")
+        val beforePlugin = FakePlugin(Plugin.Type.Before)
+        val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment)
         val destinationPlugin = FakeDestinationPlugin()
         destinationPlugin.shouldReturnNull = true
 
@@ -237,8 +236,8 @@ class TimelineTest {
 
     @Test
     fun `applyPlugins should execute plugins and return result`() {
-        val plugin1 = FakePlugin(Plugin.Type.Before, "Plugin1")
-        val plugin2 = FakePlugin(Plugin.Type.Before, "Plugin2")
+        val plugin1 = FakePlugin(Plugin.Type.Before)
+        val plugin2 = FakePlugin(Plugin.Type.Before)
         val modifiedEvent = BaseEvent()
         modifiedEvent.eventType = "modified_event"
         plugin2.returnEvent = modifiedEvent
@@ -273,8 +272,8 @@ class TimelineTest {
 
     @Test
     fun `remove plugin should remove from all mediators and call teardown`() {
-        val beforePlugin = FakePlugin(Plugin.Type.Before, "TestPluginBefore")
-        val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment, "TestPluginEnrichment")
+        val beforePlugin = FakePlugin(Plugin.Type.Before)
+        val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment)
 
         timeline.add(beforePlugin)
         timeline.add(enrichmentPlugin)
@@ -298,8 +297,8 @@ class TimelineTest {
 
     @Test
     fun `applyClosure should apply closure to all plugins`() {
-        val beforePlugin = FakePlugin(Plugin.Type.Before, "BeforePlugin")
-        val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment, "EnrichmentPlugin")
+        val beforePlugin = FakePlugin(Plugin.Type.Before)
+        val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment)
         val destinationPlugin = FakeDestinationPlugin("DestinationPlugin")
 
         timeline.add(beforePlugin)
@@ -328,9 +327,9 @@ class TimelineTest {
 
     @Test
     fun `process should handle exceptions gracefully`() {
-        val beforePlugin = FakePlugin(Plugin.Type.Before, "BeforePlugin")
+        val beforePlugin = FakePlugin(Plugin.Type.Before)
         beforePlugin.shouldThrowException = true
-        val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment, "EnrichmentPlugin")
+        val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment)
 
         timeline.add(beforePlugin)
         timeline.add(enrichmentPlugin)
@@ -347,8 +346,8 @@ class TimelineTest {
 
     @Test
     fun `process should handle destination plugin exceptions gracefully`() {
-        val beforePlugin = FakePlugin(Plugin.Type.Before, "BeforePlugin")
-        val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment, "EnrichmentPlugin")
+        val beforePlugin = FakePlugin(Plugin.Type.Before)
+        val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment)
         val destinationPlugin = FakeDestinationPlugin()
         destinationPlugin.shouldThrowException = true
 
@@ -369,8 +368,8 @@ class TimelineTest {
 
     @Test
     fun `process should work with IdentifyEvent`() {
-        val beforePlugin = FakePlugin(Plugin.Type.Before, "BeforePlugin")
-        val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment, "EnrichmentPlugin")
+        val beforePlugin = FakePlugin(Plugin.Type.Before)
+        val enrichmentPlugin = FakePlugin(Plugin.Type.Enrichment)
         val destinationPlugin = FakeDestinationPlugin()
 
         timeline.add(beforePlugin)

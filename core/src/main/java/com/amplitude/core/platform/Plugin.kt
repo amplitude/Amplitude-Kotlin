@@ -8,9 +8,6 @@ import com.amplitude.core.events.RevenueEvent
 import com.amplitude.core.platform.plugins.UniversalPlugin
 
 interface Plugin : UniversalPlugin {
-    override val name: String?
-        get() = this::class.simpleName
-
     enum class Type {
         Before,
         Enrichment,
@@ -52,7 +49,7 @@ interface EventPlugin : Plugin {
         return payload
     }
 
-    open fun flush() {}
+    fun flush() {}
 }
 
 abstract class DestinationPlugin : EventPlugin {
