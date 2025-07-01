@@ -31,7 +31,7 @@ class AutocaptureGestureListenerClickTest {
         val logger = mockk<Logger>(relaxed = true)
         val context = mockk<Context>()
         val window = mockk<Window>(relaxed = true)
-        val track = mockk<(String, Map<String, Any?>) -> Unit>(relaxed = true)
+        val track = mockk<(String, Map<String, Any>) -> Unit>(relaxed = true)
 
         lateinit var target: View
         lateinit var invalidTarget: View
@@ -145,11 +145,11 @@ class AutocaptureGestureListenerClickTest {
                     "[Amplitude] Action" to "touch",
                     "[Amplitude] Target Class" to "android.view.View",
                     "[Amplitude] Target Resource" to "test_button",
-                    "[Amplitude] Target Tag" to null,
-                    "[Amplitude] Target Text" to null,
+                    "[Amplitude] Target Tag" to "",
+                    "[Amplitude] Target Text" to "",
                     "[Amplitude] Target Source" to "Android View",
                     "[Amplitude] Hierarchy" to "View",
-                    "[Amplitude] Screen Name" to null,
+                    "[Amplitude] Screen Name" to "",
                 ),
             )
         }

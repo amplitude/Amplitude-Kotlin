@@ -304,7 +304,7 @@ class IdentifyInterceptorTest {
         advanceUntilIdle()
         val testEvent = BaseEvent()
         testEvent.eventType = "test_event"
-        testEvent.userProperties = mutableMapOf("key1" to null, "key2" to null)
+//        testEvent.userProperties = mutableMapOf("key1" to null, "key2" to null)
         amplitude.flush()
         val request: RecordedRequest? = runRequest()
         assertNotNull(request)

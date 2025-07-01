@@ -76,7 +76,7 @@ internal class AmplitudeTest {
                 )
             )
             amplitude.isBuilt.invokeOnCompletion {
-                assertEquals(deviceId, amplitude.store.deviceId)
+                assertEquals(deviceId, amplitude.identity.deviceId)
                 assertEquals(deviceId, amplitude.getDeviceId())
             }
         }
@@ -344,8 +344,8 @@ internal class AmplitudeTest {
 
         @Test
         fun `event runs through chain of plugins`() {
-            val testPlugin1 = TestRunPlugin {}
-            val testPlugin2 = TestRunPlugin {}
+            val testPlugin1 = TestRunPlugin("testPlugin1") {}
+            val testPlugin2 = TestRunPlugin("testPlugin2") {}
             amplitude
                 .add(testPlugin1)
                 .add(testPlugin2)

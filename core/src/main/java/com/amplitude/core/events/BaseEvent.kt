@@ -61,4 +61,10 @@ open class BaseEvent : EventOptions(), AnalyticsEvent {
     open fun isValid(): Boolean {
         return userId != null || deviceId != null
     }
+
+    fun setEventProperty(key: String, value: Any): BaseEvent {
+        eventProperties = eventProperties ?: mutableMapOf()
+        eventProperties?.put(key, value)
+        return this
+    }
 }

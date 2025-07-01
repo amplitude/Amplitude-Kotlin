@@ -115,15 +115,15 @@ class AmplitudeTest {
         amplitude.setUserId("test user")
         amplitude.setDeviceId("test device")
         advanceUntilIdle()
-        assertEquals("test user", amplitude.store.userId)
-        assertEquals("test device", amplitude.store.deviceId)
+        assertEquals("test user", amplitude.identity.userId)
+        assertEquals("test device", amplitude.identity.deviceId)
         assertEquals("test user", amplitude.getUserId())
         assertEquals("test device", amplitude.getDeviceId())
 
         amplitude.reset()
         advanceUntilIdle()
-        assertNull(amplitude.store.userId)
-        assertNotEquals("test device", amplitude.store.deviceId)
+        assertNull(amplitude.identity.userId)
+        assertNotEquals("test device", amplitude.identity.deviceId)
         assertNull(amplitude.getUserId())
         assertNotEquals("test device", amplitude.getDeviceId())
     }
@@ -214,7 +214,7 @@ class AmplitudeTest {
             configuration = createConfiguration()
         )
         amplitude.isBuilt.await()
-        assertNotNull(amplitude.store.deviceId)
+        assertNotNull(amplitude.identity.deviceId)
         assertNotNull(amplitude.getDeviceId())
     }
 
@@ -230,7 +230,7 @@ class AmplitudeTest {
         )
 
         amplitude.isBuilt.await()
-        assertEquals(testDeviceId, amplitude.store.deviceId)
+        assertEquals(testDeviceId, amplitude.identity.deviceId)
         assertEquals(testDeviceId, amplitude.getDeviceId())
     }
 

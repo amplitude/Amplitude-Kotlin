@@ -48,7 +48,6 @@ class IdentifyInterceptTest {
         testScope = TestScope(testDispatcher)
         amplitude = Amplitude(
             Configuration(testApiKey, plan = plan, ingestionMetadata = ingestionMetadata, serverUrl = server.url("/").toString()),
-            State(),
             testScope,
             testDispatcher,
             testDispatcher,

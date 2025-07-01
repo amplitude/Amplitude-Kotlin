@@ -34,7 +34,7 @@ internal class Mediator(
                             }
                             else -> {
                                 plugin.execute(currentEvent)
-                                (plugin as? Plugin)?.execute(currentEvent) ?: currentEvent
+                                (plugin as? Plugin)?.execute(currentEvent)
                             }
                         }
                     } catch (e: Exception) {

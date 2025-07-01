@@ -265,7 +265,7 @@ class MigrationManagerTest {
 
     private fun getBaseEvent(
         eventType: String,
-        userProperties: MutableMap<String, Any?> = mutableMapOf()
+        userProperties: MutableMap<String, Any> = mutableMapOf()
     ): BaseEvent {
         return BaseEvent().apply {
             this.eventType = eventType

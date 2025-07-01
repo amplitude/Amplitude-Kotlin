@@ -41,6 +41,13 @@ open class Timeline(
     }
 
     fun add(plugin: UniversalPlugin) {
+        plugin.setup(
+            analyticsClient = amplitude,
+            amplitudeContext = amplitude.amplitudeContext
+        )
+        if (plugin is Plugin) {
+            plugin.setup(amplitude)
+        }
         plugin.name?.let { name ->
             if (pluginsByName.contains(name)) return
             pluginsByName[name] = plugin

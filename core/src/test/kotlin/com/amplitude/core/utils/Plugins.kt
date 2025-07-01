@@ -13,7 +13,10 @@ open class StubPlugin : EventPlugin {
     override lateinit var amplitude: Amplitude
 }
 
-class TestRunPlugin(var closure: (BaseEvent?) -> Unit) : EventPlugin {
+class TestRunPlugin(
+    override val name: String? = null,
+    var closure: (BaseEvent?) -> Unit
+) : EventPlugin {
     override val type: Plugin.Type = Plugin.Type.Before
     override lateinit var amplitude: Amplitude
     var ran = false

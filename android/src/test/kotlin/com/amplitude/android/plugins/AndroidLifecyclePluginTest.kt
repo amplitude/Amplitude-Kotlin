@@ -48,8 +48,8 @@ class AndroidLifecyclePluginTest {
 
     private val mockedPackageManager = mockk<PackageManager>()
     private val packageInfo = PackageInfo().apply {
-        versionCode = 66
-        versionName = "6.0.0"
+        versionCode = 666
+        versionName = "6.6.6"
     }
 
     private val testDispatcher = StandardTestDispatcher()
@@ -104,7 +104,6 @@ class AndroidLifecyclePluginTest {
             mockedAmplitude.track(
                 EventTypes.APPLICATION_INSTALLED,
                 any(),
-                any()
             )
         }
 
@@ -153,7 +152,6 @@ class AndroidLifecyclePluginTest {
             mockedAmplitude.track(
                 EventTypes.APPLICATION_UPDATED,
                 any(),
-                any()
             )
         }
 
@@ -290,9 +288,8 @@ class AndroidLifecyclePluginTest {
         advanceUntilIdle()
         verify(exactly = 1) {
             mockedAmplitude.track(
-                eq(EventTypes.APPLICATION_OPENED),
-                match { param -> param.values.first() == false },
-                any()
+                eventType = eq(EventTypes.APPLICATION_OPENED),
+                eventProperties = match { param -> param.values.first() == false },
             )
         }
 
@@ -300,9 +297,7 @@ class AndroidLifecyclePluginTest {
         advanceUntilIdle()
         verify(exactly = 1) {
             mockedAmplitude.track(
-                eq(EventTypes.APPLICATION_BACKGROUNDED),
-                any(),
-                any()
+                eventType = eq(EventTypes.APPLICATION_BACKGROUNDED)
             )
         }
 
@@ -310,9 +305,8 @@ class AndroidLifecyclePluginTest {
         advanceUntilIdle()
         verify(exactly = 1) {
             mockedAmplitude.track(
-                EventTypes.APPLICATION_OPENED,
-                match { param -> param.values.first() == false },
-                any()
+                eventType = EventTypes.APPLICATION_OPENED,
+                eventProperties = match { param -> param.values.first() == false },
             )
         }
         close()
@@ -332,8 +326,8 @@ class AndroidLifecyclePluginTest {
         advanceUntilIdle()
         verify(exactly = 0) {
             mockedAmplitude.track(
-                eq(EventTypes.APPLICATION_OPENED),
-                match { param -> param.values.first() == false },
+                eventType = eq(EventTypes.APPLICATION_OPENED),
+                eventProperties = match { param -> param.values.first() == false },
             )
         }
 
@@ -341,9 +335,9 @@ class AndroidLifecyclePluginTest {
         advanceUntilIdle()
         verify(exactly = 0) {
             mockedAmplitude.track(
-                eq(EventTypes.APPLICATION_BACKGROUNDED),
-                any(),
-                any()
+                eventType = eq(EventTypes.APPLICATION_BACKGROUNDED),
+                eventProperties = any(),
+                options = any()
             )
         }
 

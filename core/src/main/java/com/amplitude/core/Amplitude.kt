@@ -95,7 +95,7 @@ open class Amplitude(
             }
         }
 
-    private var amplitudeContext: AmplitudeContext
+    internal var amplitudeContext: AmplitudeContext
 
     init {
         require(configuration.isValid()) { "invalid configuration" }
@@ -511,7 +511,7 @@ open class Amplitude(
                     .setDeviceId(event.deviceId ?: deviceId)
                     .setUserProperties(
                         identity.userProperties.applyUserProperties(
-                            event.userProperties ?: emptyMap()
+                            event.userProperties
                         )
                     )
                     .commit()
@@ -526,13 +526,6 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     fun add(plugin: UniversalPlugin): Amplitude {
-        plugin.setup(
-            analyticsClient = this,
-            amplitudeContext = amplitudeContext
-        )
-        if (plugin is Plugin) {
-            plugin.setup(this)
-        }
         timeline.add(plugin)
         return this
     }

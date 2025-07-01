@@ -257,7 +257,7 @@ class IdentifyTest {
     @Test
     fun `test clearAll property`() {
         val identify = Identify().clearAll()
-        val expected = mutableMapOf(Pair(IdentifyOperation.CLEAR_ALL.operationType, Identify.UNSET_VALUE))
+        val expected = mutableMapOf(Pair(IdentifyOperation.CLEAR_ALL.operationType, mutableMapOf<String, Any>()))
         assertEquals(expected, identify.properties)
     }
 

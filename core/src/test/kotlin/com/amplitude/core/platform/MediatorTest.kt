@@ -486,8 +486,7 @@ class MediatorTest {
             override lateinit var amplitude: Amplitude
             
             override fun execute(event: BaseEvent): BaseEvent {
-                event.eventProperties["modified"] = true
-                return event
+                return event.setEventProperty("modified", true)
             }
         }
         modifyingPlugin.amplitude = mockAmplitude
@@ -499,7 +498,7 @@ class MediatorTest {
         val result = mediator.execute(event)
         
         assertSame(event, result)
-        assertEquals(true, event.eventProperties["modified"])
+        assertEquals(true, event.eventProperties?.get("modified"))
     }
 
     @Test

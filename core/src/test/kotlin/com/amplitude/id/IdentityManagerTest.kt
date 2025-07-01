@@ -19,7 +19,6 @@ class IdentityManagerTest {
             .commit()
         val identity = identityManager.getIdentity()
         assertEquals(Identity("user_id", "device_id"), identity)
-        assertTrue(identityManager.isInitialized())
     }
 
     @Test
@@ -29,15 +28,7 @@ class IdentityManagerTest {
         val identityManager = IdentityManagerImpl(identityStorage)
         var listenerCalled = false
         identityManager.addIdentityListener(object : IdentityListener {
-            override fun onUserIdChange(userId: String?) {
-                assertEquals("user_id", userId)
-            }
-
-            override fun onDeviceIdChange(deviceId: String?) {
-                assertEquals("device_id", deviceId)
-            }
-
-            override fun onIdentityChanged(identity: Identity, updateType: IdentityUpdateType) {
+            override fun onIdentityChanged(identity: Identity) {
                 assertEquals(expectedIdentity, identity)
                 listenerCalled = true
             }
@@ -66,15 +57,7 @@ class IdentityManagerTest {
         val identityManager = IdentityManagerImpl(identityStorage)
         var listenerCalled = false
         identityManager.addIdentityListener(object : IdentityListener {
-            override fun onUserIdChange(userId: String?) {
-                assertEquals("user_id", userId)
-            }
-
-            override fun onDeviceIdChange(deviceId: String?) {
-                assertEquals("device_id", deviceId)
-            }
-
-            override fun onIdentityChanged(identity: Identity, updateType: IdentityUpdateType) {
+            override fun onIdentityChanged(identity: Identity) {
                 assertEquals(expectedIdentity, identity)
                 listenerCalled = true
             }
@@ -91,13 +74,7 @@ class IdentityManagerTest {
         identityManager.setIdentity(expectedIdentity)
         var listenerCalled = false
         identityManager.addIdentityListener(object : IdentityListener {
-            override fun onUserIdChange(userId: String?) {
-            }
-
-            override fun onDeviceIdChange(deviceId: String?) {
-            }
-
-            override fun onIdentityChanged(identity: Identity, updateType: IdentityUpdateType) {
+            override fun onIdentityChanged(identity: Identity) {
                 listenerCalled = true
             }
         })

@@ -18,9 +18,9 @@ enum class IdentifyOperation(val operationType: String) {
 open class Identify {
 
     private val propertySet: MutableSet<String> = mutableSetOf()
-    private val _properties = mutableMapOf<String, MutableMap<String, Any>>()
-    val properties: Map<String, Map<String, Any>>
-        @Synchronized get() = _properties.toMap()
+    private val _properties = LinkedHashMap<String, MutableMap<String, Any>>()
+    val properties: MutableMap<String, Any>
+        @Synchronized get() = _properties.toMutableMap()
 
     fun set(property: String, value: Boolean): Identify {
         setUserProperty(IdentifyOperation.SET, property, value)
@@ -576,24 +576,26 @@ open class Identify {
     }
 }
 
-fun Map<String, Any>.applyUserProperties(userProperties: Map<String, Any> = emptyMap()): Map<String, Any> {
-    if (userProperties.isEmpty()) return this
-
-    val clearAll = userProperties.filterKeys { key -> key == IdentifyOperation.CLEAR_ALL.operationType }
-    if (clearAll.isNotEmpty()) return emptyMap()
-    try {
-        val set = userProperties[IdentifyOperation.SET.operationType] as? Map<String, Any> ?: emptyMap()
-        val unset = userProperties[IdentifyOperation.UNSET.operationType] as? Map<String, Any> ?: emptyMap()
-
-        return toMutableMap().apply {
-            set.forEach { (key, value) ->
-                this[key] = value
-            }
-            unset.forEach { (key, _) ->
-                this.remove(key)
+fun Map<String, Any>.applyUserProperties(userProperties: MutableMap<String, Any>?): Map<String, Any> {
+    if (userProperties.isNullOrEmpty()) return this
+    return toMutableMap().apply {
+        for ((key, value) in userProperties) {
+            when (key) {
+                IdentifyOperation.CLEAR_ALL.operationType -> {
+                    clear()
+                }
+                IdentifyOperation.SET.operationType -> {
+                    val valueMap = value as? Map<String, Any> ?: continue
+                    putAll(valueMap)
+                }
+                IdentifyOperation.UNSET.operationType -> {
+                    val valueMap = value as? Map<String, Any> ?: continue
+                    valueMap.keys.forEach { remove(it) }
+                }
+                else -> {
+                    // No Op as we ignore other operations similar to iOS SDK
+                }
             }
         }
-    } catch (e: ClassCastException) {
-        return this
     }
 }

@@ -10,7 +10,7 @@ import com.amplitude.core.platform.plugins.UniversalPlugin
 interface Plugin : UniversalPlugin {
 
     override val name: String?
-        get() = null
+        get() = this::class.simpleName
 
     enum class Type {
         Before,

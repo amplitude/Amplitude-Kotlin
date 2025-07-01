@@ -33,8 +33,8 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         if (previousBuild == null) {
             // No stored build, treat it as fresh installed
             amplitude.track(
-                ConstantsEventTypes.APPLICATION_INSTALLED,
-                mapOf(
+                eventType = ConstantsEventTypes.APPLICATION_INSTALLED,
+                eventProperties = mapOf(
                     ConstantsEventProperties.VERSION to currentVersion,
                     ConstantsEventProperties.BUILD to currentBuild,
                 ),

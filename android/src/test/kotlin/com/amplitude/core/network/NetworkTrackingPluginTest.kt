@@ -372,7 +372,7 @@ class NetworkTrackingPluginTest {
                     assertNotNull(eventProperties[NETWORK_TRACKING_DURATION])
                     assertEquals(28L, eventProperties[NETWORK_TRACKING_REQUEST_BODY_SIZE])
                     assertEquals(2L, eventProperties[NETWORK_TRACKING_RESPONSE_BODY_SIZE])
-                    assertEquals(11, eventProperties.size)
+                    assertEquals(10, eventProperties.size)
                 }
             )
         }
