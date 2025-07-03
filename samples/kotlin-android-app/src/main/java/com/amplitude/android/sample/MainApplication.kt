@@ -34,7 +34,7 @@ class MainApplication : Application() {
                         +elementInteractions
                     },
                 httpClient = httpClient,
-                minTimeBetweenSessionsMillis = 60_000L, // 1 minute
+                minTimeBetweenSessionsMillis = 60_000L,
             )
         httpClient.initialize(configuration)
 

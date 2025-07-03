@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <baseline version="1.0">
-    <file name="src/main/java/com/amplitude/android/Amplitude.kt">
-        <error line="178" column="5" source="standard:function-naming" />
-    </file>
     <file name="src/test/kotlin/com/amplitude/android/utilities/AndroidStorageTest.kt">
         <error line="303" column="1" source="standard:max-line-length" />
         <error line="307" column="1" source="standard:max-line-length" />
