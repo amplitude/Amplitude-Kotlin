@@ -4,6 +4,7 @@ import java.util.Properties
 
 buildscript {
     repositories {
+        mavenLocal()
         maven(url = "https://plugins.gradle.org/m2/")
         mavenCentral()
         google()
@@ -21,6 +22,7 @@ buildscript {
 
 allprojects {
     repositories {
+        mavenLocal()
         google()
         mavenCentral()
         maven(url = "https://kotlin.bintray.com/kotlinx")
@@ -117,6 +119,19 @@ tasks.register("printPublishCoordinates") {
                     }
                 }
             }
+        }
+    }
+}
+
+subprojects {
+    // applies to every project that’s part of this build
+    configurations.configureEach {
+        resolutionStrategy.dependencySubstitution {
+            substitute(module("com.amplitude:analytics-core"))
+                .using(project(":core")) // local project building analytics-core
+
+            substitute(module("com.amplitude:analytics-android"))
+                .using(project(":android")) // local project building analytics-android
         }
     }
 }

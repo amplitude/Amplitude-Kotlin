@@ -69,8 +69,3 @@ open class Configuration
             }
         }
     }
-
-enum class ServerZone {
-    US,
-    EU,
-}

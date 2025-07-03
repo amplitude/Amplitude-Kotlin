@@ -2,8 +2,8 @@ package com.amplitude.android.utilities
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import com.amplitude.android.events.BaseEvent
 import com.amplitude.common.jvm.ConsoleLogger
+import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.Diagnostics
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking

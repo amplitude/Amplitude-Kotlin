@@ -8,7 +8,6 @@ import com.amplitude.android.Configuration
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.core.Configuration.Companion.FLUSH_MAX_RETRIES
-import com.amplitude.core.State
 import com.amplitude.core.utilities.InMemoryStorageProvider
 import com.amplitude.id.IMIdentityStorageProvider
 import io.mockk.every
@@ -37,7 +36,6 @@ class FakeAndroidAmplitude(
     storageIODispatcher: CoroutineDispatcher = androidTestDispatcher,
 ) : AndroidAmplitude(
         configuration = configuration,
-        state = State(),
         amplitudeScope = amplitudeScope,
         amplitudeDispatcher = amplitudeDispatcher,
         networkIODispatcher = networkIODispatcher,

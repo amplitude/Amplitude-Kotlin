@@ -2,7 +2,6 @@ package com.amplitude.core.platform
 
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Configuration
-import com.amplitude.core.State
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.ConsoleLoggerProvider
 import com.amplitude.core.utilities.ExponentialBackoffRetryHandler
@@ -59,7 +58,6 @@ class EventPipelineTest {
     private val amplitude: Amplitude =
         FakeAmplitude(
             configuration = config,
-            store = State(),
             amplitudeScope = testScope,
             amplitudeDispatcher = testDispatcher,
             networkIODispatcher = testDispatcher,

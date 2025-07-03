@@ -37,10 +37,10 @@ internal class AutocaptureFragmentLifecycleCallbacks(
         track(
             EventTypes.FRAGMENT_VIEWED,
             mapOf(
-                EventProperties.FRAGMENT_CLASS to className,
-                EventProperties.FRAGMENT_IDENTIFIER to fragmentIdentifier,
-                EventProperties.SCREEN_NAME to screenName,
-                EventProperties.FRAGMENT_TAG to fragmentTag,
+                EventProperties.FRAGMENT_CLASS to className.orEmpty(),
+                EventProperties.FRAGMENT_IDENTIFIER to fragmentIdentifier.orEmpty(),
+                EventProperties.SCREEN_NAME to screenName.orEmpty(),
+                EventProperties.FRAGMENT_TAG to fragmentTag.orEmpty(),
             ),
         )
     }

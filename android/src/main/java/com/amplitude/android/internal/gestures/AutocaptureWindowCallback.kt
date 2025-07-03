@@ -10,7 +10,7 @@ import com.amplitude.common.Logger
 internal class AutocaptureWindowCallback(
     delegate: Window.Callback,
     activity: Activity,
-    track: (String, Map<String, Any?>) -> Unit,
+    track: (String, Map<String, Any>) -> Unit,
     viewTargetLocators: List<ViewTargetLocator>,
     private val logger: Logger,
     private val motionEventObtainer: MotionEventObtainer = object : MotionEventObtainer {},

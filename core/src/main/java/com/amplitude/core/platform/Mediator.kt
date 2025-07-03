@@ -4,57 +4,48 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.GroupIdentifyEvent
 import com.amplitude.core.events.IdentifyEvent
 import com.amplitude.core.events.RevenueEvent
+import com.amplitude.core.platform.plugins.UniversalPlugin
 import java.util.concurrent.CopyOnWriteArrayList
 
 internal class Mediator(
-    private val plugins: CopyOnWriteArrayList<Plugin> = CopyOnWriteArrayList(),
+    val plugins: CopyOnWriteArrayList<UniversalPlugin> = CopyOnWriteArrayList(),
 ) {
-    fun add(plugin: Plugin) {
+    fun add(plugin: UniversalPlugin) {
         plugins.add(plugin)
     }
 
-    fun remove(plugin: Plugin) = plugins.removeAll { it === plugin }
+    fun remove(plugin: UniversalPlugin) = plugins.removeAll { it === plugin }
 
     fun execute(event: BaseEvent): BaseEvent? {
-        var result: BaseEvent? = event
-
-        plugins.forEach { plugin ->
-            if (result != null) {
-                when (plugin) {
-                    is DestinationPlugin -> {
-                        try {
-                            plugin.process(result)
-                        } catch (e: Exception) {
-                            e.printStackTrace()
+        return plugins.fold(event as BaseEvent?) { acc, plugin ->
+            acc?.let { currentEvent ->
+                try {
+                    when (plugin) {
+                        is DestinationPlugin -> {
+                            plugin.process(currentEvent)
                         }
-                    }
-                    is EventPlugin -> {
-                        result = plugin.execute(result as BaseEvent)
-                        when (result) {
-                            is IdentifyEvent -> {
-                                result = plugin.identify(result as IdentifyEvent)
-                            }
-                            is GroupIdentifyEvent -> {
-                                result = plugin.groupIdentify(result as GroupIdentifyEvent)
-                            }
-                            is RevenueEvent -> {
-                                result = plugin.revenue(result as RevenueEvent)
-                            }
-                            is BaseEvent -> {
-                                result = plugin.track(result as BaseEvent)
+                        is EventPlugin -> {
+                            when (currentEvent) {
+                                is IdentifyEvent -> plugin.identify(currentEvent)
+                                is GroupIdentifyEvent -> plugin.groupIdentify(currentEvent)
+                                is RevenueEvent -> plugin.revenue(currentEvent)
+                                else -> plugin.track(currentEvent)
                             }
                         }
+                        else -> {
+                            plugin.execute(currentEvent)
+                            (plugin as? Plugin)?.execute(currentEvent)
+                        }
                     }
-                    else -> {
-                        result = plugin.execute(result as BaseEvent)
-                    }
+                } catch (e: Exception) {
+                    e.printStackTrace() // TODO propagate error to Logger and Diagnostics
+                    currentEvent
                 }
             }
         }
-        return result
     }
 
-    fun applyClosure(closure: (Plugin) -> Unit) {
+    fun applyClosure(closure: (UniversalPlugin) -> Unit) {
         plugins.forEach {
             closure(it)
         }

@@ -33,6 +33,7 @@ class NetworkTrackingPlugin(
     private val options: NetworkTrackingOptions = NetworkTrackingOptions.DEFAULT,
 ) : Interceptor, Plugin {
     override val type: Type = Utility
+
     override lateinit var amplitude: Amplitude
 
     override fun intercept(chain: Chain): Response {
@@ -101,21 +102,33 @@ class NetworkTrackingPlugin(
     ) {
         val maskedHttpUrl = request.url.mask()
         amplitude.track(
-            NETWORK_TRACKING,
+            eventType = NETWORK_TRACKING,
             eventProperties =
-                mapOf(
-                    NETWORK_TRACKING_URL to maskedHttpUrl.toUrlOnlyString(),
-                    NETWORK_TRACKING_URL_QUERY to maskedHttpUrl.query,
-                    NETWORK_TRACKING_URL_FRAGMENT to maskedHttpUrl.fragment,
-                    NETWORK_TRACKING_REQUEST_METHOD to request.method,
-                    NETWORK_TRACKING_STATUS_CODE to response?.code,
-                    NETWORK_TRACKING_ERROR_MESSAGE to error?.message,
-                    NETWORK_TRACKING_START_TIME to startTime,
-                    NETWORK_TRACKING_COMPLETION_TIME to completionTime,
-                    NETWORK_TRACKING_DURATION to completionTime - startTime,
-                    NETWORK_TRACKING_REQUEST_BODY_SIZE to request.body?.contentLength(),
-                    NETWORK_TRACKING_RESPONSE_BODY_SIZE to response?.body?.contentLength(),
-                ),
+                buildMap {
+                    put(NETWORK_TRACKING_URL, maskedHttpUrl.toUrlOnlyString())
+                    maskedHttpUrl.query?.let { query ->
+                        put(NETWORK_TRACKING_URL_QUERY, query)
+                    }
+                    maskedHttpUrl.fragment?.let { fragment ->
+                        put(NETWORK_TRACKING_URL_FRAGMENT, fragment)
+                    }
+                    put(NETWORK_TRACKING_REQUEST_METHOD, request.method)
+                    response?.code?.let { code ->
+                        put(NETWORK_TRACKING_STATUS_CODE, code)
+                    }
+                    error?.message?.let { errorMessage ->
+                        put(NETWORK_TRACKING_ERROR_MESSAGE, errorMessage)
+                    }
+                    put(NETWORK_TRACKING_START_TIME, startTime)
+                    put(NETWORK_TRACKING_COMPLETION_TIME, completionTime)
+                    put(NETWORK_TRACKING_DURATION, completionTime - startTime)
+                    request.body?.contentLength()?.let { length ->
+                        put(NETWORK_TRACKING_REQUEST_BODY_SIZE, length)
+                    }
+                    response?.body?.contentLength()?.let { length ->
+                        put(NETWORK_TRACKING_RESPONSE_BODY_SIZE, length)
+                    }
+                },
         )
     }
 

@@ -13,22 +13,31 @@ enum class IdentifyOperation(val operationType: String) {
     PRE_INSERT("\$preInsert"),
     POST_INSERT("\$postInsert"),
     REMOVE("\$remove"),
+    ;
+
+    companion object {
+        val orderedCases: List<IdentifyOperation> =
+            listOf(
+                CLEAR_ALL,
+                UNSET,
+                SET,
+                SET_ONCE,
+                ADD,
+                APPEND,
+                PREPEND,
+                PRE_INSERT,
+                POST_INSERT,
+                REMOVE,
+            )
+        val operationSet = orderedCases.map { it.operationType }.toSet()
+    }
 }
 
 open class Identify {
     private val propertySet: MutableSet<String> = mutableSetOf()
-
-    private val _properties = mutableMapOf<String, Any?>()
-    val properties: MutableMap<String, Any?>
-        @Synchronized get() {
-            val clonedProperties = _properties.toMutableMap()
-            for ((key, value) in clonedProperties) {
-                if (value is Map<*, *>) {
-                    clonedProperties[key] = value.toMutableMap()
-                }
-            }
-            return clonedProperties
-        }
+    private val _properties = LinkedHashMap<String, MutableMap<String, Any>>()
+    val properties: MutableMap<String, Any>
+        @Synchronized get() = _properties.toMutableMap()
 
     fun set(
         property: String,
@@ -861,7 +870,7 @@ open class Identify {
 
     @Synchronized fun clearAll(): Identify {
         _properties.clear()
-        _properties.put(IdentifyOperation.CLEAR_ALL.operationType, UNSET_VALUE)
+        _properties[IdentifyOperation.CLEAR_ALL.operationType] = mutableMapOf()
         return this
     }
 
@@ -894,14 +903,50 @@ open class Identify {
             )
             return
         }
-        if (!_properties.containsKey(operation.operationType)) {
-            _properties[operation.operationType] = mutableMapOf<String, Any>()
-        }
-        (_properties[operation.operationType] as MutableMap<String, Any>)[property] = value
+        _properties.getOrPut(operation.operationType) { mutableMapOf() }[property] = value
         propertySet.add(property)
     }
 
     companion object {
         const val UNSET_VALUE = "-"
+    }
+}
+
+/**
+ * We updated user properties with valuable information to later trigger indentity changed operation.
+ */
+fun Map<String, Any>.applyUserProperties(userProperties: Map<String, Any>?): Map<String, Any> {
+    if (userProperties.isNullOrEmpty()) return this
+    return toMutableMap().apply {
+        IdentifyOperation.orderedCases.forEach { operation ->
+            userProperties[operation.operationType]?.let { properties ->
+                when (operation) {
+                    IdentifyOperation.SET -> {
+                        (properties as? Map<String, Any>)?.let { valueMap ->
+                            putAll(valueMap)
+                        }
+                    }
+                    IdentifyOperation.CLEAR_ALL -> {
+                        clear()
+                    }
+                    IdentifyOperation.UNSET -> {
+                        (properties as? Map<String, Any>)?.let { valueMap ->
+                            valueMap.forEach { property ->
+                                remove(property.key)
+                            }
+                        }
+                    }
+                    else -> {
+                        // Unsupported operation for user properties caching
+                    }
+                }
+            }
+        }
+        // Transfer properties that are not explicit operations as SETs
+        userProperties.forEach { (key, value) ->
+            if (!IdentifyOperation.operationSet.contains(key)) {
+                set(key, value)
+            }
+        }
     }
 }

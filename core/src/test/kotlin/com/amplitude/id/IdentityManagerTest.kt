@@ -12,13 +12,12 @@ class IdentityManagerTest {
     fun `test editIdentity, setUserId setDeviceId, getIdentity, success`() {
         val identityStorage = IMIdentityStorage()
         val identityManager = IdentityManagerImpl(identityStorage)
-        identityManager.editIdentity()
-            .setUserId("user_id")
-            .setDeviceId("device_id")
-            .commit()
+        identityManager.editIdentity {
+            setUserId("user_id")
+            setDeviceId("device_id")
+        }
         val identity = identityManager.getIdentity()
         assertEquals(Identity("user_id", "device_id"), identity)
-        assertTrue(identityManager.isInitialized())
     }
 
     @Test
@@ -29,27 +28,16 @@ class IdentityManagerTest {
         var listenerCalled = false
         identityManager.addIdentityListener(
             object : IdentityListener {
-                override fun onUserIdChange(userId: String?) {
-                    assertEquals("user_id", userId)
-                }
-
-                override fun onDeviceIdChange(deviceId: String?) {
-                    assertEquals("device_id", deviceId)
-                }
-
-                override fun onIdentityChanged(
-                    identity: Identity,
-                    updateType: IdentityUpdateType,
-                ) {
+                override fun onIdentityChanged(identity: Identity) {
                     assertEquals(expectedIdentity, identity)
                     listenerCalled = true
                 }
             },
         )
-        identityManager.editIdentity()
-            .setUserId("user_id")
-            .setDeviceId("device_id")
-            .commit()
+        identityManager.editIdentity {
+            setUserId("user_id")
+            setDeviceId("device_id")
+        }
         assertTrue(listenerCalled)
     }
 
@@ -71,18 +59,7 @@ class IdentityManagerTest {
         var listenerCalled = false
         identityManager.addIdentityListener(
             object : IdentityListener {
-                override fun onUserIdChange(userId: String?) {
-                    assertEquals("user_id", userId)
-                }
-
-                override fun onDeviceIdChange(deviceId: String?) {
-                    assertEquals("device_id", deviceId)
-                }
-
-                override fun onIdentityChanged(
-                    identity: Identity,
-                    updateType: IdentityUpdateType,
-                ) {
+                override fun onIdentityChanged(identity: Identity) {
                     assertEquals(expectedIdentity, identity)
                     listenerCalled = true
                 }
@@ -101,16 +78,7 @@ class IdentityManagerTest {
         var listenerCalled = false
         identityManager.addIdentityListener(
             object : IdentityListener {
-                override fun onUserIdChange(userId: String?) {
-                }
-
-                override fun onDeviceIdChange(deviceId: String?) {
-                }
-
-                override fun onIdentityChanged(
-                    identity: Identity,
-                    updateType: IdentityUpdateType,
-                ) {
+                override fun onIdentityChanged(identity: Identity) {
                     listenerCalled = true
                 }
             },

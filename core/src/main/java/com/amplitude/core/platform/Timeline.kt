@@ -2,16 +2,23 @@ package com.amplitude.core.platform
 
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.platform.plugins.UniversalPlugin
 
-open class Timeline {
+const val DEFAULT_SESSION_ID = -1L
+
+open class Timeline(
+    val amplitude: Amplitude,
+) {
     internal val plugins: Map<Plugin.Type, Mediator> =
-        mapOf(
-            Plugin.Type.Before to Mediator(),
-            Plugin.Type.Enrichment to Mediator(),
-            Plugin.Type.Destination to Mediator(),
-            Plugin.Type.Utility to Mediator(),
-        )
-    lateinit var amplitude: Amplitude
+        Plugin.Type.entries.associateWith { Mediator() }.toMutableMap()
+    internal val pluginsByName: MutableMap<String, UniversalPlugin> = mutableMapOf()
+
+    open var sessionId: Long = DEFAULT_SESSION_ID
+
+    open fun start() {
+        // This method can be overridden by subclasses to perform any necessary initialization.
+        // For example, it can be used to set up the initial session ID or load any required data.
+    }
 
     open fun process(incomingEvent: BaseEvent) {
         // Note for future reference:
@@ -22,39 +29,41 @@ open class Timeline {
             return
         }
 
-        val beforeResult = applyPlugins(Plugin.Type.Before, incomingEvent)
-        val enrichmentResult = applyPlugins(Plugin.Type.Enrichment, beforeResult)
+        val beforeResult = applyPlugins(Plugin.Type.Before, incomingEvent) ?: return
+        val enrichmentResult = applyPlugins(Plugin.Type.Enrichment, beforeResult) ?: return
 
         applyPlugins(Plugin.Type.Destination, enrichmentResult)
     }
 
-    fun add(plugin: Plugin) {
-        plugin.setup(amplitude)
-        plugins[plugin.type]?.add(plugin)
+    open fun stop() {
+        // This method can be overridden by subclasses to perform any necessary cleanup.
+        // For example, it can be used to stop any ongoing processes or release resources.
+    }
+
+    fun add(plugin: UniversalPlugin) {
+        plugin.setup(
+            analyticsClient = amplitude,
+            amplitudeContext = amplitude.amplitudeContext,
+        )
+        if (plugin is Plugin) {
+            plugin.setup(amplitude)
+        }
+        plugin.name?.let { name ->
+            if (pluginsByName.contains(name)) return
+            pluginsByName[name] = plugin
+        }
+        val pluginType = (plugin as? Plugin)?.type ?: Plugin.Type.Enrichment
+        plugins[pluginType]?.add(plugin)
     }
 
     fun applyPlugins(
         type: Plugin.Type,
-        event: BaseEvent?,
+        event: BaseEvent,
     ): BaseEvent? {
-        var result: BaseEvent? = event
-        val mediator = plugins[type]
-        result = applyPlugins(mediator, result)
-        return result
+        return plugins[type]?.execute(event)
     }
 
-    private fun applyPlugins(
-        mediator: Mediator?,
-        event: BaseEvent?,
-    ): BaseEvent? {
-        var result: BaseEvent? = event
-        result?.let { e ->
-            result = mediator?.execute(e)
-        }
-        return result
-    }
-
-    fun remove(plugin: Plugin) {
+    fun remove(plugin: UniversalPlugin) {
         // remove all plugins with this name in every category
         plugins.forEach { (_, list) ->
             val wasRemoved = list.remove(plugin)
@@ -62,12 +71,19 @@ open class Timeline {
                 plugin.teardown()
             }
         }
+        plugin.name?.let { name ->
+            pluginsByName.remove(name)
+        }
     }
 
     // Applies a closure on all registered plugins
-    fun applyClosure(closure: (Plugin) -> Unit) {
+    fun applyClosure(closure: (UniversalPlugin) -> Unit) {
         plugins.forEach { (_, mediator) ->
             mediator.applyClosure(closure)
         }
+    }
+
+    fun getPluginsByType(type: Plugin.Type): List<UniversalPlugin> {
+        return plugins[type]?.plugins ?: emptyList()
     }
 }

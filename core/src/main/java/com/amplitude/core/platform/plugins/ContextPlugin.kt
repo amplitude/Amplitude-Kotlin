@@ -22,7 +22,7 @@ open class ContextPlugin : Plugin {
 
     private fun initializeDeviceId(configuration: Configuration) {
         // Check configuration
-        var deviceId = configuration.deviceId
+        val deviceId = configuration.deviceId
         if (deviceId != null) {
             setDeviceId(deviceId)
             return
@@ -40,10 +40,10 @@ open class ContextPlugin : Plugin {
             event.library = "${Constants.SDK_LIBRARY}/${Constants.SDK_VERSION}"
         }
         event.userId ?: let {
-            event.userId = amplitude.store.userId
+            event.userId = amplitude.identity.userId
         }
         event.deviceId ?: let {
-            event.deviceId = amplitude.store.deviceId
+            event.deviceId = amplitude.identity.deviceId
         }
         event.partnerId ?: let {
             amplitude.configuration.partnerId ?. let {

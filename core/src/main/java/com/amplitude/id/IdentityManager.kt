@@ -1,152 +1,126 @@
 package com.amplitude.id
-
+import com.amplitude.core.events.applyUserProperties
+import com.amplitude.core.platform.plugins.AnalyticsIdentity
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 
 interface IdentityListener {
-    fun onUserIdChange(userId: String?)
-
-    fun onDeviceIdChange(deviceId: String?)
-
-    fun onIdentityChanged(
-        identity: Identity,
-        updateType: IdentityUpdateType,
-    )
+    fun onIdentityChanged(identity: Identity)
 }
 
 data class Identity(
-    val userId: String? = null,
-    val deviceId: String? = null,
-)
-
-enum class IdentityUpdateType {
-    Initialized,
-    Updated,
-}
+    override val userId: String? = null,
+    override val deviceId: String? = null,
+    override val userProperties: Map<String, Any> = emptyMap(),
+) : AnalyticsIdentity
 
 /**
  * Identity Manager manages the identity for certain instance.
  *
  */
 interface IdentityManager {
-    interface Editor {
-        fun setUserId(userId: String?): Editor
+    fun editIdentity(block: IdentityEditor.() -> Unit)
 
-        fun setDeviceId(deviceId: String?): Editor
-
-        fun commit()
-    }
-
-    fun editIdentity(): Editor
-
-    fun setIdentity(
-        identity: Identity,
-        updateType: IdentityUpdateType = IdentityUpdateType.Updated,
-    )
+    fun setIdentity(newIdentity: Identity)
 
     fun getIdentity(): Identity
 
     fun addIdentityListener(listener: IdentityListener)
 
     fun removeIdentityListener(listener: IdentityListener)
-
-    fun isInitialized(): Boolean
 }
 
-internal class IdentityManagerImpl(private val identityStorage: IdentityStorage) : IdentityManager {
+class IdentityEditor(
+    var _userId: String? = null,
+    var _deviceId: String? = null,
+    var _userProperties: Map<String, Any> = emptyMap(),
+) {
+    fun setUserId(userId: String?) {
+        _userId = userId
+    }
+
+    fun setDeviceId(deviceId: String?) {
+        _deviceId = deviceId
+    }
+
+    fun setUserProperties(properties: Map<String, Any>?): Boolean {
+        val oldProperties = _userProperties
+        _userProperties = _userProperties.applyUserProperties(properties)
+        return oldProperties != _userProperties
+    }
+
+    fun clearUserProperties() {
+        _userProperties = emptyMap()
+    }
+}
+
+internal class IdentityManagerImpl(
+    private val identityStorage: IdentityStorage,
+) : IdentityManager {
     private val identityLock = ReentrantReadWriteLock(true)
-    private var identity = Identity()
+    private var identity: Identity = identityStorage.load()
 
-    private val listenersLock = Any()
-    private val listeners: MutableSet<IdentityListener> = mutableSetOf()
-    private var initialized: Boolean = false
+    private val listeners: CopyOnWriteArrayList<IdentityListener> = CopyOnWriteArrayList()
 
-    init {
-        setIdentity(identityStorage.load(), IdentityUpdateType.Initialized)
+    override fun editIdentity(block: IdentityEditor.() -> Unit) {
+        val currentIdentity = getIdentity()
+        val editor =
+            IdentityEditor(
+                _userId = currentIdentity.userId,
+                _deviceId = currentIdentity.deviceId,
+                _userProperties = currentIdentity.userProperties,
+            )
+
+        editor.block()
+
+        setIdentity(
+            newIdentity =
+                Identity(
+                    userId = editor._userId,
+                    deviceId = editor._deviceId,
+                    userProperties = editor._userProperties,
+                ),
+        )
     }
 
-    override fun editIdentity(): IdentityManager.Editor {
-        val originalIdentity = getIdentity()
-        return object : IdentityManager.Editor {
-            private var userId: String? = originalIdentity.userId
-            private var deviceId: String? = originalIdentity.deviceId
+    override fun setIdentity(newIdentity: Identity) {
+        val originalIdentity =
+            identityLock.write {
+                val oldIdentity = identity
+                if (newIdentity != oldIdentity) {
+                    this.identity = newIdentity
 
-            override fun setUserId(userId: String?): IdentityManager.Editor {
-                this.userId = userId
-                return this
-            }
+                    if (newIdentity.userId != oldIdentity.userId) {
+                        identityStorage.saveUserId(newIdentity.userId)
+                    }
 
-            override fun setDeviceId(deviceId: String?): IdentityManager.Editor {
-                this.deviceId = deviceId
-                return this
-            }
-
-            override fun commit() {
-                val newIdentity = Identity(userId, deviceId)
-                setIdentity(newIdentity)
-            }
-        }
-    }
-
-    override fun setIdentity(
-        identity: Identity,
-        updateType: IdentityUpdateType,
-    ) {
-        val originalIdentity = getIdentity()
-        identityLock.write {
-            this.identity = identity
-            if (updateType == IdentityUpdateType.Initialized) {
-                initialized = true
-            }
-        }
-        if (identity != originalIdentity) {
-            val safeListeners =
-                synchronized(listenersLock) {
-                    listeners.toSet()
+                    if (newIdentity.deviceId != oldIdentity.deviceId) {
+                        identityStorage.saveDeviceId(identity.deviceId)
+                    }
                 }
-
-            if (updateType != IdentityUpdateType.Initialized) {
-                if (identity.userId != originalIdentity.userId) {
-                    identityStorage.saveUserId(identity.userId)
-                }
-
-                if (identity.deviceId != originalIdentity.deviceId) {
-                    identityStorage.saveDeviceId(identity.deviceId)
-                }
+                oldIdentity
             }
 
-            for (listener in safeListeners) {
-                if (identity.userId != originalIdentity.userId) {
-                    listener.onUserIdChange(identity.userId)
-                }
-                if (identity.deviceId != originalIdentity.deviceId) {
-                    listener.onDeviceIdChange(identity.deviceId)
-                }
-                listener.onIdentityChanged(identity, updateType)
-            }
+        if (newIdentity == originalIdentity) return
+
+        for (listener in listeners) {
+            listener.onIdentityChanged(
+                identity = identity,
+            )
         }
     }
 
     override fun getIdentity(): Identity {
-        return identityLock.read {
-            this.identity
-        }
+        return identityLock.read { this.identity }
     }
 
     override fun addIdentityListener(listener: IdentityListener) {
-        synchronized(listenersLock) {
-            listeners.add(listener)
-        }
+        listeners.add(listener)
     }
 
     override fun removeIdentityListener(listener: IdentityListener) {
-        synchronized(listenersLock) {
-            listeners.remove(listener)
-        }
-    }
-
-    override fun isInitialized(): Boolean {
-        return initialized
+        listeners.remove(listener)
     }
 }

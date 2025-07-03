@@ -2,15 +2,13 @@ package com.amplitude.android.sample
 
 import android.app.Application
 import com.amplitude.android.Amplitude
-import com.amplitude.android.Configuration
-import com.amplitude.android.autocaptureOptions
 import com.amplitude.common.Logger
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
 import com.amplitude.experiment.Experiment
 import com.amplitude.experiment.ExperimentConfig
 
-class MainApplication : Application() {
+open class MainApplication : Application() {
     companion object {
         lateinit var amplitude: Amplitude
         const val AMPLITUDE_API_KEY = BuildConfig.AMPLITUDE_API_KEY
@@ -20,25 +18,7 @@ class MainApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        val httpClient = CustomOkHttpClient()
-        val configuration =
-            Configuration(
-                apiKey = AMPLITUDE_API_KEY,
-                context = applicationContext,
-                autocapture =
-                    autocaptureOptions {
-                        +sessions
-                        +appLifecycles
-                        +deepLinks
-                        +screenViews
-                        +elementInteractions
-                    },
-                httpClient = httpClient,
-            )
-        httpClient.initialize(configuration)
-
-        // init instance
-        amplitude = Amplitude(configuration)
+        initAmplitudeLibrary()
 
         // Sample for Experiment Integration
         val experimentConfig =
@@ -77,4 +57,7 @@ class MainApplication : Application() {
         // identify a sample user
         amplitude.setUserId("android-kotlin-sample-user")
     }
+
+    /** Shared boot-strapping used by all flavors. */
+    protected open fun initAmplitudeLibrary() {}
 }

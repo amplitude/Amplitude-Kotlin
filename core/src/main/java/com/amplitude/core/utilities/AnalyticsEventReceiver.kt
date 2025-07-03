@@ -19,9 +19,13 @@ internal class AnalyticsEventReceiver(val amplitude: Amplitude) : EventReceiver 
 internal fun Event.toBaseEvent(): BaseEvent {
     val event = BaseEvent()
     event.eventType = this.eventType
-    event.eventProperties = this.eventProperties?.let { it.toMutableMap() }
-    event.userProperties = this.userProperties?.let { it.toMutableMap() }
-    event.groups = this.groups?.let { it.toMutableMap() }
-    event.groupProperties = this.groupProperties?.let { it.toMutableMap() }
+    event.eventProperties = this.eventProperties?.toMutableMap()
+    event.userProperties =
+        this.userProperties
+            ?.filter { (_, value) -> value is Map<*, *> && value.keys.all { it is String } }
+            ?.mapValues { (_, value) -> value as Map<String, Any> }
+            ?.toMutableMap()
+    event.groups = this.groups?.toMutableMap()
+    event.groupProperties = this.groupProperties?.toMutableMap()
     return event
 }

@@ -5,8 +5,9 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.GroupIdentifyEvent
 import com.amplitude.core.events.IdentifyEvent
 import com.amplitude.core.events.RevenueEvent
+import com.amplitude.core.platform.plugins.UniversalPlugin
 
-interface Plugin {
+interface Plugin : UniversalPlugin {
     enum class Type {
         Before,
         Enrichment,
@@ -26,14 +27,14 @@ interface Plugin {
         return event
     }
 
-    fun teardown() {
+    override fun teardown() {
         // Clean up any resources from setup if necessary
     }
 }
 
 interface EventPlugin : Plugin {
     fun track(payload: BaseEvent): BaseEvent? {
-        return payload
+        return execute(payload)
     }
 
     fun identify(payload: IdentifyEvent): IdentifyEvent? {
@@ -48,22 +49,22 @@ interface EventPlugin : Plugin {
         return payload
     }
 
-    open fun flush() {}
+    fun flush() {}
 }
 
 abstract class DestinationPlugin : EventPlugin {
     override val type: Plugin.Type = Plugin.Type.Destination
-    private val timeline: Timeline = Timeline()
     override lateinit var amplitude: Amplitude
+    internal lateinit var timeline: Timeline
     internal var enabled = true
 
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
-        timeline.amplitude = amplitude
+        timeline = Timeline(amplitude)
     }
 
     fun add(plugin: Plugin) {
-        plugin.amplitude = this.amplitude
+        plugin.setup(amplitude)
         timeline.add(plugin)
     }
 
@@ -71,29 +72,27 @@ abstract class DestinationPlugin : EventPlugin {
         timeline.remove(plugin)
     }
 
-    fun process(event: BaseEvent?): BaseEvent? {
+    open fun process(event: BaseEvent): BaseEvent? {
         // Skip this destination if it is disabled via settings
         if (!enabled) {
             return null
         }
-        val beforeResult = timeline.applyPlugins(Plugin.Type.Before, event)
-        val enrichmentResult = timeline.applyPlugins(Plugin.Type.Enrichment, beforeResult)
+        val beforeResult = timeline.applyPlugins(Plugin.Type.Before, event) ?: return null
+        val enrichmentResult = timeline.applyPlugins(Plugin.Type.Enrichment, beforeResult) ?: return null
 
         val destinationResult =
-            enrichmentResult?.let {
-                when (it) {
-                    is IdentifyEvent -> {
-                        identify(it)
-                    }
-                    is GroupIdentifyEvent -> {
-                        groupIdentify(it)
-                    }
-                    is RevenueEvent -> {
-                        revenue(it)
-                    }
-                    else -> {
-                        track(it)
-                    }
+            when (enrichmentResult) {
+                is IdentifyEvent -> {
+                    identify(enrichmentResult)
+                }
+                is GroupIdentifyEvent -> {
+                    groupIdentify(enrichmentResult)
+                }
+                is RevenueEvent -> {
+                    revenue(enrichmentResult)
+                }
+                else -> {
+                    track(enrichmentResult)
                 }
             }
 
@@ -107,12 +106,4 @@ abstract class DestinationPlugin : EventPlugin {
 
 abstract class ObservePlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Observe
-
-    abstract fun onUserIdChanged(userId: String?)
-
-    abstract fun onDeviceIdChanged(deviceId: String?)
-
-    final override fun execute(event: BaseEvent): BaseEvent? {
-        return null
-    }
 }

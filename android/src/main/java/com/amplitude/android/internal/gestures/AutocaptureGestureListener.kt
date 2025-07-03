@@ -23,7 +23,7 @@ import java.lang.ref.WeakReference
 @VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)
 class AutocaptureGestureListener(
     activity: Activity,
-    private val track: (String, Map<String, Any?>) -> Unit,
+    private val track: (String, Map<String, Any>) -> Unit,
     private val logger: Logger,
     private val viewTargetLocators: List<ViewTargetLocator>,
 ) : GestureDetector.OnGestureListener {
@@ -49,22 +49,22 @@ class AutocaptureGestureListener(
 
         mapOf(
             ACTION to "touch",
-            TARGET_CLASS to target.className,
-            TARGET_RESOURCE to target.resourceName,
-            TARGET_TAG to target.tag,
-            TARGET_TEXT to target.text,
+            TARGET_CLASS to target.className.orEmpty(),
+            TARGET_RESOURCE to target.resourceName.orEmpty(),
+            TARGET_TAG to target.tag.orEmpty(),
+            TARGET_TEXT to target.text.orEmpty(),
             TARGET_SOURCE to
                 target.source
                     .replace("_", " ")
                     .split(" ")
                     .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } },
-            HIERARCHY to target.hierarchy,
+            HIERARCHY to target.hierarchy.orEmpty(),
             SCREEN_NAME to
                 try {
-                    activityRef.get()?.screenName
+                    activityRef.get()?.screenName.orEmpty()
                 } catch (e: Exception) {
                     logger.error("Error getting screen name: $e")
-                    null
+                    ""
                 },
         ).let { track(ELEMENT_INTERACTED, it) }
 

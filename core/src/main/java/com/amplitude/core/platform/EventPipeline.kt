@@ -141,6 +141,8 @@ class EventPipeline(
                         val eventsString = storage.getEventsString(eventFile)
                         if (eventsString.isEmpty()) continue
 
+                        amplitude.logger.debug("Uploading events: $eventsString")
+
                         val diagnostics = amplitude.diagnostics.extractDiagnostics()
                         val response = httpClient.upload(eventsString, diagnostics)
                         val shouldRetryUploadOnFailure = responseHandler.handle(response, eventFile, eventsString)
