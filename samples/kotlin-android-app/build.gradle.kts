@@ -48,15 +48,15 @@ android {
 
     flavorDimensions += "lib"
     productFlavors {
-        create("standalone") {
-            dimension = "lib"
-            applicationIdSuffix = ".standalone"
-            versionNameSuffix = "-standalone"
-        }
         create("unified") {
             dimension = "lib"
             applicationIdSuffix = ".unified"
             versionNameSuffix = "-unified"
+        }
+        create("standalone") {
+            dimension = "lib"
+            applicationIdSuffix = ".standalone"
+            versionNameSuffix = "-standalone"
         }
     }
 
@@ -80,8 +80,8 @@ android {
 }
 
 dependencies {
-    "standaloneImplementation"(project(":android"))
     "unifiedImplementation"(project(":AmplitudeUnified"))
+    "standaloneImplementation"(project(":android"))
 
     implementation(libs.core.ktx)
     implementation(libs.appcompat)
