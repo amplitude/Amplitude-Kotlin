@@ -74,7 +74,7 @@ class NetworkTrackingOptionsTest {
         val matchingHosts =
             listOf(
                 "https://api.example.com",
-                "https://test.amplitude.com", // one amplitude host
+                "https://test.amplitude.com",
                 "https://random-api.com",
             ).urlsToHosts()
         matchingHosts.map { host ->
@@ -149,7 +149,7 @@ class NetworkTrackingOptionsTest {
         val nonMatchingHosts =
             listOf(
                 "https://other.example.com",
-                "https://test.amplitude.com", // one amplitude host
+                "https://test.amplitude.com",
                 "https://api.different.com",
             ).urlsToHosts()
         nonMatchingHosts.forEach { host ->

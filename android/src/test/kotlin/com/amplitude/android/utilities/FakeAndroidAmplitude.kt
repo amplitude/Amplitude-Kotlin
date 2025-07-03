@@ -90,7 +90,7 @@ fun createFakeAmplitude(
                     .also { setupMockAndroidContext() },
             serverUrl = server?.url("/")?.toString(),
             autocapture = setOf(),
-            flushIntervalMillis = 150, // keep it small for faster tests
+            flushIntervalMillis = 150,
             identifyBatchIntervalMillis = 1000,
             flushMaxRetries = FLUSH_MAX_RETRIES,
             identityStorageProvider = IMIdentityStorageProvider(),

@@ -48,8 +48,8 @@ class AndroidLifecyclePluginTest {
     private val mockedPackageManager = mockk<PackageManager>()
     private val packageInfo =
         PackageInfo().apply {
-            versionCode = 66
-            versionName = "6.0.0"
+            versionCode = 666
+            versionName = "6.6.6"
         }
 
     private val testDispatcher = StandardTestDispatcher()

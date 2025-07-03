@@ -176,8 +176,8 @@ fun Amplitude(
     apiKey: String,
     context: Context,
     configs: Configuration.() -> Unit,
-): com.amplitude.android.Amplitude {
+): Amplitude {
     val config = Configuration(apiKey, context)
     configs.invoke(config)
-    return com.amplitude.android.Amplitude(config)
+    return Amplitude(config)
 }

@@ -36,15 +36,18 @@ import java.util.Locale
 @RunWith(RobolectricTestRunner::class)
 @Config(manifest = Config.NONE, sdk = [Build.VERSION_CODES.Q])
 class AndroidContextProviderTest {
+    companion object {
+        private const val TEST_BRAND = "brand"
+        private const val TEST_MANUFACTURER = "manufacturer"
+        private const val TEST_MODEL = "model"
+        private const val TEST_CARRIER = "carrier"
+        private val TEST_LOCALE: Locale = Locale.FRANCE
+        private const val TEST_COUNTRY = "FR"
+        private const val TEST_LANGUAGE = "fr"
+        private const val TEST_NETWORK_COUNTRY = "GB"
+    }
+
     private val context: Context = ApplicationProvider.getApplicationContext()
-    private val TEST_BRAND = "brand"
-    private val TEST_MANUFACTURER = "manufacturer"
-    private val TEST_MODEL = "model"
-    private val TEST_CARRIER = "carrier"
-    private val TEST_LOCALE: Locale = Locale.FRANCE
-    private val TEST_COUNTRY = "FR"
-    private val TEST_LANGUAGE = "fr"
-    private val TEST_NETWORK_COUNTRY = "GB"
     private lateinit var androidContextProvider: AndroidContextProvider // Changed to lateinit var
 
     @Before // Added annotation

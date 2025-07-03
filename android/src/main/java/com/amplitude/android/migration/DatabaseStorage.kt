@@ -91,7 +91,11 @@ class DatabaseStorage(
 
     private fun convertIfCursorWindowException(e: java.lang.RuntimeException) {
         val message = e.message
-        if (!message.isNullOrEmpty() && (message.startsWith("Cursor window allocation of") || message.startsWith("Could not allocate CursorWindow"))) {
+        if (message.isNullOrEmpty()) throw e
+
+        if (message.startsWith("Cursor window allocation of") ||
+            message.startsWith("Could not allocate CursorWindow")
+        ) {
             throw CursorWindowAllocationException(message)
         } else {
             throw e
@@ -346,6 +350,10 @@ object DatabaseStorageProvider {
 
     private fun getDatabaseName(instanceName: String?): String {
         val normalizedInstanceName = instanceName?.lowercase(Locale.getDefault())
-        return if (normalizedInstanceName.isNullOrEmpty() || normalizedInstanceName == Configuration.DEFAULT_INSTANCE) DatabaseConstants.DATABASE_NAME else "${DatabaseConstants.DATABASE_NAME}_$normalizedInstanceName"
+        return if (normalizedInstanceName.isNullOrEmpty() || normalizedInstanceName == Configuration.DEFAULT_INSTANCE) {
+            DatabaseConstants.DATABASE_NAME
+        } else {
+            "${DatabaseConstants.DATABASE_NAME}_$normalizedInstanceName"
+        }
     }
 }
