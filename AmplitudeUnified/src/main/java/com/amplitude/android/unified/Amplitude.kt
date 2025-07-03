@@ -8,6 +8,6 @@ import com.amplitude.id.IdentityConfiguration
 class Amplitude(configuration: Configuration) : Amplitude(configuration) {
     override suspend fun buildInternal(identityConfiguration: IdentityConfiguration) {
         super.buildInternal(identityConfiguration)
-        add(AmplitudeSessionReplayPlugin())
+//        add(AmplitudeSessionReplayPlugin())
     }
 }

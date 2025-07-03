@@ -524,7 +524,7 @@ open class Amplitude(
         return this
     }
 
-    fun remove(plugin: Plugin): Amplitude {
+    fun remove(plugin: UniversalPlugin): Amplitude {
         timeline.remove(plugin)
         return this
     }

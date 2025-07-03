@@ -45,6 +45,21 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
+
+    flavorDimensions += "lib"
+    productFlavors {
+        create("standalone") {
+            dimension = "lib"
+            applicationIdSuffix = ".standalone"
+            versionNameSuffix  = "-standalone"
+        }
+        create("unified") {
+            dimension = "lib"
+            applicationIdSuffix = ".unified"
+            versionNameSuffix  = "-unified"
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
@@ -65,7 +80,9 @@ android {
 }
 
 dependencies {
-    implementation(project(":android"))
+    "standaloneImplementation"(project(":android"))
+    "unifiedImplementation"(project(":AmplitudeUnified"))
+
     implementation(libs.core.ktx)
     implementation(libs.appcompat)
     implementation(libs.material)
