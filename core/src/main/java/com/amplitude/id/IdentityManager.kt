@@ -33,26 +33,26 @@ interface IdentityManager {
 }
 
 class IdentityEditor(
-    var userId: String? = null,
-    var deviceId: String? = null,
-    var userProperties: Map<String, Any> = emptyMap(),
+    var _userId: String? = null,
+    var _deviceId: String? = null,
+    var _userProperties: Map<String, Any> = emptyMap(),
 ) {
     fun setUserId(userId: String?) {
-        this.userId = userId
+        _userId = userId
     }
 
     fun setDeviceId(deviceId: String?) {
-        this.deviceId = deviceId
+        _deviceId = deviceId
     }
 
     fun setUserProperties(properties: Map<String, Any>?): Boolean {
-        val oldProperties = this.userProperties
-        this.userProperties = userProperties.applyUserProperties(properties)
-        return oldProperties != this.userProperties
+        val oldProperties = _userProperties
+        _userProperties = _userProperties.applyUserProperties(properties)
+        return oldProperties != _userProperties
     }
 
     fun clearUserProperties() {
-        this.userProperties = emptyMap()
+        _userProperties = emptyMap()
     }
 }
 
@@ -68,9 +68,9 @@ internal class IdentityManagerImpl(
         val currentIdentity = getIdentity()
         val editor =
             IdentityEditor(
-                userId = currentIdentity.userId,
-                deviceId = currentIdentity.deviceId,
-                userProperties = currentIdentity.userProperties,
+                _userId = currentIdentity.userId,
+                _deviceId = currentIdentity.deviceId,
+                _userProperties = currentIdentity.userProperties,
             )
 
         editor.block()
@@ -78,9 +78,9 @@ internal class IdentityManagerImpl(
         setIdentity(
             newIdentity =
                 Identity(
-                    userId = editor.userId,
-                    deviceId = editor.deviceId,
-                    userProperties = editor.userProperties,
+                    userId = editor._userId,
+                    deviceId = editor._deviceId,
+                    userProperties = editor._userProperties,
                 ),
         )
     }
