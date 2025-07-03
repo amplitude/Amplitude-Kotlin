@@ -4,6 +4,7 @@ import java.util.Properties
 
 buildscript {
     repositories {
+        mavenLocal()
         maven(url = "https://plugins.gradle.org/m2/")
         mavenCentral()
         google()
@@ -21,6 +22,7 @@ buildscript {
 
 allprojects {
     repositories {
+        mavenLocal()
         google()
         mavenCentral()
         maven(url = "https://kotlin.bintray.com/kotlinx")
