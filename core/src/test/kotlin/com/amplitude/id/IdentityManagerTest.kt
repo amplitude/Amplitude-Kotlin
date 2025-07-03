@@ -12,10 +12,10 @@ class IdentityManagerTest {
     fun `test editIdentity, setUserId setDeviceId, getIdentity, success`() {
         val identityStorage = IMIdentityStorage()
         val identityManager = IdentityManagerImpl(identityStorage)
-        identityManager.editIdentity()
-            .setUserId("user_id")
-            .setDeviceId("device_id")
-            .commit()
+        identityManager.editIdentity {
+            setUserId("user_id")
+            setDeviceId("device_id")
+        }
         val identity = identityManager.getIdentity()
         assertEquals(Identity("user_id", "device_id"), identity)
     }
@@ -34,10 +34,10 @@ class IdentityManagerTest {
                 }
             },
         )
-        identityManager.editIdentity()
-            .setUserId("user_id")
-            .setDeviceId("device_id")
-            .commit()
+        identityManager.editIdentity {
+            setUserId("user_id")
+            setDeviceId("device_id")
+        }
         assertTrue(listenerCalled)
     }
 
