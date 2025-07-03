@@ -51,12 +51,12 @@ android {
         create("standalone") {
             dimension = "lib"
             applicationIdSuffix = ".standalone"
-            versionNameSuffix  = "-standalone"
+            versionNameSuffix = "-standalone"
         }
         create("unified") {
             dimension = "lib"
             applicationIdSuffix = ".unified"
-            versionNameSuffix  = "-unified"
+            versionNameSuffix = "-unified"
         }
     }
 
