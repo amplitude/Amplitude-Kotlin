@@ -14,14 +14,16 @@ class IdentityContainerTest {
     fun before() {
         storageDirectory.deleteRecursively()
     }
+
     @Test
     fun `test getInstance return same instance for certain name`() {
-        val configuration = IdentityConfiguration(
-            "testInstance",
-            identityStorageProvider = IMIdentityStorageProvider(),
-            storageDirectory = storageDirectory,
-            fileName = "identity.properties"
-        )
+        val configuration =
+            IdentityConfiguration(
+                "testInstance",
+                identityStorageProvider = IMIdentityStorageProvider(),
+                storageDirectory = storageDirectory,
+                fileName = "identity.properties",
+            )
         val identityContainer1 = IdentityContainer.getInstance(configuration)
         val identityContainer2 = IdentityContainer.getInstance(configuration)
         assertEquals(identityContainer1, identityContainer2)

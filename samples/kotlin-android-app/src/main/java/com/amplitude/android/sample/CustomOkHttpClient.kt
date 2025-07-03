@@ -12,7 +12,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 
 class CustomOkHttpClient(
-    private val okHttpClient: OkHttpClient = OkHttpClient()
+    private val okHttpClient: OkHttpClient = OkHttpClient(),
 ) : HttpClientInterface {
     private lateinit var configuration: Configuration
 
@@ -20,20 +20,26 @@ class CustomOkHttpClient(
         this.configuration = configuration
     }
 
-    override fun upload(events: String, diagnostics: String?): AnalyticsResponse {
+    override fun upload(
+        events: String,
+        diagnostics: String?,
+    ): AnalyticsResponse {
         val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
-        val ampRequest = AnalyticsRequest(
-            configuration.apiKey,
-            events,
-            diagnostics = diagnostics,
-            minIdLength = configuration.minIdLength
-        )
-        val formBody: RequestBody = ampRequest.getBodyStr()
-            .toRequestBody(mediaType)
-        val request: Request = Request.Builder()
-            .url(configuration.getApiHost())
-            .post(formBody)
-            .build()
+        val ampRequest =
+            AnalyticsRequest(
+                configuration.apiKey,
+                events,
+                diagnostics = diagnostics,
+                minIdLength = configuration.minIdLength,
+            )
+        val formBody: RequestBody =
+            ampRequest.getBodyStr()
+                .toRequestBody(mediaType)
+        val request: Request =
+            Request.Builder()
+                .url(configuration.getApiHost())
+                .post(formBody)
+                .build()
 
         try {
             return okHttpClient.newCall(request).execute().use { response ->

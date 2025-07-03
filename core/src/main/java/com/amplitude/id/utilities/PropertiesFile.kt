@@ -9,7 +9,7 @@ import java.util.Properties
 class PropertiesFile(
     directory: File,
     fileNameWithoutExtension: String,
-    private val logger: Logger?
+    private val logger: Logger?,
 ) : KeyValueStore {
     internal var underlyingProperties: Properties = Properties()
     private val propertiesFileName = "$fileNameWithoutExtension.properties"
@@ -27,7 +27,9 @@ class PropertiesFile(
                 return
             } catch (e: Throwable) {
                 propertiesFile.delete()
-                logger?.error("Failed to load property file with path ${propertiesFile.absolutePath}, error stacktrace: ${e.stackTraceToString()}")
+                logger?.error(
+                    "Failed to load property file with path ${propertiesFile.absolutePath}, error stacktrace: ${e.stackTraceToString()}",
+                )
             }
         }
         createPropertiesFile()
@@ -46,14 +48,21 @@ class PropertiesFile(
         } catch (e: Throwable) {
             // Note: we need to catch Throwable to handle both Exceptions and Errors
             // Properties.store has an error in Android 8 that throws a AssertionError (vs Exception)
-            logger?.error("Failed to save property file with path ${propertiesFile.absolutePath}, error stacktrace: ${e.stackTraceToString()}")
+            logger?.error(
+                "Failed to save property file with path ${propertiesFile.absolutePath}, error stacktrace: ${e.stackTraceToString()}",
+            )
         }
     }
 
-    override fun getLong(key: String, defaultVal: Long): Long =
-        underlyingProperties.getProperty(key, "").toLongOrNull() ?: defaultVal
+    override fun getLong(
+        key: String,
+        defaultVal: Long,
+    ): Long = underlyingProperties.getProperty(key, "").toLongOrNull() ?: defaultVal
 
-    override fun putLong(key: String, value: Long): Boolean {
+    override fun putLong(
+        key: String,
+        value: Long,
+    ): Boolean {
         underlyingProperties.setProperty(key, value.toString())
         save()
         return true
@@ -64,14 +73,19 @@ class PropertiesFile(
         save()
     }
 
-    fun putString(key: String, value: String): Boolean {
+    fun putString(
+        key: String,
+        value: String,
+    ): Boolean {
         underlyingProperties.setProperty(key, value)
         save()
         return true
     }
 
-    fun getString(key: String, defaultVal: String?): String? =
-        underlyingProperties.getProperty(key, defaultVal)
+    fun getString(
+        key: String,
+        defaultVal: String?,
+    ): String? = underlyingProperties.getProperty(key, defaultVal)
 
     fun remove(key: String): Boolean {
         underlyingProperties.remove(key)
@@ -96,7 +110,15 @@ class PropertiesFile(
  * Key-value store interface
  */
 interface KeyValueStore {
-    fun getLong(key: String, defaultVal: Long): Long
-    fun putLong(key: String, value: Long): Boolean
+    fun getLong(
+        key: String,
+        defaultVal: Long,
+    ): Long
+
+    fun putLong(
+        key: String,
+        value: Long,
+    ): Boolean
+
     fun deleteKey(key: String)
 }

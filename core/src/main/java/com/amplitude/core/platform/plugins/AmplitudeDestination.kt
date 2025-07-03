@@ -44,7 +44,9 @@ class AmplitudeDestination : DestinationPlugin() {
     private fun enqueue(payload: BaseEvent?) {
         payload?.let { event ->
             if (!event.isValid()) {
-                amplitude.logger.warn("Event is invalid for missing information like userId and deviceId. Dropping event: ${event.eventType}")
+                amplitude.logger.warn(
+                    "Event is invalid for missing information like userId and deviceId. Dropping event: ${event.eventType}",
+                )
                 return
             }
             amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
@@ -65,17 +67,19 @@ class AmplitudeDestination : DestinationPlugin() {
         val plugin = this
 
         with(amplitude) {
-            pipeline = EventPipeline(
-                amplitude
-            )
+            pipeline =
+                EventPipeline(
+                    amplitude,
+                )
             pipeline.start()
-            identifyInterceptor = IdentifyInterceptor(
-                amplitude.identifyInterceptStorage,
-                amplitude,
-                logger,
-                configuration,
-                plugin
-            )
+            identifyInterceptor =
+                IdentifyInterceptor(
+                    amplitude.identifyInterceptStorage,
+                    amplitude,
+                    logger,
+                    configuration,
+                    plugin,
+                )
         }
         add(IdentityEventSender())
     }

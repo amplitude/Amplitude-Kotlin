@@ -29,9 +29,10 @@ class ExponentialBackoffRetryHandler(
      * value. We apply a ceiling of 60 seconds [MAX_DELAY_IN_MILLIS] to the delay to avoid waiting too long.
      */
     val maxDelayInMs: Long
-        get() = MAX_DELAY_IN_MILLIS.coerceAtMost(
-            baseDelayInMs * factor.pow(maxRetryAttempt + 1).toInt()
-        ).toLong()
+        get() =
+            MAX_DELAY_IN_MILLIS.coerceAtMost(
+                baseDelayInMs * factor.pow(maxRetryAttempt + 1).toInt(),
+            ).toLong()
 
     internal var attempt = AtomicInteger(0)
 

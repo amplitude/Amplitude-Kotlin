@@ -7,7 +7,10 @@ import com.amplitude.eventbridge.EventChannel
 import com.amplitude.eventbridge.EventReceiver
 
 internal class AnalyticsEventReceiver(val amplitude: Amplitude) : EventReceiver {
-    override fun receive(channel: EventChannel, event: Event) {
+    override fun receive(
+        channel: EventChannel,
+        event: Event,
+    ) {
         amplitude.logger.debug("Receive event from event bridge ${event.eventType}")
         amplitude.track(event.toBaseEvent())
     }

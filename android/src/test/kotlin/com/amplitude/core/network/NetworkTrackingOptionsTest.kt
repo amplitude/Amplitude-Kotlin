@@ -9,36 +9,38 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
 class NetworkTrackingOptionsTest {
-
     @Test
     fun `capture rules must have non-empty host list`() {
-        val exception = assertThrows<IllegalArgumentException> {
-            NetworkTrackingOptions(
-                captureRules = listOf(
-                    CaptureRule(
-                        hosts = emptyList(),
-                        statusCodeRange = (500..599).toList(),
-                    )
-                ),
-                ignoreAmplitudeRequests = false
-            )
-        }
+        val exception =
+            assertThrows<IllegalArgumentException> {
+                NetworkTrackingOptions(
+                    captureRules =
+                        listOf(
+                            CaptureRule(
+                                hosts = emptyList(),
+                                statusCodeRange = (500..599).toList(),
+                            ),
+                        ),
+                    ignoreAmplitudeRequests = false,
+                )
+            }
         assertEquals("Capture rules must have a non-empty host list.", exception.message)
     }
 
     @Test
     fun `capture rules must have non-empty status code range`() {
-        val exception = assertThrows<IllegalArgumentException> {
-            NetworkTrackingOptions(
-                listOf(
-                    CaptureRule(
-                        hosts = listOf("api.example.com"),
-                        statusCodeRange = emptyList(),
-                    )
-                ),
-                ignoreAmplitudeRequests = false
-            )
-        }
+        val exception =
+            assertThrows<IllegalArgumentException> {
+                NetworkTrackingOptions(
+                    listOf(
+                        CaptureRule(
+                            hosts = listOf("api.example.com"),
+                            statusCodeRange = emptyList(),
+                        ),
+                    ),
+                    ignoreAmplitudeRequests = false,
+                )
+            }
         assertEquals("Capture rules must have a non-empty status code range.", exception.message)
     }
 
@@ -56,22 +58,25 @@ class NetworkTrackingOptionsTest {
 
     @Test
     fun `basic wildcard host matching`() {
-        val options = NetworkTrackingOptions(
-            captureRules = listOf(
-                CaptureRule(
-                    hosts = listOf("*"),
-                    statusCodeRange = (200..299).toList()
-                )
-            ),
-            ignoreHosts = emptyList(),
-            ignoreAmplitudeRequests = false
-        )
+        val options =
+            NetworkTrackingOptions(
+                captureRules =
+                    listOf(
+                        CaptureRule(
+                            hosts = listOf("*"),
+                            statusCodeRange = (200..299).toList(),
+                        ),
+                    ),
+                ignoreHosts = emptyList(),
+                ignoreAmplitudeRequests = false,
+            )
 
-        val matchingHosts = listOf(
-            "https://api.example.com",
-            "https://test.amplitude.com", // one amplitude host
-            "https://random-api.com"
-        ).urlsToHosts()
+        val matchingHosts =
+            listOf(
+                "https://api.example.com",
+                "https://test.amplitude.com",
+                "https://random-api.com",
+            ).urlsToHosts()
         matchingHosts.map { host ->
             assertTrue(options.captureRules.matches(host, 200)) {
                 "expected $host to match"
@@ -81,31 +86,35 @@ class NetworkTrackingOptionsTest {
 
     @Test
     fun `domain wildcard host matching`() {
-        val options = NetworkTrackingOptions(
-            captureRules = listOf(
-                CaptureRule(
-                    hosts = listOf("*.example.com", "*.subdomain.test.com", "exact-match.com"),
-                    statusCodeRange = (200..299).toList(),
-                )
-            ),
-            ignoreAmplitudeRequests = false
-        )
+        val options =
+            NetworkTrackingOptions(
+                captureRules =
+                    listOf(
+                        CaptureRule(
+                            hosts = listOf("*.example.com", "*.subdomain.test.com", "exact-match.com"),
+                            statusCodeRange = (200..299).toList(),
+                        ),
+                    ),
+                ignoreAmplitudeRequests = false,
+            )
 
-        val matchingHosts = listOf(
-            "https://api.example.com/test",
-            "https://another.subdomain.test.com/api",
-            "https://exact-match.com/test"
-        ).urlsToHosts()
+        val matchingHosts =
+            listOf(
+                "https://api.example.com/test",
+                "https://another.subdomain.test.com/api",
+                "https://exact-match.com/test",
+            ).urlsToHosts()
         matchingHosts.forEach { host ->
             assertTrue(options.captureRules.matches(host, 200)) {
                 "expected $host to match"
             }
         }
 
-        val nonMatchingHosts = listOf(
-            "https://notexample.com/test",
-            "https://testing.other.com/test"
-        ).urlsToHosts()
+        val nonMatchingHosts =
+            listOf(
+                "https://notexample.com/test",
+                "https://testing.other.com/test",
+            ).urlsToHosts()
         nonMatchingHosts.forEach { host ->
             assertFalse(options.captureRules.matches(host, 200))
         }
@@ -113,32 +122,36 @@ class NetworkTrackingOptionsTest {
 
     @Test
     fun `specific host matching`() {
-        val options = NetworkTrackingOptions(
-            captureRules = listOf(
-                CaptureRule(
-                    hosts = listOf("api.example.com"),
-                    statusCodeRange = (200..299).toList()
-                )
-            ),
-            ignoreAmplitudeRequests = true
-        )
+        val options =
+            NetworkTrackingOptions(
+                captureRules =
+                    listOf(
+                        CaptureRule(
+                            hosts = listOf("api.example.com"),
+                            statusCodeRange = (200..299).toList(),
+                        ),
+                    ),
+                ignoreAmplitudeRequests = true,
+            )
 
         // matching host request
-        val matchingHosts = listOf(
-            "https://api.example.com/test",
-            "https://api.example.com/test/123",
-            "https://api.example.com/test?param=value",
-        ).urlsToHosts()
+        val matchingHosts =
+            listOf(
+                "https://api.example.com/test",
+                "https://api.example.com/test/123",
+                "https://api.example.com/test?param=value",
+            ).urlsToHosts()
         matchingHosts.forEach { host ->
             assertTrue(options.captureRules.matches(host, 200))
         }
 
         // non-matching host requests
-        val nonMatchingHosts = listOf(
-            "https://other.example.com",
-            "https://test.amplitude.com", // one amplitude host
-            "https://api.different.com",
-        ).urlsToHosts()
+        val nonMatchingHosts =
+            listOf(
+                "https://other.example.com",
+                "https://test.amplitude.com",
+                "https://api.different.com",
+            ).urlsToHosts()
         nonMatchingHosts.forEach { host ->
             assertFalse(options.captureRules.matches(host, 200))
         }
@@ -146,10 +159,11 @@ class NetworkTrackingOptionsTest {
 
     @Test
     fun `should ignore hosts with exact and wildcard patterns`() {
-        val options = NetworkTrackingOptions(
-            captureRules = listOf(CaptureRule(hosts = listOf("*"))),
-            ignoreHosts = listOf("exact.ignore.com", "*.wildcard.ignore.com")
-        )
+        val options =
+            NetworkTrackingOptions(
+                captureRules = listOf(CaptureRule(hosts = listOf("*"))),
+                ignoreHosts = listOf("exact.ignore.com", "*.wildcard.ignore.com"),
+            )
 
         assertTrue(options.shouldIgnore("exact.ignore.com"))
         assertTrue(options.shouldIgnore("test.wildcard.ignore.com"))
@@ -158,18 +172,20 @@ class NetworkTrackingOptionsTest {
 
     @Test
     fun `multiple capture rules with last matching rule precedence`() {
-        val options = NetworkTrackingOptions(
-            captureRules = listOf(
-                CaptureRule(
-                    hosts = listOf("*.example.com"),
-                    statusCodeRange = (200..299).toList()
-                ),
-                CaptureRule(
-                    hosts = listOf("api.example.com"),
-                    statusCodeRange = (500..599).toList()
-                )
+        val options =
+            NetworkTrackingOptions(
+                captureRules =
+                    listOf(
+                        CaptureRule(
+                            hosts = listOf("*.example.com"),
+                            statusCodeRange = (200..299).toList(),
+                        ),
+                        CaptureRule(
+                            hosts = listOf("api.example.com"),
+                            statusCodeRange = (500..599).toList(),
+                        ),
+                    ),
             )
-        )
 
         assertTrue(options.captureRules.matches("api.example.com", 500))
         assertFalse(options.captureRules.matches("api.example.com", 200))
@@ -177,14 +193,16 @@ class NetworkTrackingOptionsTest {
 
     @Test
     fun `non-contiguous status code ranges`() {
-        val options = NetworkTrackingOptions(
-            captureRules = listOf(
-                CaptureRule(
-                    hosts = listOf("api.example.com"),
-                    statusCodeRange = listOf(404, 200, 500)
-                )
+        val options =
+            NetworkTrackingOptions(
+                captureRules =
+                    listOf(
+                        CaptureRule(
+                            hosts = listOf("api.example.com"),
+                            statusCodeRange = listOf(404, 200, 500),
+                        ),
+                    ),
             )
-        )
 
         assertTrue(options.captureRules.matches("api.example.com", 200))
         assertTrue(options.captureRules.matches("api.example.com", 404))
@@ -194,18 +212,21 @@ class NetworkTrackingOptionsTest {
 
     @Test
     fun `host matcher edge cases`() {
-        val options = NetworkTrackingOptions(
-            captureRules = listOf(
-                CaptureRule(
-                    hosts = listOf(
-                        "*.sub.*.example.com",
-                        "TEST.EXAMPLE.COM",
-                        "special-chars.example.com"
+        val options =
+            NetworkTrackingOptions(
+                captureRules =
+                    listOf(
+                        CaptureRule(
+                            hosts =
+                                listOf(
+                                    "*.sub.*.example.com",
+                                    "TEST.EXAMPLE.COM",
+                                    "special-chars.example.com",
+                                ),
+                            statusCodeRange = (200..599).toList(),
+                        ),
                     ),
-                    statusCodeRange = (200..599).toList()
-                )
             )
-        )
 
         assertTrue(options.captureRules.matches("test.sub.domain.example.com", 200))
         assertTrue(options.captureRules.matches("test.example.com", 200))

@@ -95,10 +95,11 @@ class MigrationManagerTest {
         val storageContextV1 =
             AndroidStorageContextV1(amplitude, amplitude.configuration as Configuration)
         val events = listOf(getBaseEvent("test_event"), getBaseEvent("test_event2"))
-        val identifies = listOf(
-            getBaseEvent("\$identify", mutableMapOf("key1" to "value1", "key2" to "value2")),
-            getBaseEvent("\$identify", mutableMapOf("key1" to "value1", "key2" to "value2")),
-        )
+        val identifies =
+            listOf(
+                getBaseEvent("\$identify", mutableMapOf("key1" to "value1", "key2" to "value2")),
+                getBaseEvent("\$identify", mutableMapOf("key1" to "value1", "key2" to "value2")),
+            )
 
         // Populate legacy data
         runBlocking {
@@ -138,10 +139,11 @@ class MigrationManagerTest {
         val storageContextV1 =
             AndroidStorageContextV1(amplitude, amplitude.configuration as Configuration)
         val events = listOf(getBaseEvent("test_event"), getBaseEvent("test_event2"))
-        val identifies = listOf(
-            getBaseEvent("\$identify", mutableMapOf("key1" to "value1", "key2" to "value2")),
-            getBaseEvent("\$identify", mutableMapOf("key1" to "value1", "key2" to "value2")),
-        )
+        val identifies =
+            listOf(
+                getBaseEvent("\$identify", mutableMapOf("key1" to "value1", "key2" to "value2")),
+                getBaseEvent("\$identify", mutableMapOf("key1" to "value1", "key2" to "value2")),
+            )
 
         // Populate legacy data
         runBlocking {
@@ -179,10 +181,11 @@ class MigrationManagerTest {
         val storageContextV2 =
             AndroidStorageContextV2(amplitude, amplitude.configuration as Configuration)
         val events = listOf(getBaseEvent("test_event"), getBaseEvent("test_event2"))
-        val identifies = listOf(
-            getBaseEvent("\$identify", mutableMapOf("key1" to "value1", "key2" to "value2")),
-            getBaseEvent("\$identify", mutableMapOf("key1" to "value1", "key2" to "value2")),
-        )
+        val identifies =
+            listOf(
+                getBaseEvent("\$identify", mutableMapOf("key1" to "value1", "key2" to "value2")),
+                getBaseEvent("\$identify", mutableMapOf("key1" to "value1", "key2" to "value2")),
+            )
 
         // Populate legacy data
         runBlocking {
@@ -222,10 +225,11 @@ class MigrationManagerTest {
         val storageContextV2 =
             AndroidStorageContextV2(amplitude, amplitude.configuration as Configuration)
         val events = listOf(getBaseEvent("test_event"), getBaseEvent("test_event2"))
-        val identifies = listOf(
-            getBaseEvent("\$identify", mutableMapOf("key1" to "value1", "key2" to "value2")),
-            getBaseEvent("\$identify", mutableMapOf("key1" to "value1", "key2" to "value2")),
-        )
+        val identifies =
+            listOf(
+                getBaseEvent("\$identify", mutableMapOf("key1" to "value1", "key2" to "value2")),
+                getBaseEvent("\$identify", mutableMapOf("key1" to "value1", "key2" to "value2")),
+            )
 
         // Populate legacy data
         runBlocking {
@@ -254,7 +258,10 @@ class MigrationManagerTest {
         }
     }
 
-    private fun assertEvents(original: List<BaseEvent>, new: List<BaseEvent>) {
+    private fun assertEvents(
+        original: List<BaseEvent>,
+        new: List<BaseEvent>,
+    ) {
         Assert.assertEquals(original.size, new.size)
         for (i in original.indices) {
             Assert.assertEquals(original[i].eventType, new[i].eventType)
@@ -265,7 +272,7 @@ class MigrationManagerTest {
 
     private fun getBaseEvent(
         eventType: String,
-        userProperties: MutableMap<String, Any?> = mutableMapOf()
+        userProperties: MutableMap<String, Any?> = mutableMapOf(),
     ): BaseEvent {
         return BaseEvent().apply {
             this.eventType = eventType
@@ -278,9 +285,10 @@ class MigrationManagerTest {
         instanceName: String?,
         apiKey: String,
     ): Amplitude {
-        val amplitude = Amplitude(
-            generateConfiguration(instanceName, apiKey)
-        )
+        val amplitude =
+            Amplitude(
+                generateConfiguration(instanceName, apiKey),
+            )
         runBlocking {
             amplitude.isBuilt.await()
         }
@@ -295,11 +303,14 @@ class MigrationManagerTest {
             apiKey,
             context,
             instanceName = instanceName ?: com.amplitude.core.Configuration.DEFAULT_INSTANCE,
-            loggerProvider = ConsoleLoggerProvider()
+            loggerProvider = ConsoleLoggerProvider(),
         )
     }
 
-    private fun copyStream(src: InputStream, dst: File) {
+    private fun copyStream(
+        src: InputStream,
+        dst: File,
+    ) {
         dst.parentFile?.mkdirs()
         src.use { srcStream ->
             FileOutputStream(dst).use { dstStream ->
@@ -314,10 +325,11 @@ class MigrationManagerTest {
     }
 
     private fun cleanupMigrationVersionMarker(configuration: Configuration) {
-        val sharedPreferences = configuration.context.getSharedPreferences(
-            "amplitude-android-${configuration.instanceName}",
-            Context.MODE_PRIVATE
-        )
+        val sharedPreferences =
+            configuration.context.getSharedPreferences(
+                "amplitude-android-${configuration.instanceName}",
+                Context.MODE_PRIVATE,
+            )
         sharedPreferences.edit().remove("storage_version").apply()
     }
 

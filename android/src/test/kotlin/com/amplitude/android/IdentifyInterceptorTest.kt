@@ -16,8 +16,6 @@ import io.mockk.mockkConstructor
 import io.mockk.mockkStatic
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.TestDispatcher
-import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import okhttp3.mockwebserver.MockResponse
@@ -40,7 +38,6 @@ import java.util.concurrent.TimeUnit
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 class IdentifyInterceptorTest {
-
     private lateinit var server: MockWebServer
     private lateinit var amplitude: FakeAndroidAmplitude
 
@@ -52,16 +49,18 @@ class IdentifyInterceptorTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         mockContextProvider()
 
-        amplitude = FakeAndroidAmplitude(
-            configuration = Configuration(
-                apiKey = "test-api-key",
-                context = context,
-                serverUrl = server.url("/").toString(),
-                trackingSessionEvents = false,
-                flushIntervalMillis = 1000,
-                identifyBatchIntervalMillis = 1000
+        amplitude =
+            FakeAndroidAmplitude(
+                configuration =
+                    Configuration(
+                        apiKey = "test-api-key",
+                        context = context,
+                        serverUrl = server.url("/").toString(),
+                        trackingSessionEvents = false,
+                        flushIntervalMillis = 1000,
+                        identifyBatchIntervalMillis = 1000,
+                    ),
             )
-        )
     }
 
     @After
@@ -70,253 +69,271 @@ class IdentifyInterceptorTest {
     }
 
     @Test
-    fun `test multiple identify with set action only send one identify event`() = runTest(amplitude.androidTestDispatcher) {
-        server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
-        advanceUntilIdle()
-        amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
-        amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
-        amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
-        amplitude.identify(Identify().set("key3", "key3-value2").set("key4", "key4-value2"))
-        advanceUntilIdle()
-        val request = runRequest()
-        assertNotNull(request)
-        val events = getEventsFromRequest(request!!)
-        assertEquals(1, events.size)
-        val expectedUserProperties = mapOf(
-            "key1" to "key1-value2",
-            "key2" to "key2-value2",
-            "key3" to "key3-value2",
-            "key4" to "key4-value2"
-        )
-        assertEquals(Constants.IDENTIFY_EVENT, events[0].eventType)
-        assertEquals(
-            expectedUserProperties,
-            events[0].userProperties?.get(
-                IdentifyOperation.SET.operationType
+    fun `test multiple identify with set action only send one identify event`() =
+        runTest(amplitude.androidTestDispatcher) {
+            server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+            advanceUntilIdle()
+            amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
+            amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
+            amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
+            amplitude.identify(Identify().set("key3", "key3-value2").set("key4", "key4-value2"))
+            advanceUntilIdle()
+            val request = runRequest()
+            assertNotNull(request)
+            val events = getEventsFromRequest(request!!)
+            assertEquals(1, events.size)
+            val expectedUserProperties =
+                mapOf(
+                    "key1" to "key1-value2",
+                    "key2" to "key2-value2",
+                    "key3" to "key3-value2",
+                    "key4" to "key4-value2",
+                )
+            assertEquals(Constants.IDENTIFY_EVENT, events[0].eventType)
+            assertEquals(
+                expectedUserProperties,
+                events[0].userProperties?.get(
+                    IdentifyOperation.SET.operationType,
+                ),
             )
-        )
-    }
-
-    @Test
-    fun `test multiple identify with set action only and one event`() = runTest(amplitude.androidTestDispatcher) {
-        server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
-        advanceUntilIdle()
-        amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
-        amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
-        amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
-        amplitude.identify(Identify().set("key3", "key3-value2").set("key4", "key4-value2"))
-        val testEvent = BaseEvent()
-        testEvent.eventType = "test_event"
-        testEvent.userProperties = mutableMapOf("test_key" to "test_value", "key1" to "key1-value3", "key2" to "key2-value3")
-        amplitude.track(testEvent)
-        advanceUntilIdle()
-        val request: RecordedRequest? = runRequest()
-        assertNotNull(request)
-        val events = getEventsFromRequest(request!!)
-        assertEquals(2, events.size)
-        val expectedUserProperties1 = mapOf("key1" to "key1-value2", "key2" to "key2-value2", "key3" to "key3-value2", "key4" to "key4-value2")
-        assertEquals(Constants.IDENTIFY_EVENT, events[0].eventType)
-        assertEquals(expectedUserProperties1, events[0].userProperties?.get(IdentifyOperation.SET.operationType))
-        val expectedUserProperties2 = mapOf("key1" to "key1-value3", "key2" to "key2-value3", "test_key" to "test_value")
-        assertEquals("test_event", events[1].eventType)
-        assertEquals(expectedUserProperties2, events[1].userProperties)
-    }
-
-    @Test
-    fun `test multiple identify with set action only and one event and identify`() = runTest(amplitude.androidTestDispatcher) {
-        server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
-        advanceUntilIdle()
-        amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
-        amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
-        amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
-        amplitude.identify(Identify().set("key3", "key3-value2").set("key4", "key4-value2"))
-        val testEvent = BaseEvent()
-        testEvent.eventType = "test_event"
-        testEvent.userProperties = mutableMapOf("test_key" to "test_value", "key1" to "key1-value3", "key2" to "key2-value3")
-        amplitude.track(testEvent)
-        amplitude.identify(mapOf("key1" to "key1-value4"))
-        advanceUntilIdle()
-        val request: RecordedRequest? = runRequest()
-        assertNotNull(request)
-        val events = getEventsFromRequest(request!!)
-        assertEquals(3, events.size)
-        val expectedUserProperties1 = mapOf("key1" to "key1-value2", "key2" to "key2-value2", "key3" to "key3-value2", "key4" to "key4-value2")
-        assertEquals(Constants.IDENTIFY_EVENT, events[0].eventType)
-        assertEquals(expectedUserProperties1, events[0].userProperties?.get(IdentifyOperation.SET.operationType))
-        val expectedUserProperties2 = mapOf("key1" to "key1-value3", "key2" to "key2-value3", "test_key" to "test_value")
-        assertEquals("test_event", events[1].eventType)
-        assertEquals(expectedUserProperties2, events[1].userProperties)
-        val expectedUserProperties3 = mapOf("key1" to "key1-value4")
-        assertEquals(Constants.IDENTIFY_EVENT, events[2].eventType)
-        assertEquals(expectedUserProperties3, events[2].userProperties?.get(IdentifyOperation.SET.operationType))
-    }
-
-    @Test
-    fun `test multiple identify with set action and clear all`() = runTest(amplitude.androidTestDispatcher) {
-        server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
-        advanceUntilIdle()
-        amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
-        amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
-        amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
-        amplitude.identify(Identify().set("key3", "key3-value2").set("key4", "key4-value2"))
-        amplitude.identify(Identify().clearAll())
-        advanceUntilIdle()
-        val request: RecordedRequest? = runRequest()
-        assertNotNull(request)
-        val events = getEventsFromRequest(request!!)
-        assertEquals(1, events.size)
-        assertEquals(Constants.IDENTIFY_EVENT, events[0].eventType)
-        assertTrue(events[0].userProperties!!.containsKey(IdentifyOperation.CLEAR_ALL.operationType))
-        assertFalse(events[0].userProperties!!.containsKey(IdentifyOperation.SET.operationType))
-    }
-
-    @Test
-    fun `test multiple identify with set action and another identify`() = runTest(amplitude.androidTestDispatcher) {
-        server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
-        advanceUntilIdle()
-        amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
-        amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
-        amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
-        amplitude.identify(Identify().set("key3", "key3-value2").set("key4", "key4-value2"))
-        amplitude.identify(Identify().add("key5", 2))
-        advanceUntilIdle()
-        val request: RecordedRequest? = runRequest()
-        assertNotNull(request)
-        val events = getEventsFromRequest(request!!)
-        assertEquals(2, events.size)
-        val expectedUserProperties = mapOf("key1" to "key1-value2", "key2" to "key2-value2", "key3" to "key3-value2", "key4" to "key4-value2")
-        assertEquals(Constants.IDENTIFY_EVENT, events[0].eventType)
-        assertEquals(
-            expectedUserProperties,
-            events[0].userProperties?.get(IdentifyOperation.SET.operationType)
-        )
-        assertEquals(Constants.IDENTIFY_EVENT, events[1].eventType)
-        assertEquals(
-            mapOf("key5" to 2),
-            events[1].userProperties?.get(IdentifyOperation.ADD.operationType)
-        )
-    }
-
-    @Test
-    fun `test flush send intercepted identify`() = runTest(amplitude.androidTestDispatcher) {
-        server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
-        advanceUntilIdle()
-        amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
-        amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
-        amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
-        amplitude.identify(Identify().set("key3", "key3-value2").set("key4", "key4-value2"))
-        amplitude.flush()
-        advanceUntilIdle()
-        val request: RecordedRequest? = runRequest()
-        assertNotNull(request)
-        val events = getEventsFromRequest(request!!)
-        assertEquals(1, events.size)
-        val expectedUserProperties = mapOf("key1" to "key1-value2", "key2" to "key2-value2", "key3" to "key3-value2", "key4" to "key4-value2")
-        assertEquals(Constants.IDENTIFY_EVENT, events[0].eventType)
-        assertEquals(
-            expectedUserProperties,
-            events[0].userProperties?.get(IdentifyOperation.SET.operationType)
-        )
-    }
-
-    @Test
-    fun `test multiple identify with set action only and set group and identify`() = runTest(amplitude.androidTestDispatcher) {
-        server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
-        advanceUntilIdle()
-        amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
-        amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
-        amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
-        amplitude.identify(Identify().set("key3", "key3-value2").set("key4", "key4-value2"))
-        amplitude.setGroup("test-group-type", "test-group-value")
-        amplitude.identify(mapOf("key3" to "key3-value3", "key4" to "key4-value3"))
-        advanceUntilIdle()
-        val request: RecordedRequest? = runRequest()
-        assertNotNull(request)
-        val events = getEventsFromRequest(request!!)
-        assertEquals(3, events.size)
-        val expectedUserProperties = mapOf("key1" to "key1-value2", "key2" to "key2-value2", "key3" to "key3-value2", "key4" to "key4-value2")
-        assertEquals(Constants.IDENTIFY_EVENT, events[0].eventType)
-        assertEquals(
-            expectedUserProperties,
-            events[0].userProperties?.get(IdentifyOperation.SET.operationType)
-        )
-
-        val expectedUserProperties1 = mapOf("test-group-type" to "test-group-value")
-        assertEquals(Constants.IDENTIFY_EVENT, events[1].eventType)
-        assertEquals(
-            expectedUserProperties1,
-            events[1].userProperties?.get(IdentifyOperation.SET.operationType)
-        )
-        assertEquals(mapOf("test-group-type" to "test-group-value"), events[1].groups)
-
-        val expectedUserProperties2 = mapOf("key3" to "key3-value3", "key4" to "key4-value3")
-        assertEquals(Constants.IDENTIFY_EVENT, events[2].eventType)
-        assertEquals(
-            expectedUserProperties2,
-            events[2].userProperties?.get(IdentifyOperation.SET.operationType)
-        )
-    }
-
-    @Test
-    fun `test multiple identify with user id update`() = runTest(amplitude.androidTestDispatcher) {
-        server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
-        advanceUntilIdle()
-        amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
-        amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
-        amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
-        amplitude.identify(Identify().set("key3", "key3-value2").set("key4", "key4-value2"))
-        amplitude.amplitudeScope.launch(amplitude.amplitudeDispatcher) {
-            sleep(400)
-            val options = EventOptions().apply {
-                this.userId = "identify_user_id"
-            }
-            amplitude.identify(mapOf("key3" to "key3-value3", "key4" to "key4-value3"), options)
         }
-        advanceUntilIdle()
-        val request: RecordedRequest? = runRequest()
-        assertNotNull(request)
-        val events = getEventsFromRequest(request!!)
-        assertEquals(2, events.size)
-        val expectedUserProperties = mapOf("key1" to "key1-value2", "key2" to "key2-value2", "key3" to "key3-value2", "key4" to "key4-value2")
-        assertEquals(Constants.IDENTIFY_EVENT, events[0].eventType)
-        assertEquals(
-            expectedUserProperties,
-            events[0].userProperties?.get(IdentifyOperation.SET.operationType)
-        )
-        assertNull(events[0].userId)
-        val expectedUserProperties2 = mapOf("key3" to "key3-value3", "key4" to "key4-value3")
-        assertEquals(Constants.IDENTIFY_EVENT, events[1].eventType)
-        assertEquals(
-            expectedUserProperties2,
-            events[1].userProperties?.get(IdentifyOperation.SET.operationType)
-        )
-        assertEquals("identify_user_id", events[1].userId)
-    }
 
     @Test
-    fun `test null user properties filtered out`() = runTest(amplitude.androidTestDispatcher) {
-        server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
-        advanceUntilIdle()
-        amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
-        amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
-        amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
-        amplitude.identify(Identify().set("key3", "key3-value2").set("key4", "key4-value2"))
-        advanceUntilIdle()
-        val testEvent = BaseEvent()
-        testEvent.eventType = "test_event"
-        testEvent.userProperties = mutableMapOf("key1" to null, "key2" to null)
-        amplitude.flush()
-        val request: RecordedRequest? = runRequest()
-        assertNotNull(request)
-        val events = getEventsFromRequest(request!!)
-        assertEquals(1, events.size)
-        val expectedUserProperties = mapOf("key1" to "key1-value2", "key2" to "key2-value2", "key3" to "key3-value2", "key4" to "key4-value2")
-        assertEquals(Constants.IDENTIFY_EVENT, events[0].eventType)
-        assertEquals(
-            expectedUserProperties,
-            events[0].userProperties?.get(IdentifyOperation.SET.operationType)
-        )
-    }
+    fun `test multiple identify with set action only and one event`() =
+        runTest(amplitude.androidTestDispatcher) {
+            server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+            advanceUntilIdle()
+            amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
+            amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
+            amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
+            amplitude.identify(Identify().set("key3", "key3-value2").set("key4", "key4-value2"))
+            val testEvent = BaseEvent()
+            testEvent.eventType = "test_event"
+            testEvent.userProperties = mutableMapOf("test_key" to "test_value", "key1" to "key1-value3", "key2" to "key2-value3")
+            amplitude.track(testEvent)
+            advanceUntilIdle()
+            val request: RecordedRequest? = runRequest()
+            assertNotNull(request)
+            val events = getEventsFromRequest(request!!)
+            assertEquals(2, events.size)
+            val expectedUserProperties1 =
+                mapOf("key1" to "key1-value2", "key2" to "key2-value2", "key3" to "key3-value2", "key4" to "key4-value2")
+            assertEquals(Constants.IDENTIFY_EVENT, events[0].eventType)
+            assertEquals(expectedUserProperties1, events[0].userProperties?.get(IdentifyOperation.SET.operationType))
+            val expectedUserProperties2 = mapOf("key1" to "key1-value3", "key2" to "key2-value3", "test_key" to "test_value")
+            assertEquals("test_event", events[1].eventType)
+            assertEquals(expectedUserProperties2, events[1].userProperties)
+        }
+
+    @Test
+    fun `test multiple identify with set action only and one event and identify`() =
+        runTest(amplitude.androidTestDispatcher) {
+            server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+            advanceUntilIdle()
+            amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
+            amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
+            amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
+            amplitude.identify(Identify().set("key3", "key3-value2").set("key4", "key4-value2"))
+            val testEvent = BaseEvent()
+            testEvent.eventType = "test_event"
+            testEvent.userProperties = mutableMapOf("test_key" to "test_value", "key1" to "key1-value3", "key2" to "key2-value3")
+            amplitude.track(testEvent)
+            amplitude.identify(mapOf("key1" to "key1-value4"))
+            advanceUntilIdle()
+            val request: RecordedRequest? = runRequest()
+            assertNotNull(request)
+            val events = getEventsFromRequest(request!!)
+            assertEquals(3, events.size)
+            val expectedUserProperties1 =
+                mapOf("key1" to "key1-value2", "key2" to "key2-value2", "key3" to "key3-value2", "key4" to "key4-value2")
+            assertEquals(Constants.IDENTIFY_EVENT, events[0].eventType)
+            assertEquals(expectedUserProperties1, events[0].userProperties?.get(IdentifyOperation.SET.operationType))
+            val expectedUserProperties2 = mapOf("key1" to "key1-value3", "key2" to "key2-value3", "test_key" to "test_value")
+            assertEquals("test_event", events[1].eventType)
+            assertEquals(expectedUserProperties2, events[1].userProperties)
+            val expectedUserProperties3 = mapOf("key1" to "key1-value4")
+            assertEquals(Constants.IDENTIFY_EVENT, events[2].eventType)
+            assertEquals(expectedUserProperties3, events[2].userProperties?.get(IdentifyOperation.SET.operationType))
+        }
+
+    @Test
+    fun `test multiple identify with set action and clear all`() =
+        runTest(amplitude.androidTestDispatcher) {
+            server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+            advanceUntilIdle()
+            amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
+            amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
+            amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
+            amplitude.identify(Identify().set("key3", "key3-value2").set("key4", "key4-value2"))
+            amplitude.identify(Identify().clearAll())
+            advanceUntilIdle()
+            val request: RecordedRequest? = runRequest()
+            assertNotNull(request)
+            val events = getEventsFromRequest(request!!)
+            assertEquals(1, events.size)
+            assertEquals(Constants.IDENTIFY_EVENT, events[0].eventType)
+            assertTrue(events[0].userProperties!!.containsKey(IdentifyOperation.CLEAR_ALL.operationType))
+            assertFalse(events[0].userProperties!!.containsKey(IdentifyOperation.SET.operationType))
+        }
+
+    @Test
+    fun `test multiple identify with set action and another identify`() =
+        runTest(amplitude.androidTestDispatcher) {
+            server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+            advanceUntilIdle()
+            amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
+            amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
+            amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
+            amplitude.identify(Identify().set("key3", "key3-value2").set("key4", "key4-value2"))
+            amplitude.identify(Identify().add("key5", 2))
+            advanceUntilIdle()
+            val request: RecordedRequest? = runRequest()
+            assertNotNull(request)
+            val events = getEventsFromRequest(request!!)
+            assertEquals(2, events.size)
+            val expectedUserProperties =
+                mapOf("key1" to "key1-value2", "key2" to "key2-value2", "key3" to "key3-value2", "key4" to "key4-value2")
+            assertEquals(Constants.IDENTIFY_EVENT, events[0].eventType)
+            assertEquals(
+                expectedUserProperties,
+                events[0].userProperties?.get(IdentifyOperation.SET.operationType),
+            )
+            assertEquals(Constants.IDENTIFY_EVENT, events[1].eventType)
+            assertEquals(
+                mapOf("key5" to 2),
+                events[1].userProperties?.get(IdentifyOperation.ADD.operationType),
+            )
+        }
+
+    @Test
+    fun `test flush send intercepted identify`() =
+        runTest(amplitude.androidTestDispatcher) {
+            server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+            advanceUntilIdle()
+            amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
+            amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
+            amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
+            amplitude.identify(Identify().set("key3", "key3-value2").set("key4", "key4-value2"))
+            amplitude.flush()
+            advanceUntilIdle()
+            val request: RecordedRequest? = runRequest()
+            assertNotNull(request)
+            val events = getEventsFromRequest(request!!)
+            assertEquals(1, events.size)
+            val expectedUserProperties =
+                mapOf("key1" to "key1-value2", "key2" to "key2-value2", "key3" to "key3-value2", "key4" to "key4-value2")
+            assertEquals(Constants.IDENTIFY_EVENT, events[0].eventType)
+            assertEquals(
+                expectedUserProperties,
+                events[0].userProperties?.get(IdentifyOperation.SET.operationType),
+            )
+        }
+
+    @Test
+    fun `test multiple identify with set action only and set group and identify`() =
+        runTest(amplitude.androidTestDispatcher) {
+            server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+            advanceUntilIdle()
+            amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
+            amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
+            amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
+            amplitude.identify(Identify().set("key3", "key3-value2").set("key4", "key4-value2"))
+            amplitude.setGroup("test-group-type", "test-group-value")
+            amplitude.identify(mapOf("key3" to "key3-value3", "key4" to "key4-value3"))
+            advanceUntilIdle()
+            val request: RecordedRequest? = runRequest()
+            assertNotNull(request)
+            val events = getEventsFromRequest(request!!)
+            assertEquals(3, events.size)
+            val expectedUserProperties =
+                mapOf("key1" to "key1-value2", "key2" to "key2-value2", "key3" to "key3-value2", "key4" to "key4-value2")
+            assertEquals(Constants.IDENTIFY_EVENT, events[0].eventType)
+            assertEquals(
+                expectedUserProperties,
+                events[0].userProperties?.get(IdentifyOperation.SET.operationType),
+            )
+
+            val expectedUserProperties1 = mapOf("test-group-type" to "test-group-value")
+            assertEquals(Constants.IDENTIFY_EVENT, events[1].eventType)
+            assertEquals(
+                expectedUserProperties1,
+                events[1].userProperties?.get(IdentifyOperation.SET.operationType),
+            )
+            assertEquals(mapOf("test-group-type" to "test-group-value"), events[1].groups)
+
+            val expectedUserProperties2 = mapOf("key3" to "key3-value3", "key4" to "key4-value3")
+            assertEquals(Constants.IDENTIFY_EVENT, events[2].eventType)
+            assertEquals(
+                expectedUserProperties2,
+                events[2].userProperties?.get(IdentifyOperation.SET.operationType),
+            )
+        }
+
+    @Test
+    fun `test multiple identify with user id update`() =
+        runTest(amplitude.androidTestDispatcher) {
+            server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+            advanceUntilIdle()
+            amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
+            amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
+            amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
+            amplitude.identify(Identify().set("key3", "key3-value2").set("key4", "key4-value2"))
+            amplitude.amplitudeScope.launch(amplitude.amplitudeDispatcher) {
+                sleep(400)
+                val options =
+                    EventOptions().apply {
+                        this.userId = "identify_user_id"
+                    }
+                amplitude.identify(mapOf("key3" to "key3-value3", "key4" to "key4-value3"), options)
+            }
+            advanceUntilIdle()
+            val request: RecordedRequest? = runRequest()
+            assertNotNull(request)
+            val events = getEventsFromRequest(request!!)
+            assertEquals(2, events.size)
+            val expectedUserProperties =
+                mapOf("key1" to "key1-value2", "key2" to "key2-value2", "key3" to "key3-value2", "key4" to "key4-value2")
+            assertEquals(Constants.IDENTIFY_EVENT, events[0].eventType)
+            assertEquals(
+                expectedUserProperties,
+                events[0].userProperties?.get(IdentifyOperation.SET.operationType),
+            )
+            assertNull(events[0].userId)
+            val expectedUserProperties2 = mapOf("key3" to "key3-value3", "key4" to "key4-value3")
+            assertEquals(Constants.IDENTIFY_EVENT, events[1].eventType)
+            assertEquals(
+                expectedUserProperties2,
+                events[1].userProperties?.get(IdentifyOperation.SET.operationType),
+            )
+            assertEquals("identify_user_id", events[1].userId)
+        }
+
+    @Test
+    fun `test null user properties filtered out`() =
+        runTest(amplitude.androidTestDispatcher) {
+            server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+            advanceUntilIdle()
+            amplitude.identify(Identify().set("key1", "key1-value1").set("key2", "key2-value1"))
+            amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
+            amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
+            amplitude.identify(Identify().set("key3", "key3-value2").set("key4", "key4-value2"))
+            advanceUntilIdle()
+            val testEvent = BaseEvent()
+            testEvent.eventType = "test_event"
+            testEvent.userProperties = mutableMapOf("key1" to null, "key2" to null)
+            amplitude.flush()
+            val request: RecordedRequest? = runRequest()
+            assertNotNull(request)
+            val events = getEventsFromRequest(request!!)
+            assertEquals(1, events.size)
+            val expectedUserProperties =
+                mapOf("key1" to "key1-value2", "key2" to "key2-value2", "key3" to "key3-value2", "key4" to "key4-value2")
+            assertEquals(Constants.IDENTIFY_EVENT, events[0].eventType)
+            assertEquals(
+                expectedUserProperties,
+                events[0].userProperties?.get(IdentifyOperation.SET.operationType),
+            )
+        }
 
     private fun getEventsFromRequest(request: RecordedRequest): List<BaseEvent> {
         val body = request.body.readUtf8()

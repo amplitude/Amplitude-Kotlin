@@ -5,21 +5,24 @@ import kotlin.concurrent.read
 import kotlin.concurrent.write
 
 interface IdentityListener {
-
     fun onUserIdChange(userId: String?)
 
     fun onDeviceIdChange(deviceId: String?)
 
-    fun onIdentityChanged(identity: Identity, updateType: IdentityUpdateType)
+    fun onIdentityChanged(
+        identity: Identity,
+        updateType: IdentityUpdateType,
+    )
 }
 
 data class Identity(
     val userId: String? = null,
-    val deviceId: String? = null
+    val deviceId: String? = null,
 )
 
 enum class IdentityUpdateType {
-    Initialized, Updated
+    Initialized,
+    Updated,
 }
 
 /**
@@ -27,24 +30,31 @@ enum class IdentityUpdateType {
  *
  */
 interface IdentityManager {
-
     interface Editor {
-
         fun setUserId(userId: String?): Editor
+
         fun setDeviceId(deviceId: String?): Editor
+
         fun commit()
     }
 
     fun editIdentity(): Editor
-    fun setIdentity(identity: Identity, updateType: IdentityUpdateType = IdentityUpdateType.Updated)
+
+    fun setIdentity(
+        identity: Identity,
+        updateType: IdentityUpdateType = IdentityUpdateType.Updated,
+    )
+
     fun getIdentity(): Identity
+
     fun addIdentityListener(listener: IdentityListener)
+
     fun removeIdentityListener(listener: IdentityListener)
+
     fun isInitialized(): Boolean
 }
 
 internal class IdentityManagerImpl(private val identityStorage: IdentityStorage) : IdentityManager {
-
     private val identityLock = ReentrantReadWriteLock(true)
     private var identity = Identity()
 
@@ -59,7 +69,6 @@ internal class IdentityManagerImpl(private val identityStorage: IdentityStorage)
     override fun editIdentity(): IdentityManager.Editor {
         val originalIdentity = getIdentity()
         return object : IdentityManager.Editor {
-
             private var userId: String? = originalIdentity.userId
             private var deviceId: String? = originalIdentity.deviceId
 
@@ -80,7 +89,10 @@ internal class IdentityManagerImpl(private val identityStorage: IdentityStorage)
         }
     }
 
-    override fun setIdentity(identity: Identity, updateType: IdentityUpdateType) {
+    override fun setIdentity(
+        identity: Identity,
+        updateType: IdentityUpdateType,
+    ) {
         val originalIdentity = getIdentity()
         identityLock.write {
             this.identity = identity
@@ -89,9 +101,10 @@ internal class IdentityManagerImpl(private val identityStorage: IdentityStorage)
             }
         }
         if (identity != originalIdentity) {
-            val safeListeners = synchronized(listenersLock) {
-                listeners.toSet()
-            }
+            val safeListeners =
+                synchronized(listenersLock) {
+                    listeners.toSet()
+                }
 
             if (updateType != IdentityUpdateType.Initialized) {
                 if (identity.userId != originalIdentity.userId) {

@@ -17,10 +17,11 @@ internal class MigrationManager(private val amplitude: Amplitude) {
     private val currentStorageVersion: Int
 
     init {
-        sharedPreferences = config.context.getSharedPreferences(
-            "amplitude-android-${config.instanceName}",
-            Context.MODE_PRIVATE
-        )
+        sharedPreferences =
+            config.context.getSharedPreferences(
+                "amplitude-android-${config.instanceName}",
+                Context.MODE_PRIVATE,
+            )
         currentStorageVersion = sharedPreferences.getInt("storage_version", 0)
     }
 

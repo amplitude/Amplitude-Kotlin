@@ -25,7 +25,7 @@ import java.io.File
  */
 internal class AndroidStorageContextV1(
     private val amplitude: Amplitude,
-    configuration: Configuration
+    configuration: Configuration,
 ) {
     /**
      * Stores all event data in storage
@@ -45,29 +45,32 @@ internal class AndroidStorageContextV1(
     private val storageDirectories = mutableListOf<File>()
 
     init {
-        eventsStorage = createAndroidStorage(
-            configuration,
-            "amplitude-disk-queue",
-            "amplitude-android-${configuration.apiKey}"
-        )
+        eventsStorage =
+            createAndroidStorage(
+                configuration,
+                "amplitude-disk-queue",
+                "amplitude-android-${configuration.apiKey}",
+            )
 
-        identifyInterceptStorage = createAndroidStorage(
-            configuration,
-            "amplitude-identify-intercept-disk-queue",
-            "amplitude-identify-intercept-${configuration.apiKey}"
-        )
+        identifyInterceptStorage =
+            createAndroidStorage(
+                configuration,
+                "amplitude-identify-intercept-disk-queue",
+                "amplitude-identify-intercept-${configuration.apiKey}",
+            )
 
         val identityConfig = generateIdentityConfiguration(amplitude, configuration)
         storageDirectories.add(identityConfig.storageDirectory)
-        identityStorage = FileIdentityStorage(
-            identityConfig
-        )
+        identityStorage =
+            FileIdentityStorage(
+                identityConfig,
+            )
     }
 
     private fun createAndroidStorage(
         configuration: Configuration,
         storageDirName: String,
-        sharedPreferencesName: String
+        sharedPreferencesName: String,
     ): AndroidStorageV2 {
         val storageDirectory = configuration.context.getDir(storageDirName, Context.MODE_PRIVATE)
         storageDirectories.add(storageDirectory)
@@ -79,18 +82,19 @@ internal class AndroidStorageContextV1(
             configuration.loggerProvider.getLogger(amplitude),
             sharedPreferences,
             storageDirectory,
-            amplitude.diagnostics
+            amplitude.diagnostics,
         )
     }
 
     private fun generateIdentityConfiguration(
         amplitude: Amplitude?,
-        configuration: Configuration
+        configuration: Configuration,
     ): IdentityConfiguration {
-        val storageDirectory = configuration.context.getDir(
-            "${FileStorage.STORAGE_PREFIX}-${configuration.instanceName}",
-            Context.MODE_PRIVATE
-        )
+        val storageDirectory =
+            configuration.context.getDir(
+                "${FileStorage.STORAGE_PREFIX}-${configuration.instanceName}",
+                Context.MODE_PRIVATE,
+            )
 
         return IdentityConfiguration(
             instanceName = configuration.instanceName,
@@ -98,7 +102,7 @@ internal class AndroidStorageContextV1(
             identityStorageProvider = configuration.identityStorageProvider,
             storageDirectory = storageDirectory,
             logger = if (amplitude != null) configuration.loggerProvider.getLogger(amplitude) else null,
-            fileName = "amplitude-identity-${configuration.instanceName}"
+            fileName = "amplitude-identity-${configuration.instanceName}",
         )
     }
 

@@ -8,7 +8,6 @@ import org.junit.jupiter.api.TestInstance
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class BaseEventTest {
-
     @Test
     fun `test merge options merge the value in options`() {
         val event = BaseEvent()

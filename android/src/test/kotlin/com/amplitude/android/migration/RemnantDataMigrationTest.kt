@@ -43,7 +43,11 @@ class RemnantDataMigrationTest {
         checkLegacyDataMigration("not_db_file", 0)
     }
 
-    private fun checkLegacyDataMigration(legacyDbName: String, dbVersion: Int, migrateLegacyData: Boolean = true) {
+    private fun checkLegacyDataMigration(
+        legacyDbName: String,
+        dbVersion: Int,
+        migrateLegacyData: Boolean = true,
+    ) {
         val context = ApplicationProvider.getApplicationContext<Context>()
 
         val instanceName = "legacy_v${dbVersion}_$migrateLegacyData"
@@ -54,15 +58,16 @@ class RemnantDataMigrationTest {
         }
         val isValidDbFile = inputStream != null && legacyDbName != "not_db_file"
 
-        val amplitude = Amplitude(
-            Configuration(
-                "test-api-key",
-                context,
-                instanceName = instanceName,
-                migrateLegacyData = migrateLegacyData,
-                loggerProvider = ConsoleLoggerProvider()
+        val amplitude =
+            Amplitude(
+                Configuration(
+                    "test-api-key",
+                    context,
+                    instanceName = instanceName,
+                    migrateLegacyData = migrateLegacyData,
+                    loggerProvider = ConsoleLoggerProvider(),
+                ),
             )
-        )
 
         // Check migrated data after RemnantEventsMigrationPlugin
         val deviceId = "22833898-c487-4536-b213-40f207abdce0R"
@@ -187,7 +192,10 @@ class RemnantDataMigrationTest {
         }
     }
 
-    private fun copyStream(src: InputStream, dst: File) {
+    private fun copyStream(
+        src: InputStream,
+        dst: File,
+    ) {
         dst.parentFile?.mkdirs()
         src.use { srcStream ->
             FileOutputStream(dst).use { dstStream ->

@@ -7,15 +7,17 @@ import kotlinx.coroutines.channels.Channel
 import java.lang.ref.WeakReference
 
 class ActivityLifecycleObserver : ActivityLifecycleCallbacks {
-
     internal val eventChannel = Channel<ActivityCallbackEvent>(Channel.UNLIMITED)
 
-    override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
+    override fun onActivityCreated(
+        activity: Activity,
+        savedInstanceState: Bundle?,
+    ) {
         eventChannel.trySend(
             ActivityCallbackEvent(
                 WeakReference(activity),
-                ActivityCallbackType.Created
-            )
+                ActivityCallbackType.Created,
+            ),
         )
     }
 
@@ -23,8 +25,8 @@ class ActivityLifecycleObserver : ActivityLifecycleCallbacks {
         eventChannel.trySend(
             ActivityCallbackEvent(
                 WeakReference(activity),
-                ActivityCallbackType.Started
-            )
+                ActivityCallbackType.Started,
+            ),
         )
     }
 
@@ -32,8 +34,8 @@ class ActivityLifecycleObserver : ActivityLifecycleCallbacks {
         eventChannel.trySend(
             ActivityCallbackEvent(
                 WeakReference(activity),
-                ActivityCallbackType.Resumed
-            )
+                ActivityCallbackType.Resumed,
+            ),
         )
     }
 
@@ -41,8 +43,8 @@ class ActivityLifecycleObserver : ActivityLifecycleCallbacks {
         eventChannel.trySend(
             ActivityCallbackEvent(
                 WeakReference(activity),
-                ActivityCallbackType.Paused
-            )
+                ActivityCallbackType.Paused,
+            ),
         )
     }
 
@@ -50,29 +52,37 @@ class ActivityLifecycleObserver : ActivityLifecycleCallbacks {
         eventChannel.trySend(
             ActivityCallbackEvent(
                 WeakReference(activity),
-                ActivityCallbackType.Stopped
-            )
+                ActivityCallbackType.Stopped,
+            ),
         )
     }
 
-    override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {
+    override fun onActivitySaveInstanceState(
+        activity: Activity,
+        outState: Bundle,
+    ) {
     }
 
     override fun onActivityDestroyed(activity: Activity) {
         eventChannel.trySend(
             ActivityCallbackEvent(
                 WeakReference(activity),
-                ActivityCallbackType.Destroyed
-            )
+                ActivityCallbackType.Destroyed,
+            ),
         )
     }
 }
 
 enum class ActivityCallbackType {
-    Created, Started, Resumed, Paused, Stopped, Destroyed
+    Created,
+    Started,
+    Resumed,
+    Paused,
+    Stopped,
+    Destroyed,
 }
 
 data class ActivityCallbackEvent(
     val activity: WeakReference<Activity>,
-    val type: ActivityCallbackType
+    val type: ActivityCallbackType,
 )

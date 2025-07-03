@@ -101,9 +101,10 @@ class EventsFileManager(
      */
     fun read(): List<String> {
         // we need to filter out .temp file, since it's operating on the writing thread
-        val fileList = directory.listFiles { _, name ->
-            name.contains(storageKey) && !name.endsWith(".tmp") && !name.endsWith(".properties")
-        } ?: emptyArray()
+        val fileList =
+            directory.listFiles { _, name ->
+                name.contains(storageKey) && !name.endsWith(".tmp") && !name.endsWith(".properties")
+            } ?: emptyArray()
 
         return fileList
             .sortedBy { file ->
@@ -200,7 +201,7 @@ class EventsFileManager(
                     } catch (e: JSONException) {
                         diagnostics.addMalformedEvent(normalizedContent)
                         logger.error(
-                            "Failed to parse events: $normalizedContent, dropping file: $filePath"
+                            "Failed to parse events: $normalizedContent, dropping file: $filePath",
                         )
                         this.remove(filePath)
                         return@use normalizedContent
@@ -345,7 +346,7 @@ class EventsFileManager(
                             }
                         } catch (e: JSONException) {
                             logger.error(
-                                "Failed to parse events: $normalizedContent, dropping file: ${it.path}"
+                                "Failed to parse events: $normalizedContent, dropping file: ${it.path}",
                             )
                             this.remove(it.path)
                         }

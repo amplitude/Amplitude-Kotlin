@@ -4,7 +4,6 @@ import android.app.Application
 import android.content.Context
 import android.net.ConnectivityManager
 import androidx.test.core.app.ApplicationProvider
-import com.amplitude.android.Amplitude as AndroidAmplitude
 import com.amplitude.android.Configuration
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.common.android.AndroidContextProvider
@@ -26,6 +25,7 @@ import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.TestScope
 import okhttp3.mockwebserver.MockWebServer
 import java.io.File
+import com.amplitude.android.Amplitude as AndroidAmplitude
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FakeAndroidAmplitude(
@@ -36,13 +36,13 @@ class FakeAndroidAmplitude(
     networkIODispatcher: CoroutineDispatcher = androidTestDispatcher,
     storageIODispatcher: CoroutineDispatcher = androidTestDispatcher,
 ) : AndroidAmplitude(
-    configuration = configuration,
-    state = State(),
-    amplitudeScope = amplitudeScope,
-    amplitudeDispatcher = amplitudeDispatcher,
-    networkIODispatcher = networkIODispatcher,
-    storageIODispatcher = storageIODispatcher
-)
+        configuration = configuration,
+        state = State(),
+        amplitudeScope = amplitudeScope,
+        amplitudeDispatcher = amplitudeDispatcher,
+        networkIODispatcher = networkIODispatcher,
+        storageIODispatcher = storageIODispatcher,
+    )
 
 fun setupMockAndroidContext() {
     mockkStatic(AndroidLifecyclePlugin::class)
@@ -74,8 +74,7 @@ fun setupMockAndroidContext() {
  * Creates a fake Amplitude instance for testing coroutines using the default [TestCoroutineScheduler] on [TestScope].
  */
 @OptIn(ExperimentalCoroutinesApi::class)
-fun TestScope.createFakeAmplitude(server: MockWebServer) =
-    createFakeAmplitude(server, testScheduler)
+fun TestScope.createFakeAmplitude(server: MockWebServer) = createFakeAmplitude(server, testScheduler)
 
 @OptIn(ExperimentalCoroutinesApi::class)
 fun createFakeAmplitude(
@@ -83,17 +82,19 @@ fun createFakeAmplitude(
     scheduler: TestCoroutineScheduler? = null,
     configuration: Configuration? = null,
 ) = FakeAndroidAmplitude(
-    configuration = configuration ?: Configuration(
-        apiKey = "test-api-key",
-        context = ApplicationProvider.getApplicationContext<Context?>()
-            .also { setupMockAndroidContext() },
-        serverUrl = server?.url("/")?.toString(),
-        autocapture = setOf(),
-        flushIntervalMillis = 150, // keep it small for faster tests
-        identifyBatchIntervalMillis = 1000,
-        flushMaxRetries = FLUSH_MAX_RETRIES,
-        identityStorageProvider = IMIdentityStorageProvider(),
-        storageProvider = InMemoryStorageProvider()
-    ),
-    androidTestDispatcher = StandardTestDispatcher(scheduler)
+    configuration =
+        configuration ?: Configuration(
+            apiKey = "test-api-key",
+            context =
+                ApplicationProvider.getApplicationContext<Context?>()
+                    .also { setupMockAndroidContext() },
+            serverUrl = server?.url("/")?.toString(),
+            autocapture = setOf(),
+            flushIntervalMillis = 150,
+            identifyBatchIntervalMillis = 1000,
+            flushMaxRetries = FLUSH_MAX_RETRIES,
+            identityStorageProvider = IMIdentityStorageProvider(),
+            storageProvider = InMemoryStorageProvider(),
+        ),
+    androidTestDispatcher = StandardTestDispatcher(scheduler),
 )

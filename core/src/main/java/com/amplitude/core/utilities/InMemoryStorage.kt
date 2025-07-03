@@ -12,7 +12,6 @@ import kotlinx.coroutines.CoroutineScope
 import java.util.concurrent.ConcurrentHashMap
 
 class InMemoryStorage : Storage {
-
     private val eventsBuffer: MutableList<BaseEvent> = mutableListOf()
     private val eventsListLock = Any()
     private val valuesMap = ConcurrentHashMap<String, String>()
@@ -23,7 +22,10 @@ class InMemoryStorage : Storage {
         }
     }
 
-    override suspend fun write(key: Storage.Constants, value: String) {
+    override suspend fun write(
+        key: Storage.Constants,
+        value: String,
+    ) {
         valuesMap[key.rawVal] = value
     }
 
@@ -57,7 +59,7 @@ class InMemoryStorage : Storage {
         eventPipeline: EventPipeline,
         configuration: Configuration,
         scope: CoroutineScope,
-        storageDispatcher: CoroutineDispatcher
+        storageDispatcher: CoroutineDispatcher,
     ): ResponseHandler {
         return InMemoryResponseHandler(eventPipeline, configuration, scope, storageDispatcher)
     }
@@ -70,7 +72,10 @@ class InMemoryStorage : Storage {
 }
 
 class InMemoryStorageProvider : StorageProvider {
-    override fun getStorage(amplitude: Amplitude, prefix: String?): Storage {
+    override fun getStorage(
+        amplitude: Amplitude,
+        prefix: String?,
+    ): Storage {
         return InMemoryStorage()
     }
 }

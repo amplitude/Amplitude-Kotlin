@@ -39,7 +39,7 @@ class ConsoleLoggerTest {
         expectedErrorLog: String,
         expectedWarnLog: String,
         expectedDebugLog: String,
-        expectedInfoLog: String
+        expectedInfoLog: String,
     ) {
         val logger = ConsoleLogger.logger
         logger.logMode = logMode
@@ -61,23 +61,23 @@ class ConsoleLoggerTest {
                 "error message",
                 "error message\nwarn message",
                 "error message\nwarn message",
-                "error message\nwarn message"
+                "error message\nwarn message",
             ),
             arguments(
                 Logger.LogMode.DEBUG,
                 "error message",
                 "error message\nwarn message",
                 "error message\nwarn message\ndebug message",
-                "error message\nwarn message\ndebug message\ninfo message"
+                "error message\nwarn message\ndebug message\ninfo message",
             ),
             arguments(
                 Logger.LogMode.INFO,
                 "error message",
                 "error message\nwarn message",
                 "error message\nwarn message",
-                "error message\nwarn message\ninfo message"
+                "error message\nwarn message\ninfo message",
             ),
-            arguments(Logger.LogMode.OFF, "", "", "", "")
+            arguments(Logger.LogMode.OFF, "", "", "", ""),
         )
     }
 }

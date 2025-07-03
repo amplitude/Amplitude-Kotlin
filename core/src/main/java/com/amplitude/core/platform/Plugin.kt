@@ -12,7 +12,7 @@ interface Plugin {
         Enrichment,
         Destination,
         Utility,
-        Observe
+        Observe,
     }
 
     val type: Type
@@ -79,22 +79,23 @@ abstract class DestinationPlugin : EventPlugin {
         val beforeResult = timeline.applyPlugins(Plugin.Type.Before, event)
         val enrichmentResult = timeline.applyPlugins(Plugin.Type.Enrichment, beforeResult)
 
-        val destinationResult = enrichmentResult?.let {
-            when (it) {
-                is IdentifyEvent -> {
-                    identify(it)
-                }
-                is GroupIdentifyEvent -> {
-                    groupIdentify(it)
-                }
-                is RevenueEvent -> {
-                    revenue(it)
-                }
-                else -> {
-                    track(it)
+        val destinationResult =
+            enrichmentResult?.let {
+                when (it) {
+                    is IdentifyEvent -> {
+                        identify(it)
+                    }
+                    is GroupIdentifyEvent -> {
+                        groupIdentify(it)
+                    }
+                    is RevenueEvent -> {
+                        revenue(it)
+                    }
+                    else -> {
+                        track(it)
+                    }
                 }
             }
-        }
 
         return destinationResult
     }

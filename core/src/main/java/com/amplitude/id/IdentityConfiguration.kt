@@ -13,5 +13,5 @@ data class IdentityConfiguration(
     val identityStorageProvider: IdentityStorageProvider,
     val storageDirectory: File,
     val fileName: String,
-    val logger: Logger? = null
+    val logger: Logger? = null,
 )

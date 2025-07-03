@@ -7,14 +7,14 @@ import androidx.compose.ui.node.LayoutNode
 import com.amplitude.common.Logger
 
 internal class ComposeLayoutNodeBoundsHelper(private val logger: Logger) {
-
     private fun getLayoutNodeWindowBounds(node: LayoutNode): Rect? {
         return try {
             val modifierInfo = node.getModifierInfo()
 
             // Fast path: check first modifier (most common case)
-            val firstModifier = modifierInfo.firstOrNull()
-                .takeIf { it?.coordinates?.isAttached == true }
+            val firstModifier =
+                modifierInfo.firstOrNull()
+                    .takeIf { it?.coordinates?.isAttached == true }
 
             // Fallback: find any attached modifier
             val attachedModifier by lazy {

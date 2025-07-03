@@ -6,10 +6,10 @@ plugins {
 
 android {
     namespace = "com.amplitude.android"
-    compileSdk = 35
+    compileSdk = BuildConfig.Versions.Android.COMPILE_SDK
 
     defaultConfig {
-        minSdk = 21
+        minSdk = BuildConfig.Versions.Android.MIN_SDK
         multiDexEnabled = true
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -19,9 +19,12 @@ android {
     }
 
     buildTypes {
-        getByName("release") {
+        release {
             isMinifyEnabled = false
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
     compileOptions {

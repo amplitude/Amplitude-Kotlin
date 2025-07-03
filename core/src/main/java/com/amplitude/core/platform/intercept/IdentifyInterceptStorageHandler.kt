@@ -14,7 +14,11 @@ interface IdentifyInterceptStorageHandler {
     suspend fun clearIdentifyIntercepts()
 
     companion object {
-        fun getIdentifyInterceptStorageHandler(storage: Storage, logger: Logger, amplitude: Amplitude): IdentifyInterceptStorageHandler? {
+        fun getIdentifyInterceptStorageHandler(
+            storage: Storage,
+            logger: Logger,
+            amplitude: Amplitude,
+        ): IdentifyInterceptStorageHandler? {
             return when (storage) {
                 is EventsFileStorage -> {
                     IdentifyInterceptFileStorageHandler(storage, logger, amplitude)
@@ -35,7 +39,9 @@ object IdentifyInterceptorUtil {
     fun mergeIdentifyList(events: List<BaseEvent>): MutableMap<String, Any?> {
         val userProperties = mutableMapOf<String, Any?>()
         events.forEach {
-            userProperties.putAll(filterNonNullValues(it.userProperties!!.get(IdentifyOperation.SET.operationType) as MutableMap<String, Any?>))
+            userProperties.putAll(
+                filterNonNullValues(it.userProperties!!.get(IdentifyOperation.SET.operationType) as MutableMap<String, Any?>),
+            )
         }
         return userProperties
     }

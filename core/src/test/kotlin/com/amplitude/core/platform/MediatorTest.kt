@@ -40,12 +40,14 @@ class MediatorTest {
                 (it as EventPlugin).flush()
             }
         }
-        val t1 = thread {
-            work()
-        }
-        val t2 = thread {
-            work()
-        }
+        val t1 =
+            thread {
+                work()
+            }
+        val t2 =
+            thread {
+                work()
+            }
         t1.join()
         t2.join()
 
@@ -70,26 +72,29 @@ class MediatorTest {
 
         // work and add, work again
         val latch = CountDownLatch(2)
-        val t1 = thread {
-            work()
-            work()
-            latch.countDown()
-        }
-        val t2 = thread {
-            // give time for the first work() to start
-            Thread.sleep(UNIT_OF_WORK_IN_MS / 2)
-            // add plugin 2, 2nd work() should catch up with the newly added plugin
-            mediator.add(fakeDestinationPlugin2)
-            latch.countDown()
-        }
+        val t1 =
+            thread {
+                work()
+                work()
+                latch.countDown()
+            }
+        val t2 =
+            thread {
+                // give time for the first work() to start
+                Thread.sleep(UNIT_OF_WORK_IN_MS / 2)
+                // add plugin 2, 2nd work() should catch up with the newly added plugin
+                mediator.add(fakeDestinationPlugin2)
+                latch.countDown()
+            }
         t1.join()
         t2.join()
         latch.await()
 
         // work again
-        val t3 = thread {
-            work()
-        }
+        val t3 =
+            thread {
+                work()
+            }
         t3.join()
 
         assertEquals(3, fakeDestinationPlugin1.amountOfWorkDone.get())

@@ -8,7 +8,6 @@ import org.junit.jupiter.api.TestInstance
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class IngestionMetadataTest {
-
     @Test
     fun `test ingestionMetadata to json object`() {
         val sourceName = "ampli"

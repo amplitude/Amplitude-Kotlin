@@ -40,7 +40,7 @@ class ComposeAdvancedActivity : ComponentActivity() {
             MaterialTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    color = MaterialTheme.colorScheme.background,
                 ) {
                     ComposeAdvancedView()
                 }
@@ -52,17 +52,20 @@ class ComposeAdvancedActivity : ComponentActivity() {
     @Composable
     fun ComposeAdvancedView() {
         val context = LocalContext.current
-        val label = remember {
-            if (context is ComponentActivity) {
-                val activityInfo = context.packageManager.getActivityInfo(
-                    context.componentName, 0
-                )
-                activityInfo.loadLabel(context.packageManager).toString()
-            } else {
-                // Fallback for Compose Preview or non-Activity context
-                "Compose - Advanced Events"
+        val label =
+            remember {
+                if (context is ComponentActivity) {
+                    val activityInfo =
+                        context.packageManager.getActivityInfo(
+                            context.componentName,
+                            0,
+                        )
+                    activityInfo.loadLabel(context.packageManager).toString()
+                } else {
+                    // Fallback for Compose Preview or non-Activity context
+                    "Compose - Advanced Events"
+                }
             }
-        }
 
         Scaffold(
             topBar = {
@@ -72,40 +75,43 @@ class ComposeAdvancedActivity : ComponentActivity() {
                         IconButton(onClick = { (context as? ComponentActivity)?.finish() }) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back"
+                                contentDescription = "Back",
                             )
                         }
-                    }
+                    },
                 )
-            }
+            },
         ) { innerPadding ->
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
             ) {
                 Column(
-                    modifier = Modifier
-                        .fillMaxSize(),
+                    modifier =
+                        Modifier
+                            .fillMaxSize(),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                    verticalArrangement = Arrangement.Center,
                 ) {
-
                     Text(
                         text = "Advanced Events in Compose!",
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier.padding(16.dp),
                     )
 
                     Button(
                         onClick = {
                             sendAdvancedEvents()
                         },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF4CAF50)
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 32.dp, vertical = 8.dp)
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF4CAF50),
+                            ),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 32.dp, vertical = 8.dp),
                     ) {
                         Text("Send Advanced Events")
                     }

@@ -9,7 +9,7 @@ import org.json.JSONArray
 class AndroidStorageMigration(
     private val source: AndroidStorageV2,
     private val destination: AndroidStorageV2,
-    private val logger: Logger
+    private val logger: Logger,
 ) {
     suspend fun execute() {
         moveEventsToDestination()

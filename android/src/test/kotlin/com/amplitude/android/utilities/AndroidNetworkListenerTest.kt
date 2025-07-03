@@ -12,10 +12,10 @@ import io.mockk.mockk
 import io.mockk.mockkConstructor
 import io.mockk.slot
 import io.mockk.verify
-import kotlin.test.Test
 import org.junit.Before
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
+import kotlin.test.Test
 
 class AndroidNetworkListenerTest {
     private val fakeContext = mockk<Context>(relaxed = true)
@@ -36,39 +36,45 @@ class AndroidNetworkListenerTest {
 
     @Test
     fun `setup network callback should notify states`() {
-        val networkChangeCallback = object : AndroidNetworkListener.NetworkChangeCallback {
-            var available = false
-            override fun onNetworkAvailable() {
-                available = true
-            }
+        val networkChangeCallback =
+            object : AndroidNetworkListener.NetworkChangeCallback {
+                var available = false
 
-            override fun onNetworkUnavailable() {
-                available = false
+                override fun onNetworkAvailable() {
+                    available = true
+                }
+
+                override fun onNetworkUnavailable() {
+                    available = false
+                }
             }
-        }
-        val networkListener = AndroidNetworkListener(
-            context = fakeContext,
-            logger = fakeLogger,
-            networkCallback = networkChangeCallback
-        )
+        val networkListener =
+            AndroidNetworkListener(
+                context = fakeContext,
+                logger = fakeLogger,
+                networkCallback = networkChangeCallback,
+            )
 
         networkListener.setupNetworkCallback()
         val networkCallbackSlot = slot<NetworkCallback>()
         verify {
             fakeConnectivityManager.registerNetworkCallback(
-                any<NetworkRequest>(), capture(networkCallbackSlot)
+                any<NetworkRequest>(),
+                capture(networkCallbackSlot),
             )
         }
         val networkCallback = networkCallbackSlot.captured
         val network = mockk<Network>()
-        val availableCapability = mockk<NetworkCapabilities>() {
-            every { hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) } returns true
-            every { hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) } returns true
-        }
-        val unavailableCapability = mockk<NetworkCapabilities>() {
-            every { hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) } returns false
-            every { hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) } returns false
-        }
+        val availableCapability =
+            mockk<NetworkCapabilities> {
+                every { hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) } returns true
+                every { hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) } returns true
+            }
+        val unavailableCapability =
+            mockk<NetworkCapabilities> {
+                every { hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) } returns false
+                every { hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) } returns false
+            }
         every { fakeConnectivityManager.getNetworkCapabilities(network) } returns availableCapability
 
         // available: true, blocked: false

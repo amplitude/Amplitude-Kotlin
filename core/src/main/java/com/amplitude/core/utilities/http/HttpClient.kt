@@ -29,7 +29,10 @@ internal class HttpClient(
         return connection
     }
 
-    override fun upload(events: String, diagnostics: String?): AnalyticsResponse {
+    override fun upload(
+        events: String,
+        diagnostics: String?,
+    ): AnalyticsResponse {
         val connection: HttpURLConnection = getConnection(configuration.getApiHost())
         val request = AnalyticsRequest(getApiKey(), events, configuration.minIdLength, diagnostics)
         val bodyString = request.getBodyStr()

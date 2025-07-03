@@ -9,7 +9,6 @@ import org.junit.jupiter.api.TestInstance
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class RevenueTest {
-
     @Test
     fun testProductId() {
         val revenue = Revenue()

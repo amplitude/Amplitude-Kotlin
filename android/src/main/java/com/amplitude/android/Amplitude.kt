@@ -29,15 +29,15 @@ open class Amplitude internal constructor(
     amplitudeScope: CoroutineScope = CoroutineScope(SupervisorJob()),
     amplitudeDispatcher: CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher(),
     networkIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
-    storageIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+    storageIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
 ) : CoreAmplitude(
-    configuration = configuration,
-    store = state,
-    amplitudeScope = amplitudeScope,
-    amplitudeDispatcher = amplitudeDispatcher,
-    networkIODispatcher = networkIODispatcher,
-    storageIODispatcher = storageIODispatcher
-) {
+        configuration = configuration,
+        store = state,
+        amplitudeScope = amplitudeScope,
+        amplitudeDispatcher = amplitudeDispatcher,
+        networkIODispatcher = networkIODispatcher,
+        storageIODispatcher = storageIODispatcher,
+    ) {
     constructor(configuration: Configuration) : this(configuration, State())
 
     private lateinit var androidContextPlugin: AndroidContextPlugin
@@ -80,7 +80,7 @@ open class Amplitude internal constructor(
             identityStorageProvider = configuration.identityStorageProvider,
             storageDirectory = AndroidStorageContextV3.getIdentityStorageDirectory(configuration),
             logger = configuration.loggerProvider.getLogger(this),
-            fileName = AndroidStorageContextV3.getIdentityStorageFileName()
+            fileName = AndroidStorageContextV3.getIdentityStorageFileName(),
         )
     }
 
@@ -93,12 +93,13 @@ open class Amplitude internal constructor(
         if (this.configuration.offline != AndroidNetworkConnectivityCheckerPlugin.Disabled) {
             add(AndroidNetworkConnectivityCheckerPlugin())
         }
-        androidContextPlugin = object : AndroidContextPlugin() {
-            override fun setDeviceId(deviceId: String) {
-                // call internal method to set deviceId immediately i.e. dont' wait for build() to complete
-                this@Amplitude.setDeviceIdInternal(deviceId)
+        androidContextPlugin =
+            object : AndroidContextPlugin() {
+                override fun setDeviceId(deviceId: String) {
+                    // call internal method to set deviceId immediately i.e. dont' wait for build() to complete
+                    this@Amplitude.setDeviceIdInternal(deviceId)
+                }
             }
-        }
         add(androidContextPlugin)
         add(GetAmpliExtrasPlugin())
         add(AndroidLifecyclePlugin(activityLifecycleCallbacks))
@@ -136,11 +137,13 @@ open class Amplitude internal constructor(
     }
 
     private fun registerShutdownHook() {
-        Runtime.getRuntime().addShutdownHook(object : Thread() {
-            override fun run() {
-                (this@Amplitude.timeline as Timeline).stop()
-            }
-        })
+        Runtime.getRuntime().addShutdownHook(
+            object : Thread() {
+                override fun run() {
+                    (this@Amplitude.timeline as Timeline).stop()
+                }
+            },
+        )
     }
 
     companion object {
@@ -148,12 +151,14 @@ open class Amplitude internal constructor(
          * The event type for start session events.
          */
         const val START_SESSION_EVENT = "session_start"
+
         /**
          * The event type for end session events.
          */
         const val END_SESSION_EVENT = "session_end"
     }
 }
+
 /**
  * constructor function to build amplitude in dsl format with config options
  * Usage: Amplitude("123", context) {
@@ -167,8 +172,12 @@ open class Amplitude internal constructor(
  * @param configs Configuration
  * @return Amplitude Android Instance
  */
-fun Amplitude(apiKey: String, context: Context, configs: Configuration.() -> Unit): com.amplitude.android.Amplitude {
+fun Amplitude(
+    apiKey: String,
+    context: Context,
+    configs: Configuration.() -> Unit,
+): Amplitude {
     val config = Configuration(apiKey, context)
     configs.invoke(config)
-    return com.amplitude.android.Amplitude(config)
+    return Amplitude(config)
 }

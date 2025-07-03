@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 
 class ConsoleLoggerProviderTest {
-
     @ExperimentalCoroutinesApi
     @Test
     fun `test singleton instance`() {

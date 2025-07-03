@@ -37,7 +37,7 @@ class AndroidNetworkListener(
     fun startListening() {
         if (!hasNetworkPermission(context)) {
             logger.debug(
-                "ACCESS_NETWORK_STATE permission not granted, skipping network listener setup"
+                "ACCESS_NETWORK_STATE permission not granted, skipping network listener setup",
             )
             return
         }
@@ -58,65 +58,70 @@ class AndroidNetworkListener(
     @SuppressLint("MissingPermission")
     @VisibleForTesting
     internal fun setupNetworkCallback() {
-        val connectivityManager = context
-            .getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val networkRequest = NetworkRequest.Builder()
-            .addCapability(NET_CAPABILITY_INTERNET)
-            .build()
+        val connectivityManager =
+            context
+                .getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val networkRequest =
+            NetworkRequest.Builder()
+                .addCapability(NET_CAPABILITY_INTERNET)
+                .build()
 
-        networkCallbackForApiLevel21Plus = object : NetworkCallback() {
-            private var networkState: NetworkState? = null
+        networkCallbackForApiLevel21Plus =
+            object : NetworkCallback() {
+                private var networkState: NetworkState? = null
 
-            @RequiresPermission(ACCESS_NETWORK_STATE)
-            override fun onAvailable(network: Network) {
-                // A default network is available, set the network state and callback
-                val capabilities = connectivityManager.getNetworkCapabilities(network)
-                networkState = NetworkState(
-                    network = network,
-                    networkCallback = networkCallback,
-                    available = capabilities?.available() ?: true,
-                    blocked = false
+                @RequiresPermission(ACCESS_NETWORK_STATE)
+                override fun onAvailable(network: Network) {
+                    // A default network is available, set the network state and callback
+                    val capabilities = connectivityManager.getNetworkCapabilities(network)
+                    networkState =
+                        NetworkState(
+                            network = network,
+                            networkCallback = networkCallback,
+                            available = capabilities?.available() ?: true,
+                            blocked = false,
+                        )
+                }
+
+                override fun onUnavailable() {
+                    // no network is found
+                    networkCallback.onNetworkUnavailable()
+                }
+
+                override fun onLost(network: Network) {
+                    networkState?.update(network, available = false)
+                }
+
+                override fun onCapabilitiesChanged(
+                    network: Network,
+                    networkCapabilities: NetworkCapabilities,
+                ) {
+                    networkState?.update(network, available = networkCapabilities.available())
+                }
+
+                override fun onBlockedStatusChanged(
+                    network: Network,
+                    blocked: Boolean,
+                ) {
+                    networkState?.update(network, blocked = blocked)
+                }
+
+                // Best attempt to check if the network is available
+                private fun NetworkCapabilities.available(): Boolean {
+                    val validated =
+                        if (VERSION.SDK_INT >= VERSION_CODES.M) {
+                            hasCapability(NET_CAPABILITY_VALIDATED)
+                        } else {
+                            true
+                        }
+                    return hasCapability(NET_CAPABILITY_INTERNET) && validated
+                }
+            }.also { callback ->
+                connectivityManager.registerNetworkCallback(
+                    networkRequest,
+                    callback,
                 )
             }
-
-            override fun onUnavailable() {
-                // no network is found
-                networkCallback.onNetworkUnavailable()
-            }
-
-            override fun onLost(network: Network) {
-                networkState?.update(network, available = false)
-            }
-
-            override fun onCapabilitiesChanged(
-                network: Network,
-                networkCapabilities: NetworkCapabilities,
-            ) {
-                networkState?.update(network, available = networkCapabilities.available())
-            }
-
-            override fun onBlockedStatusChanged(
-                network: Network,
-                blocked: Boolean,
-            ) {
-                networkState?.update(network, blocked = blocked)
-            }
-
-            // Best attempt to check if the network is available
-            private fun NetworkCapabilities.available(): Boolean {
-                val validated = if (VERSION.SDK_INT >= VERSION_CODES.M) {
-                    hasCapability(NET_CAPABILITY_VALIDATED)
-                } else {
-                    true
-                }
-                return hasCapability(NET_CAPABILITY_INTERNET) && validated
-            }
-        }.also { callback ->
-            connectivityManager.registerNetworkCallback(
-                networkRequest,
-                callback
-            )
-        }
     }
 
     fun stopListening() {
