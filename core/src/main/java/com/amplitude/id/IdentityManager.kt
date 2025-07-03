@@ -1,4 +1,5 @@
 package com.amplitude.id
+import com.amplitude.core.events.applyUserProperties
 import com.amplitude.core.platform.plugins.AnalyticsIdentity
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.locks.ReentrantReadWriteLock
@@ -20,17 +21,8 @@ data class Identity(
  *
  */
 interface IdentityManager {
-    interface Editor {
-        fun setUserId(userId: String?): Editor
 
-        fun setDeviceId(deviceId: String?): Editor
-
-        fun setUserProperties(userProperties: Map<String, Any>): Editor
-
-        fun commit()
-    }
-
-    fun editIdentity(): Editor
+    fun editIdentity(block: IdentityEditor.() -> Unit)
 
     fun setIdentity(newIdentity: Identity)
 
@@ -45,7 +37,25 @@ class IdentityEditor(
     var userId: String? = null,
     var deviceId: String? = null,
     var userProperties: Map<String, Any> = emptyMap(),
-)
+) {
+    fun setUserId(userId: String?) {
+        this.userId = userId
+    }
+
+    fun setDeviceId(deviceId: String?) {
+        this.deviceId = deviceId
+    }
+
+    fun setUserProperties(properties: Map<String, Any>?): Boolean {
+        val oldProperties = this.userProperties
+        this.userProperties = userProperties.applyUserProperties(properties)
+        return oldProperties != this.userProperties
+    }
+
+    fun clearUserProperties() {
+        this.userProperties = emptyMap()
+    }
+}
 
 internal class IdentityManagerImpl(
     private val identityStorage: IdentityStorage,
@@ -55,20 +65,23 @@ internal class IdentityManagerImpl(
 
     private val listeners: CopyOnWriteArrayList<IdentityListener> = CopyOnWriteArrayList()
 
-    override fun editIdentity(): IdentityManager.Editor {
-        val editor = getIdentity().run { IdentityEditor(userId, deviceId) }
-        return object : IdentityManager.Editor {
-            override fun setUserId(userId: String?): IdentityManager.Editor = this.apply { editor.userId = userId }
+    override fun editIdentity(block: IdentityEditor.() -> Unit) {
+        val currentIdentity = getIdentity()
+        val editor = IdentityEditor(
+            userId = currentIdentity.userId,
+            deviceId = currentIdentity.deviceId,
+            userProperties = currentIdentity.userProperties
+        )
 
-            override fun setDeviceId(deviceId: String?): IdentityManager.Editor = this.apply { editor.deviceId = deviceId }
+        editor.block()
 
-            override fun setUserProperties(userProperties: Map<String, Any>): IdentityManager.Editor =
-                this.apply { editor.userProperties = userProperties }
-
-            override fun commit() {
-                setIdentity(Identity(editor.userId, editor.deviceId, editor.userProperties))
-            }
-        }
+        setIdentity(
+            newIdentity = Identity(
+                userId = editor.userId,
+                deviceId = editor.deviceId,
+                userProperties = editor.userProperties
+            )
+        )
     }
 
     override fun setIdentity(newIdentity: Identity) {
@@ -77,21 +90,24 @@ internal class IdentityManagerImpl(
                 val oldIdentity = identity
                 if (newIdentity != oldIdentity) {
                     this.identity = newIdentity
+
+                    if (newIdentity.userId != oldIdentity.userId) {
+                        identityStorage.saveUserId(newIdentity.userId)
+                    }
+
+                    if (newIdentity.deviceId != oldIdentity.deviceId) {
+                        identityStorage.saveDeviceId(identity.deviceId)
+                    }
                 }
                 oldIdentity
             }
+
         if (newIdentity == originalIdentity) return
 
-        if (identity.userId != originalIdentity.userId) {
-            identityStorage.saveUserId(identity.userId)
-        }
-
-        if (identity.deviceId != originalIdentity.deviceId) {
-            identityStorage.saveDeviceId(identity.deviceId)
-        }
-
         for (listener in listeners) {
-            listener.onIdentityChanged(identity)
+            listener.onIdentityChanged(
+                identity = identity,
+            )
         }
     }
 

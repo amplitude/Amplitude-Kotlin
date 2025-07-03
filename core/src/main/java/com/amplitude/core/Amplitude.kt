@@ -9,7 +9,6 @@ import com.amplitude.core.events.Identify
 import com.amplitude.core.events.IdentifyEvent
 import com.amplitude.core.events.Revenue
 import com.amplitude.core.events.RevenueEvent
-import com.amplitude.core.events.applyUserProperties
 import com.amplitude.core.platform.EventPlugin
 import com.amplitude.core.platform.Plugin
 import com.amplitude.core.platform.Timeline
@@ -63,20 +62,20 @@ open class Amplitude(
     val logger: Logger
     lateinit var idContainer: IdentityContainer
         private set
-    val isBuilt: Deferred<Boolean>
+    val isBuilt: Deferred<Unit>
     val diagnostics = Diagnostics()
 
     override var identity: AnalyticsIdentity
         get() = if (hasIdentity()) idContainer.identityManager.getIdentity() else Identity()
         set(value) {
-            identify(
-                userProperties = value.userProperties,
-                options =
-                    EventOptions().apply {
-                        userId = value.userId
-                        deviceId = value.deviceId
-                    },
-            )
+            idContainer.identityManager.editIdentity {
+                setUserId(value.userId)
+                setDeviceId(value.deviceId)
+                val shouldNotify = setUserProperties(value.userProperties)
+                if (shouldNotify) {
+                    identify(value.userProperties)
+                }
+            }
         }
     override var sessionId: Long
         get() = timeline.sessionId
@@ -134,7 +133,7 @@ open class Amplitude(
             }
     }
 
-    protected open fun build(): Deferred<Boolean> {
+    protected open fun build(): Deferred<Unit> {
         return amplitudeScope.async(amplitudeDispatcher, CoroutineStart.LAZY) {
             storage = configuration.storageProvider.getStorage(this@Amplitude)
             identifyInterceptStorage =
@@ -146,7 +145,6 @@ open class Amplitude(
             identityStorage = configuration.identityStorageProvider.getIdentityStorage(identityConfiguration)
 
             buildInternal(identityConfiguration)
-            true
         }
     }
 
@@ -268,9 +266,10 @@ open class Amplitude(
      */
     fun setUserId(userId: String?): Amplitude {
         amplitudeScope.launch(amplitudeDispatcher) {
-            if (isBuilt.await()) {
-                if (this@Amplitude::idContainer.isInitialized) {
-                    idContainer.identityManager.editIdentity().setUserId(userId).commit()
+            isBuilt.await()
+            if (this@Amplitude::idContainer.isInitialized) {
+                idContainer.identityManager.editIdentity {
+                    setUserId(userId)
                 }
             }
         }
@@ -299,9 +298,9 @@ open class Amplitude(
      */
     protected fun setDeviceIdInternal(deviceId: String) {
         if (hasIdentity()) {
-            idContainer.identityManager.editIdentity()
-                .setDeviceId(deviceId)
-                .commit()
+            idContainer.identityManager.editIdentity {
+                setDeviceId(deviceId)
+            }
         }
     }
 
@@ -342,11 +341,11 @@ open class Amplitude(
         amplitudeScope.launch(amplitudeDispatcher) {
             isBuilt.await()
             if (this@Amplitude::idContainer.isInitialized) {
-                idContainer.identityManager.editIdentity()
-                    .setUserId(null)
-                    .setDeviceId(UUID.randomUUID().toString() + "R")
-                    .setUserProperties(mutableMapOf())
-                    .commit()
+                idContainer.identityManager.editIdentity {
+                    setUserId(null)
+                    setDeviceId(UUID.randomUUID().toString() + "R")
+                    clearUserProperties()
+                }
             }
         }
         return this
@@ -499,24 +498,17 @@ open class Amplitude(
             event.timestamp = System.currentTimeMillis()
         }
 
-        updateIdentityFromIdentifyEvent(event)
-
         logger.debug("Logged event with type: ${event.eventType}")
+
+        updateUserPropertiesIfNeeded(event)
+
         timeline.process(event)
     }
 
-    private fun updateIdentityFromIdentifyEvent(event: BaseEvent) {
+    private fun updateUserPropertiesIfNeeded(event: BaseEvent) {
         if (event.eventType == Constants.IDENTIFY_EVENT && hasIdentity()) {
-            with(identity) {
-                idContainer.identityManager.editIdentity()
-                    .setUserId(event.userId ?: userId)
-                    .setDeviceId(event.deviceId ?: deviceId)
-                    .setUserProperties(
-                        identity.userProperties.applyUserProperties(
-                            event.userProperties,
-                        ),
-                    )
-                    .commit()
+            idContainer.identityManager.editIdentity {
+                setUserProperties(event.userProperties)
             }
         }
     }
@@ -549,7 +541,7 @@ open class Amplitude(
     private fun convertPropertiesToIdentify(userProperties: Map<String, Any>?): Identify {
         return Identify()
             .apply {
-                userProperties?.onEach { property ->
+                userProperties?.forEach { property ->
                     set(property.key, property.value)
                 }
             }

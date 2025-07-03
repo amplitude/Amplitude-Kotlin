@@ -15,7 +15,6 @@ import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
 import com.amplitude.id.IdentityConfiguration
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
@@ -28,6 +27,7 @@ open class Amplitude(
     amplitudeDispatcher: CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher(),
     networkIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
     storageIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
+    private val activityLifecycleCallbacks: ActivityLifecycleObserver = ActivityLifecycleObserver()
 ) : CoreAmplitude(
         configuration = configuration,
         amplitudeScope = amplitudeScope,
@@ -46,17 +46,6 @@ open class Amplitude(
             eventProperties = eventProperties,
             options = null,
         )
-    }
-
-    private lateinit var activityLifecycleCallbacks: ActivityLifecycleObserver
-
-    /**
-     * This build call is initiated by parent class and happens before this class
-     * init block
-     */
-    override fun build(): Deferred<Boolean> {
-        activityLifecycleCallbacks = ActivityLifecycleObserver()
-        return super.build()
     }
 
     init {
@@ -120,11 +109,11 @@ open class Amplitude(
     override fun reset(): Amplitude {
         amplitudeScope.launch(amplitudeDispatcher) {
             isBuilt.await()
-            idContainer.identityManager.editIdentity()
-                .setUserId(null)
-                .setDeviceId(null)
-                .commit()
-            androidContextPlugin.initializeDeviceId(configuration as Configuration)
+            idContainer.identityManager.editIdentity {
+                setUserId(null)
+                clearUserProperties()
+            }
+            androidContextPlugin.initializeDeviceId(forceReset = true)
         }
         return this
     }
@@ -179,7 +168,7 @@ fun Amplitude(
     apiKey: String,
     context: Context,
     configs: Configuration.() -> Unit,
-): com.amplitude.android.Amplitude {
+): Amplitude {
     val config = Configuration(apiKey, context)
     configs.invoke(config)
     return Amplitude(config)

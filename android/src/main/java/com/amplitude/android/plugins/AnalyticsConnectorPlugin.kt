@@ -26,9 +26,9 @@ internal class AnalyticsConnectorPlugin : Plugin {
         }
     }
 
-    override fun execute(event: BaseEvent): BaseEvent? {
+    override fun execute(event: BaseEvent): BaseEvent {
         val eventUserProperties: Map<String, Any?>? = event.userProperties
-        if (eventUserProperties == null || eventUserProperties.isEmpty() || event.eventType == EXPOSURE_EVENT) {
+        if (eventUserProperties.isNullOrEmpty() || event.eventType == EXPOSURE_EVENT) {
             return event
         }
         val userProperties: MutableMap<String, Map<String, Any?>> = HashMap()

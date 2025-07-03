@@ -95,7 +95,7 @@ class Timeline(
 
     private suspend fun processEventMessage(message: EventQueueMessage) {
         val event = message.event
-        val eventTimestamp = event.timestamp!! // Guaranteed non-null by process()
+        val eventTimestamp = event.timestamp ?: System.currentTimeMillis()
         val eventSessionId = event.sessionId
 
         when (event.eventType) {
@@ -185,6 +185,7 @@ class Timeline(
         if (!inSession()) {
             return
         }
+        amplitude.logger.error("Refreshing session time for sessionId: $sessionId at timestamp: $timestamp")
         lastEventTime = timestamp
         amplitude.storage.write(LAST_EVENT_TIME, lastEventTime.toString())
     }

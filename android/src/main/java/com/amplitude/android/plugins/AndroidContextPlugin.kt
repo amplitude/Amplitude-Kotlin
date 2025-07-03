@@ -24,7 +24,7 @@ open class AndroidContextPlugin : Plugin {
                 configuration.trackingOptions.shouldTrackAdid(),
                 configuration.trackingOptions.shouldTrackAppSetId(),
             )
-        initializeDeviceId(configuration)
+        initializeDeviceId()
     }
 
     override fun execute(event: BaseEvent): BaseEvent? {
@@ -32,7 +32,8 @@ open class AndroidContextPlugin : Plugin {
         return event
     }
 
-    fun initializeDeviceId(configuration: Configuration) {
+    fun initializeDeviceId(forceReset: Boolean = false) {
+        val configuration = amplitude.configuration as Configuration
         // Check configuration
         var deviceId = configuration.deviceId
         if (deviceId != null) {
@@ -40,7 +41,7 @@ open class AndroidContextPlugin : Plugin {
             return
         }
 
-        deviceId = amplitude.identity.deviceId
+        deviceId = if (forceReset) null else amplitude.identity.deviceId
         if (deviceId != null && validDeviceId(deviceId) && !deviceId.endsWith("S")) {
             return
         }

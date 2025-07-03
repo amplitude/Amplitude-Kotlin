@@ -12,8 +12,26 @@ enum class IdentifyOperation(val operationType: String) {
     UNSET("\$unset"),
     PRE_INSERT("\$preInsert"),
     POST_INSERT("\$postInsert"),
-    REMOVE("\$remove"),
+    REMOVE("\$remove");
+
+    companion object {
+        val orderedCases: List<IdentifyOperation> = listOf(
+            CLEAR_ALL,
+            UNSET,
+            SET,
+            SET_ONCE,
+            ADD,
+            APPEND,
+            PREPEND,
+            PRE_INSERT,
+            POST_INSERT,
+            REMOVE
+        )
+        val operationSet = orderedCases.map { it.operationType }.toSet()
+    }
 }
+
+
 
 open class Identify {
     private val propertySet: MutableSet<String> = mutableSetOf()
@@ -894,25 +912,40 @@ open class Identify {
     }
 }
 
-fun Map<String, Any>.applyUserProperties(userProperties: MutableMap<String, Any>?): Map<String, Any> {
+/**
+ * We updated user properties with valuable information to later trigger indentity changed operation.
+ */
+fun Map<String, Any>.applyUserProperties(userProperties: Map<String, Any>?): Map<String, Any> {
     if (userProperties.isNullOrEmpty()) return this
     return toMutableMap().apply {
-        for ((key, value) in userProperties) {
-            when (key) {
-                IdentifyOperation.CLEAR_ALL.operationType -> {
-                    clear()
+        IdentifyOperation.orderedCases.forEach { operation ->
+            userProperties[operation.operationType]?.let { properties ->
+                when (operation) {
+                    IdentifyOperation.SET -> {
+                        (properties as? Map<String, Any>)?.let { valueMap ->
+                            putAll(valueMap)
+                        }
+                    }
+                    IdentifyOperation.CLEAR_ALL -> {
+                        clear()
+                    }
+                    IdentifyOperation.UNSET -> {
+                        (properties as? Map<String, Any>)?.let { valueMap ->
+                            valueMap.forEach { property ->
+                                remove(property.key)
+                            }
+                        }
+                    }
+                    else -> {
+                        // Unsupported operation for user properties caching
+                    }
                 }
-                IdentifyOperation.SET.operationType -> {
-                    val valueMap = value as? Map<String, Any> ?: continue
-                    putAll(valueMap)
-                }
-                IdentifyOperation.UNSET.operationType -> {
-                    val valueMap = value as? Map<String, Any> ?: continue
-                    valueMap.keys.forEach { remove(it) }
-                }
-                else -> {
-                    // No Op as we ignore other operations similar to iOS SDK
-                }
+            }
+        }
+        // Transfer properties that are not explicit operations as SETs
+        userProperties.forEach { (key, value) ->
+            if (!IdentifyOperation.operationSet.contains(key)) {
+                set(key, value)
             }
         }
     }

@@ -38,9 +38,9 @@ interface IdentifyInterceptStorageHandler {
 object IdentifyInterceptorUtil {
     fun mergeIdentifyList(events: List<BaseEvent>): MutableMap<String, Any> {
         return buildMap {
-            events.onEach { event ->
+            events.forEach { event ->
                 val setOp = event.userProperties?.get(IdentifyOperation.SET.operationType) as? Map<String, Any>
-                setOp?.entries?.onEach { (key, value) ->
+                setOp?.entries?.forEach { (key, value) ->
                     put(key, value)
                 }
             }
