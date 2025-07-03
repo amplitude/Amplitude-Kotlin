@@ -51,7 +51,7 @@ publication {
 
 dependencies {
     api(project(":android"))
-    api(libs.pluginSessionReplayAndroid)
+    api(libs.sessionReplayAndroid)
 
     implementation(libs.core.ktx)
     implementation(libs.appcompat)

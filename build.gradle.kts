@@ -120,3 +120,16 @@ tasks.register("printPublishCoordinates") {
         }
     }
 }
+
+subprojects {
+    // applies to every project that’s part of this build
+    configurations.configureEach {
+        resolutionStrategy.dependencySubstitution {
+            substitute(module("com.amplitude:analytics-core"))
+                .using(project(":core"))        // local project building analytics-core
+
+            substitute(module("com.amplitude:analytics-android"))
+                .using(project(":android"))     // local project building analytics-android
+        }
+    }
+}
