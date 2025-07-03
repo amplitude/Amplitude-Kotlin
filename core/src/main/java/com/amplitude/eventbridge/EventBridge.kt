@@ -7,30 +7,44 @@ data class Event(
     val eventProperties: Map<String, Any?>? = null,
     val userProperties: Map<String, Any?>? = null,
     val groups: Map<String, Any?>? = null,
-    var groupProperties: Map<String, Any?>? = null
+    var groupProperties: Map<String, Any?>? = null,
 )
 
 enum class EventChannel {
-    EVENT, IDENTIFY
+    EVENT,
+    IDENTIFY,
 }
 
 interface EventReceiver {
-    fun receive(channel: EventChannel, event: Event)
+    fun receive(
+        channel: EventChannel,
+        event: Event,
+    )
 }
 
 /**
  * Bridges to transfer data between modules, like analytics and experiment
  */
 interface EventBridge {
-    fun sendEvent(channel: EventChannel, event: Event)
-    fun setEventReceiver(channel: EventChannel, receiver: EventReceiver)
+    fun sendEvent(
+        channel: EventChannel,
+        event: Event,
+    )
+
+    fun setEventReceiver(
+        channel: EventChannel,
+        receiver: EventReceiver,
+    )
 }
 
 internal class EventBridgeImpl : EventBridge {
     private val lock = Any()
     private val channels = mutableMapOf<EventChannel, EventBridgeChannel>()
 
-    override fun sendEvent(channel: EventChannel, event: Event) {
+    override fun sendEvent(
+        channel: EventChannel,
+        event: Event,
+    ) {
         synchronized(lock) {
             channels.getOrPut(channel) {
                 EventBridgeChannel(channel)
@@ -38,7 +52,10 @@ internal class EventBridgeImpl : EventBridge {
         }.sendEvent(event)
     }
 
-    override fun setEventReceiver(channel: EventChannel, receiver: EventReceiver) {
+    override fun setEventReceiver(
+        channel: EventChannel,
+        receiver: EventReceiver,
+    ) {
         synchronized(lock) {
             channels.getOrPut(channel) {
                 EventBridgeChannel(channel)

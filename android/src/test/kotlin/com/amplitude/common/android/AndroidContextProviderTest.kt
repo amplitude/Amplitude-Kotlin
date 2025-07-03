@@ -56,17 +56,19 @@ class AndroidContextProviderTest {
         Resources.getSystem().getConfiguration()
             .setLocales(LocaleList.forLanguageTags(TEST_LOCALE.toLanguageTag()))
 
-        val manager = Shadows.shadowOf(
-            context
-                .getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
-        )
+        val manager =
+            Shadows.shadowOf(
+                context
+                    .getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager,
+            )
         manager.setNetworkOperatorName(TEST_CARRIER)
-        androidContextProvider = AndroidContextProvider(
-            context = context,
-            locationListening = true,
-            shouldTrackAdid = false,
-            shouldTrackAppSetId = true
-        )
+        androidContextProvider =
+            AndroidContextProvider(
+                context = context,
+                locationListening = true,
+                shouldTrackAdid = false,
+                shouldTrackAppSetId = true,
+            )
     }
 
     @Test
@@ -96,17 +98,19 @@ class AndroidContextProviderTest {
 
     @Test
     fun testGetCountryFromNetwork() {
-        val manager = Shadows.shadowOf(
-            context
-                .getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
-        )
+        val manager =
+            Shadows.shadowOf(
+                context
+                    .getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager,
+            )
         manager.setNetworkCountryIso(TEST_NETWORK_COUNTRY)
-        val deviceInfo = AndroidContextProvider(
-            context = context,
-            locationListening = true,
-            shouldTrackAdid = false,
-            shouldTrackAppSetId = true
-        )
+        val deviceInfo =
+            AndroidContextProvider(
+                context = context,
+                locationListening = true,
+                shouldTrackAdid = false,
+                shouldTrackAppSetId = true,
+            )
         assertEquals(TEST_NETWORK_COUNTRY, deviceInfo.country)
     }
 
@@ -119,21 +123,23 @@ class AndroidContextProviderTest {
     fun testGetAdvertisingIdFromGoogleDevice() {
         mockkStatic(AdvertisingIdClient::class)
         val advertisingId = "advertisingId"
-        val info = AdvertisingIdClient.Info(
-            advertisingId,
-            false
-        )
+        val info =
+            AdvertisingIdClient.Info(
+                advertisingId,
+                false,
+            )
         try {
             every { AdvertisingIdClient.getAdvertisingIdInfo(context) } returns info
         } catch (e: Exception) {
             fail(e.toString())
         }
-        val deviceInfo = AndroidContextProvider(
-            context = context,
-            locationListening = true,
-            shouldTrackAdid = true,
-            shouldTrackAppSetId = true
-        )
+        val deviceInfo =
+            AndroidContextProvider(
+                context = context,
+                locationListening = true,
+                shouldTrackAdid = true,
+                shouldTrackAppSetId = true,
+            )
 
         // still get advertisingId even if limit ad tracking disabled
         assertEquals(advertisingId, deviceInfo.advertisingId)
@@ -145,21 +151,23 @@ class AndroidContextProviderTest {
     fun testGetAdvertisingIdFromGoogleDeviceDisabledTrackAdid() {
         mockkStatic(AdvertisingIdClient::class)
         val advertisingId = "advertisingId"
-        val info = AdvertisingIdClient.Info(
-            advertisingId,
-            false
-        )
+        val info =
+            AdvertisingIdClient.Info(
+                advertisingId,
+                false,
+            )
         try {
             every { AdvertisingIdClient.getAdvertisingIdInfo(context) } returns info
         } catch (e: Exception) {
             fail(e.toString())
         }
-        val deviceInfo = AndroidContextProvider(
-            context = context,
-            locationListening = true,
-            shouldTrackAdid = false,
-            shouldTrackAppSetId = true
-        )
+        val deviceInfo =
+            AndroidContextProvider(
+                context = context,
+                locationListening = true,
+                shouldTrackAdid = false,
+                shouldTrackAppSetId = true,
+            )
 
         assertNull(deviceInfo.advertisingId)
         assertTrue(deviceInfo.isLimitAdTrackingEnabled())
@@ -173,12 +181,13 @@ class AndroidContextProviderTest {
         val cr = context.contentResolver
         Secure.putInt(cr, "limit_ad_tracking", 1)
         Secure.putString(cr, "advertising_id", advertisingId)
-        val contextProvider = AndroidContextProvider(
-            context = context,
-            locationListening = true,
-            shouldTrackAdid = true,
-            shouldTrackAppSetId = true
-        )
+        val contextProvider =
+            AndroidContextProvider(
+                context = context,
+                locationListening = true,
+                shouldTrackAdid = true,
+                shouldTrackAppSetId = true,
+            )
 
         // still get advertisingID even if limit ad tracking enabled
         assertEquals(advertisingId, contextProvider.advertisingId)
@@ -192,12 +201,13 @@ class AndroidContextProviderTest {
         val cr = context.contentResolver
         Secure.putInt(cr, "limit_ad_tracking", 1)
         Secure.putString(cr, "advertising_id", advertisingId)
-        val contextProvider = AndroidContextProvider(
-            context = context,
-            locationListening = true,
-            shouldTrackAdid = false,
-            shouldTrackAppSetId = true
-        )
+        val contextProvider =
+            AndroidContextProvider(
+                context = context,
+                locationListening = true,
+                shouldTrackAdid = false,
+                shouldTrackAppSetId = true,
+            )
 
         assertNull(contextProvider.advertisingId)
         assertTrue(contextProvider.isLimitAdTrackingEnabled())
@@ -255,12 +265,13 @@ class AndroidContextProviderTest {
         every { task.result } returns appSetIdInfo
         every { Tasks.await(task) } returns appSetIdInfo
 
-        val provider = AndroidContextProvider(
-            context = context,
-            locationListening = true,
-            shouldTrackAdid = true,
-            shouldTrackAppSetId = false
-        )
+        val provider =
+            AndroidContextProvider(
+                context = context,
+                locationListening = true,
+                shouldTrackAdid = true,
+                shouldTrackAppSetId = false,
+            )
         val result = provider.appSetId
 
         assertEquals(null, result)
@@ -269,12 +280,13 @@ class AndroidContextProviderTest {
     @Test
     fun testGPSDisabled() {
         // GPS not enabled
-        val deviceInfo = AndroidContextProvider(
-            context = context,
-            locationListening = true,
-            shouldTrackAdid = false,
-            shouldTrackAppSetId = true
-        )
+        val deviceInfo =
+            AndroidContextProvider(
+                context = context,
+                locationListening = true,
+                shouldTrackAdid = false,
+                shouldTrackAppSetId = true,
+            )
         assertFalse(deviceInfo.isGooglePlayServicesEnabled())
 
         // GPS bundled but not enabled, GooglePlayUtils.isAvailable returns non-0 value
@@ -300,12 +312,13 @@ class AndroidContextProviderTest {
 
     @Test
     fun testNoLocation() {
-        val deviceInfo = AndroidContextProvider(
-            context = context,
-            locationListening = true,
-            shouldTrackAdid = false,
-            shouldTrackAppSetId = true
-        )
+        val deviceInfo =
+            AndroidContextProvider(
+                context = context,
+                locationListening = true,
+                shouldTrackAdid = false,
+                shouldTrackAppSetId = true,
+            )
         val recent = deviceInfo.mostRecentLocation
         assertNull(recent)
     }

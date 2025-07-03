@@ -144,7 +144,6 @@ class FailedResponse(response: JSONObject) : AnalyticsResponse(HttpStatus.FAILED
  *
  */
 interface ResponseHandler {
-
     /**
      * Main entry point to handle a response after an upload
      * @return true if we shouldRetryUploadOnFailure, false if we should not retry, or null if not applicable
@@ -154,43 +153,44 @@ interface ResponseHandler {
         events: Any,
         eventsString: String,
     ): Boolean? {
-        val shouldRetryUploadOnFailure = when (response) {
-            is SuccessResponse -> {
-                handleSuccessResponse(response, events, eventsString)
-                // N/A
-                null
-            }
+        val shouldRetryUploadOnFailure =
+            when (response) {
+                is SuccessResponse -> {
+                    handleSuccessResponse(response, events, eventsString)
+                    // N/A
+                    null
+                }
 
-            is BadRequestResponse -> {
-                // RETRY if bad events are removed and there's nothing to retry
-                // DON'T RETRY if it's a response that comes from a proxy
-                handleBadRequestResponse(response, events, eventsString)
-            }
+                is BadRequestResponse -> {
+                    // RETRY if bad events are removed and there's nothing to retry
+                    // DON'T RETRY if it's a response that comes from a proxy
+                    handleBadRequestResponse(response, events, eventsString)
+                }
 
-            is PayloadTooLargeResponse -> {
-                handlePayloadTooLargeResponse(response, events, eventsString)
-                // RETRY as large event files will be split and retried individually
-                true
-            }
+                is PayloadTooLargeResponse -> {
+                    handlePayloadTooLargeResponse(response, events, eventsString)
+                    // RETRY as large event files will be split and retried individually
+                    true
+                }
 
-            is TooManyRequestsResponse -> {
-                handleTooManyRequestsResponse(response, events, eventsString)
-                // Always RETRY
-                true
-            }
+                is TooManyRequestsResponse -> {
+                    handleTooManyRequestsResponse(response, events, eventsString)
+                    // Always RETRY
+                    true
+                }
 
-            is TimeoutResponse -> {
-                handleTimeoutResponse(response, events, eventsString)
-                // Always RETRY
-                true
-            }
+                is TimeoutResponse -> {
+                    handleTimeoutResponse(response, events, eventsString)
+                    // Always RETRY
+                    true
+                }
 
-            else -> {
-                handleFailedResponse(response as FailedResponse, events, eventsString)
-                // Always RETRY
-                true
+                else -> {
+                    handleFailedResponse(response as FailedResponse, events, eventsString)
+                    // Always RETRY
+                    true
+                }
             }
-        }
 
         return shouldRetryUploadOnFailure
     }
@@ -265,7 +265,8 @@ enum class HttpStatus(
     TIMEOUT(408),
     PAYLOAD_TOO_LARGE(413),
     TOO_MANY_REQUESTS(429),
-    FAILED(500, 500..599);
+    FAILED(500, 500..599),
+    ;
 
     val statusCode: Int
         get() = range.first

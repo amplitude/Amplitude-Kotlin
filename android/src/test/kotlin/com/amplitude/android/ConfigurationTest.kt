@@ -54,17 +54,19 @@ class ConfigurationTest {
 
     @Test
     fun configuration_defaultTracking_quick_update() {
-        val configuration = Configuration(
-            "test-apikey",
-            context!!,
-            autocapture = autocaptureOptions {
-                +sessions
-                +appLifecycles
-                +deepLinks
-                +screenViews
-                +elementInteractions
-            }
-        )
+        val configuration =
+            Configuration(
+                "test-apikey",
+                context!!,
+                autocapture =
+                    autocaptureOptions {
+                        +sessions
+                        +appLifecycles
+                        +deepLinks
+                        +screenViews
+                        +elementInteractions
+                    },
+            )
         Assertions.assertTrue(AutocaptureOption.SESSIONS in configuration.autocapture)
         Assertions.assertTrue(AutocaptureOption.APP_LIFECYCLES in configuration.autocapture)
         Assertions.assertTrue(AutocaptureOption.DEEP_LINKS in configuration.autocapture)
@@ -75,22 +77,25 @@ class ConfigurationTest {
     @Suppress("DEPRECATION")
     @Test
     fun configuration_defaultTracking_replace_instance() {
-        val configuration = Configuration(
-            "test-apikey",
-            context!!,
-            autocapture = autocaptureOptions {
-                +sessions
-                +appLifecycles
-                +deepLinks
-                +screenViews
-            }
-        )
-        configuration.defaultTracking = DefaultTrackingOptions(
-            sessions = false,
-            appLifecycles = true,
-            deepLinks = false,
-            screenViews = true
-        )
+        val configuration =
+            Configuration(
+                "test-apikey",
+                context!!,
+                autocapture =
+                    autocaptureOptions {
+                        +sessions
+                        +appLifecycles
+                        +deepLinks
+                        +screenViews
+                    },
+            )
+        configuration.defaultTracking =
+            DefaultTrackingOptions(
+                sessions = false,
+                appLifecycles = true,
+                deepLinks = false,
+                screenViews = true,
+            )
         Assertions.assertFalse(AutocaptureOption.SESSIONS in configuration.autocapture)
         Assertions.assertTrue(AutocaptureOption.APP_LIFECYCLES in configuration.autocapture)
         Assertions.assertFalse(AutocaptureOption.DEEP_LINKS in configuration.autocapture)
@@ -100,16 +105,18 @@ class ConfigurationTest {
     @Suppress("DEPRECATION")
     @Test
     fun configuration_defaultTracking_configuration() {
-        val configuration = Configuration(
-            "test-apikey",
-            context!!,
-            defaultTracking = DefaultTrackingOptions(
-                sessions = false,
-                appLifecycles = true,
-                deepLinks = false,
-                screenViews = true
+        val configuration =
+            Configuration(
+                "test-apikey",
+                context!!,
+                defaultTracking =
+                    DefaultTrackingOptions(
+                        sessions = false,
+                        appLifecycles = true,
+                        deepLinks = false,
+                        screenViews = true,
+                    ),
             )
-        )
         Assertions.assertFalse(AutocaptureOption.SESSIONS in configuration.autocapture)
         Assertions.assertTrue(AutocaptureOption.APP_LIFECYCLES in configuration.autocapture)
         Assertions.assertFalse(AutocaptureOption.DEEP_LINKS in configuration.autocapture)
@@ -119,11 +126,12 @@ class ConfigurationTest {
     @Suppress("DEPRECATION")
     @Test
     fun configuration_trackingSessionEvents_configuration() {
-        val configuration = Configuration(
-            "test-apikey",
-            context!!,
-            trackingSessionEvents = false,
-        )
+        val configuration =
+            Configuration(
+                "test-apikey",
+                context!!,
+                trackingSessionEvents = false,
+            )
         Assertions.assertFalse(AutocaptureOption.SESSIONS in configuration.autocapture)
         Assertions.assertFalse(AutocaptureOption.APP_LIFECYCLES in configuration.autocapture)
         Assertions.assertFalse(AutocaptureOption.DEEP_LINKS in configuration.autocapture)
@@ -133,16 +141,18 @@ class ConfigurationTest {
     @Suppress("DEPRECATION")
     @Test
     fun configuration_defaultTracking_replaces_autocapture_entirely_configuration() {
-        val configuration = Configuration(
-            "test-apikey",
-            context!!,
-            autocapture = autocaptureOptions {
-                +sessions
-                +appLifecycles
-                +deepLinks
-                +screenViews
-            }
-        )
+        val configuration =
+            Configuration(
+                "test-apikey",
+                context!!,
+                autocapture =
+                    autocaptureOptions {
+                        +sessions
+                        +appLifecycles
+                        +deepLinks
+                        +screenViews
+                    },
+            )
         configuration.defaultTracking.deepLinks = true
         Assertions.assertTrue(AutocaptureOption.SESSIONS in configuration.autocapture)
         Assertions.assertFalse(AutocaptureOption.APP_LIFECYCLES in configuration.autocapture)

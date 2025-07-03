@@ -58,7 +58,7 @@ class RemnantDataMigration(val amplitude: Amplitude, private val databaseStorage
             }
         } catch (e: Exception) {
             LogcatLogger.logger.error(
-                "device/user id migration failed: ${e.message}"
+                "device/user id migration failed: ${e.message}",
             )
         }
     }
@@ -89,7 +89,7 @@ class RemnantDataMigration(val amplitude: Amplitude, private val databaseStorage
             }
         } catch (e: Exception) {
             LogcatLogger.logger.error(
-                "session data migration failed: ${e.message}"
+                "session data migration failed: ${e.message}",
             )
         }
     }
@@ -103,7 +103,7 @@ class RemnantDataMigration(val amplitude: Amplitude, private val databaseStorage
             }
         } catch (e: Exception) {
             LogcatLogger.logger.error(
-                "events migration failed: ${e.message}"
+                "events migration failed: ${e.message}",
             )
         }
     }
@@ -117,7 +117,7 @@ class RemnantDataMigration(val amplitude: Amplitude, private val databaseStorage
             }
         } catch (e: Exception) {
             LogcatLogger.logger.error(
-                "identifies migration failed: ${e.message}"
+                "identifies migration failed: ${e.message}",
             )
         }
     }
@@ -131,19 +131,23 @@ class RemnantDataMigration(val amplitude: Amplitude, private val databaseStorage
             }
         } catch (e: Exception) {
             LogcatLogger.logger.error(
-                "intercepted identifies migration failed: ${e.message}"
+                "intercepted identifies migration failed: ${e.message}",
             )
         }
     }
 
-    private suspend fun moveEvent(event: JSONObject, destinationStorage: Storage, removeFromSource: (rowId: Long) -> Unit) {
+    private suspend fun moveEvent(
+        event: JSONObject,
+        destinationStorage: Storage,
+        removeFromSource: (rowId: Long) -> Unit,
+    ) {
         try {
             val rowId = convertLegacyEvent(event)
             destinationStorage.writeEvent(event.toBaseEvent())
             removeFromSource(rowId)
         } catch (e: Exception) {
             LogcatLogger.logger.error(
-                "event migration failed: ${e.message}"
+                "event migration failed: ${e.message}",
             )
         }
     }

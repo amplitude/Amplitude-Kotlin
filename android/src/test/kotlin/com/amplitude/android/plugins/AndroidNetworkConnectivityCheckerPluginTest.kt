@@ -15,7 +15,6 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 
 class AndroidNetworkConnectivityCheckerPluginTest {
-
     private lateinit var amplitude: Amplitude
     private lateinit var plugin: AndroidNetworkConnectivityCheckerPlugin
 
@@ -23,17 +22,18 @@ class AndroidNetworkConnectivityCheckerPluginTest {
 
     @Before
     fun setup() {
-        amplitude = Amplitude(
-            Configuration(
-                apiKey = "api-key",
-                context = context,
-                storageProvider = InMemoryStorageProvider(),
-                loggerProvider = ConsoleLoggerProvider(),
-                identifyInterceptStorageProvider = InMemoryStorageProvider(),
-                identityStorageProvider = IMIdentityStorageProvider(),
-                autocapture = setOf()
+        amplitude =
+            Amplitude(
+                Configuration(
+                    apiKey = "api-key",
+                    context = context,
+                    storageProvider = InMemoryStorageProvider(),
+                    loggerProvider = ConsoleLoggerProvider(),
+                    identifyInterceptStorageProvider = InMemoryStorageProvider(),
+                    identityStorageProvider = IMIdentityStorageProvider(),
+                    autocapture = setOf(),
+                ),
             )
-        )
         plugin = AndroidNetworkConnectivityCheckerPlugin()
     }
 

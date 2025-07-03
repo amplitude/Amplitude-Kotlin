@@ -17,9 +17,10 @@ class AnalyticsResponseTest {
 
     @Test
     fun `test create payload too large response`() {
-        val responseBody = JSONObject().apply {
-            put("error", "Payload too large")
-        }.toString()
+        val responseBody =
+            JSONObject().apply {
+                put("error", "Payload too large")
+            }.toString()
 
         val response = AnalyticsResponse.create(413, responseBody)
         assertTrue(response is PayloadTooLargeResponse)
@@ -36,9 +37,10 @@ class AnalyticsResponseTest {
 
     @Test
     fun `test create failed response`() {
-        val responseBody = JSONObject().apply {
-            put("error", "Internal server error")
-        }.toString()
+        val responseBody =
+            JSONObject().apply {
+                put("error", "Internal server error")
+            }.toString()
 
         val response = AnalyticsResponse.create(500, responseBody)
         assertTrue(response is FailedResponse)

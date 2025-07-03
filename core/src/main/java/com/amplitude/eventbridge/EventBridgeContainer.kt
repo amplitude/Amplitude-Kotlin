@@ -4,9 +4,7 @@ package com.amplitude.eventbridge
  * Container of EventBridge
  */
 class EventBridgeContainer {
-
     companion object {
-
         private val instancesLock = Any()
         private val instances = mutableMapOf<String, EventBridgeContainer>()
 

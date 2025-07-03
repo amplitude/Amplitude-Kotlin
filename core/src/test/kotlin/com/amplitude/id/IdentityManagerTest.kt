@@ -8,7 +8,6 @@ import org.junit.jupiter.api.TestInstance
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class IdentityManagerTest {
-
     @Test
     fun `test editIdentity, setUserId setDeviceId, getIdentity, success`() {
         val identityStorage = IMIdentityStorage()
@@ -28,20 +27,25 @@ class IdentityManagerTest {
         val identityStorage = IMIdentityStorage()
         val identityManager = IdentityManagerImpl(identityStorage)
         var listenerCalled = false
-        identityManager.addIdentityListener(object : IdentityListener {
-            override fun onUserIdChange(userId: String?) {
-                assertEquals("user_id", userId)
-            }
+        identityManager.addIdentityListener(
+            object : IdentityListener {
+                override fun onUserIdChange(userId: String?) {
+                    assertEquals("user_id", userId)
+                }
 
-            override fun onDeviceIdChange(deviceId: String?) {
-                assertEquals("device_id", deviceId)
-            }
+                override fun onDeviceIdChange(deviceId: String?) {
+                    assertEquals("device_id", deviceId)
+                }
 
-            override fun onIdentityChanged(identity: Identity, updateType: IdentityUpdateType) {
-                assertEquals(expectedIdentity, identity)
-                listenerCalled = true
-            }
-        })
+                override fun onIdentityChanged(
+                    identity: Identity,
+                    updateType: IdentityUpdateType,
+                ) {
+                    assertEquals(expectedIdentity, identity)
+                    listenerCalled = true
+                }
+            },
+        )
         identityManager.editIdentity()
             .setUserId("user_id")
             .setDeviceId("device_id")
@@ -65,20 +69,25 @@ class IdentityManagerTest {
         val identityStorage = IMIdentityStorage()
         val identityManager = IdentityManagerImpl(identityStorage)
         var listenerCalled = false
-        identityManager.addIdentityListener(object : IdentityListener {
-            override fun onUserIdChange(userId: String?) {
-                assertEquals("user_id", userId)
-            }
+        identityManager.addIdentityListener(
+            object : IdentityListener {
+                override fun onUserIdChange(userId: String?) {
+                    assertEquals("user_id", userId)
+                }
 
-            override fun onDeviceIdChange(deviceId: String?) {
-                assertEquals("device_id", deviceId)
-            }
+                override fun onDeviceIdChange(deviceId: String?) {
+                    assertEquals("device_id", deviceId)
+                }
 
-            override fun onIdentityChanged(identity: Identity, updateType: IdentityUpdateType) {
-                assertEquals(expectedIdentity, identity)
-                listenerCalled = true
-            }
-        })
+                override fun onIdentityChanged(
+                    identity: Identity,
+                    updateType: IdentityUpdateType,
+                ) {
+                    assertEquals(expectedIdentity, identity)
+                    listenerCalled = true
+                }
+            },
+        )
         identityManager.setIdentity(expectedIdentity)
         assertTrue(listenerCalled)
     }
@@ -90,17 +99,22 @@ class IdentityManagerTest {
         val identityManager = IdentityManagerImpl(identityStorage)
         identityManager.setIdentity(expectedIdentity)
         var listenerCalled = false
-        identityManager.addIdentityListener(object : IdentityListener {
-            override fun onUserIdChange(userId: String?) {
-            }
+        identityManager.addIdentityListener(
+            object : IdentityListener {
+                override fun onUserIdChange(userId: String?) {
+                }
 
-            override fun onDeviceIdChange(deviceId: String?) {
-            }
+                override fun onDeviceIdChange(deviceId: String?) {
+                }
 
-            override fun onIdentityChanged(identity: Identity, updateType: IdentityUpdateType) {
-                listenerCalled = true
-            }
-        })
+                override fun onIdentityChanged(
+                    identity: Identity,
+                    updateType: IdentityUpdateType,
+                ) {
+                    listenerCalled = true
+                }
+            },
+        )
         identityManager.setIdentity(expectedIdentity)
         assertFalse(listenerCalled)
     }

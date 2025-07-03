@@ -11,7 +11,10 @@ internal object FragmentActivityHandler {
     private val callbacksMap =
         WeakHashMap<FragmentActivity, MutableList<AutocaptureFragmentLifecycleCallbacks>>()
 
-    fun Activity.registerFragmentLifecycleCallbacks(track: TrackEventCallback, logger: Logger) {
+    fun Activity.registerFragmentLifecycleCallbacks(
+        track: TrackEventCallback,
+        logger: Logger,
+    ) {
         (this as? FragmentActivity)?.apply {
             val callback = AutocaptureFragmentLifecycleCallbacks(track, logger)
             supportFragmentManager.registerFragmentLifecycleCallbacks(callback, false)

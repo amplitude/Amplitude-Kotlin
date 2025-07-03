@@ -16,16 +16,10 @@ import com.amplitude.core.utilities.InMemoryStorageProvider
 import com.amplitude.id.IMIdentityStorageProvider
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.mockkObject
 import io.mockk.slot
-import io.mockk.unmockkObject
-import io.mockk.verify
-import kotlin.concurrent.thread
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.TestCoroutineDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -37,10 +31,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.io.File
-import com.amplitude.android.Amplitude.Companion.END_SESSION_EVENT
-import com.amplitude.android.Amplitude.Companion.START_SESSION_EVENT
-import java.util.concurrent.atomic.AtomicLong
-import com.amplitude.android.Timeline
+import kotlin.concurrent.thread
 
 internal class FakeEventPlugin : EventPlugin {
     override val type: Plugin.Type = Plugin.Type.Before
@@ -55,7 +46,6 @@ internal class FakeEventPlugin : EventPlugin {
 
 @ExperimentalCoroutinesApi
 class AmplitudeTest {
-
     private fun createConfiguration(
         minTimeBetweenSessionsMillis: Long? = null,
         storageProvider: StorageProvider = InMemoryStorageProvider(),
@@ -67,7 +57,7 @@ class AmplitudeTest {
         val connectivityManager = mockk<ConnectivityManager>(relaxed = true)
         every {
             context.getSystemService(
-                Context.CONNECTIVITY_SERVICE
+                Context.CONNECTIVITY_SERVICE,
             )
         } returns connectivityManager
         val dirNameSlot = slot<String>()
@@ -75,19 +65,25 @@ class AmplitudeTest {
             File("/tmp/amplitude-kotlin/${dirNameSlot.captured}")
         }
 
-        val configuration = Configuration(
-            apiKey = "api-key",
-            context = context,
-            instanceName = INSTANCE_NAME,
-            storageProvider = storageProvider,
-            autocapture = if (minTimeBetweenSessionsMillis != null) setOf(
-                AutocaptureOption.SESSIONS
-            ) else setOf(),
-            loggerProvider = ConsoleLoggerProvider(),
-            identifyInterceptStorageProvider = InMemoryStorageProvider(),
-            identityStorageProvider = IMIdentityStorageProvider(),
-            sessionId = sessionId,
-        )
+        val configuration =
+            Configuration(
+                apiKey = "api-key",
+                context = context,
+                instanceName = INSTANCE_NAME,
+                storageProvider = storageProvider,
+                autocapture =
+                    if (minTimeBetweenSessionsMillis != null) {
+                        setOf(
+                            AutocaptureOption.SESSIONS,
+                        )
+                    } else {
+                        setOf()
+                    },
+                loggerProvider = ConsoleLoggerProvider(),
+                identifyInterceptStorageProvider = InMemoryStorageProvider(),
+                identityStorageProvider = IMIdentityStorageProvider(),
+                sessionId = sessionId,
+            )
 
         if (deviceId != null) {
             configuration.deviceId = deviceId
@@ -106,146 +102,163 @@ class AmplitudeTest {
     }
 
     @Test
-    fun amplitude_reset_wipesUserIdDeviceId() = runTest {
-        val amplitude = createFakeAmplitude(
-            scheduler = testScheduler,
-            configuration = createConfiguration()
-        )
-        amplitude.isBuilt.await()
-        amplitude.setUserId("test user")
-        amplitude.setDeviceId("test device")
-        advanceUntilIdle()
-        assertEquals("test user", amplitude.store.userId)
-        assertEquals("test device", amplitude.store.deviceId)
-        assertEquals("test user", amplitude.getUserId())
-        assertEquals("test device", amplitude.getDeviceId())
-
-        amplitude.reset()
-        advanceUntilIdle()
-        assertNull(amplitude.store.userId)
-        assertNotEquals("test device", amplitude.store.deviceId)
-        assertNull(amplitude.getUserId())
-        assertNotEquals("test device", amplitude.getDeviceId())
-    }
-
-    @Test
-    fun amplitude_unset_country_with_remote_ip() = runTest {
-        val amplitude = createFakeAmplitude(
-            scheduler = testScheduler,
-            configuration = createConfiguration()
-        )
-        val fakeEventPlugin = FakeEventPlugin()
-        amplitude.add(fakeEventPlugin)
-
-        amplitude.isBuilt.await()
-        val event = BaseEvent()
-        event.eventType = "test event"
-        amplitude.track(event)
-        advanceUntilIdle()
-        Thread.sleep(100)
-
-        assertTrue(fakeEventPlugin.trackedEvents.size == 1)
-        with(fakeEventPlugin.trackedEvents.first()) {
-            assertEquals("\$remote", ip)
-            assertNull(country)
-        }
-    }
-
-    @Test
-    fun amplitude_fetch_country_with_customized_ip() = runTest {
-        val amplitude = createFakeAmplitude(
-            scheduler = testScheduler,
-            configuration = createConfiguration()
-        )
-        val fakeEventPlugin = FakeEventPlugin()
-        amplitude.add(fakeEventPlugin)
-
-        amplitude.isBuilt.await()
-        val event = BaseEvent()
-        event.eventType = "test event"
-        event.ip = "127.0.0.1"
-        amplitude.track(event)
-        advanceUntilIdle()
-        Thread.sleep(100)
-
-        assertTrue(fakeEventPlugin.trackedEvents.size == 1)
-        with(fakeEventPlugin.trackedEvents.first()) {
-            assertEquals("127.0.0.1", ip)
-            assertEquals("US", country)
-        }
-    }
-
-    @Test
-    fun test_analytics_connector() = runTest {
-        val amplitude = createFakeAmplitude(
-            scheduler = testScheduler,
-            configuration = createConfiguration()
-        )
-
-        amplitude.isBuilt.await()
-
-        val connector = AnalyticsConnector.getInstance(INSTANCE_NAME)
-        val connectorUserId = "connector user id"
-        val connectorDeviceId = "connector device id"
-        var connectorIdentitySet = false
-        val identityListener = { _: Identity ->
-            if (connectorIdentitySet) {
-                assertEquals(
-                    connectorUserId, connector.identityStore.getIdentity().userId
+    fun amplitude_reset_wipesUserIdDeviceId() =
+        runTest {
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = createConfiguration(),
                 )
-                assertEquals(
-                    connectorDeviceId, connector.identityStore.getIdentity().deviceId
+            amplitude.isBuilt.await()
+            amplitude.setUserId("test user")
+            amplitude.setDeviceId("test device")
+            advanceUntilIdle()
+            assertEquals("test user", amplitude.store.userId)
+            assertEquals("test device", amplitude.store.deviceId)
+            assertEquals("test user", amplitude.getUserId())
+            assertEquals("test device", amplitude.getDeviceId())
+
+            amplitude.reset()
+            advanceUntilIdle()
+            assertNull(amplitude.store.userId)
+            assertNotEquals("test device", amplitude.store.deviceId)
+            assertNull(amplitude.getUserId())
+            assertNotEquals("test device", amplitude.getDeviceId())
+        }
+
+    @Test
+    fun amplitude_unset_country_with_remote_ip() =
+        runTest {
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = createConfiguration(),
                 )
-                connectorIdentitySet = false
+            val fakeEventPlugin = FakeEventPlugin()
+            amplitude.add(fakeEventPlugin)
+
+            amplitude.isBuilt.await()
+            val event = BaseEvent()
+            event.eventType = "test event"
+            amplitude.track(event)
+            advanceUntilIdle()
+            Thread.sleep(100)
+
+            assertTrue(fakeEventPlugin.trackedEvents.size == 1)
+            with(fakeEventPlugin.trackedEvents.first()) {
+                assertEquals("\$remote", ip)
+                assertNull(country)
             }
         }
-        connector.identityStore.addIdentityListener(identityListener)
-        amplitude.setUserId(connectorUserId)
-        amplitude.setDeviceId(connectorDeviceId)
-        connectorIdentitySet = true
-        advanceUntilIdle()
-        connector.identityStore.removeIdentityListener(identityListener)
-    }
 
     @Test
-    fun amplitude_getDeviceId_should_return_not_null_after_isBuilt() = runTest {
-        val amplitude = createFakeAmplitude(
-            scheduler = testScheduler,
-            configuration = createConfiguration()
-        )
-        amplitude.isBuilt.await()
-        assertNotNull(amplitude.store.deviceId)
-        assertNotNull(amplitude.getDeviceId())
-    }
+    fun amplitude_fetch_country_with_customized_ip() =
+        runTest {
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = createConfiguration(),
+                )
+            val fakeEventPlugin = FakeEventPlugin()
+            amplitude.add(fakeEventPlugin)
+
+            amplitude.isBuilt.await()
+            val event = BaseEvent()
+            event.eventType = "test event"
+            event.ip = "127.0.0.1"
+            amplitude.track(event)
+            advanceUntilIdle()
+            Thread.sleep(100)
+
+            assertTrue(fakeEventPlugin.trackedEvents.size == 1)
+            with(fakeEventPlugin.trackedEvents.first()) {
+                assertEquals("127.0.0.1", ip)
+                assertEquals("US", country)
+            }
+        }
 
     @Test
-    fun amplitude_should_set_deviceId_from_configuration() = runTest {
-        val testDeviceId = "test device id"
-        // set device Id in the config
-        val amplitude = createFakeAmplitude(
-            scheduler = testScheduler,
-            configuration = createConfiguration(
-                deviceId = testDeviceId
-            )
-        )
+    fun test_analytics_connector() =
+        runTest {
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = createConfiguration(),
+                )
 
-        amplitude.isBuilt.await()
-        assertEquals(testDeviceId, amplitude.store.deviceId)
-        assertEquals(testDeviceId, amplitude.getDeviceId())
-    }
+            amplitude.isBuilt.await()
+
+            val connector = AnalyticsConnector.getInstance(INSTANCE_NAME)
+            val connectorUserId = "connector user id"
+            val connectorDeviceId = "connector device id"
+            var connectorIdentitySet = false
+            val identityListener = { _: Identity ->
+                if (connectorIdentitySet) {
+                    assertEquals(
+                        connectorUserId,
+                        connector.identityStore.getIdentity().userId,
+                    )
+                    assertEquals(
+                        connectorDeviceId,
+                        connector.identityStore.getIdentity().deviceId,
+                    )
+                    connectorIdentitySet = false
+                }
+            }
+            connector.identityStore.addIdentityListener(identityListener)
+            amplitude.setUserId(connectorUserId)
+            amplitude.setDeviceId(connectorDeviceId)
+            connectorIdentitySet = true
+            advanceUntilIdle()
+            connector.identityStore.removeIdentityListener(identityListener)
+        }
 
     @Test
-    fun amplitude_should_set_sessionId_from_configuration() = runTest {
-        val testSessionId = 1337L
-        // set device Id in the config
-        val amplitude = createFakeAmplitude(
-            scheduler = testScheduler,
-            configuration = createConfiguration(sessionId = testSessionId)
-        )
+    fun amplitude_getDeviceId_should_return_not_null_after_isBuilt() =
+        runTest {
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = createConfiguration(),
+                )
+            amplitude.isBuilt.await()
+            assertNotNull(amplitude.store.deviceId)
+            assertNotNull(amplitude.getDeviceId())
+        }
 
-        amplitude.isBuilt.await()
-        assertEquals(testSessionId, amplitude.sessionId)
-    }
+    @Test
+    fun amplitude_should_set_deviceId_from_configuration() =
+        runTest {
+            val testDeviceId = "test device id"
+            // set device Id in the config
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration =
+                        createConfiguration(
+                            deviceId = testDeviceId,
+                        ),
+                )
+
+            amplitude.isBuilt.await()
+            assertEquals(testDeviceId, amplitude.store.deviceId)
+            assertEquals(testDeviceId, amplitude.getDeviceId())
+        }
+
+    @Test
+    fun amplitude_should_set_sessionId_from_configuration() =
+        runTest {
+            val testSessionId = 1337L
+            // set device Id in the config
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = createConfiguration(sessionId = testSessionId),
+                )
+
+            amplitude.isBuilt.await()
+            assertEquals(testSessionId, amplitude.sessionId)
+        }
 
     /**
      * Here is what we want to test. In the older version of the SDK, we were unintentionally
@@ -266,37 +279,41 @@ class AmplitudeTest {
      *  This test checks for that scenario
      */
     @Test
-    fun amplitude_should_correctly_start_new_session() = runTest {
-        val testSessionId = 1000L
+    fun amplitude_should_correctly_start_new_session() =
+        runTest {
+            val testSessionId = 1000L
 
-        val amplitude = object : Amplitude(
-            createConfiguration(sessionId = testSessionId, minTimeBetweenSessionsMillis = 50)
-        ) {}
+            val amplitude =
+                object : Amplitude(
+                    createConfiguration(sessionId = testSessionId, minTimeBetweenSessionsMillis = 50),
+                ) {}
 
-        amplitude.isBuilt.await()
-        // Fire a delayed foreground event.
-        val thread1 = thread {
-            Thread.sleep(500)
-            (amplitude.timeline as Timeline).onEnterForeground(1120)
+            amplitude.isBuilt.await()
+            // Fire a delayed foreground event.
+            val thread1 =
+                thread {
+                    Thread.sleep(500)
+                    (amplitude.timeline as Timeline).onEnterForeground(1120)
+                }
+            Thread.sleep(100)
+
+            // Fire a test event that will be before the foreground event.
+            val thread2 =
+                thread {
+                    val event = BaseEvent()
+                    event.eventType = "test_event"
+                    event.timestamp = 1100L
+                    amplitude.track(event)
+                }
+            thread1.join()
+            thread2.join()
+
+            // Wait for all events to have been processed
+            advanceUntilIdle()
+
+            // test_event should have created a new session and not extended an existing session
+            assertEquals(1100, amplitude.sessionId)
         }
-        Thread.sleep(100)
-
-        // Fire a test event that will be before the foreground event.
-        val thread2 = thread {
-            val event = BaseEvent()
-            event.eventType = "test_event"
-            event.timestamp = 1100L
-            amplitude.track(event)
-        }
-        thread1.join()
-        thread2.join()
-
-        // Wait for all events to have been processed
-        advanceUntilIdle()
-
-        // test_event should have created a new session and not extended an existing session
-        assertEquals(1100, amplitude.sessionId)
-    }
 
     companion object {
         private const val INSTANCE_NAME = "testInstance"

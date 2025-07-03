@@ -20,10 +20,10 @@ class FakeAmplitude(
     networkIODispatcher: CoroutineDispatcher = testDispatcher,
     storageIODispatcher: CoroutineDispatcher = testDispatcher,
 ) : Amplitude(
-    configuration = configuration,
-    store = store,
-    amplitudeScope = amplitudeScope,
-    amplitudeDispatcher = amplitudeDispatcher,
-    networkIODispatcher = networkIODispatcher,
-    storageIODispatcher = storageIODispatcher
-)
+        configuration = configuration,
+        store = store,
+        amplitudeScope = amplitudeScope,
+        amplitudeDispatcher = amplitudeDispatcher,
+        networkIODispatcher = networkIODispatcher,
+        storageIODispatcher = storageIODispatcher,
+    )

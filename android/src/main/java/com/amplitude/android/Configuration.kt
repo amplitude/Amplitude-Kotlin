@@ -50,29 +50,29 @@ open class Configuration(
     override var sessionId: Long? = null,
     override var httpClient: HttpClientInterface? = null,
 ) : Configuration(
-    apiKey,
-    flushQueueSize,
-    flushIntervalMillis,
-    instanceName,
-    optOut,
-    storageProvider,
-    loggerProvider,
-    minIdLength,
-    partnerId,
-    callback,
-    flushMaxRetries,
-    useBatch,
-    serverZone,
-    serverUrl,
-    plan,
-    ingestionMetadata,
-    identifyBatchIntervalMillis,
-    identifyInterceptStorageProvider,
-    identityStorageProvider,
-    offline,
-    deviceId,
-    sessionId,
-) {
+        apiKey,
+        flushQueueSize,
+        flushIntervalMillis,
+        instanceName,
+        optOut,
+        storageProvider,
+        loggerProvider,
+        minIdLength,
+        partnerId,
+        callback,
+        flushMaxRetries,
+        useBatch,
+        serverZone,
+        serverUrl,
+        plan,
+        ingestionMetadata,
+        identifyBatchIntervalMillis,
+        identifyInterceptStorageProvider,
+        identityStorageProvider,
+        offline,
+        deviceId,
+        sessionId,
+    ) {
     companion object {
         const val MIN_TIME_BETWEEN_SESSIONS_MILLIS: Long = 300000
     }
@@ -149,7 +149,7 @@ open class Configuration(
         offline,
         deviceId,
         sessionId,
-        httpClient
+        httpClient,
     ) {
         if (!trackingSessionEvents) {
             defaultTracking.sessions = false
@@ -169,13 +169,16 @@ open class Configuration(
     var trackingSessionEvents: Boolean
         get() = AutocaptureOption.SESSIONS in _autocapture
         set(value) {
-            if (value) _autocapture.add(AutocaptureOption.SESSIONS)
-            else _autocapture.remove(AutocaptureOption.SESSIONS)
+            if (value) {
+                _autocapture.add(AutocaptureOption.SESSIONS)
+            } else {
+                _autocapture.remove(AutocaptureOption.SESSIONS)
+            }
         }
 
+    // Any changes to the default tracking options replace the recent autocapture options entirely.
     @Suppress("DEPRECATION")
     @Deprecated("Please use 'autocapture' instead", ReplaceWith("autocapture"))
-    // Any changes to the default tracking options replace the recent autocapture options entirely.
     var defaultTracking: DefaultTrackingOptions = DefaultTrackingOptions { updateAutocaptureOnPropertyChange() }
         set(value) {
             field = value

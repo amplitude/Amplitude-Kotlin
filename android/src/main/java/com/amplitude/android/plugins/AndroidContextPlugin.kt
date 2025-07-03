@@ -17,12 +17,13 @@ open class AndroidContextPlugin : Plugin {
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
         val configuration = amplitude.configuration as Configuration
-        contextProvider = AndroidContextProvider(
-            configuration.context,
-            configuration.locationListening,
-            configuration.trackingOptions.shouldTrackAdid(),
-            configuration.trackingOptions.shouldTrackAppSetId()
-        )
+        contextProvider =
+            AndroidContextProvider(
+                configuration.context,
+                configuration.locationListening,
+                configuration.trackingOptions.shouldTrackAdid(),
+                configuration.trackingOptions.shouldTrackAppSetId(),
+            )
         initializeDeviceId(configuration)
     }
 
@@ -168,7 +169,9 @@ open class AndroidContextPlugin : Plugin {
         const val PLATFORM = "Android"
         const val SDK_LIBRARY = "amplitude-analytics-android"
         const val SDK_VERSION = BuildConfig.AMPLITUDE_VERSION
-        private val INVALID_DEVICE_IDS = setOf("", "9774d56d682e549c", "unknown", "000000000000000", "Android", "DEFACE", "00000000-0000-0000-0000-000000000000")
+        private val INVALID_DEVICE_IDS =
+            setOf("", "9774d56d682e549c", "unknown", "000000000000000", "Android", "DEFACE", "00000000-0000-0000-0000-000000000000")
+
         fun validDeviceId(deviceId: String): Boolean {
             return !(deviceId.isEmpty() || INVALID_DEVICE_IDS.contains(deviceId))
         }

@@ -17,7 +17,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 
 class AndroidNetworkConnectivityCheckerTest {
-
     private val context: Context = mockk()
     private val connectivityManager: ConnectivityManager = mockk()
     private val networkCapabilities: NetworkCapabilities = mockk()
@@ -52,7 +51,7 @@ class AndroidNetworkConnectivityCheckerTest {
 
         verify {
             logger.warn(
-                match<String> { it.contains("No ACCESS_NETWORK_STATE permission") }
+                match<String> { it.contains("No ACCESS_NETWORK_STATE permission") },
             )
         }
     }

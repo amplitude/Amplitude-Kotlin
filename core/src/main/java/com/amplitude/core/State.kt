@@ -21,12 +21,16 @@ class State {
 
     val plugins: MutableList<ObservePlugin> = mutableListOf()
 
-    fun add(plugin: ObservePlugin, amplitude: Amplitude) = synchronized(plugins) {
+    fun add(
+        plugin: ObservePlugin,
+        amplitude: Amplitude,
+    ) = synchronized(plugins) {
         plugin.setup(amplitude)
         plugins.add(plugin)
     }
 
-    fun remove(plugin: ObservePlugin) = synchronized(plugins) {
-        plugins.removeAll { it === plugin }
-    }
+    fun remove(plugin: ObservePlugin) =
+        synchronized(plugins) {
+            plugins.removeAll { it === plugin }
+        }
 }

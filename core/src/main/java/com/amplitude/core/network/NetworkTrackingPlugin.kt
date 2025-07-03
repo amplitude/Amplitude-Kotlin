@@ -30,7 +30,7 @@ private const val AMPLITUDE_HOST_DOMAIN = "amplitude.com"
 private const val LOCAL_ERROR_STATUS_CODE = 0
 
 class NetworkTrackingPlugin(
-    private val options: NetworkTrackingOptions = NetworkTrackingOptions.DEFAULT
+    private val options: NetworkTrackingOptions = NetworkTrackingOptions.DEFAULT,
 ) : Interceptor, Plugin {
     override val type: Type = Utility
     override lateinit var amplitude: Amplitude
@@ -61,15 +61,16 @@ class NetworkTrackingPlugin(
     private fun shouldCapture(
         request: Request,
         responseCode: Int,
-    ): Boolean = with(options) {
-        val host = request.url.host
-        return when {
-            shouldIgnore(host) -> false
-            ignoreAmplitudeRequests && request.amplitudeApiRequest() -> false
-            captureRules.matches(host, responseCode) || request.amplitudeApiRequest() -> true
-            else -> false
+    ): Boolean =
+        with(options) {
+            val host = request.url.host
+            return when {
+                shouldIgnore(host) -> false
+                ignoreAmplitudeRequests && request.amplitudeApiRequest() -> false
+                captureRules.matches(host, responseCode) || request.amplitudeApiRequest() -> true
+                else -> false
+            }
         }
-    }
 
     /**
      * Checks if the request is an Amplitude request, and not a [NETWORK_TRACKING] event as we don't
@@ -101,19 +102,20 @@ class NetworkTrackingPlugin(
         val maskedHttpUrl = request.url.mask()
         amplitude.track(
             NETWORK_TRACKING,
-            eventProperties = mapOf(
-                NETWORK_TRACKING_URL to maskedHttpUrl.toUrlOnlyString(),
-                NETWORK_TRACKING_URL_QUERY to maskedHttpUrl.query,
-                NETWORK_TRACKING_URL_FRAGMENT to maskedHttpUrl.fragment,
-                NETWORK_TRACKING_REQUEST_METHOD to request.method,
-                NETWORK_TRACKING_STATUS_CODE to response?.code,
-                NETWORK_TRACKING_ERROR_MESSAGE to error?.message,
-                NETWORK_TRACKING_START_TIME to startTime,
-                NETWORK_TRACKING_COMPLETION_TIME to completionTime,
-                NETWORK_TRACKING_DURATION to completionTime - startTime,
-                NETWORK_TRACKING_REQUEST_BODY_SIZE to request.body?.contentLength(),
-                NETWORK_TRACKING_RESPONSE_BODY_SIZE to response?.body?.contentLength(),
-            )
+            eventProperties =
+                mapOf(
+                    NETWORK_TRACKING_URL to maskedHttpUrl.toUrlOnlyString(),
+                    NETWORK_TRACKING_URL_QUERY to maskedHttpUrl.query,
+                    NETWORK_TRACKING_URL_FRAGMENT to maskedHttpUrl.fragment,
+                    NETWORK_TRACKING_REQUEST_METHOD to request.method,
+                    NETWORK_TRACKING_STATUS_CODE to response?.code,
+                    NETWORK_TRACKING_ERROR_MESSAGE to error?.message,
+                    NETWORK_TRACKING_START_TIME to startTime,
+                    NETWORK_TRACKING_COMPLETION_TIME to completionTime,
+                    NETWORK_TRACKING_DURATION to completionTime - startTime,
+                    NETWORK_TRACKING_REQUEST_BODY_SIZE to request.body?.contentLength(),
+                    NETWORK_TRACKING_RESPONSE_BODY_SIZE to response?.body?.contentLength(),
+                ),
         )
     }
 
@@ -133,13 +135,14 @@ class NetworkTrackingPlugin(
      */
     private fun HttpUrl.mask(): HttpUrl {
         val sensitiveKeys = setOf("username", "password", "email", "phone")
-        val query = queryParameterNames.joinToString("&") { name ->
-            if (sensitiveKeys.contains(name.lowercase())) {
-                "$name=[mask]"
-            } else {
-                "$name=${queryParameter(name)}"
-            }
-        }.ifBlank { null }
+        val query =
+            queryParameterNames.joinToString("&") { name ->
+                if (sensitiveKeys.contains(name.lowercase())) {
+                    "$name=[mask]"
+                } else {
+                    "$name=${queryParameter(name)}"
+                }
+            }.ifBlank { null }
 
         return newBuilder()
             .username("mask".takeIf { username.isNotEmpty() } ?: "")

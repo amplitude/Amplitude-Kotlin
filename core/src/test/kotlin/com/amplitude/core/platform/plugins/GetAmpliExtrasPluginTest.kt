@@ -35,14 +35,17 @@ class GetAmpliExtrasPluginTest {
         val event = BaseEvent()
         val sourceName = "test-source-name"
         val sourceVersion = "test-source-version"
-        event.extra = mapOf(
-            "ampli" to mapOf(
-                "ingestionMetadata" to mapOf(
-                    "sourceName" to sourceName,
-                    "sourceVersion" to sourceVersion
-                )
+        event.extra =
+            mapOf(
+                "ampli" to
+                    mapOf(
+                        "ingestionMetadata" to
+                            mapOf(
+                                "sourceName" to sourceName,
+                                "sourceVersion" to sourceVersion,
+                            ),
+                    ),
             )
-        )
         getAmpliExtrasPlugin.execute(event)
         Assertions.assertEquals(event.ingestionMetadata?.sourceName, sourceName)
         Assertions.assertEquals(event.ingestionMetadata?.sourceVersion, sourceVersion)
@@ -55,14 +58,17 @@ class GetAmpliExtrasPluginTest {
         val event = BaseEvent()
         val sourceName = "test-source-name"
         val sourceVersion = null
-        event.extra = mapOf(
-            "ampli" to mapOf(
-                "ingestionMetadata" to mapOf(
-                    "sourceName" to sourceName,
-                    "sourceVersion" to sourceVersion
-                )
+        event.extra =
+            mapOf(
+                "ampli" to
+                    mapOf(
+                        "ingestionMetadata" to
+                            mapOf(
+                                "sourceName" to sourceName,
+                                "sourceVersion" to sourceVersion,
+                            ),
+                    ),
             )
-        )
         getAmpliExtrasPlugin.execute(event)
         Assertions.assertEquals(event.ingestionMetadata?.sourceName, sourceName)
         Assertions.assertEquals(event.ingestionMetadata?.sourceVersion, sourceVersion)
@@ -73,11 +79,13 @@ class GetAmpliExtrasPluginTest {
         val getAmpliExtrasPlugin = GetAmpliExtrasPlugin()
         getAmpliExtrasPlugin.setup(amplitude)
         val event = BaseEvent()
-        event.extra = mapOf(
-            "ampli" to mapOf(
-                "ingestionMetadata" to null
+        event.extra =
+            mapOf(
+                "ampli" to
+                    mapOf(
+                        "ingestionMetadata" to null,
+                    ),
             )
-        )
         getAmpliExtrasPlugin.execute(event)
         Assertions.assertEquals(event.ingestionMetadata, null)
     }

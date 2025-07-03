@@ -6,7 +6,7 @@ interface Logger {
         INFO(2),
         WARN(3),
         ERROR(4),
-        OFF(5)
+        OFF(5),
     }
 
     var logMode: LogMode

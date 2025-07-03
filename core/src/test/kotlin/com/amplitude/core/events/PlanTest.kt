@@ -8,7 +8,6 @@ import org.junit.jupiter.api.TestInstance
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class PlanTest {
-
     @Test
     fun `test plan to json object`() {
         val branch = "main"

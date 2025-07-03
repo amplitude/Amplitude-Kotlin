@@ -26,7 +26,6 @@ class FileResponseHandler(
     private val storageDispatcher: CoroutineDispatcher,
     private val logger: Logger?,
 ) : ResponseHandler {
-
     override fun handleSuccessResponse(
         successResponse: SuccessResponse,
         events: Any,
@@ -47,7 +46,7 @@ class FileResponseHandler(
         eventsString: String,
     ): Boolean {
         logger?.debug(
-            "Handle response, status: ${badRequestResponse.status}, error: ${badRequestResponse.error}"
+            "Handle response, status: ${badRequestResponse.status}, error: ${badRequestResponse.error}",
         )
         val eventFilePath = events as String
         val eventsList = parseEvents(eventsString, eventFilePath).toEvents()
@@ -84,7 +83,7 @@ class FileResponseHandler(
         scope.launch(storageDispatcher) {
             logger?.debug(
                 "--> remove file: ${eventFilePath.split("-").takeLast(2)}, dropped events: ${eventsToDrop.size}, " +
-                    "retry events: ${eventsToRetry.size}"
+                    "retry events: ${eventsToRetry.size}",
             )
             storage.removeFile(eventFilePath)
         }
@@ -97,14 +96,16 @@ class FileResponseHandler(
         eventsString: String,
     ) {
         logger?.debug(
-            "Handle response, status: ${payloadTooLargeResponse.status}, error: ${payloadTooLargeResponse.error}"
+            "Handle response, status: ${payloadTooLargeResponse.status}, error: ${payloadTooLargeResponse.error}",
         )
         val eventFilePath = events as String
         val rawEvents = parseEvents(eventsString, eventFilePath)
         if (rawEvents.length() == 1) {
             val eventsList = rawEvents.toEvents()
             triggerEventsCallback(
-                eventsList, HttpStatus.PAYLOAD_TOO_LARGE.statusCode, payloadTooLargeResponse.error
+                eventsList,
+                HttpStatus.PAYLOAD_TOO_LARGE.statusCode,
+                payloadTooLargeResponse.error,
             )
             scope.launch(storageDispatcher) {
                 storage.removeFile(eventFilePath)
@@ -123,7 +124,7 @@ class FileResponseHandler(
         eventsString: String,
     ) {
         logger?.debug(
-            "Handle response, status: ${tooManyRequestsResponse.status}, error: ${tooManyRequestsResponse.error}"
+            "Handle response, status: ${tooManyRequestsResponse.status}, error: ${tooManyRequestsResponse.error}",
         )
         scope.launch(storageDispatcher) {
             storage.releaseFile(events as String)
@@ -147,7 +148,7 @@ class FileResponseHandler(
         eventsString: String,
     ) {
         logger?.debug(
-            "Handle response, status: ${failedResponse.status}, error: ${failedResponse.error}"
+            "Handle response, status: ${failedResponse.status}, error: ${failedResponse.error}",
         )
         // wait for next time to try again
         scope.launch(storageDispatcher) {

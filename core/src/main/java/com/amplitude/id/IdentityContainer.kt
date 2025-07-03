@@ -10,7 +10,6 @@ class IdentityContainer private constructor(val configuration: IdentityConfigura
     val identityManager: IdentityManager
 
     companion object {
-
         private val instancesLock = Any()
         private val instances = mutableMapOf<String, IdentityContainer>()
 

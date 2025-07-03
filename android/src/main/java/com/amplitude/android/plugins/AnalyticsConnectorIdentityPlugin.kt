@@ -6,7 +6,6 @@ import com.amplitude.core.Amplitude
 import com.amplitude.core.platform.ObservePlugin
 
 internal class AnalyticsConnectorIdentityPlugin : ObservePlugin() {
-
     override lateinit var amplitude: Amplitude
     private lateinit var connector: AnalyticsConnector
 

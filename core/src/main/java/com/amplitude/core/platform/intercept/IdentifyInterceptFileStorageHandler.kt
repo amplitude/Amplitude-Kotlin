@@ -14,7 +14,7 @@ import java.io.FileNotFoundException
 class IdentifyInterceptFileStorageHandler(
     private val storage: EventsFileStorage,
     private val logger: Logger,
-    private val amplitude: Amplitude
+    private val amplitude: Amplitude,
 ) : IdentifyInterceptStorageHandler {
     override suspend fun getTransferIdentifyEvent(): BaseEvent? {
         try {
@@ -59,7 +59,7 @@ class IdentifyInterceptFileStorageHandler(
         }
         event?.userProperties?.put(
             IdentifyOperation.SET.operationType,
-            identifyEventUserProperties
+            identifyEventUserProperties,
         )
         return event
     }

@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 internal class ConfigurationTest {
-
     @Test
     fun `test valid configuration`() {
         val configuration = Configuration("test-apikey")
@@ -36,18 +35,20 @@ internal class ConfigurationTest {
         configuration = Configuration("test-apikey", serverUrl = "https://custom.amplitude.com")
         assertEquals("https://custom.amplitude.com", configuration.getApiHost())
 
-        configuration = Configuration(
-            "test-apikey",
-            serverUrl = "https://custom.amplitude.com",
-            serverZone = ServerZone.EU
-        )
+        configuration =
+            Configuration(
+                "test-apikey",
+                serverUrl = "https://custom.amplitude.com",
+                serverZone = ServerZone.EU,
+            )
         assertEquals("https://custom.amplitude.com", configuration.getApiHost())
 
-        configuration = Configuration(
-            "test-apikey",
-            serverUrl = "https://custom.amplitude.com",
-            useBatch = true
-        )
+        configuration =
+            Configuration(
+                "test-apikey",
+                serverUrl = "https://custom.amplitude.com",
+                useBatch = true,
+            )
         assertEquals("https://custom.amplitude.com", configuration.getApiHost())
 
         configuration = Configuration("test-apikey", useBatch = true)

@@ -12,7 +12,6 @@ import java.util.ArrayDeque
 import java.util.Queue
 
 internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTargetLocator {
-
     private val composeLayoutNodeBoundsHelper by lazy {
         ComposeLayoutNodeBoundsHelper(logger)
     }
@@ -109,7 +108,7 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
                 tag = targetTag,
                 text = null,
                 source = SOURCE,
-                hierarchy = null
+                hierarchy = null,
             )
         }
     }

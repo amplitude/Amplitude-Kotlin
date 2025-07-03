@@ -13,9 +13,10 @@ import org.junit.jupiter.api.Test
 class InMemoryResponseHandlerTest {
     @Test
     fun testBadResponseHandlerForInvalidApiKey() {
-        val response = BadRequestResponse(
-            JSONObject("{\"error\":\"Invalid API key\"}")
-        )
+        val response =
+            BadRequestResponse(
+                JSONObject("{\"error\":\"Invalid API key\"}"),
+            )
         val storage = mockk<EventsFileStorage>()
         val pipeline = mockk<EventPipeline>()
         val handler =
@@ -28,7 +29,7 @@ class InMemoryResponseHandlerTest {
         handler.handleBadRequestResponse(
             response,
             listOf(generateBaseEvent("test1"), generateBaseEvent("test2")),
-            ""
+            "",
         )
 
         verify(exactly = 0) {

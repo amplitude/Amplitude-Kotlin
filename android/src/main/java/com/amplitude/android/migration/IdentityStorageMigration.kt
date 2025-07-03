@@ -6,7 +6,7 @@ import com.amplitude.id.IdentityStorage
 class IdentityStorageMigration(
     private val source: IdentityStorage,
     private val destination: IdentityStorage,
-    private val logger: Logger
+    private val logger: Logger,
 ) {
     fun execute() {
         try {

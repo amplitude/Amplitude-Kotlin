@@ -8,6 +8,7 @@ import com.amplitude.core.platform.Plugin
 class GetAmpliExtrasPlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Enrichment
     override lateinit var amplitude: Amplitude
+
     companion object {
         const val AMP_AMPLI = "ampli"
     }
@@ -20,10 +21,11 @@ class GetAmpliExtrasPlugin : Plugin {
         val ampliExtra = event.extra?.get(AMP_AMPLI) ?: return event
         try {
             val ingestionMetadataMap = (ampliExtra as Map<String, Any>).get("ingestionMetadata") as Map<String, String>
-            val ingestionMetadata = IngestionMetadata(
-                ingestionMetadataMap["sourceName"],
-                ingestionMetadataMap["sourceVersion"]
-            )
+            val ingestionMetadata =
+                IngestionMetadata(
+                    ingestionMetadataMap["sourceName"],
+                    ingestionMetadataMap["sourceVersion"],
+                )
             event.ingestionMetadata = ingestionMetadata
         } finally {
             return event

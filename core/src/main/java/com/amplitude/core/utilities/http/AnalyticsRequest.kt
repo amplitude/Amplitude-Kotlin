@@ -10,11 +10,12 @@ data class AnalyticsRequest(
     val events: String,
     val minIdLength: Int? = null,
     val diagnostics: String? = null,
-    val clientUploadTime: Long = System.currentTimeMillis()
+    val clientUploadTime: Long = System.currentTimeMillis(),
 ) {
-    private val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
-        timeZone = TimeZone.getTimeZone("UTC")
-    }
+    private val sdf =
+        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        }
 
     fun getBodyStr(): String {
         return buildString {

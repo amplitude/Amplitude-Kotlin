@@ -7,7 +7,6 @@ import org.junit.jupiter.api.TestInstance
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class EventBridgeTest {
-
     @Test
     fun `test addEventListener, sendEvent, listener called`() {
         val testEvent = Event("test")
@@ -17,20 +16,26 @@ class EventBridgeTest {
         eventBridge.setEventReceiver(
             EventChannel.EVENT,
             object : EventReceiver {
-                override fun receive(channel: EventChannel, event: Event) {
+                override fun receive(
+                    channel: EventChannel,
+                    event: Event,
+                ) {
                     assertEquals(event, testEvent)
                     wasEventReceiverCalled = true
                 }
-            }
+            },
         )
         eventBridge.setEventReceiver(
             EventChannel.IDENTIFY,
             object : EventReceiver {
-                override fun receive(channel: EventChannel, event: Event) {
+                override fun receive(
+                    channel: EventChannel,
+                    event: Event,
+                ) {
                     assertEquals(event, identifyEvent)
                     wasEventReceiverCalled = true
                 }
-            }
+            },
         )
         eventBridge.sendEvent(EventChannel.EVENT, testEvent)
         eventBridge.sendEvent(EventChannel.IDENTIFY, identifyEvent)
@@ -50,10 +55,13 @@ class EventBridgeTest {
         eventBridge.setEventReceiver(
             EventChannel.EVENT,
             object : EventReceiver {
-                override fun receive(channel: EventChannel, event: Event) {
+                override fun receive(
+                    channel: EventChannel,
+                    event: Event,
+                ) {
                     eventCount++
                 }
-            }
+            },
         )
         assertEquals(3, eventCount)
     }

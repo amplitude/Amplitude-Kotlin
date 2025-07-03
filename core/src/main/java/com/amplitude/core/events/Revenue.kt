@@ -80,7 +80,10 @@ open class Revenue {
     /**
      * Set the receipt and receipt signature. Both fields are required to verify the revenue event.
      */
-    fun setReceipt(receipt: String, receiptSignature: String): Revenue {
+    fun setReceipt(
+        receipt: String,
+        receiptSignature: String,
+    ): Revenue {
         this.receipt = receipt
         receiptSig = receiptSignature
         return this
