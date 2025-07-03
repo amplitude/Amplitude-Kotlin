@@ -12,26 +12,26 @@ enum class IdentifyOperation(val operationType: String) {
     UNSET("\$unset"),
     PRE_INSERT("\$preInsert"),
     POST_INSERT("\$postInsert"),
-    REMOVE("\$remove");
+    REMOVE("\$remove"),
+    ;
 
     companion object {
-        val orderedCases: List<IdentifyOperation> = listOf(
-            CLEAR_ALL,
-            UNSET,
-            SET,
-            SET_ONCE,
-            ADD,
-            APPEND,
-            PREPEND,
-            PRE_INSERT,
-            POST_INSERT,
-            REMOVE
-        )
+        val orderedCases: List<IdentifyOperation> =
+            listOf(
+                CLEAR_ALL,
+                UNSET,
+                SET,
+                SET_ONCE,
+                ADD,
+                APPEND,
+                PREPEND,
+                PRE_INSERT,
+                POST_INSERT,
+                REMOVE,
+            )
         val operationSet = orderedCases.map { it.operationType }.toSet()
     }
 }
-
-
 
 open class Identify {
     private val propertySet: MutableSet<String> = mutableSetOf()

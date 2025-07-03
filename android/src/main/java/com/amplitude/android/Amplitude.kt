@@ -27,7 +27,7 @@ open class Amplitude(
     amplitudeDispatcher: CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher(),
     networkIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
     storageIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
-    private val activityLifecycleCallbacks: ActivityLifecycleObserver = ActivityLifecycleObserver()
+    private val activityLifecycleCallbacks: ActivityLifecycleObserver = ActivityLifecycleObserver(),
 ) : CoreAmplitude(
         configuration = configuration,
         amplitudeScope = amplitudeScope,

@@ -21,7 +21,6 @@ data class Identity(
  *
  */
 interface IdentityManager {
-
     fun editIdentity(block: IdentityEditor.() -> Unit)
 
     fun setIdentity(newIdentity: Identity)
@@ -67,20 +66,22 @@ internal class IdentityManagerImpl(
 
     override fun editIdentity(block: IdentityEditor.() -> Unit) {
         val currentIdentity = getIdentity()
-        val editor = IdentityEditor(
-            userId = currentIdentity.userId,
-            deviceId = currentIdentity.deviceId,
-            userProperties = currentIdentity.userProperties
-        )
+        val editor =
+            IdentityEditor(
+                userId = currentIdentity.userId,
+                deviceId = currentIdentity.deviceId,
+                userProperties = currentIdentity.userProperties,
+            )
 
         editor.block()
 
         setIdentity(
-            newIdentity = Identity(
-                userId = editor.userId,
-                deviceId = editor.deviceId,
-                userProperties = editor.userProperties
-            )
+            newIdentity =
+                Identity(
+                    userId = editor.userId,
+                    deviceId = editor.deviceId,
+                    userProperties = editor.userProperties,
+                ),
         )
     }
 
