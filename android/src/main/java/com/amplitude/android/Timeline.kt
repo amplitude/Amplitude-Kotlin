@@ -215,6 +215,8 @@ class Timeline(
 
 sealed class EventQueueMessage {
     data class Event(val event: BaseEvent) : EventQueueMessage()
+
     data class EnterForeground(val timestamp: Long) : EventQueueMessage()
+
     data class ExitForeground(val timestamp: Long) : EventQueueMessage()
 }

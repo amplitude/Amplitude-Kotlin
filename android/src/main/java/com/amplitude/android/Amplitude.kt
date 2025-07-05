@@ -154,7 +154,6 @@ open class Amplitude internal constructor(
          * The event type for end session events.
          */
         const val END_SESSION_EVENT = "session_end"
-
     }
 }
 
