@@ -65,7 +65,10 @@ class Timeline(
             incomingEvent.timestamp = System.currentTimeMillis()
         }
 
-        eventMessageChannel.trySend(EventQueueMessage.Event(incomingEvent))
+        val result = eventMessageChannel.trySend(EventQueueMessage.Event(incomingEvent))
+        if (result.isFailure) {
+            amplitude.logger.error("Failed to enqueue event: ${incomingEvent.eventType}. Channel is closed or full.")
+        }
     }
 
     internal fun onEnterForeground(timestamp: Long) {
@@ -102,11 +105,10 @@ class Timeline(
 
     private suspend fun processEvent(event: BaseEvent) {
         val eventTimestamp = event.timestamp ?: System.currentTimeMillis()
-        val eventSessionId = event.sessionId
 
         when (event.eventType) {
             START_SESSION_EVENT -> {
-                setSessionId(eventSessionId ?: eventTimestamp)
+                setSessionId(event.sessionId ?: eventTimestamp)
                 refreshSessionTime(eventTimestamp)
             }
 
