@@ -21,7 +21,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import com.amplitude.android.Amplitude as AndroidAmplitude
-import com.amplitude.android.Timeline as AndroidTimeline
 
 class AndroidLifecyclePlugin(
     private val activityLifecycleObserver: ActivityLifecycleObserver,
@@ -118,9 +117,7 @@ class AndroidLifecyclePlugin(
     }
 
     override fun onActivityResumed(activity: Activity) {
-        with(androidAmplitude) {
-            (timeline as AndroidTimeline).onEnterForeground(System.currentTimeMillis())
-        }
+        androidAmplitude.onEnterForeground(System.currentTimeMillis())
 
         if (ELEMENT_INTERACTIONS in autocapture) {
             DefaultEventUtils(androidAmplitude).startUserInteractionEventTracking(activity)
@@ -129,7 +126,7 @@ class AndroidLifecyclePlugin(
 
     override fun onActivityPaused(activity: Activity) {
         with(androidAmplitude) {
-            (timeline as AndroidTimeline).onExitForeground(System.currentTimeMillis())
+            onExitForeground(System.currentTimeMillis())
 
             if ((configuration as Configuration).flushEventsOnClose) {
                 flush()

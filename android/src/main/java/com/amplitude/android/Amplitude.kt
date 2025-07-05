@@ -126,14 +126,12 @@ open class Amplitude internal constructor(
         return this
     }
 
-    @Deprecated("This method is deprecated and a no-op.")
     fun onEnterForeground(timestamp: Long) {
-        // no-op
+        (timeline as Timeline).onEnterForeground(timestamp)
     }
 
-    @Deprecated("This method is deprecated and a no-op.")
     fun onExitForeground(timestamp: Long) {
-        // no-op
+        (timeline as Timeline).onExitForeground(timestamp)
     }
 
     private fun registerShutdownHook() {
@@ -156,6 +154,7 @@ open class Amplitude internal constructor(
          * The event type for end session events.
          */
         const val END_SESSION_EVENT = "session_end"
+
     }
 }
 
