@@ -10,6 +10,7 @@ import android.view.Window
 import android.widget.CheckBox
 import android.widget.RadioButton
 import com.amplitude.android.internal.locators.AndroidViewTargetLocator
+import com.amplitude.android.utilities.DefaultEventUtils.Companion.screenName
 import com.amplitude.common.Logger
 import io.mockk.every
 import io.mockk.mockk
@@ -26,7 +27,10 @@ import kotlin.reflect.KClass
 @OptIn(ExperimentalCoroutinesApi::class)
 class AutocaptureGestureListenerClickTest {
     class Fixture {
-        val activity = mockk<Activity>()
+        val activity =
+            mockk<Activity>(relaxed = true) {
+                every { screenName } returns "test_screen"
+            }
         val resources = mockk<Resources>()
         val logger = mockk<Logger>(relaxed = true)
         val context = mockk<Context>()
@@ -149,7 +153,7 @@ class AutocaptureGestureListenerClickTest {
                     "[Amplitude] Target Text" to null,
                     "[Amplitude] Target Source" to "Android View",
                     "[Amplitude] Hierarchy" to "View",
-                    "[Amplitude] Screen Name" to null,
+                    "[Amplitude] Screen Name" to "test_screen",
                 ),
             )
         }
