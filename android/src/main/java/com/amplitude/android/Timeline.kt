@@ -73,13 +73,13 @@ class Timeline(
 
     internal fun onEnterForeground(timestamp: Long) {
         amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
-            eventMessageChannel.send(EventQueueMessage.EnterForeground(timestamp))
+            eventMessageChannel.trySend(EventQueueMessage.EnterForeground(timestamp))
         }
     }
 
     internal fun onExitForeground(timestamp: Long) {
         amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
-            eventMessageChannel.send(EventQueueMessage.ExitForeground(timestamp))
+            eventMessageChannel.trySend(EventQueueMessage.ExitForeground(timestamp))
         }
     }
 
