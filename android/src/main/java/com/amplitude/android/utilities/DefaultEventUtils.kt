@@ -14,10 +14,10 @@ import com.amplitude.android.internal.gestures.AutocaptureWindowCallback
 import com.amplitude.android.internal.gestures.NoCaptureWindowCallback
 import com.amplitude.android.internal.locators.ViewTargetLocators.ALL
 import com.amplitude.core.Constants
-import com.amplitude.core.Storage
-import kotlinx.coroutines.launch
 import com.amplitude.core.Constants.EventProperties as ConstantsEventProperties
 import com.amplitude.core.Constants.EventTypes as ConstantsEventTypes
+import com.amplitude.core.Storage
+import kotlinx.coroutines.launch
 
 @Deprecated("This class is deprecated and will be removed in future releases.")
 class DefaultEventUtils(private val amplitude: Amplitude) {
@@ -157,18 +157,21 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         private const val FRAGMENT_ACTIVITY_CLASS_NAME = "androidx.fragment.app.FragmentActivity"
         internal val Activity.screenName: String?
             get() {
-                val packageManager = packageManager
-                val info =
-                    packageManager?.getActivityInfo(
-                        componentName,
-                        PackageManager.GET_META_DATA,
-                    )
-                /* Get the label metadata in following order
-                  1. activity label
-                  2. if 1 is missing, fallback to parent application label
-                  3. if 2 is missing, use the activity name
-                 */
-                return info?.loadLabel(packageManager)?.toString() ?: info?.name
+                val info = packageManager.getActivityInfo(
+                    componentName,
+                    PackageManager.GET_META_DATA,
+                )
+
+                // 1. Try activity label first
+                val activityLabelRes = info.labelRes
+                if (activityLabelRes != 0) {
+                    return getString(activityLabelRes)
+                } else if (info.nonLocalizedLabel.isNotBlank()){
+                    return info.nonLocalizedLabel.toString()
+                }
+
+                // 2. Fall back to activity name
+                return info.name
             }
     }
 
