@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
 private const val DEFAULT_SESSION_ID = -1L
-private const val DEFAULT = 0L
+private const val DEFAULT_EVENT_ID_OR_TIME = 0L
 
 class Timeline(
     private val initialSessionId: Long? = null,
@@ -29,9 +29,9 @@ class Timeline(
             return _sessionId.get()
         }
 
-    internal var lastEventId: Long = DEFAULT
+    internal var lastEventId: Long = DEFAULT_EVENT_ID_OR_TIME
         private set
-    internal var lastEventTime: Long = DEFAULT
+    internal var lastEventTime: Long = DEFAULT_EVENT_ID_OR_TIME
         private set
 
     internal fun start() {
@@ -43,8 +43,8 @@ class Timeline(
                 if (initialSessionId == null) {
                     _sessionId.set(storage.readLong(PREVIOUS_SESSION_ID, DEFAULT_SESSION_ID))
                 }
-                lastEventId = storage.readLong(LAST_EVENT_ID, DEFAULT)
-                lastEventTime = storage.readLong(LAST_EVENT_TIME, DEFAULT)
+                lastEventId = storage.readLong(LAST_EVENT_ID, DEFAULT_EVENT_ID_OR_TIME)
+                lastEventTime = storage.readLong(LAST_EVENT_TIME, DEFAULT_EVENT_ID_OR_TIME)
 
                 for (message in eventMessageChannel) {
                     processEventMessage(message)
@@ -57,39 +57,58 @@ class Timeline(
         this.eventMessageChannel.cancel()
     }
 
+    /**
+     * Enqueue an event to be processed by the timeline.
+     */
     override fun process(incomingEvent: BaseEvent) {
         if (incomingEvent.timestamp == null) {
             incomingEvent.timestamp = System.currentTimeMillis()
         }
 
-        eventMessageChannel.trySend(EventQueueMessage(incomingEvent))
+        val result = eventMessageChannel.trySend(EventQueueMessage.Event(incomingEvent))
+        if (result.isFailure) {
+            amplitude.logger.error("Failed to enqueue event: ${incomingEvent.eventType}. Channel is closed or full.")
+        }
     }
 
     internal fun onEnterForeground(timestamp: Long) {
         amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
-            val localSessionEvents = startNewSessionIfNeeded(timestamp)
-            foreground.set(true)
-
-            // Process any local session events
-            processAndPersistEvents(localSessionEvents)
+            eventMessageChannel.trySend(EventQueueMessage.EnterForeground(timestamp))
         }
     }
 
     internal fun onExitForeground(timestamp: Long) {
         amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
-            refreshSessionTime(timestamp)
-            foreground.set(false)
+            eventMessageChannel.trySend(EventQueueMessage.ExitForeground(timestamp))
         }
     }
 
+    /**
+     * Process an event message from the event queue.
+     */
     private suspend fun processEventMessage(message: EventQueueMessage) {
-        val event = message.event
-        val eventTimestamp = event.timestamp!! // Guaranteed non-null by process()
-        val eventSessionId = event.sessionId
+        when (message) {
+            is EventQueueMessage.EnterForeground -> {
+                foreground.set(true)
+                val sessionEvents = startNewSessionIfNeeded(message.timestamp)
+                processAndPersistEvents(sessionEvents)
+            }
+            is EventQueueMessage.Event -> {
+                processEvent(message.event)
+            }
+            is EventQueueMessage.ExitForeground -> {
+                foreground.set(false)
+                refreshSessionTime(message.timestamp)
+            }
+        }
+    }
+
+    private suspend fun processEvent(event: BaseEvent) {
+        val eventTimestamp = event.timestamp ?: System.currentTimeMillis()
 
         when (event.eventType) {
             START_SESSION_EVENT -> {
-                setSessionId(eventSessionId ?: eventTimestamp)
+                setSessionId(event.sessionId ?: eventTimestamp)
                 refreshSessionTime(eventTimestamp)
             }
 
@@ -99,16 +118,13 @@ class Timeline(
 
             else -> {
                 if (!foreground.get()) {
-                    val localSessionEvents = startNewSessionIfNeeded(eventTimestamp)
-                    processAndPersistEvents(localSessionEvents)
+                    val sessionEvents = startNewSessionIfNeeded(eventTimestamp)
+                    processAndPersistEvents(sessionEvents)
                 } else {
                     refreshSessionTime(eventTimestamp)
                 }
             }
         }
-
-        // Assign sessionId to the current event if it doesn't have one
-        event.sessionId = event.sessionId ?: this.sessionId
 
         // Process the incoming event
         processAndPersistEvents(listOf(event))
@@ -119,6 +135,9 @@ class Timeline(
 
         val initialLastEventId = lastEventId
         for (event in events) {
+            // Assign sessionId to the current event if it doesn't have one
+            event.sessionId = event.sessionId ?: this.sessionId
+            // Increment and set eventId if it is not set
             event.eventId = event.eventId ?: ++lastEventId
             super.process(event)
         }
@@ -151,7 +170,7 @@ class Timeline(
         if (trackingSessionEvents && inSession()) {
             val sessionEndEvent = BaseEvent()
             sessionEndEvent.eventType = END_SESSION_EVENT
-            sessionEndEvent.timestamp = lastEventTime.takeIf { lastEventTime > DEFAULT }
+            sessionEndEvent.timestamp = lastEventTime.takeIf { lastEventTime > DEFAULT_EVENT_ID_OR_TIME }
             sessionEndEvent.sessionId = sessionId
             sessionEvents.add(sessionEndEvent)
         }
@@ -196,6 +215,10 @@ class Timeline(
     }
 }
 
-data class EventQueueMessage(
-    val event: BaseEvent,
-)
+sealed class EventQueueMessage {
+    data class Event(val event: BaseEvent) : EventQueueMessage()
+
+    data class EnterForeground(val timestamp: Long) : EventQueueMessage()
+
+    data class ExitForeground(val timestamp: Long) : EventQueueMessage()
+}

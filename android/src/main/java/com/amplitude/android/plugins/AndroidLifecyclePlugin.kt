@@ -12,6 +12,7 @@ import com.amplitude.android.AutocaptureOption.DEEP_LINKS
 import com.amplitude.android.AutocaptureOption.ELEMENT_INTERACTIONS
 import com.amplitude.android.AutocaptureOption.SCREEN_VIEWS
 import com.amplitude.android.Configuration
+import com.amplitude.android.GuardedAmplitudeFeature
 import com.amplitude.android.utilities.ActivityCallbackType
 import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.android.utilities.DefaultEventUtils
@@ -21,8 +22,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import com.amplitude.android.Amplitude as AndroidAmplitude
-import com.amplitude.android.Timeline as AndroidTimeline
 
+@OptIn(GuardedAmplitudeFeature::class)
 class AndroidLifecyclePlugin(
     private val activityLifecycleObserver: ActivityLifecycleObserver,
 ) : Application.ActivityLifecycleCallbacks, Plugin {
@@ -118,9 +119,7 @@ class AndroidLifecyclePlugin(
     }
 
     override fun onActivityResumed(activity: Activity) {
-        with(androidAmplitude) {
-            (timeline as AndroidTimeline).onEnterForeground(System.currentTimeMillis())
-        }
+        androidAmplitude.onEnterForeground(System.currentTimeMillis())
 
         if (ELEMENT_INTERACTIONS in autocapture) {
             DefaultEventUtils(androidAmplitude).startUserInteractionEventTracking(activity)
@@ -129,7 +128,7 @@ class AndroidLifecyclePlugin(
 
     override fun onActivityPaused(activity: Activity) {
         with(androidAmplitude) {
-            (timeline as AndroidTimeline).onExitForeground(System.currentTimeMillis())
+            onExitForeground(System.currentTimeMillis())
 
             if ((configuration as Configuration).flushEventsOnClose) {
                 flush()

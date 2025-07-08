@@ -126,14 +126,14 @@ open class Amplitude internal constructor(
         return this
     }
 
-    @Deprecated("This method is deprecated and a no-op.")
+    @GuardedAmplitudeFeature
     fun onEnterForeground(timestamp: Long) {
-        // no-op
+        (timeline as Timeline).onEnterForeground(timestamp)
     }
 
-    @Deprecated("This method is deprecated and a no-op.")
+    @GuardedAmplitudeFeature
     fun onExitForeground(timestamp: Long) {
-        // no-op
+        (timeline as Timeline).onExitForeground(timestamp)
     }
 
     private fun registerShutdownHook() {
