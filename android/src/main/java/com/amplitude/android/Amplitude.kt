@@ -126,10 +126,12 @@ open class Amplitude internal constructor(
         return this
     }
 
+    @InternalAmplitudeFeature
     fun onEnterForeground(timestamp: Long) {
         (timeline as Timeline).onEnterForeground(timestamp)
     }
 
+    @InternalAmplitudeFeature
     fun onExitForeground(timestamp: Long) {
         (timeline as Timeline).onExitForeground(timestamp)
     }
