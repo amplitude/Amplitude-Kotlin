@@ -12,7 +12,7 @@ import com.amplitude.android.AutocaptureOption.DEEP_LINKS
 import com.amplitude.android.AutocaptureOption.ELEMENT_INTERACTIONS
 import com.amplitude.android.AutocaptureOption.SCREEN_VIEWS
 import com.amplitude.android.Configuration
-import com.amplitude.android.InternalAmplitudeFeature
+import com.amplitude.android.GuardedAmplitudeFeature
 import com.amplitude.android.utilities.ActivityCallbackType
 import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.android.utilities.DefaultEventUtils
@@ -23,7 +23,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import com.amplitude.android.Amplitude as AndroidAmplitude
 
-@OptIn(InternalAmplitudeFeature::class)
+@OptIn(GuardedAmplitudeFeature::class)
 class AndroidLifecyclePlugin(
     private val activityLifecycleObserver: ActivityLifecycleObserver,
 ) : Application.ActivityLifecycleCallbacks, Plugin {
