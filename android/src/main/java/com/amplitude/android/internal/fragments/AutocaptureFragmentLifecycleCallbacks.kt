@@ -26,12 +26,7 @@ internal class AutocaptureFragmentLifecycleCallbacks(
             }.onFailure {
                 logger.error("Failed to get resource entry name: $it")
             }.getOrNull()
-        val screenName =
-            runCatching {
-                f.activity?.screenName
-            }.onFailure {
-                logger.error("Failed to get screen name: $it")
-            }.getOrNull()
+        val screenName = f.activity?.screenName
         val fragmentTag = f.tag
 
         track(
