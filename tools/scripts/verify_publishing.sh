@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script to verify that proper signing keys are configured for local publishing
+# Script to verify signing configuration and publish artifacts to Maven Local
 # Based on the signing methods described in PUBLISHING.md
 
 set -e
