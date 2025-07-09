@@ -107,8 +107,6 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                     ConstantsEventProperties.SCREEN_NAME to activity.screenName,
                 ),
             )
-        } catch (e: PackageManager.NameNotFoundException) {
-            amplitude.logger.error("Failed to get activity info: $e")
         } catch (e: Exception) {
             amplitude.logger.error("Failed to track screen viewed event: $e")
         }
@@ -155,20 +153,28 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
 
     companion object {
         private const val FRAGMENT_ACTIVITY_CLASS_NAME = "androidx.fragment.app.FragmentActivity"
-        internal val Activity.screenName: String?
+        internal val Activity.screenName: String
             get() {
-                val packageManager = packageManager
-                val info =
-                    packageManager?.getActivityInfo(
-                        componentName,
-                        PackageManager.GET_META_DATA,
-                    )
-                /* Get the label metadata in following order
-                  1. activity label
-                  2. if 1 is missing, fallback to parent application label
-                  3. if 2 is missing, use the activity name
-                 */
-                return info?.loadLabel(packageManager)?.toString() ?: info?.name
+                try {
+                    val info =
+                        packageManager.getActivityInfo(
+                            componentName,
+                            PackageManager.GET_META_DATA,
+                        )
+
+                    // 1. Try activity label first
+                    if (info.labelRes != 0) {
+                        return getString(info.labelRes)
+                    } else if (info.nonLocalizedLabel.isNotBlank()) {
+                        return info.nonLocalizedLabel.toString()
+                    }
+
+                    // 2. Fall back to activity name
+                    return info.name
+                } catch (e: Exception) {
+                    // 3. Fall back to application name
+                    return applicationInfo.loadLabel(packageManager).toString()
+                }
             }
     }
 

@@ -59,13 +59,7 @@ class AutocaptureGestureListener(
                     .split(" ")
                     .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } },
             HIERARCHY to target.hierarchy,
-            SCREEN_NAME to
-                try {
-                    activityRef.get()?.screenName
-                } catch (e: Exception) {
-                    logger.error("Error getting screen name: $e")
-                    null
-                },
+            SCREEN_NAME to activityRef.get()?.screenName,
         ).let { track(ELEMENT_INTERACTED, it) }
 
         return false
