@@ -1,8 +1,11 @@
+import com.vanniktech.maven.publish.KotlinJvm
+import com.vanniktech.maven.publish.JavadocJar
+
 plugins {
     id("java")
     id("kotlin")
     id("org.jetbrains.kotlin.jvm")
-    id("com.amplitude.publish-module-plugin")
+    alias(libs.plugins.mavenPublish)
 }
 
 java {
@@ -12,6 +15,21 @@ java {
 
 repositories {
     mavenCentral()
+}
+
+mavenPublishing {
+    coordinates(artifactId = "analytics-core")
+
+    pom {
+        name.set("Amplitude Kotlin Core")
+        description.set("Amplitude Kotlin Core library")
+    }
+
+    configure(KotlinJvm(
+        javadocJar = JavadocJar.Dokka("dokkaHtml"),
+        // whether to publish a sources jar
+        sourcesJar = true,
+    ))
 }
 
 dependencies {
@@ -31,20 +49,10 @@ dependencies {
     testImplementation(libs.mockwebserver)
 }
 
-publication {
-    name = "Amplitude Kotlin Core"
-    description = "Amplitude Kotlin Core library"
-    artifactId = "analytics-core"
-}
-
 tasks.withType<Test> {
     useJUnitPlatform()
     testLogging {
         events("passed", "skipped", "failed")
         showStandardStreams = true
     }
-}
-
-tasks.dokkaHtmlPartial.configure {
-    failOnWarning.set(true)
 }

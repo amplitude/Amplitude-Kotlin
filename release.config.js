@@ -24,8 +24,8 @@ module.exports = {
         "replacements": [
           {
             "files": ["gradle.properties"],
-            "from": "PUBLISH_VERSION=.*",
-            "to": "PUBLISH_VERSION=${nextRelease.version}",
+            "from": "VERSION_NAME=.*",
+            "to": "VERSION_NAME=${nextRelease.version}",
             "results": [
               {
                 "file": "gradle.properties",

@@ -1,7 +1,9 @@
+import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
+
 plugins {
     id("com.android.library")
     id("kotlin-android")
-    id("com.amplitude.publish-module-plugin")
+    alias(libs.plugins.mavenPublish)
 }
 
 android {
@@ -43,6 +45,24 @@ android {
     }
 }
 
+mavenPublishing {
+    coordinates(artifactId = "analytics-android")
+
+    pom {
+        name.set("Amplitude Android Kotlin SDK")
+        description.set("Amplitude Kotlin client-side SDK for Android")
+    }
+
+    configure(AndroidSingleVariantLibrary(
+        // the published variant
+        variant = "release",
+        // whether to publish a sources jar
+        sourcesJar = true,
+        // whether to publish a javadoc jar
+        publishJavadocJar = true,
+    ))
+}
+
 dependencies {
     api(project(":core"))
     implementation(libs.coroutines.core)
@@ -75,16 +95,6 @@ dependencies {
     testImplementation(libs.playServicesAppset)
     testImplementation(libs.junit.jupiter.api)
     testImplementation(libs.test.runner)
-}
-
-publication {
-    name = "Amplitude Android Kotlin SDK"
-    description = "Amplitude Kotlin client-side SDK for Android"
-    artifactId = "analytics-android"
-}
-
-tasks.dokkaHtmlPartial.configure {
-    failOnWarning.set(true)
 }
 
 tasks.withType<Test> {
