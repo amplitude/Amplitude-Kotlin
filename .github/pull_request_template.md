@@ -5,7 +5,6 @@ Please fill out the following sections to help us quickly review your pull reque
 --->
 
 ### Summary
-
 <!-- What does the PR do? -->
 
 ### Checklist
