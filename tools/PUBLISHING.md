@@ -69,13 +69,13 @@ For local publishing using a GPG key ring, add the following parameters to your 
 # Signing configuration for key ring
 signing.keyId=keyId
 signing.password=password
-signing.secretKeyRingFile=~/.gnupg/secring.gpg
+signing.secretKeyRingFile=path/to/secring.gpg
 ```
 
 Where:
 - `signing.keyId`: The ID of your GPG key (last 8 characters of the key fingerprint)
 - `signing.password`: The password for your GPG key
-- `signing.secretKeyRingFile`: Path to your GPG secret key ring file (typically located at `~/.gnupg/secring.gpg`)
+- `signing.secretKeyRingFile`: Full Path to your GPG secret key ring file (typically located at `~/.gnupg/secring.gpg`)
 
 ## Maven Local with inmemory keys
 
