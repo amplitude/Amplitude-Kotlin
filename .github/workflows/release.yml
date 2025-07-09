@@ -1,4 +1,5 @@
-name: Release
+# This workflow is bumping the version of the SDK and publishing it to Maven Central.
+name: Update version and Publish Release
 
 on:
   workflow_dispatch:
