@@ -137,6 +137,24 @@ check_signing_disabled() {
     return 1
 }
 
+# Function to publish to Maven local
+publish_to_maven_local() {
+    echo "=============================================="
+    echo -e "${BLUE}🚀 Publishing to Maven Local...${NC}"
+    echo
+
+    if ./gradlew publishToMavenLocal; then
+        echo
+        echo -e "${GREEN}✅ Successfully published to Maven Local!${NC}"
+        echo -e "${GREEN}   Artifacts are now available in your local Maven repository${NC}"
+        return 0
+    else
+        echo
+        echo -e "${RED}❌ Publishing to Maven Local failed!${NC}"
+        return 1
+    fi
+}
+
 # Main verification logic
 main() {
     echo "Starting verification of signing configuration..."
@@ -162,18 +180,22 @@ main() {
     if [[ "$found_env_vars" == "true" ]]; then
         echo -e "${GREEN}✅ Environment variables signing configuration is ready${NC}"
         echo -e "${GREEN}   You can publish with: ./gradlew publishToMavenLocal${NC}"
+        publish_to_maven_local
         exit 0
     elif [[ "$found_keyring" == "true" ]]; then
         echo -e "${GREEN}✅ Key ring signing configuration is ready${NC}"
         echo -e "${GREEN}   You can publish with: ./gradlew publishToMavenLocal${NC}"
+        publish_to_maven_local
         exit 0
     elif [[ "$found_inmemory" == "true" ]]; then
         echo -e "${GREEN}✅ In-memory signing configuration is ready${NC}"
         echo -e "${GREEN}   You can publish with: ./gradlew publishToMavenLocal${NC}"
+        publish_to_maven_local
         exit 0
     elif [[ "$signing_disabled" == "true" ]]; then
         echo -e "${YELLOW}⚠️  Signing is disabled - only suitable for local development${NC}"
         echo -e "${YELLOW}   You can publish with: ./gradlew publishToMavenLocal${NC}"
+        publish_to_maven_local
         exit 0
     else
         echo -e "${RED}❌ No valid signing configuration found!${NC}"
