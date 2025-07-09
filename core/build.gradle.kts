@@ -9,8 +9,8 @@ plugins {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    sourceCompatibility = JavaConfig.JAVA_VERSION
+    targetCompatibility = JavaConfig.JAVA_VERSION
 }
 
 repositories {

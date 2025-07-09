@@ -24,7 +24,7 @@ allprojects {
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
         kotlinOptions {
             freeCompilerArgs = listOf("-Xjvm-default=all")
-            jvmTarget = "1.8"
+            jvmTarget = KotlinConfig.JVM_TARGET
         }
     }
 

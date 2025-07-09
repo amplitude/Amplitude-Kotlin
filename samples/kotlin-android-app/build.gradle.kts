@@ -46,11 +46,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaConfig.JAVA_VERSION
+        targetCompatibility = JavaConfig.JAVA_VERSION
     }
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = KotlinConfig.JVM_TARGET
     }
     lint {
         abortOnError = false
