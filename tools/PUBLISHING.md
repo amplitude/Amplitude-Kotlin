@@ -77,6 +77,12 @@ Where:
 - `signing.password`: The password for your GPG key
 - `signing.secretKeyRingFile`: Full Path to your GPG secret key ring file (typically located at `~/.gnupg/secring.gpg`)
 
+To check the default location of your secring.gpg file, you can use:
+
+```bash
+echo ~/.gnupg/secring.gpg
+```
+
 ## Maven Local with inmemory keys
 
 For local publishing using in-memory signing with GPG keys, you can configure the signing parameters 
