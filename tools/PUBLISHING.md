@@ -1,5 +1,20 @@
 # Publishing Guide
 
+## Automated Publishing
+
+This project uses automated publishing to Maven Central via [Sonatype Central Portal](https://central.sonatype.com/publishing/deployments). 
+The publishing process is triggered through GitHub Actions workflows.
+
+### Release Process
+
+To manually trigger a release:
+
+1. Go to the "Actions" tab in the GitHub repository
+2. Select the release workflow
+3. By default publishing and release are automated.
+
+The published artifacts will be available at: https://central.sonatype.com/publishing/deployments
+
 ## CI PUBLISHING
 
 CI publishing relies on the following environment variables:
