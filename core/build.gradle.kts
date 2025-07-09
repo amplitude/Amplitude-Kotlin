@@ -1,5 +1,5 @@
-import com.vanniktech.maven.publish.KotlinJvm
 import com.vanniktech.maven.publish.JavadocJar
+import com.vanniktech.maven.publish.KotlinJvm
 
 plugins {
     id("java")
@@ -25,11 +25,13 @@ mavenPublishing {
         description.set("Amplitude Kotlin Core library")
     }
 
-    configure(KotlinJvm(
-        javadocJar = JavadocJar.Dokka("dokkaHtml"),
-        // whether to publish a sources jar
-        sourcesJar = true,
-    ))
+    configure(
+        KotlinJvm(
+            javadocJar = JavadocJar.Dokka("dokkaHtml"),
+            // whether to publish a sources jar
+            sourcesJar = true,
+        ),
+    )
 }
 
 dependencies {
