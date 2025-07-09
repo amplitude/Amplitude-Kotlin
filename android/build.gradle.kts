@@ -6,10 +6,10 @@ plugins {
 
 android {
     namespace = "com.amplitude.android"
-    compileSdk = BuildConfig.Versions.Android.COMPILE_SDK
+    compileSdk = AndroidVersions.COMPILE_SDK
 
     defaultConfig {
-        minSdk = BuildConfig.Versions.Android.MIN_SDK
+        minSdk = AndroidVersions.MIN_SDK
         multiDexEnabled = true
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
