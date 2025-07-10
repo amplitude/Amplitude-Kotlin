@@ -1,3 +1,11 @@
+## [1.21.4](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.21.3...v1.21.4) (2025-07-10)
+
+
+### Bug Fixes
+
+* broken sessions forground tracking ([#308](https://github.com/amplitude/Amplitude-Kotlin/issues/308)) ([1c5bb5d](https://github.com/amplitude/Amplitude-Kotlin/commit/1c5bb5d337d2ba8d241cde5498dd9a285c283111))
+* screenName should use label if present, else fallback to name ([#309](https://github.com/amplitude/Amplitude-Kotlin/issues/309)) ([46fb288](https://github.com/amplitude/Amplitude-Kotlin/commit/46fb28818fb0ef27241b039aa14f11be26849db8))
+
 ## [1.21.3](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.21.2...v1.21.3) (2025-06-26)
 
 
