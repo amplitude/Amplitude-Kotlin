@@ -24,8 +24,8 @@ module.exports = {
         "replacements": [
           {
             "files": ["gradle.properties"],
-            "from": "PUBLISH_VERSION=.*",
-            "to": "PUBLISH_VERSION=${nextRelease.version}",
+            "from": "VERSION_NAME=.*",
+            "to": "VERSION_NAME=${nextRelease.version}",
             "results": [
               {
                 "file": "gradle.properties",
@@ -44,8 +44,7 @@ module.exports = {
       "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
     }],
     ["@semantic-release/exec", {
-      "publishCmd": "./gradlew publishReleasePublicationToSonatypeRepository closeAndReleaseStagingRepositories",
+      "publishCmd": "./gradlew publishAllPublicationsToMavenCentral --no-configuration-cache",
     }],
   ],
 }
-

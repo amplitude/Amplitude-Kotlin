@@ -1,15 +1,17 @@
+import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
+
 plugins {
     id("com.android.library")
     id("kotlin-android")
-    id("com.amplitude.publish-module-plugin")
+    alias(libs.plugins.mavenPublish)
 }
 
 android {
     namespace = "com.amplitude.android"
-    compileSdk = BuildConfig.Versions.Android.COMPILE_SDK
+    compileSdk = AndroidVersions.COMPILE_SDK
 
     defaultConfig {
-        minSdk = BuildConfig.Versions.Android.MIN_SDK
+        minSdk = AndroidVersions.MIN_SDK
         multiDexEnabled = true
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -28,11 +30,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaConfig.JAVA_VERSION
+        targetCompatibility = JavaConfig.JAVA_VERSION
     }
     kotlinOptions {
-        jvmTarget = "1.8"
+        jvmTarget = KotlinConfig.JVM_TARGET
     }
     testOptions {
         unitTests.isIncludeAndroidResources = true
@@ -41,6 +43,26 @@ android {
     buildFeatures {
         buildConfig = true
     }
+}
+
+mavenPublishing {
+    coordinates(artifactId = "analytics-android")
+
+    pom {
+        name.set("Amplitude Android Kotlin SDK")
+        description.set("Amplitude Kotlin client-side SDK for Android")
+    }
+
+    configure(
+        AndroidSingleVariantLibrary(
+            // the published variant
+            variant = "release",
+            // whether to publish a sources jar
+            sourcesJar = true,
+            // whether to publish a javadoc jar
+            publishJavadocJar = true,
+        ),
+    )
 }
 
 dependencies {
@@ -75,16 +97,6 @@ dependencies {
     testImplementation(libs.playServicesAppset)
     testImplementation(libs.junit.jupiter.api)
     testImplementation(libs.test.runner)
-}
-
-publication {
-    name = "Amplitude Android Kotlin SDK"
-    description = "Amplitude Kotlin client-side SDK for Android"
-    artifactId = "analytics-android"
-}
-
-tasks.dokkaHtmlPartial.configure {
-    failOnWarning.set(true)
 }
 
 tasks.withType<Test> {
