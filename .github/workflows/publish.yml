@@ -35,8 +35,7 @@ jobs:
           distribution: 'zulu'
           cache: 'gradle'
 
-      - name: Semantic Release --dry-run
-        if: ${{ github.event.inputs.dryRun == 'true'}}
+      - name: Maven Central Publish and Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GIT_AUTHOR_NAME: amplitude-sdk-bot
