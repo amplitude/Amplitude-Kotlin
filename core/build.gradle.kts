@@ -13,10 +13,6 @@ java {
     targetCompatibility = JavaConfig.JAVA_VERSION
 }
 
-repositories {
-    mavenCentral()
-}
-
 mavenPublishing {
     coordinates(artifactId = "analytics-core")
 
