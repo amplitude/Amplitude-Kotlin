@@ -162,15 +162,25 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                             PackageManager.GET_META_DATA,
                         )
 
-                    // 1. Try activity label first
+                    // 1. Activity title first
+                    if (title.isNotBlank()) {
+                        return title.toString()
+                    }
+
+                    // 2. Return label from activity info
                     if (info.labelRes != 0) {
                         return getString(info.labelRes)
                     } else if (info.nonLocalizedLabel.isNotBlank()) {
                         return info.nonLocalizedLabel.toString()
                     }
 
-                    // 2. Fall back to activity name
-                    return info.name
+                    // 3. Fall back to activity name
+                    if (info.name.isNotBlank()) {
+                        return info.name
+                    }
+
+                    // 4. Fall back to activity class name
+                    return localClassName
                 } catch (e: Exception) {
                     // 3. Fall back to application name
                     return applicationInfo.loadLabel(packageManager).toString()
