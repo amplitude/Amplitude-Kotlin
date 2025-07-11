@@ -2,6 +2,7 @@ package com.amplitude.android.migration
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.amplitude.MainDispatcherRule
 import com.amplitude.android.Amplitude
 import com.amplitude.android.Configuration
 import com.amplitude.android.storage.AndroidStorageContextV1
@@ -15,6 +16,7 @@ import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.junit.Assert
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -25,6 +27,9 @@ import java.util.UUID
 
 @RunWith(RobolectricTestRunner::class)
 class MigrationManagerTest {
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule()
+
     lateinit var context: Context
 
     private val legacyUserId: String = "android-kotlin-sample-user-legacy"

@@ -2,12 +2,14 @@ package com.amplitude.android.migration
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.amplitude.MainDispatcherRule
 import com.amplitude.android.Amplitude
 import com.amplitude.android.Configuration
 import com.amplitude.core.Storage
 import com.amplitude.core.utilities.ConsoleLoggerProvider
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
+import org.junit.Rule
 import org.junit.Test
 import org.junit.jupiter.api.Assertions
 import org.junit.runner.RunWith
@@ -18,6 +20,9 @@ import java.io.InputStream
 
 @RunWith(RobolectricTestRunner::class)
 class RemnantDataMigrationTest {
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule()
+
     @Test
     fun `legacy data version 4 should be migrated`() {
         checkLegacyDataMigration("legacy_v4.sqlite", 4)

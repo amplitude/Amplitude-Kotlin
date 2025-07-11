@@ -3,6 +3,7 @@ package com.amplitude.android
 import android.app.Application
 import android.content.Context
 import android.net.ConnectivityManager
+import com.amplitude.MainDispatcherRule
 import com.amplitude.android.utilities.createFakeAmplitude
 import com.amplitude.android.utilities.enterForeground
 import com.amplitude.android.utilities.exitForeground
@@ -19,15 +20,12 @@ import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.spyk
 import io.mockk.verify
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
+import org.junit.Assert.assertEquals
+import org.junit.Rule
+import org.junit.Test
 import java.io.File
 
 @ExperimentalCoroutinesApi
@@ -63,10 +61,8 @@ class AmplitudeSessionTest {
         )
     }
 
-    @BeforeEach
-    fun setUp() {
-        Dispatchers.setMain(StandardTestDispatcher())
-    }
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule()
 
     @Test
     fun amplitude_closeBackgroundEventsShouldNotStartNewSession() =
@@ -84,7 +80,7 @@ class AmplitudeSessionTest {
             amplitude.isBuilt.await()
 
             amplitude.track(createEvent(1000, "test event 1"))
-            amplitude.track(createEvent(1050, "test event 2"))
+            amplitude.track(createEvent(1050L, "test event 2"))
 
             advanceUntilIdle()
             Thread.sleep(100)
@@ -97,18 +93,18 @@ class AmplitudeSessionTest {
 
             var event = trackedEvents[0]
             assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(1000, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(1000L, event.timestamp)
 
             event = trackedEvents[1]
             assertEquals("test event 1", event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(1000, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(1000L, event.timestamp)
 
             event = trackedEvents[2]
             assertEquals("test event 2", event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(1050, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(1050L, event.timestamp)
         }
 
     @Test
@@ -126,7 +122,7 @@ class AmplitudeSessionTest {
             amplitude.isBuilt.await()
 
             amplitude.track(createEvent(1000, "test event 1"))
-            amplitude.track(createEvent(2000, "test event 2"))
+            amplitude.track(createEvent(2000L, "test event 2"))
 
             advanceUntilIdle()
             Thread.sleep(100)
@@ -143,28 +139,28 @@ class AmplitudeSessionTest {
 
             var event = tracks[0]
             assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(1000, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(1000L, event.timestamp)
 
             event = tracks[1]
             assertEquals("test event 1", event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(1000, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(1000L, event.timestamp)
 
             event = tracks[2]
             assertEquals(Amplitude.END_SESSION_EVENT, event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(1000, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(1000L, event.timestamp)
 
             event = tracks[3]
             assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
-            assertEquals(2000, event.sessionId)
-            assertEquals(2000, event.timestamp)
+            assertEquals(2000L, event.sessionId)
+            assertEquals(2000L, event.timestamp)
 
             event = tracks[4]
             assertEquals("test event 2", event.eventType)
-            assertEquals(2000, event.sessionId)
-            assertEquals(2000, event.timestamp)
+            assertEquals(2000L, event.sessionId)
+            assertEquals(2000L, event.timestamp)
         }
 
     @Test
@@ -182,8 +178,8 @@ class AmplitudeSessionTest {
             amplitude.isBuilt.await()
 
             enterForeground(amplitude, 1000)
-            amplitude.track(createEvent(1050, "test event 1"))
-            amplitude.track(createEvent(2000, "test event 2"))
+            amplitude.track(createEvent(1050L, "test event 1"))
+            amplitude.track(createEvent(2000L, "test event 2"))
 
             advanceUntilIdle()
             Thread.sleep(100)
@@ -200,18 +196,18 @@ class AmplitudeSessionTest {
 
             var event = tracks[0]
             assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(1000, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(1000L, event.timestamp)
 
             event = tracks[1]
             assertEquals("test event 1", event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(1050, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(1050L, event.timestamp)
 
             event = tracks[2]
             assertEquals("test event 2", event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(2000, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(2000L, event.timestamp)
         }
 
     @Test
@@ -229,8 +225,8 @@ class AmplitudeSessionTest {
             amplitude.isBuilt.await()
 
             amplitude.track(createEvent(1000, "test event 1"))
-            enterForeground(amplitude, 1050)
-            amplitude.track(createEvent(2000, "test event 2"))
+            enterForeground(amplitude, 1050L)
+            amplitude.track(createEvent(2000L, "test event 2"))
 
             advanceUntilIdle()
             Thread.sleep(100)
@@ -247,18 +243,18 @@ class AmplitudeSessionTest {
 
             var event = tracks[0]
             assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(1000, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(1000L, event.timestamp)
 
             event = tracks[1]
             assertEquals("test event 1", event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(1000, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(1000L, event.timestamp)
 
             event = tracks[2]
             assertEquals("test event 2", event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(2000, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(2000L, event.timestamp)
         }
 
     @Test
@@ -276,8 +272,8 @@ class AmplitudeSessionTest {
             amplitude.isBuilt.await()
 
             amplitude.track(createEvent(1000, "test event 1"))
-            enterForeground(amplitude, 2000)
-            amplitude.track(createEvent(3000, "test event 2"))
+            enterForeground(amplitude, 2000L)
+            amplitude.track(createEvent(3000L, "test event 2"))
 
             advanceUntilIdle()
             Thread.sleep(100)
@@ -294,28 +290,28 @@ class AmplitudeSessionTest {
 
             var event = tracks[0]
             assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(1000, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(1000L, event.timestamp)
 
             event = tracks[1]
             assertEquals("test event 1", event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(1000, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(1000L, event.timestamp)
 
             event = tracks[2]
             assertEquals(Amplitude.END_SESSION_EVENT, event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(1000, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(1000L, event.timestamp)
 
             event = tracks[3]
             assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
-            assertEquals(2000, event.sessionId)
-            assertEquals(2000, event.timestamp)
+            assertEquals(2000L, event.sessionId)
+            assertEquals(2000L, event.timestamp)
 
             event = tracks[4]
             assertEquals("test event 2", event.eventType)
-            assertEquals(2000, event.sessionId)
-            assertEquals(3000, event.timestamp)
+            assertEquals(2000L, event.sessionId)
+            assertEquals(3000L, event.timestamp)
         }
 
     @Test
@@ -334,7 +330,7 @@ class AmplitudeSessionTest {
 
             enterForeground(amplitude, 1000)
             amplitude.track(createEvent(1500, "test event 1"))
-            exitForeground(amplitude, 2000)
+            exitForeground(amplitude, 2000L)
             amplitude.track(createEvent(2050, "test event 2"))
 
             advanceUntilIdle()
@@ -352,18 +348,18 @@ class AmplitudeSessionTest {
 
             var event = tracks[0]
             assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(1000, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(1000L, event.timestamp)
 
             event = tracks[1]
             assertEquals("test event 1", event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(1500, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(1500L, event.timestamp)
 
             event = tracks[2]
             assertEquals("test event 2", event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(2050, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(2050L, event.timestamp)
         }
 
     @Test
@@ -382,8 +378,8 @@ class AmplitudeSessionTest {
 
             enterForeground(amplitude, 1000)
             amplitude.track(createEvent(1500, "test event 1"))
-            exitForeground(amplitude, 2000)
-            amplitude.track(createEvent(3000, "test event 2"))
+            exitForeground(amplitude, 2000L)
+            amplitude.track(createEvent(3000L, "test event 2"))
 
             advanceUntilIdle()
             Thread.sleep(100)
@@ -400,28 +396,28 @@ class AmplitudeSessionTest {
 
             var event = tracks[0]
             assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(1000, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(1000L, event.timestamp)
 
             event = tracks[1]
             assertEquals("test event 1", event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(1500, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(1500L, event.timestamp)
 
             event = tracks[2]
             assertEquals(Amplitude.END_SESSION_EVENT, event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(2000, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(2000L, event.timestamp)
 
             event = tracks[3]
             assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
-            assertEquals(3000, event.sessionId)
-            assertEquals(3000, event.timestamp)
+            assertEquals(3000L, event.sessionId)
+            assertEquals(3000L, event.timestamp)
 
             event = tracks[4]
             assertEquals("test event 2", event.eventType)
-            assertEquals(3000, event.sessionId)
-            assertEquals(3000, event.timestamp)
+            assertEquals(3000L, event.sessionId)
+            assertEquals(3000L, event.timestamp)
         }
 
     @Test
@@ -442,9 +438,9 @@ class AmplitudeSessionTest {
 
             val timeline1 = amplitude1.timeline as Timeline
 
-            assertEquals(1000, amplitude1.sessionId)
-            assertEquals(1000, timeline1.sessionId)
-            assertEquals(1000, timeline1.lastEventTime)
+            assertEquals(1000L, amplitude1.sessionId)
+            assertEquals(1000L, timeline1.sessionId)
+            assertEquals(1000L, timeline1.lastEventTime)
             assertEquals(1, timeline1.lastEventId)
 
             amplitude1.track(createEvent(1200, "test event 1"))
@@ -452,8 +448,8 @@ class AmplitudeSessionTest {
             advanceUntilIdle()
             Thread.sleep(100)
 
-            assertEquals(1000, amplitude1.sessionId)
-            assertEquals(1000, timeline1.sessionId)
+            assertEquals(1000L, amplitude1.sessionId)
+            assertEquals(1000L, timeline1.sessionId)
             assertEquals(1200, timeline1.lastEventTime)
             assertEquals(2, timeline1.lastEventId)
 
@@ -468,8 +464,8 @@ class AmplitudeSessionTest {
             Thread.sleep(100)
 
             val timeline2 = amplitude2.timeline as Timeline
-            assertEquals(1000, amplitude2.sessionId)
-            assertEquals(1000, timeline2.sessionId)
+            assertEquals(1000L, amplitude2.sessionId)
+            assertEquals(1000L, timeline2.sessionId)
             assertEquals(1200, timeline2.lastEventTime)
             assertEquals(2, timeline2.lastEventId)
         }
@@ -489,8 +485,8 @@ class AmplitudeSessionTest {
             amplitude.isBuilt.await()
 
             amplitude.track(createEvent(1000, "test event 1"))
-            amplitude.track(createEvent(1050, "test event 2", 3000))
-            amplitude.track(createEvent(1100, "test event 3"))
+            amplitude.track(createEvent(1050L, "test event 2", 3000L))
+            amplitude.track(createEvent(1100L, "test event 3"))
 
             advanceUntilIdle()
             Thread.sleep(100)
@@ -507,23 +503,23 @@ class AmplitudeSessionTest {
 
             var event = tracks[0]
             assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(1000, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(1000L, event.timestamp)
 
             event = tracks[1]
             assertEquals("test event 1", event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(1000, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(1000L, event.timestamp)
 
             event = tracks[2]
             assertEquals("test event 2", event.eventType)
-            assertEquals(3000, event.sessionId)
-            assertEquals(1050, event.timestamp)
+            assertEquals(3000L, event.sessionId)
+            assertEquals(1050L, event.timestamp)
 
             event = tracks[3]
             assertEquals("test event 3", event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(1100, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(1100L, event.timestamp)
         }
 
     @Test
@@ -541,8 +537,8 @@ class AmplitudeSessionTest {
             amplitude.isBuilt.await()
 
             amplitude.track(createEvent(1000, "test event 1"))
-            amplitude.track(createEvent(1050, "test event 2", -1))
-            amplitude.track(createEvent(1100, "test event 3"))
+            amplitude.track(createEvent(1050L, "test event 2", -1))
+            amplitude.track(createEvent(1100L, "test event 3"))
 
             advanceUntilIdle()
             Thread.sleep(100)
@@ -559,23 +555,23 @@ class AmplitudeSessionTest {
 
             var event = tracks[0]
             assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(1000, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(1000L, event.timestamp)
 
             event = tracks[1]
             assertEquals("test event 1", event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(1000, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(1000L, event.timestamp)
 
             event = tracks[2]
             assertEquals("test event 2", event.eventType)
-            assertEquals(-1, event.sessionId)
-            assertEquals(1050, event.timestamp)
+            assertEquals(-1L, event.sessionId)
+            assertEquals(1050L, event.timestamp)
 
             event = tracks[3]
             assertEquals("test event 3", event.eventType)
-            assertEquals(1000, event.sessionId)
-            assertEquals(1100, event.timestamp)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(1100L, event.timestamp)
         }
 
     @Test
