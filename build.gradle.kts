@@ -10,7 +10,7 @@ buildscript {
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22")
         classpath("org.jlleitschuh.gradle:ktlint-gradle:12.3.0")
         classpath("io.github.gradle-nexus:publish-plugin:2.0.0")
-        classpath("de.mannodermaus.gradle.plugins:android-junit5:1.12.2.0")
+        classpath("de.mannodermaus.gradle.plugins:android-junit5:1.13.1.0")
     }
 }
 

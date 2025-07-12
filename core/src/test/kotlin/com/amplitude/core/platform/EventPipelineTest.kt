@@ -106,8 +106,11 @@ class EventPipelineTest {
             val eventPipeline = spyk(EventPipeline(amplitude))
             val event = BaseEvent().apply { eventType = "test_event" }
 
+            fakeResponse = SuccessResponse()
+
             eventPipeline.start()
             eventPipeline.put(event)
+
             advanceUntilIdle()
 
             verify(exactly = 1) { eventPipeline.flush() }
@@ -120,6 +123,8 @@ class EventPipelineTest {
             amplitude.configuration.offline = null
             val eventPipeline = spyk(EventPipeline(amplitude))
             val event = BaseEvent().apply { eventType = "test_event" }
+
+            fakeResponse = SuccessResponse()
 
             eventPipeline.start()
             eventPipeline.put(event)

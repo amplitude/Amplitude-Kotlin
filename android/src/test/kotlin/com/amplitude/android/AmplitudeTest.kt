@@ -3,6 +3,7 @@ package com.amplitude.android
 import android.app.Application
 import android.content.Context
 import android.net.ConnectivityManager
+import com.amplitude.MainDispatcherRule
 import com.amplitude.analytics.connector.AnalyticsConnector
 import com.amplitude.analytics.connector.Identity
 import com.amplitude.android.utilities.createFakeAmplitude
@@ -17,19 +18,18 @@ import com.amplitude.id.IMIdentityStorageProvider
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNotEquals
-import org.junit.jupiter.api.Assertions.assertNotNull
-import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 import java.io.File
 import kotlin.concurrent.thread
 
@@ -45,6 +45,7 @@ internal class FakeEventPlugin : EventPlugin {
 }
 
 @ExperimentalCoroutinesApi
+@RunWith(RobolectricTestRunner::class)
 class AmplitudeTest {
     private fun createConfiguration(
         minTimeBetweenSessionsMillis: Long? = null,
@@ -96,10 +97,8 @@ class AmplitudeTest {
         return configuration
     }
 
-    @BeforeEach
-    fun setUp() {
-        Dispatchers.setMain(StandardTestDispatcher())
-    }
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule()
 
     @Test
     fun amplitude_reset_wipesUserIdDeviceId() =

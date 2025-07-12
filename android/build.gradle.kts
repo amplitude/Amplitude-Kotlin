@@ -79,24 +79,30 @@ dependencies {
     testImplementation(project(":core"))
     testImplementation(libs.coroutines.test)
     testImplementation(libs.mockwebserver)
+
+    // Junit 5 dependencies
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
-    testImplementation(libs.kotlin.test.junit)
+    // Junit 5 required dependencies
+    testImplementation(libs.junit.jupiter.api)
     testRuntimeOnly(libs.junit.jupiter.engine)
+    // Junit optional dependencies
     testImplementation(libs.junit.jupiter.params)
-    testImplementation(libs.junit4)
     testRuntimeOnly(libs.junit.vintage.engine)
+
+    testImplementation(libs.kotlin.test.junit)
+    testImplementation(libs.junit4)
     testImplementation(libs.robolectric)
     testImplementation(libs.test.core)
     testImplementation(libs.test.ext.junit)
-    androidTestImplementation(libs.test.ext.junit)
-    androidTestImplementation(libs.espresso.core)
     testImplementation(libs.json)
     testImplementation(libs.play.services.base)
     testImplementation(libs.playServicesAdsIdentifier)
     testImplementation(libs.playServicesAppset)
-    testImplementation(libs.junit.jupiter.api)
     testImplementation(libs.test.runner)
+
+    androidTestImplementation(libs.test.ext.junit)
+    androidTestImplementation(libs.espresso.core)
 }
 
 tasks.withType<Test> {

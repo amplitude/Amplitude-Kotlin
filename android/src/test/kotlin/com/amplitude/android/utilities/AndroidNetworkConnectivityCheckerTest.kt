@@ -7,15 +7,22 @@ import android.net.NetworkCapabilities
 import android.net.NetworkCapabilities.TRANSPORT_CELLULAR
 import android.net.NetworkCapabilities.TRANSPORT_WIFI
 import android.os.Build
+import com.amplitude.MainDispatcherRule
 import com.amplitude.common.Logger
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
+@RunWith(RobolectricTestRunner::class)
+@Config(manifest = Config.NONE, sdk = [Build.VERSION_CODES.LOLLIPOP])
 class AndroidNetworkConnectivityCheckerTest {
     private val context: Context = mockk()
     private val connectivityManager: ConnectivityManager = mockk()
@@ -24,7 +31,10 @@ class AndroidNetworkConnectivityCheckerTest {
     private val logger: Logger = mockk(relaxed = true)
     private lateinit var networkConnectivityChecker: AndroidNetworkConnectivityChecker
 
-    @BeforeEach
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule()
+
+    @Before
     fun setUp() {
         every { context.getSystemService(Context.CONNECTIVITY_SERVICE) } returns connectivityManager
     }
@@ -76,6 +86,7 @@ class AndroidNetworkConnectivityCheckerTest {
     }
 
     @Test
+    @Config(sdk = [Build.VERSION_CODES.M])
     fun `isConnected should return false when activeNetwork is null on API 23+`() {
         every { context.checkCallingOrSelfPermission("android.permission.ACCESS_NETWORK_STATE") } returns 0
         every { connectivityManager.activeNetwork } returns null
@@ -89,6 +100,7 @@ class AndroidNetworkConnectivityCheckerTest {
     }
 
     @Test
+    @Config(sdk = [Build.VERSION_CODES.M])
     fun `isConnected should return false when network capabilities is null on API 23+`() {
         every { context.checkCallingOrSelfPermission("android.permission.ACCESS_NETWORK_STATE") } returns 0
         every { connectivityManager.activeNetwork } returns network
@@ -101,6 +113,7 @@ class AndroidNetworkConnectivityCheckerTest {
     }
 
     @Test
+    @Config(sdk = [Build.VERSION_CODES.M])
     fun `isConnected should return true when has WiFi transport on API 23+`() {
         every { context.checkCallingOrSelfPermission("android.permission.ACCESS_NETWORK_STATE") } returns 0
         every { connectivityManager.activeNetwork } returns network
@@ -115,6 +128,7 @@ class AndroidNetworkConnectivityCheckerTest {
     }
 
     @Test
+    @Config(sdk = [Build.VERSION_CODES.M])
     fun `isConnected should return true when has cellular transport on API 23+`() {
         every { context.checkCallingOrSelfPermission("android.permission.ACCESS_NETWORK_STATE") } returns 0
         every { connectivityManager.activeNetwork } returns network
@@ -129,6 +143,7 @@ class AndroidNetworkConnectivityCheckerTest {
     }
 
     @Test
+    @Config(sdk = [Build.VERSION_CODES.M])
     fun `isConnected should return false when has neither WiFi nor cellular transport on API 23+`() {
         every { context.checkCallingOrSelfPermission("android.permission.ACCESS_NETWORK_STATE") } returns 0
         every { connectivityManager.activeNetwork } returns network

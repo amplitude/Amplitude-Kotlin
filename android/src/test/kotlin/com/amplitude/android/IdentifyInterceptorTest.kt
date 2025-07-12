@@ -2,6 +2,7 @@ package com.amplitude.android
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.amplitude.MainDispatcherRule
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.android.utilities.FakeAndroidAmplitude
 import com.amplitude.common.android.AndroidContextProvider
@@ -29,6 +30,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -38,6 +40,9 @@ import java.util.concurrent.TimeUnit
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 class IdentifyInterceptorTest {
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule()
+
     private lateinit var server: MockWebServer
     private lateinit var amplitude: FakeAndroidAmplitude
 

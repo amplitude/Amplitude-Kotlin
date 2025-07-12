@@ -3,6 +3,7 @@ package com.amplitude.android
 import android.app.Application
 import android.content.Context
 import android.net.ConnectivityManager
+import com.amplitude.MainDispatcherRule
 import com.amplitude.android.utilities.enterForeground
 import com.amplitude.android.utilities.exitForeground
 import com.amplitude.core.events.BaseEvent
@@ -12,41 +13,38 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
-import org.junit.After
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.robolectric.util.TempDirectory
-import java.io.File
-import kotlin.io.path.absolutePathString
 import kotlin.test.assertTrue
 import com.amplitude.core.Amplitude as CoreAmplitude
 
-@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 @Config(manifest = Config.NONE)
 class AmplitudeRobolectricTests {
     private lateinit var amplitude: CoreAmplitude
-    private var context: Context? = null
+    private lateinit var context: Context
     private lateinit var connectivityManager: ConnectivityManager
 
-    var tempDir = TempDirectory()
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule()
+
+    @JvmField
+    @Rule
+    var temporaryFolder: TemporaryFolder = TemporaryFolder()
 
     @ExperimentalCoroutinesApi
     @Before
     fun setup() {
         context = mockk<Application>(relaxed = true)
         connectivityManager = mockk<ConnectivityManager>(relaxed = true)
-        every { context!!.getDir(any(), any()) } returns File(tempDir.create("data").absolutePathString())
-        every { context!!.getSystemService(Context.CONNECTIVITY_SERVICE) } returns connectivityManager
+        every { context.getDir(any(), any()) } returns temporaryFolder.newFolder("data")
+        every { context.getSystemService(Context.CONNECTIVITY_SERVICE) } returns connectivityManager
         amplitude = Amplitude(createConfiguration())
-    }
-
-    @After
-    fun tearDown() {
-        tempDir.destroy()
     }
 
     @Test
@@ -79,7 +77,7 @@ class AmplitudeRobolectricTests {
     ): Configuration {
         return Configuration(
             apiKey = "api-key",
-            context = context!!,
+            context = context,
             instanceName = "testInstance",
             identityStorageProvider = IMIdentityStorageProvider(),
             loggerProvider = ConsoleLoggerProvider(),

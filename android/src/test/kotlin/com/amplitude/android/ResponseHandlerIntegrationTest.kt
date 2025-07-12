@@ -2,6 +2,7 @@ package com.amplitude.android
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.amplitude.MainDispatcherRule
 import com.amplitude.android.events.EventOptions
 import com.amplitude.android.utilities.createFakeAmplitude
 import com.amplitude.android.utilities.setupMockAndroidContext
@@ -23,6 +24,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -31,6 +33,9 @@ import java.util.concurrent.TimeUnit
 @ExperimentalCoroutinesApi
 @RunWith(RobolectricTestRunner::class)
 class ResponseHandlerIntegrationTest {
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule()
+
     private lateinit var server: MockWebServer
     private lateinit var amplitude: Amplitude
 
