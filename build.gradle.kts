@@ -3,7 +3,6 @@ buildscript {
         google()
         mavenCentral()
         gradlePluginPortal()
-        maven(url = "https://plugins.gradle.org/m2/")
     }
     dependencies {
         classpath("com.android.tools.build:gradle:8.10.1")
@@ -14,13 +13,12 @@ buildscript {
     }
 }
 
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-        maven(url = "https://kotlin.bintray.com/kotlinx")
-    }
+plugins {
+    alias(libs.plugins.mavenPublish) apply false
+    id("org.jetbrains.dokka") version "2.0.0"
+}
 
+allprojects {
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
         kotlinOptions {
             freeCompilerArgs = listOf("-Xjvm-default=all")
@@ -32,11 +30,6 @@ allprojects {
 
     group = project.findProperty("GROUP") ?: ""
     version = project.findProperty("VERSION_NAME") ?: "0.0.1-SNAPSHOT"
-}
-
-plugins {
-    alias(libs.plugins.mavenPublish) apply false
-    id("org.jetbrains.dokka") version "2.0.0"
 }
 
 subprojects {
