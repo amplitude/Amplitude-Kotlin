@@ -18,10 +18,10 @@ class TroubleShootingPlugin : DestinationPlugin() {
         super.setup(amplitude)
     }
 
-    override fun track(event: BaseEvent): BaseEvent {
+    override fun track(payload: BaseEvent): BaseEvent {
         val gson = Gson()
-        val eventJsonStr = gson.toJson(event)
+        val eventJsonStr = gson.toJson(payload)
         logger.debug("Processed event: $eventJsonStr")
-        return event
+        return payload
     }
 }

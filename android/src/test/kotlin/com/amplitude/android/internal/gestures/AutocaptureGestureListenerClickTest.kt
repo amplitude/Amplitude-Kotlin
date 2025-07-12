@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import android.view.Window
 import android.widget.CheckBox
 import android.widget.RadioButton
+import com.amplitude.MainDispatcherRule
 import com.amplitude.android.internal.locators.AndroidViewTargetLocator
 import com.amplitude.android.utilities.DefaultEventUtils.Companion.screenName
 import com.amplitude.common.Logger
@@ -16,16 +17,15 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.resetMain
-import kotlinx.coroutines.test.setMain
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
+import kotlinx.coroutines.test.runTest
+import org.junit.Rule
+import org.junit.Test
 import kotlin.reflect.KClass
 
-@OptIn(ExperimentalCoroutinesApi::class)
 class AutocaptureGestureListenerClickTest {
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule(Dispatchers.Unconfined)
+
     class Fixture {
         val activity =
             mockk<Activity>(relaxed = true) {
@@ -97,67 +97,59 @@ class AutocaptureGestureListenerClickTest {
 
     private val fixture = Fixture()
 
-    @BeforeEach
-    fun setup() {
-        Dispatchers.setMain(Dispatchers.Unconfined)
-    }
-
-    @AfterEach
-    fun cleanup() {
-        Dispatchers.resetMain()
-    }
-
+//    @Test(timeout = 5000)
     @Test
-    fun `when target and its ViewGroup are clickable, captures an event for target`() {
-        val event = mockk<MotionEvent>(relaxed = true)
-        val sut =
-            fixture.getSut(
-                type = View::class,
-                event = event,
-                isInvalidTargetVisible = false,
-                attachViewsToRoot = false,
-            )
+    fun `when target and its ViewGroup are clickable, captures an event for target`() =
+        runTest {
+            val event = mockk<MotionEvent>(relaxed = true)
+            val sut =
+                fixture.getSut(
+                    type = View::class,
+                    event = event,
+                    isInvalidTargetVisible = false,
+                    attachViewsToRoot = false,
+                )
 
-        val container1 =
-            mockView(type = ViewGroup::class, event = event, touchWithinBounds = false, context = fixture.context)
-        val notClickableInvalidTarget =
-            mockView(type = View::class, event = event)
-        val container2 =
-            mockView(type = ViewGroup::class, event = event, clickable = true, context = fixture.context) {
-                every { it.childCount } returns 3
-                every { it.getChildAt(0) } returns notClickableInvalidTarget
-                every { it.getChildAt(1) } returns fixture.invalidTarget
-                every { it.getChildAt(2) } returns fixture.target
+            val container1 =
+                mockView(type = ViewGroup::class, event = event, touchWithinBounds = false, context = fixture.context)
+            val notClickableInvalidTarget =
+                mockView(type = View::class, event = event)
+            val container2 =
+                mockView(type = ViewGroup::class, event = event, clickable = true, context = fixture.context) {
+                    every { it.childCount } returns 3
+                    every { it.getChildAt(0) } returns notClickableInvalidTarget
+                    every { it.getChildAt(1) } returns fixture.invalidTarget
+                    every { it.getChildAt(2) } returns fixture.target
+                }
+
+            fixture.window.mockDecorView(
+                type = ViewGroup::class,
+                event = event,
+                context = fixture.context,
+            ) {
+                every { it.childCount } returns 2
+                every { it.getChildAt(0) } returns container1
+                every { it.getChildAt(1) } returns container2
             }
 
-        fixture.window.mockDecorView(
-            type = ViewGroup::class,
-            event = event,
-            context = fixture.context,
-        ) {
-            every { it.childCount } returns 2
-            every { it.getChildAt(0) } returns container1
-            every { it.getChildAt(1) } returns container2
-        }
+            sut.onSingleTapUp(event)
 
-        sut.onSingleTapUp(event)
-
-        verify(exactly = 1) {
-            fixture.track(
-                "[Amplitude] Element Interacted",
-                mapOf(
-                    "[Amplitude] Action" to "touch",
-                    "[Amplitude] Target Class" to "android.view.View",
-                    "[Amplitude] Target Resource" to "test_button",
-                    "[Amplitude] Target Tag" to null,
-                    "[Amplitude] Target Text" to null,
-                    "[Amplitude] Target Source" to "Android View",
-                    "[Amplitude] Hierarchy" to "View",
-                    "[Amplitude] Screen Name" to "test_screen",
-                ),
-            )
+            verify(exactly = 1) {
+                fixture.track(
+                    "[Amplitude] Element Interacted",
+                    mapOf(
+                        "[Amplitude] Action" to "touch",
+                        "[Amplitude] Target Class" to "android.view.View",
+                        "[Amplitude] Target Resource" to "test_button",
+                        "[Amplitude] Target Tag" to null,
+                        "[Amplitude] Target Text" to null,
+                        "[Amplitude] Target Source" to "Android View",
+                        "[Amplitude] Hierarchy" to "View",
+                        "[Amplitude] Screen Name" to "test_screen",
+                    ),
+                )
+            }
         }
-    }
 
     @Test
     fun `ignores invisible or gone views`() {

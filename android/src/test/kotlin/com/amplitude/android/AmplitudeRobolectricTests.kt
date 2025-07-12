@@ -13,16 +13,13 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
-import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import org.robolectric.util.TempDirectory
-import java.io.File
-import kotlin.io.path.absolutePathString
 import kotlin.test.assertTrue
 import com.amplitude.core.Amplitude as CoreAmplitude
 
@@ -36,22 +33,18 @@ class AmplitudeRobolectricTests {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    private lateinit var tempDir: TempDirectory
+    @JvmField
+    @Rule
+    var temporaryFolder: TemporaryFolder = TemporaryFolder()
 
     @ExperimentalCoroutinesApi
     @Before
     fun setup() {
-        tempDir = TempDirectory()
         context = mockk<Application>(relaxed = true)
         connectivityManager = mockk<ConnectivityManager>(relaxed = true)
-        every { context.getDir(any(), any()) } returns File(tempDir.create("data").absolutePathString())
+        every { context.getDir(any(), any()) } returns temporaryFolder.newFolder("data")
         every { context.getSystemService(Context.CONNECTIVITY_SERVICE) } returns connectivityManager
         amplitude = Amplitude(createConfiguration())
-    }
-
-    @After
-    fun tearDown() {
-        tempDir.destroy()
     }
 
     @Test
