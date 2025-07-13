@@ -12,7 +12,7 @@ plugins {
 }
 
 allprojects {
-    apply(plugin = "org.jlleitschuh.gradle.ktlint")
+    apply(plugin = libs.plugins.ktlint.get().pluginId)
 
     group = project.findProperty("GROUP") ?: ""
     version = project.findProperty("VERSION_NAME") ?: "0.0.1-SNAPSHOT"
@@ -26,5 +26,5 @@ allprojects {
 }
 
 subprojects {
-    apply(plugin = "org.jetbrains.dokka")
+    apply(plugin = libs.plugins.dokka.get().pluginId)
 }
