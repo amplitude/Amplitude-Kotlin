@@ -3,6 +3,7 @@ activityCompose = "1.10.1"
 activityKtx = "1.9.1"
 analyticsConnector = "1.0.0"
 androidGradlePlugin = "8.10.1"
+androidJunit5 = "1.12.2.0"
 appcompat = "1.4.1"
 composeBom = "2025.06.01"
 composeUi = "1.6.8"
@@ -18,6 +19,7 @@ json = "20211205"
 junit = "5.9.3"
 junit4 = "4.13.2"
 kotlin = "1.9.22"
+ktlint = "12.3.0"
 material = "1.5.0"
 mavenPublish = "0.33.0"
 mockk = "1.12.4"
@@ -78,7 +80,11 @@ ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }
+android-junit5 = { id = "de.mannodermaus.android-junit5", version.ref = "androidJunit5" }
 android-library = { id = "com.android.library", version.ref = "androidGradlePlugin" }
-android-test = { id = "com.android.test", version.ref = "androidGradlePlugin"}
+android-test = { id = "com.android.test", version.ref = "androidGradlePlugin" }
 dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 mavenPublish = { id = "com.vanniktech.maven.publish", version.ref = "mavenPublish" }

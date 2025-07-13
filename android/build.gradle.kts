@@ -2,8 +2,9 @@ import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
 
 plugins {
     alias(libs.plugins.android.library)
-    id("kotlin-android")
+    kotlin("android")
     alias(libs.plugins.mavenPublish)
+    alias(libs.plugins.android.junit5)
 }
 
 android {

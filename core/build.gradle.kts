@@ -2,9 +2,7 @@ import com.vanniktech.maven.publish.JavadocJar
 import com.vanniktech.maven.publish.KotlinJvm
 
 plugins {
-    id("java")
-    id("kotlin")
-    id("org.jetbrains.kotlin.jvm")
+    kotlin("jvm")
     alias(libs.plugins.mavenPublish)
 }
 
