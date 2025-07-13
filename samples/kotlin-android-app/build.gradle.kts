@@ -1,7 +1,7 @@
 import java.util.Properties
 
 plugins {
-    id("com.android.application")
+    alias(libs.plugins.android.application)
     kotlin("android")
 }
 

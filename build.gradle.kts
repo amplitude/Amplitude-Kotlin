@@ -5,7 +5,6 @@ buildscript {
         gradlePluginPortal()
     }
     dependencies {
-        classpath("com.android.tools.build:gradle:8.10.1")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22")
         classpath("org.jlleitschuh.gradle:ktlint-gradle:12.3.0")
         classpath("io.github.gradle-nexus:publish-plugin:2.0.0")
@@ -14,8 +13,11 @@ buildscript {
 }
 
 plugins {
+    alias(libs.plugins.android.application) apply false
+    alias(libs.plugins.android.library) apply false
+    alias(libs.plugins.android.test) apply false
+    alias(libs.plugins.dokka)
     alias(libs.plugins.mavenPublish) apply false
-    id("org.jetbrains.dokka") version "2.0.0"
 }
 
 allprojects {

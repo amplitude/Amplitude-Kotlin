@@ -1,7 +1,7 @@
 import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
 
 plugins {
-    id("com.android.library")
+    alias(libs.plugins.android.library)
     id("kotlin-android")
     alias(libs.plugins.mavenPublish)
 }
