@@ -38,8 +38,12 @@ android {
         jvmTarget = KotlinConfig.JVM_TARGET
     }
     testOptions {
+        targetSdk = AndroidVersions.TARGET_SDK
         unitTests.isIncludeAndroidResources = true
         unitTests.isReturnDefaultValues = true
+    }
+    lint {
+        targetSdk = AndroidVersions.TARGET_SDK
     }
     buildFeatures {
         buildConfig = true
