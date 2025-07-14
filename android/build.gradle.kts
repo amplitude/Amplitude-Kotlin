@@ -1,9 +1,10 @@
 import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
 
 plugins {
-    id("com.android.library")
-    id("kotlin-android")
+    alias(libs.plugins.android.library)
+    kotlin("android")
     alias(libs.plugins.mavenPublish)
+    alias(libs.plugins.android.junit5)
 }
 
 android {
@@ -37,8 +38,12 @@ android {
         jvmTarget = KotlinConfig.JVM_TARGET
     }
     testOptions {
+        targetSdk = AndroidVersions.TARGET_SDK
         unitTests.isIncludeAndroidResources = true
         unitTests.isReturnDefaultValues = true
+    }
+    lint {
+        targetSdk = AndroidVersions.TARGET_SDK
     }
     buildFeatures {
         buildConfig = true
