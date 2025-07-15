@@ -28,6 +28,23 @@ enum class AutocaptureOption {
      * Enable element interaction tracking.
      */
     ELEMENT_INTERACTIONS,
+
+    ;
+
+    companion object {
+        /**
+         * Set of autocapture options that require Android Activity lifecycle callbacks to function properly.
+         *
+         * These options need access to activity lifecycle events and therefore require the ActivityLifecycleObserver to be registered with the Application.
+         */
+        val REQUIRES_ACTIVITY_CALLBACKS =
+            setOf(
+                APP_LIFECYCLES,
+                SCREEN_VIEWS,
+                ELEMENT_INTERACTIONS,
+                DEEP_LINKS,
+            )
+    }
 }
 
 class AutocaptureOptionsBuilder {
