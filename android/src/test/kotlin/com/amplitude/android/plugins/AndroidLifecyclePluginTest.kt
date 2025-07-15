@@ -252,8 +252,38 @@ class AndroidLifecyclePluginTest {
             verify(exactly = 0) {
                 activity.registerFragmentLifecycleCallbacks(any(), any())
             }
-
             verify(exactly = 0) {
+                activity.unregisterFragmentLifecycleCallbacks(any())
+            }
+
+            close()
+        }
+
+    @Test
+    fun `test fragment activity is tracked with screen views only`() =
+        runTest {
+            every { mockedConfig.autocapture } returns setOf(AutocaptureOption.SCREEN_VIEWS)
+            every { mockedAmplitude.amplitudeScope } returns this
+
+            val activity = mockk<Activity>()
+            every { activity.intent } returns Intent()
+
+            plugin.setup(mockedAmplitude)
+
+            every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+            every { activity.unregisterFragmentLifecycleCallbacks(any()) } returns Unit
+
+            observer.onActivityCreated(activity, mockk())
+            observer.onActivityDestroyed(activity)
+
+            advanceUntilIdle()
+
+            // Fragment callbacks should be registered when SCREEN_VIEWS is enabled
+            verify(exactly = 1) {
+                activity.registerFragmentLifecycleCallbacks(any(), any())
+            }
+
+            verify(exactly = 1) {
                 activity.unregisterFragmentLifecycleCallbacks(any())
             }
 
@@ -481,6 +511,40 @@ class AndroidLifecyclePluginTest {
                     eq(EventTypes.DEEP_LINK_OPENED),
                     any(),
                 )
+            }
+
+            close()
+        }
+
+    @Test
+    fun `test complete screen views functionality works independently`() =
+        runTest {
+            every { mockedConfig.autocapture } returns setOf(AutocaptureOption.SCREEN_VIEWS)
+            every { mockedAmplitude.amplitudeScope } returns this
+
+            val activity = mockk<Activity>(relaxed = true)
+            plugin.setup(mockedAmplitude)
+
+            every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+            every { activity.unregisterFragmentLifecycleCallbacks(any()) } returns Unit
+
+            // Simulate activity lifecycle
+            observer.onActivityCreated(activity, mockk())
+            observer.onActivityStarted(activity)
+
+            advanceUntilIdle()
+
+            // 1. Activity screen view should be tracked
+            verify(exactly = 1) {
+                mockedAmplitude.track(
+                    eq(EventTypes.SCREEN_VIEWED),
+                    any(),
+                )
+            }
+
+            // 2. Fragment lifecycle callbacks should be registered
+            verify(exactly = 1) {
+                activity.registerFragmentLifecycleCallbacks(any(), any())
             }
 
             close()
