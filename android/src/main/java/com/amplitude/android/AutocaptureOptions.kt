@@ -20,7 +20,7 @@ enum class AutocaptureOption {
     DEEP_LINKS,
 
     /**
-     * Enable screen view tracking.
+     * Enable screen view tracking for Activities and Fragments (including nested ones).
      */
     SCREEN_VIEWS,
 
