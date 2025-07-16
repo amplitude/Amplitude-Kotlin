@@ -5,6 +5,7 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.GroupIdentifyEvent
 import com.amplitude.core.events.IdentifyEvent
 import com.amplitude.core.events.RevenueEvent
+import java.util.Date
 
 interface Plugin {
     enum class Type {
@@ -114,5 +115,37 @@ abstract class ObservePlugin : Plugin {
 
     final override fun execute(event: BaseEvent): BaseEvent? {
         return null
+    }
+}
+
+/**
+ * Events emitted by plugins to communicate internal state changes.
+ */
+interface Signal
+
+data class UiChangeSignal(val timestamp: Date) : Signal
+
+abstract class SignalProvider<T : Signal> : Plugin {
+    private var isActive = false
+
+    override fun setup(amplitude: Amplitude) {
+        super.setup(amplitude)
+        isActive = true
+    }
+
+    override fun teardown() {
+        isActive = false
+        super.teardown()
+    }
+
+    /**
+     * Emit a signal to the shared Amplitude signal flow.
+     * This method should be called when the plugin wants to emit a signal.
+     * Signals are ignored if the plugin has been removed.
+     */
+    fun emitSignal(signal: T) {
+        if (isActive) {
+            amplitude.emitSignal(signal)
+        }
     }
 }
