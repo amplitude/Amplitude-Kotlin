@@ -23,6 +23,8 @@ object Constants {
         const val FRAGMENT_VIEWED = "[Amplitude] Fragment Viewed"
         const val ELEMENT_INTERACTED = "[Amplitude] Element Interacted"
         const val NETWORK_TRACKING = "[Amplitude] Network Request"
+        const val RAGE_CLICK = "[Amplitude] Rage Click"
+        const val DEAD_CLICK = "[Amplitude] Dead Click"
     }
 
     object EventProperties {
@@ -56,5 +58,14 @@ object Constants {
         const val NETWORK_TRACKING_DURATION = "[Amplitude] Duration"
         const val NETWORK_TRACKING_REQUEST_BODY_SIZE = "[Amplitude] Request Body Size"
         const val NETWORK_TRACKING_RESPONSE_BODY_SIZE = "[Amplitude] Response Body Size"
+
+        // Frustration interactions properties
+        const val BEGIN_TIME = "[Amplitude] Begin Time"
+        const val END_TIME = "[Amplitude] End Time"
+        const val DURATION = "[Amplitude] Duration"
+        const val COORDINATE_X = "[Amplitude] X"
+        const val COORDINATE_Y = "[Amplitude] Y"
+        const val CLICKS = "[Amplitude] Clicks"
+        const val CLICK_COUNT = "[Amplitude] Click Count"
     }
 }

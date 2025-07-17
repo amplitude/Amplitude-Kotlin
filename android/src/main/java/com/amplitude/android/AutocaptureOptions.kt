@@ -29,6 +29,12 @@ enum class AutocaptureOption {
      */
     ELEMENT_INTERACTIONS,
 
+    /**
+     * Enable frustration interactions tracking (rage click and dead click).
+     */
+    @ExperimentalAmplitudeFeature
+    FRUSTRATION_INTERACTIONS,
+
     ;
 
     companion object {
@@ -60,6 +66,9 @@ class AutocaptureOptionsBuilder {
     val screenViews = AutocaptureOption.SCREEN_VIEWS
     val elementInteractions = AutocaptureOption.ELEMENT_INTERACTIONS
 
+    @ExperimentalAmplitudeFeature
+    val frustrationInteractions = AutocaptureOption.FRUSTRATION_INTERACTIONS
+
     fun build(): Set<AutocaptureOption> = options.toSet()
 }
 
@@ -74,12 +83,11 @@ class AutocaptureOptionsBuilder {
  *    +deepLinks
  *    +screenViews
  *    +elementInteractions
+ *    +frustrationInteractions // Experimental feature
  * }
  * ```
  *
  * @param init Function to build the set of autocapture options.
  * @return Set of autocapture options.
  */
-fun autocaptureOptions(init: AutocaptureOptionsBuilder.() -> Unit): Set<AutocaptureOption> {
-    return AutocaptureOptionsBuilder().apply(init).build()
-}
+fun autocaptureOptions(init: AutocaptureOptionsBuilder.() -> Unit): Set<AutocaptureOption> = AutocaptureOptionsBuilder().apply(init).build()
