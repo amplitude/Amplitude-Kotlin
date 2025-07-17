@@ -10,8 +10,11 @@ import com.amplitude.android.AutocaptureOption
 import com.amplitude.android.AutocaptureOption.APP_LIFECYCLES
 import com.amplitude.android.AutocaptureOption.DEEP_LINKS
 import com.amplitude.android.AutocaptureOption.ELEMENT_INTERACTIONS
+import com.amplitude.android.AutocaptureOption.FRUSTRATION_INTERACTIONS
 import com.amplitude.android.AutocaptureOption.SCREEN_VIEWS
 import com.amplitude.android.Configuration
+import com.amplitude.android.ExperimentalAmplitudeFeature
+import com.amplitude.android.FrustrationInteractionsDetector
 import com.amplitude.android.GuardedAmplitudeFeature
 import com.amplitude.android.utilities.ActivityCallbackType
 import com.amplitude.android.utilities.ActivityLifecycleObserver
@@ -26,12 +29,15 @@ import com.amplitude.android.Amplitude as AndroidAmplitude
 @OptIn(GuardedAmplitudeFeature::class)
 class AndroidLifecyclePlugin(
     private val activityLifecycleObserver: ActivityLifecycleObserver,
-) : Application.ActivityLifecycleCallbacks, Plugin {
+) : Application.ActivityLifecycleCallbacks,
+    Plugin {
     override val type: Plugin.Type = Plugin.Type.Utility
     override lateinit var amplitude: Amplitude
     private lateinit var packageInfo: PackageInfo
     private lateinit var androidAmplitude: AndroidAmplitude
     private lateinit var autocapture: Set<AutocaptureOption>
+
+    private var frustrationInteractionsDetector: FrustrationInteractionsDetector? = null
 
     private val created: MutableSet<Int> = mutableSetOf()
     private val started: MutableSet<Int> = mutableSetOf()
@@ -41,6 +47,7 @@ class AndroidLifecyclePlugin(
     @VisibleForTesting
     internal var eventJob: Job? = null
 
+    @OptIn(ExperimentalAmplitudeFeature::class)
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
         androidAmplitude = amplitude as AndroidAmplitude
@@ -48,6 +55,19 @@ class AndroidLifecyclePlugin(
         autocapture = androidConfiguration.autocapture
 
         val application = androidConfiguration.context as Application
+
+        // Initialize frustration interactions detector if enabled
+        if (FRUSTRATION_INTERACTIONS in autocapture) {
+            val density = application.resources.displayMetrics.density
+
+            frustrationInteractionsDetector =
+                FrustrationInteractionsDetector(
+                    amplitude = amplitude,
+                    logger = amplitude.logger,
+                    density = density,
+                )
+            frustrationInteractionsDetector?.start()
+        }
 
         if (APP_LIFECYCLES in autocapture) {
             packageInfo =
@@ -118,14 +138,19 @@ class AndroidLifecyclePlugin(
         }
     }
 
+    @OptIn(ExperimentalAmplitudeFeature::class)
     override fun onActivityResumed(activity: Activity) {
         androidAmplitude.onEnterForeground(System.currentTimeMillis())
 
-        if (ELEMENT_INTERACTIONS in autocapture) {
-            DefaultEventUtils(androidAmplitude).startUserInteractionEventTracking(activity)
+        if (ELEMENT_INTERACTIONS in autocapture || FRUSTRATION_INTERACTIONS in autocapture) {
+            DefaultEventUtils(androidAmplitude).startUserInteractionEventTracking(
+                activity,
+                frustrationInteractionsDetector,
+            )
         }
     }
 
+    @OptIn(ExperimentalAmplitudeFeature::class)
     override fun onActivityPaused(activity: Activity) {
         with(androidAmplitude) {
             onExitForeground(System.currentTimeMillis())
@@ -135,7 +160,7 @@ class AndroidLifecyclePlugin(
             }
         }
 
-        if (ELEMENT_INTERACTIONS in autocapture) {
+        if (ELEMENT_INTERACTIONS in autocapture || FRUSTRATION_INTERACTIONS in autocapture) {
             DefaultEventUtils(androidAmplitude).stopUserInteractionEventTracking(activity)
         }
     }
@@ -166,5 +191,6 @@ class AndroidLifecyclePlugin(
     override fun teardown() {
         super.teardown()
         eventJob?.cancel()
+        frustrationInteractionsDetector?.stop()
     }
 }

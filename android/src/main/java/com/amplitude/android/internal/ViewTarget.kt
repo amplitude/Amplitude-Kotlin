@@ -17,7 +17,14 @@ data class ViewTarget(
     val text: String?,
     val source: String,
     val hierarchy: String?,
+    val isIgnoredForRageClick: Boolean = false,
+    val isIgnoredForDeadClick: Boolean = false,
 ) {
+    /**
+     * Convenience property to check if ignored for all frustration analytics
+     */
+    val isIgnoredForFrustration: Boolean
+        get() = isIgnoredForRageClick && isIgnoredForDeadClick
     private val viewRef: WeakReference<Any> = WeakReference(_view)
 
     val view: Any?

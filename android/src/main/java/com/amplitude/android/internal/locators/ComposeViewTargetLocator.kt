@@ -6,6 +6,9 @@ import ComposeLayoutNodeBoundsHelper
 import androidx.compose.ui.node.LayoutNode
 import androidx.compose.ui.node.Owner
 import androidx.compose.ui.platform.InspectableValue
+import com.amplitude.android.internal.FrustrationConstants.IGNORE_DEAD_CLICK_COMPOSE_TAG
+import com.amplitude.android.internal.FrustrationConstants.IGNORE_FRUSTRATION_COMPOSE_TAG
+import com.amplitude.android.internal.FrustrationConstants.IGNORE_RAGE_CLICK_COMPOSE_TAG
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.common.Logger
 import java.util.ArrayDeque
@@ -101,6 +104,10 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
         return if (!foundClickableElement) {
             null
         } else {
+            // Check for granular ignore flags
+            val isIgnoredForRageClick = targetTag == IGNORE_FRUSTRATION_COMPOSE_TAG || targetTag == IGNORE_RAGE_CLICK_COMPOSE_TAG
+            val isIgnoredForDeadClick = targetTag == IGNORE_FRUSTRATION_COMPOSE_TAG || targetTag == IGNORE_DEAD_CLICK_COMPOSE_TAG
+
             ViewTarget(
                 _view = null,
                 className = null,
@@ -109,6 +116,8 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
                 text = null,
                 source = SOURCE,
                 hierarchy = null,
+                isIgnoredForRageClick = isIgnoredForRageClick,
+                isIgnoredForDeadClick = isIgnoredForDeadClick,
             )
         }
     }

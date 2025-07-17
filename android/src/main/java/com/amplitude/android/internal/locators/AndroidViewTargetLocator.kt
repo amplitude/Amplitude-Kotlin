@@ -2,6 +2,10 @@ package com.amplitude.android.internal.locators
 
 import android.view.View
 import android.widget.Button
+import androidx.core.view.isVisible
+import com.amplitude.android.internal.FrustrationConstants.IGNORE_DEAD_CLICK_TAG
+import com.amplitude.android.internal.FrustrationConstants.IGNORE_FRUSTRATION_TAG
+import com.amplitude.android.internal.FrustrationConstants.IGNORE_RAGE_CLICK_TAG
 import com.amplitude.android.internal.ViewResourceUtils.resourceIdWithFallback
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.ViewTarget.Type
@@ -18,11 +22,10 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
     override fun Any.locate(
         targetPosition: Pair<Float, Float>,
         targetType: Type,
-    ): ViewTarget? {
-        return (this as? View)
+    ): ViewTarget? =
+        (this as? View)
             ?.takeIf { touchWithinBounds(targetPosition) && targetType === Type.Clickable && isViewTappable() }
             ?.let { createViewTarget() }
-    }
 
     private fun View.createViewTarget(): ViewTarget {
         val className = javaClass.canonicalName ?: javaClass.simpleName ?: null
@@ -33,7 +36,22 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
                 ?.takeIf { it is String || it is Number || it is Boolean || it is Char }
                 ?.toString()
         val text = (this as? Button)?.text?.toString()
-        return ViewTarget(this, className, resourceName, tag, text, SOURCE, hierarchy)
+
+        // Check for granular ignore flags
+        val isIgnoredForRageClick = tag == IGNORE_FRUSTRATION_TAG || tag == IGNORE_RAGE_CLICK_TAG
+        val isIgnoredForDeadClick = tag == IGNORE_FRUSTRATION_TAG || tag == IGNORE_DEAD_CLICK_TAG
+
+        return ViewTarget(
+            this,
+            className,
+            resourceName,
+            tag,
+            text,
+            SOURCE,
+            hierarchy,
+            isIgnoredForRageClick,
+            isIgnoredForDeadClick,
+        )
     }
 
     private fun View.touchWithinBounds(position: Pair<Float, Float>): Boolean {
@@ -49,9 +67,7 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
         return !(x < vx || x > vx + w || y < vy || y > vy + h)
     }
 
-    private fun View.isViewTappable(): Boolean {
-        return isClickable && visibility == View.VISIBLE
-    }
+    private fun View.isViewTappable(): Boolean = isClickable && isVisible
 
     private val View.hierarchy: String
         get() {
