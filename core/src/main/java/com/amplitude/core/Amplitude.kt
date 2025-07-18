@@ -11,6 +11,8 @@ import com.amplitude.core.events.RevenueEvent
 import com.amplitude.core.platform.EventPlugin
 import com.amplitude.core.platform.ObservePlugin
 import com.amplitude.core.platform.Plugin
+import com.amplitude.core.platform.Signal
+import com.amplitude.core.platform.SignalProvider
 import com.amplitude.core.platform.Timeline
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.ContextPlugin
@@ -28,12 +30,17 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
 /**
@@ -61,6 +68,13 @@ open class Amplitude(
         private set
     val isBuilt: Deferred<Boolean>
     val diagnostics = Diagnostics()
+
+    // Signal broadcasting
+    private val _signalFlow = MutableSharedFlow<Signal>(replay = 0, extraBufferCapacity = 64)
+    internal val signalFlow: SharedFlow<Signal> = _signalFlow.asSharedFlow()
+
+    // Track signal collection jobs for each SignalProvider
+    private val signalCollectionJobs = ConcurrentHashMap<SignalProvider<*>, Job>()
 
     init {
         require(configuration.isValid()) { "invalid configuration" }
@@ -467,6 +481,11 @@ open class Amplitude(
                 this.timeline.add(plugin)
             }
         }
+
+        if (plugin is SignalProvider<*>) {
+            startListeningToSignalProvider(plugin)
+        }
+
         return this
     }
 
@@ -479,7 +498,26 @@ open class Amplitude(
                 this.timeline.remove(plugin)
             }
         }
+
+        if (plugin is SignalProvider<*>) {
+            stopListeningToSignalProvider(plugin)
+        }
+
         return this
+    }
+
+    private fun startListeningToSignalProvider(signalProvider: SignalProvider<*>) {
+        val job =
+            amplitudeScope.launch(amplitudeDispatcher) {
+                signalProvider.signalFlow.collect { signal ->
+                    _signalFlow.tryEmit(signal)
+                }
+            }
+        signalCollectionJobs[signalProvider] = job
+    }
+
+    private fun stopListeningToSignalProvider(signalProvider: SignalProvider<*>) {
+        signalCollectionJobs.remove(signalProvider)?.cancel()
     }
 
     fun flush() {

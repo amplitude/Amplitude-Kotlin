@@ -5,6 +5,8 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.GroupIdentifyEvent
 import com.amplitude.core.events.IdentifyEvent
 import com.amplitude.core.events.RevenueEvent
+import kotlinx.coroutines.flow.Flow
+import java.util.Date
 
 interface Plugin {
     enum class Type {
@@ -115,4 +117,19 @@ abstract class ObservePlugin : Plugin {
     final override fun execute(event: BaseEvent): BaseEvent? {
         return null
     }
+}
+
+/**
+ * Events emitted by plugins to communicate internal state changes.
+ */
+sealed class Signal {
+    data class UiChangeSignal(val timestamp: Date) : Signal()
+}
+
+interface SignalProvider<T : Signal> : Plugin {
+    /**
+     * Flow of signals that this provider emits.
+     * The Amplitude instance will collect from this flow when the plugin is added.
+     */
+    val signalFlow: Flow<T>
 }
