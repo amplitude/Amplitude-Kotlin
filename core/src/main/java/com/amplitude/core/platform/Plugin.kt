@@ -125,7 +125,7 @@ interface Signal
 
 data class UiChangeSignal(val timestamp: Date) : Signal
 
-abstract class SignalProvider<T : Signal> : Plugin {
+abstract class SignalProvider : Plugin {
     private var isActive = false
 
     override fun setup(amplitude: Amplitude) {
@@ -143,7 +143,7 @@ abstract class SignalProvider<T : Signal> : Plugin {
      * This method should be called when the plugin wants to emit a signal.
      * Signals are ignored if the plugin has been removed.
      */
-    fun emitSignal(signal: T) {
+    fun emitSignal(signal: Signal) {
         if (isActive) {
             amplitude.emitSignal(signal)
         }

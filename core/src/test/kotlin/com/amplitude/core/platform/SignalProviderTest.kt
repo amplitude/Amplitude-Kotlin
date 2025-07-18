@@ -203,7 +203,7 @@ class SignalProviderTest {
     /**
      * Test plugin that extends SignalProvider to emit UiChangeSignal
      */
-    private class TestSignalProviderPlugin : SignalProvider<UiChangeSignal>(), EventPlugin {
+    private class TestSignalProviderPlugin : SignalProvider(), EventPlugin {
         override val type: Plugin.Type = Plugin.Type.Before
         override lateinit var amplitude: Amplitude
         var teardownCalled = false
