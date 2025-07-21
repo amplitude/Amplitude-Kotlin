@@ -71,7 +71,8 @@ open class Amplitude(
     private val _signalFlow =
         MutableSharedFlow<Signal>(
             replay = 0,
-            extraBufferCapacity = 16,
+            // Generous buffer to handle signal bursts without dropping events
+            extraBufferCapacity = 1_000,
             onBufferOverflow = DROP_OLDEST,
         )
     internal val signalFlow: SharedFlow<Signal> = _signalFlow.asSharedFlow()
