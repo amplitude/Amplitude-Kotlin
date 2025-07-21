@@ -5,7 +5,6 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.GroupIdentifyEvent
 import com.amplitude.core.events.IdentifyEvent
 import com.amplitude.core.events.RevenueEvent
-import java.util.Date
 
 interface Plugin {
     enum class Type {
@@ -122,8 +121,6 @@ abstract class ObservePlugin : Plugin {
  * Events emitted by plugins to communicate internal state changes.
  */
 interface Signal
-
-data class UiChangeSignal(val timestamp: Date) : Signal
 
 abstract class SignalProvider : Plugin {
     private var isActive = false
