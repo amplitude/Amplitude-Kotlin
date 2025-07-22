@@ -11,6 +11,7 @@ import com.amplitude.core.events.RevenueEvent
 import com.amplitude.core.platform.EventPlugin
 import com.amplitude.core.platform.ObservePlugin
 import com.amplitude.core.platform.Plugin
+import com.amplitude.core.platform.Signal
 import com.amplitude.core.platform.Timeline
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.ContextPlugin
@@ -31,6 +32,10 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.UUID
@@ -61,6 +66,24 @@ open class Amplitude(
         private set
     val isBuilt: Deferred<Boolean>
     val diagnostics = Diagnostics()
+
+    // Signal broadcasting - single shared flow for all plugins
+    private val _signalFlow =
+        MutableSharedFlow<Signal>(
+            replay = 0,
+            // Generous buffer to handle signal bursts without dropping events
+            extraBufferCapacity = 1_000,
+            onBufferOverflow = DROP_OLDEST,
+        )
+    internal val signalFlow: SharedFlow<Signal> = _signalFlow.asSharedFlow()
+
+    /**
+     * Emit a signal to the shared signal flow.
+     * This method is called by SignalProvider plugins to emit signals.
+     */
+    internal fun emitSignal(signal: Signal) {
+        _signalFlow.tryEmit(signal)
+    }
 
     init {
         require(configuration.isValid()) { "invalid configuration" }
@@ -467,6 +490,7 @@ open class Amplitude(
                 this.timeline.add(plugin)
             }
         }
+
         return this
     }
 
@@ -479,6 +503,7 @@ open class Amplitude(
                 this.timeline.remove(plugin)
             }
         }
+
         return this
     }
 

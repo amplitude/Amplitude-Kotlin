@@ -116,3 +116,33 @@ abstract class ObservePlugin : Plugin {
         return null
     }
 }
+
+/**
+ * Events emitted by plugins to communicate internal state changes.
+ */
+interface Signal
+
+abstract class SignalProvider : Plugin {
+    private var isActive = false
+
+    override fun setup(amplitude: Amplitude) {
+        super.setup(amplitude)
+        isActive = true
+    }
+
+    override fun teardown() {
+        isActive = false
+        super.teardown()
+    }
+
+    /**
+     * Emit a signal to the shared Amplitude signal flow.
+     * This method should be called when the plugin wants to emit a signal.
+     * Signals are ignored if the plugin has been removed.
+     */
+    fun emitSignal(signal: Signal) {
+        if (isActive) {
+            amplitude.emitSignal(signal)
+        }
+    }
+}
