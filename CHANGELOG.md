@@ -1,3 +1,10 @@
+## [1.21.5](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.21.4...v1.21.5) (2025-07-22)
+
+
+### Bug Fixes
+
+* remove coupling of autocapture options to lifecycle ([#317](https://github.com/amplitude/Amplitude-Kotlin/issues/317)) ([8c03963](https://github.com/amplitude/Amplitude-Kotlin/commit/8c03963a75ec61b85d2da04787f11bd547be5cf2))
+
 ## [1.21.4](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.21.3...v1.21.4) (2025-07-10)
 
 
