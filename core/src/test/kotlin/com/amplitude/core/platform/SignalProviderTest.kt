@@ -48,7 +48,7 @@ class SignalProviderTest {
             // Emit a signal from the plugin
             val date1 = Date(1_000_000_000_000)
             val signal1 = TestSignal(date1)
-            signalProviderPlugin.emitSignal(signal1)
+            signalProviderPlugin.apply { emitSignal(signal1) }
             advanceUntilIdle()
 
             // Verify we collected the signal
@@ -63,7 +63,7 @@ class SignalProviderTest {
             // Emit another signal (should not be collected)
             val date2 = Date(2_000_000_000_000)
             val signal2 = TestSignal(date2)
-            signalProviderPlugin.emitSignal(signal2)
+            signalProviderPlugin.apply { emitSignal(signal2) }
             advanceUntilIdle()
 
             // Verify we still only have the first signal
@@ -100,8 +100,8 @@ class SignalProviderTest {
             val signal1 = TestSignal(Date())
             val signal2 = TestSignal(Date())
 
-            plugin1.emitSignal(signal1)
-            plugin2.emitSignal(signal2)
+            plugin1.apply { emitSignal(signal1) }
+            plugin2.apply { emitSignal(signal2) }
             advanceUntilIdle()
 
             // Verify both signals were collected
@@ -132,7 +132,7 @@ class SignalProviderTest {
 
             // Emit signal - should work
             val signal1 = TestSignal(Date(1000))
-            signalProviderPlugin.emitSignal(signal1)
+            signalProviderPlugin.apply { emitSignal(signal1) }
             advanceUntilIdle()
 
             assertEquals(1, collectedSignals.size)
@@ -144,7 +144,7 @@ class SignalProviderTest {
 
             // Try to emit signal after removal - should be blocked
             val signal2 = TestSignal(Date(2000))
-            signalProviderPlugin.emitSignal(signal2)
+            signalProviderPlugin.apply { emitSignal(signal2) }
             advanceUntilIdle()
 
             // Should still only have the first signal
@@ -177,7 +177,7 @@ class SignalProviderTest {
             // Verify plugin is active and can emit
             assertFalse(testPlugin.teardownCalled)
             val signal1 = TestSignal(Date(1000))
-            testPlugin.emitSignal(signal1)
+            testPlugin.apply { emitSignal(signal1) }
             advanceUntilIdle()
 
             assertEquals(1, collectedSignals.size)
@@ -191,7 +191,9 @@ class SignalProviderTest {
 
             // Try to emit signal after removal - should be blocked
             val signal2 = TestSignal(Date(2000))
-            testPlugin.emitSignal(signal2)
+            testPlugin.apply {
+                emitSignal(signal2)
+            }
             advanceUntilIdle()
 
             // Should still only have the first signal
@@ -205,18 +207,25 @@ class SignalProviderTest {
     /**
      * Test plugin that extends SignalProvider to emit TestSignal
      */
-    private class TestSignalProviderPlugin : SignalProvider(), EventPlugin {
+    private class TestSignalProviderPlugin : SignalProvider, EventPlugin {
+        override var active: Boolean = false
         override val type: Plugin.Type = Plugin.Type.Before
         override lateinit var amplitude: Amplitude
 
         var teardownCalled = false
             private set
 
+        override fun setup(amplitude: Amplitude) {
+            super.setup(amplitude)
+            activate()
+        }
+
         override fun track(payload: BaseEvent): BaseEvent = payload
 
         override fun teardown() {
+            deactivate()
             teardownCalled = true
-            super<SignalProvider>.teardown()
+            super.teardown()
         }
     }
 }
