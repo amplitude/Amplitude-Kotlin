@@ -223,8 +223,9 @@ class FrustrationInteractionsDetector(
         activity: Activity,
     ) {
         // Build final properties: ELEMENT_INTERACTED + RAGE_CLICK specific
-        val properties = buildElementInteractedProperties(target, activity) + 
-                        buildRageClickProperties(session)
+        val properties =
+            buildElementInteractedProperties(target, activity) +
+                buildRageClickProperties(session)
 
         amplitude.track(RAGE_CLICK, properties)
         logger.debug("Rage click detected with ${session.clickCount} clicks")
@@ -232,8 +233,9 @@ class FrustrationInteractionsDetector(
 
     private fun trackDeadClick(session: DeadClickSession) {
         // Build final properties: ELEMENT_INTERACTED + DEAD_CLICK specific
-        val properties = buildElementInteractedProperties(session.target, session.activity) + 
-                        buildDeadClickProperties(session)
+        val properties =
+            buildElementInteractedProperties(session.target, session.activity) +
+                buildDeadClickProperties(session)
 
         amplitude.track(DEAD_CLICK, properties)
         logger.debug("Dead click detected")
@@ -316,13 +318,14 @@ class FrustrationInteractionsDetector(
             COORDINATE_X to session.firstClickX.toInt(),
             COORDINATE_Y to session.firstClickY.toInt(),
             CLICK_COUNT to session.clickCount,
-            CLICKS to session.clicks.map {
-                mapOf(
-                    COORDINATE_X to it.x.toInt(),
-                    COORDINATE_Y to it.y.toInt(),
-                    "timestamp" to it.timestamp,
-                )
-            },
+            CLICKS to
+                session.clicks.map {
+                    mapOf(
+                        COORDINATE_X to it.x.toInt(),
+                        COORDINATE_Y to it.y.toInt(),
+                        "timestamp" to it.timestamp,
+                    )
+                },
         )
 
     /**
@@ -342,10 +345,14 @@ class FrustrationInteractionsDetector(
      * Checks if rage click detection should be ignored for this target.
      * Supports both Android View tags and Compose AmpFrustrationIgnoreElement.
      */
-    private fun isRageClickIgnored(targetInfo: TargetInfo, target: ViewTarget): Boolean {
+    private fun isRageClickIgnored(
+        targetInfo: TargetInfo,
+        target: ViewTarget,
+    ): Boolean {
         // Check Android View tag-based ignore flags
-        val tagIgnored = targetInfo.tag == IGNORE_FRUSTRATION_TAG || 
-                        targetInfo.tag == IGNORE_RAGE_CLICK_TAG
+        val tagIgnored =
+            targetInfo.tag == IGNORE_FRUSTRATION_TAG ||
+                targetInfo.tag == IGNORE_RAGE_CLICK_TAG
 
         // Check Compose modifier-based ignore flags (detected during view targeting)
         val composeIgnored = target.ampIgnoreRageClick
@@ -357,10 +364,14 @@ class FrustrationInteractionsDetector(
      * Checks if dead click detection should be ignored for this target.
      * Supports both Android View tags and Compose AmpFrustrationIgnoreElement.
      */
-    private fun isDeadClickIgnored(targetInfo: TargetInfo, target: ViewTarget): Boolean {
+    private fun isDeadClickIgnored(
+        targetInfo: TargetInfo,
+        target: ViewTarget,
+    ): Boolean {
         // Check Android View tag-based ignore flags
-        val tagIgnored = targetInfo.tag == IGNORE_FRUSTRATION_TAG || 
-                        targetInfo.tag == IGNORE_DEAD_CLICK_TAG
+        val tagIgnored =
+            targetInfo.tag == IGNORE_FRUSTRATION_TAG ||
+                targetInfo.tag == IGNORE_DEAD_CLICK_TAG
 
         // Check Compose modifier-based ignore flags (detected during view targeting)
         val composeIgnored = target.ampIgnoreDeadClick

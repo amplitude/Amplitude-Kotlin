@@ -9,18 +9,17 @@ import androidx.compose.ui.platform.InspectorInfo
  */
 internal data class AmpFrustrationIgnoreElement(
     val ignoreRageClick: Boolean,
-    val ignoreDeadClick: Boolean
+    val ignoreDeadClick: Boolean,
 ) : ModifierNodeElement<AmpFrustrationIgnoreNode>() {
-    
     override fun create(): AmpFrustrationIgnoreNode {
         return AmpFrustrationIgnoreNode(ignoreRageClick, ignoreDeadClick)
     }
-    
+
     override fun update(node: AmpFrustrationIgnoreNode) {
         node.ignoreRageClick = ignoreRageClick
         node.ignoreDeadClick = ignoreDeadClick
     }
-    
+
     override fun InspectorInfo.inspectableProperties() {
         name = "ampIgnoreFrustrationAnalytics"
         properties["ignoreRageClick"] = ignoreRageClick
@@ -33,5 +32,5 @@ internal data class AmpFrustrationIgnoreElement(
  */
 internal class AmpFrustrationIgnoreNode(
     var ignoreRageClick: Boolean,
-    var ignoreDeadClick: Boolean
-) : Modifier.Node() 
+    var ignoreDeadClick: Boolean,
+) : Modifier.Node()

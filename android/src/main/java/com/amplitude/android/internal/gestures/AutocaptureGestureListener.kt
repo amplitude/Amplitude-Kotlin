@@ -30,7 +30,7 @@ class AutocaptureGestureListener(
     override fun onSingleTapUp(e: MotionEvent): Boolean {
         val activity = activityRef.get() ?: logger.error("Activity is null in onSingleTapUp()").let { return false }
         val decorView = activity.window?.decorView ?: logger.error("DecorView is null in onSingleTapUp()").let { return false }
-        
+
         val target: ViewTarget =
             decorView.findTarget(
                 Pair(e.x, e.y),

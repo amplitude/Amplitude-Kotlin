@@ -36,7 +36,7 @@ data class ViewTarget(
      */
     val isIgnoredForFrustration: Boolean
         get() = tag == IGNORE_FRUSTRATION_TAG
-    
+
     private val viewRef: WeakReference<Any> = WeakReference(_view)
 
     val view: Any?
@@ -49,14 +49,17 @@ data class ViewTarget(
  * Builds the base properties for ELEMENT_INTERACTED events.
  * This is the foundation used by both standard element tracking and frustration analytics.
  */
-fun buildElementInteractedProperties(target: ViewTarget, activity: Activity): Map<String, Any?> =
+fun buildElementInteractedProperties(
+    target: ViewTarget,
+    activity: Activity,
+): Map<String, Any?> =
     mapOf(
         ACTION to "touch",
         TARGET_CLASS to target.className,
         TARGET_RESOURCE to target.resourceName,
         TARGET_TAG to target.tag,
         TARGET_TEXT to target.text,
-        TARGET_SOURCE to 
+        TARGET_SOURCE to
             target.source
                 .replace("_", " ")
                 .split(" ")

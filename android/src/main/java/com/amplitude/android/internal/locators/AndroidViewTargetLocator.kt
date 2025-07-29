@@ -3,9 +3,6 @@ package com.amplitude.android.internal.locators
 import android.view.View
 import android.widget.Button
 import androidx.core.view.isVisible
-import com.amplitude.android.internal.FrustrationConstants.IGNORE_DEAD_CLICK_TAG
-import com.amplitude.android.internal.FrustrationConstants.IGNORE_FRUSTRATION_TAG
-import com.amplitude.android.internal.FrustrationConstants.IGNORE_RAGE_CLICK_TAG
 import com.amplitude.android.internal.ViewResourceUtils.resourceIdWithFallback
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.ViewTarget.Type

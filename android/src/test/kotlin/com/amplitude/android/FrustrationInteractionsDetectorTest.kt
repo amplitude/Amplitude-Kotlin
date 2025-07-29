@@ -1,24 +1,14 @@
 package com.amplitude.android
 
 import android.app.Activity
-import com.amplitude.android.FrustrationInteractionsDetector
 import com.amplitude.android.internal.ViewTarget
-import com.amplitude.android.signals.UiChangeSignal
 import com.amplitude.common.Logger
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Constants.EventProperties.ACTION
-import com.amplitude.core.Constants.EventProperties.BEGIN_TIME
 import com.amplitude.core.Constants.EventProperties.CLICK_COUNT
 import com.amplitude.core.Constants.EventProperties.COORDINATE_X
 import com.amplitude.core.Constants.EventProperties.COORDINATE_Y
-import com.amplitude.core.Constants.EventProperties.DURATION
-import com.amplitude.core.Constants.EventProperties.END_TIME
-import com.amplitude.core.Constants.EventProperties.HIERARCHY
 import com.amplitude.core.Constants.EventProperties.TARGET_CLASS
-import com.amplitude.core.Constants.EventProperties.TARGET_RESOURCE
-import com.amplitude.core.Constants.EventProperties.TARGET_SOURCE
-import com.amplitude.core.Constants.EventProperties.TARGET_TAG
-import com.amplitude.core.Constants.EventProperties.TARGET_TEXT
 import com.amplitude.core.Constants.EventTypes.DEAD_CLICK
 import com.amplitude.core.Constants.EventTypes.RAGE_CLICK
 import com.amplitude.core.platform.Signal

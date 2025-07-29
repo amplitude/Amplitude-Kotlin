@@ -21,6 +21,4 @@ internal object FrustrationConstants {
      * Usage: view.tag = IGNORE_DEAD_CLICK_TAG
      */
     const val IGNORE_DEAD_CLICK_TAG = "amplitude_ignore_dead_click"
-
-
 }

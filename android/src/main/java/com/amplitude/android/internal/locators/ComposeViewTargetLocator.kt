@@ -38,7 +38,7 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
 
         // the last known tag when iterating the node tree
         var lastKnownTag: String? = null
-        
+
         // Amplitude frustration analytics configuration (extracted as simple booleans)
         var ignoreRageClick = false
         var ignoreDeadClick = false
@@ -54,13 +54,13 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
 
                 for (modifierInfo in modifiers) {
                     val modifier = modifierInfo.modifier
-                    
+
                     // Check for Amplitude frustration analytics configuration
                     if (modifier is AmpFrustrationIgnoreElement) {
                         ignoreRageClick = modifier.ignoreRageClick
                         ignoreDeadClick = modifier.ignoreDeadClick
                     }
-                    
+
                     if (modifier is InspectableValue) {
                         when (modifier.nameFallback) {
                             "testTag" -> {
