@@ -22,4 +22,7 @@
 -keepnames class androidx.compose.foundation.ClickableElement
 -keepnames class androidx.compose.foundation.CombinedClickableElement
 
+# Keep custom Compose modifiers for type-based detection
+-keep class com.amplitude.android.internal.compose.AmpFrustrationIgnoreElement
+
 #################### END: Compose Proguard Rules ####################
