@@ -1,11 +1,14 @@
 package com.amplitude.android
 
+import android.app.Activity
 import com.amplitude.android.internal.FrustrationConstants.IGNORE_DEAD_CLICK_COMPOSE_TAG
 import com.amplitude.android.internal.FrustrationConstants.IGNORE_DEAD_CLICK_TAG
 import com.amplitude.android.internal.FrustrationConstants.IGNORE_FRUSTRATION_COMPOSE_TAG
 import com.amplitude.android.internal.FrustrationConstants.IGNORE_FRUSTRATION_TAG
 import com.amplitude.android.internal.FrustrationConstants.IGNORE_RAGE_CLICK_COMPOSE_TAG
 import com.amplitude.android.internal.FrustrationConstants.IGNORE_RAGE_CLICK_TAG
+import com.amplitude.android.internal.ViewTarget
+import com.amplitude.android.internal.buildElementInteractedProperties
 import com.amplitude.android.signals.UiChangeSignal
 import com.amplitude.common.Logger
 import com.amplitude.core.Amplitude
@@ -16,12 +19,6 @@ import com.amplitude.core.Constants.EventProperties.COORDINATE_X
 import com.amplitude.core.Constants.EventProperties.COORDINATE_Y
 import com.amplitude.core.Constants.EventProperties.DURATION
 import com.amplitude.core.Constants.EventProperties.END_TIME
-import com.amplitude.core.Constants.EventProperties.HIERARCHY
-import com.amplitude.core.Constants.EventProperties.TARGET_CLASS
-import com.amplitude.core.Constants.EventProperties.TARGET_RESOURCE
-import com.amplitude.core.Constants.EventProperties.TARGET_SOURCE
-import com.amplitude.core.Constants.EventProperties.TARGET_TAG
-import com.amplitude.core.Constants.EventProperties.TARGET_TEXT
 import com.amplitude.core.Constants.EventTypes.DEAD_CLICK
 import com.amplitude.core.Constants.EventTypes.RAGE_CLICK
 import kotlinx.coroutines.Job
@@ -84,7 +81,8 @@ class FrustrationInteractionsDetector(
     fun processClick(
         clickInfo: ClickInfo,
         targetInfo: TargetInfo,
-        additionalProperties: Map<String, Any?> = emptyMap(),
+        target: ViewTarget,
+        activity: Activity,
     ) {
         val clickTime = System.currentTimeMillis()
         val clickId = generateClickId(clickInfo, targetInfo)
@@ -95,7 +93,7 @@ class FrustrationInteractionsDetector(
                                    targetInfo.tag == IGNORE_FRUSTRATION_COMPOSE_TAG ||
                                    targetInfo.tag == IGNORE_RAGE_CLICK_COMPOSE_TAG
         if (!isIgnoredForRageClick) {
-            processRageClick(clickInfo, targetInfo, clickTime, additionalProperties)
+            processRageClick(clickInfo, targetInfo, target, activity, clickTime)
         } else {
             logger.debug("Skipping rage click processing for ignored target: ${targetInfo.className}")
         }
@@ -106,7 +104,7 @@ class FrustrationInteractionsDetector(
                                    targetInfo.tag == IGNORE_FRUSTRATION_COMPOSE_TAG ||
                                    targetInfo.tag == IGNORE_DEAD_CLICK_COMPOSE_TAG
         if (!isIgnoredForDeadClick) {
-            processDeadClick(clickInfo, targetInfo, clickTime, clickId, additionalProperties)
+            processDeadClick(clickInfo, targetInfo, target, activity, clickTime, clickId)
         } else {
             logger.debug(
                 "Skipping dead click processing for ignored target: ${targetInfo.className}",
@@ -117,8 +115,9 @@ class FrustrationInteractionsDetector(
     private fun processRageClick(
         clickInfo: ClickInfo,
         targetInfo: TargetInfo,
+        target: ViewTarget,
+        activity: Activity,
         clickTime: Long,
-        additionalProperties: Map<String, Any?>,
     ) {
         val locationKey = generateLocationKey(clickInfo, targetInfo)
 
@@ -140,7 +139,7 @@ class FrustrationInteractionsDetector(
 
                     // Check if we've reached the rage click threshold
                     if (existingSession.clickCount >= RAGE_CLICK_THRESHOLD) {
-                        trackRageClick(existingSession, targetInfo, additionalProperties)
+                        trackRageClick(existingSession, target, activity)
                         pendingRageClicks.remove(locationKey)
                     }
                 } else {
@@ -160,9 +159,10 @@ class FrustrationInteractionsDetector(
     private fun processDeadClick(
         clickInfo: ClickInfo,
         targetInfo: TargetInfo,
+        target: ViewTarget,
+        activity: Activity,
         clickTime: Long,
         clickId: String,
-        additionalProperties: Map<String, Any?>,
     ) {
         if (uiChangeCollectionJob?.isActive != true) {
             logger.error("Dead click detection is disabled - call start() to enable.")
@@ -171,10 +171,11 @@ class FrustrationInteractionsDetector(
 
         val deadClickSession =
             DeadClickSession(
+                target = target,
+                activity = activity,
                 clickInfo = clickInfo.copy(timestamp = clickTime),
                 targetInfo = targetInfo,
                 preClickUiChangeTime = lastUiChangeTime,
-                additionalProperties = additionalProperties,
             )
 
         pendingDeadClicks[clickId] = deadClickSession
@@ -227,53 +228,21 @@ class FrustrationInteractionsDetector(
 
     private fun trackRageClick(
         session: RageClickSession,
-        targetInfo: TargetInfo,
-        additionalProperties: Map<String, Any?>,
+        target: ViewTarget,
+        activity: Activity,
     ) {
-        val properties =
-            mutableMapOf<String, Any?>(
-                BEGIN_TIME to session.firstClickTime,
-                END_TIME to session.lastClickTime,
-                DURATION to (session.lastClickTime - session.firstClickTime),
-                COORDINATE_X to session.firstClickX.toInt(),
-                COORDINATE_Y to session.firstClickY.toInt(),
-                CLICK_COUNT to session.clickCount,
-                CLICKS to
-                    session.clicks.map {
-                        mapOf(
-                            COORDINATE_X to it.x.toInt(),
-                            COORDINATE_Y to it.y.toInt(),
-                            "timestamp" to it.timestamp,
-                        )
-                    },
-            )
-
-        // Add target information
-        properties.putAll(targetInfo.toEventProperties())
-
-        // Add additional platform-specific properties
-        properties.putAll(additionalProperties)
+        // Build final properties: ELEMENT_INTERACTED + RAGE_CLICK specific
+        val properties = buildElementInteractedProperties(target, activity) + 
+                        buildRageClickProperties(session)
 
         amplitude.track(RAGE_CLICK, properties)
         logger.debug("Rage click detected with ${session.clickCount} clicks")
     }
 
     private fun trackDeadClick(session: DeadClickSession) {
-        val properties =
-            mutableMapOf<String, Any?>(
-                BEGIN_TIME to session.clickInfo.timestamp,
-                END_TIME to (session.clickInfo.timestamp + DEAD_CLICK_TIMEOUT),
-                DURATION to DEAD_CLICK_TIMEOUT,
-                COORDINATE_X to session.clickInfo.x.toInt(),
-                COORDINATE_Y to session.clickInfo.y.toInt(),
-                CLICK_COUNT to 1,
-            )
-
-        // Add target information
-        properties.putAll(session.targetInfo.toEventProperties())
-
-        // Add additional platform-specific properties
-        properties.putAll(session.additionalProperties)
+        // Build final properties: ELEMENT_INTERACTED + DEAD_CLICK specific
+        val properties = buildElementInteractedProperties(session.target, session.activity) + 
+                        buildDeadClickProperties(session)
 
         amplitude.track(DEAD_CLICK, properties)
         logger.debug("Dead click detected")
@@ -325,21 +294,7 @@ class FrustrationInteractionsDetector(
         val text: String?,
         val source: String?,
         val hierarchy: String?,
-    ) {
-        fun toEventProperties(): Map<String, Any?> =
-            mapOf(
-                TARGET_CLASS to className,
-                TARGET_RESOURCE to resourceName,
-                TARGET_TAG to tag,
-                TARGET_TEXT to text,
-                TARGET_SOURCE to
-                    source
-                        ?.replace("_", " ")
-                        ?.split(" ")
-                        ?.joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } },
-                HIERARCHY to hierarchy,
-            )
-    }
+    )
 
     internal data class RageClickSession(
         val firstClickTime: Long,
@@ -352,9 +307,43 @@ class FrustrationInteractionsDetector(
     )
 
     internal data class DeadClickSession(
+        val target: ViewTarget,
+        val activity: Activity,
         val clickInfo: ClickInfo,
         val targetInfo: TargetInfo,
         val preClickUiChangeTime: Long,
-        val additionalProperties: Map<String, Any?>,
     )
+
+    /**
+     * Builds only the rage-click specific properties.
+     */
+    private fun buildRageClickProperties(session: RageClickSession): Map<String, Any?> =
+        mapOf(
+            BEGIN_TIME to session.firstClickTime,
+            END_TIME to session.lastClickTime,
+            DURATION to (session.lastClickTime - session.firstClickTime),
+            COORDINATE_X to session.firstClickX.toInt(),
+            COORDINATE_Y to session.firstClickY.toInt(),
+            CLICK_COUNT to session.clickCount,
+            CLICKS to session.clicks.map {
+                mapOf(
+                    COORDINATE_X to it.x.toInt(),
+                    COORDINATE_Y to it.y.toInt(),
+                    "timestamp" to it.timestamp,
+                )
+            },
+        )
+
+    /**
+     * Builds only the dead-click specific properties.
+     */
+    private fun buildDeadClickProperties(session: DeadClickSession): Map<String, Any?> =
+        mapOf(
+            BEGIN_TIME to session.clickInfo.timestamp,
+            END_TIME to (session.clickInfo.timestamp + DEAD_CLICK_TIMEOUT),
+            DURATION to DEAD_CLICK_TIMEOUT,
+            COORDINATE_X to session.clickInfo.x.toInt(),
+            COORDINATE_Y to session.clickInfo.y.toInt(),
+            CLICK_COUNT to 1,
+        )
 }

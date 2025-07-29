@@ -8,9 +8,7 @@ import com.amplitude.android.FrustrationInteractionsDetector
 import com.amplitude.android.internal.ViewHierarchyScanner.findTarget
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.locators.ViewTargetLocator
-import com.amplitude.android.utilities.DefaultEventUtils.Companion.screenName
 import com.amplitude.common.Logger
-import com.amplitude.core.Constants.EventProperties.SCREEN_NAME
 
 /**
  * Enhanced window callback that handles frustration interactions (e.g. rage click, dead click)
@@ -79,12 +77,8 @@ internal class FrustrationAwareWindowCallback(
                 hierarchy = target.hierarchy,
             )
 
-        // Add Android-specific properties
-        val additionalProperties =
-            mapOf(
-                SCREEN_NAME to activity.screenName,
-            )
-
-        frustrationDetector?.processClick(clickInfo, targetInfo, additionalProperties)
+        // Property building is now handled inside FrustrationInteractionsDetector
+        // using EventPropertyUtils for consistent ELEMENT_INTERACTED -> RAGE/DEAD_CLICK hierarchy
+        frustrationDetector?.processClick(clickInfo, targetInfo, target, activity)
     }
 }

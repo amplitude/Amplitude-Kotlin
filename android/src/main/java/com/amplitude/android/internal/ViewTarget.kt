@@ -1,7 +1,17 @@
 package com.amplitude.android.internal
 
+import android.app.Activity
 import com.amplitude.android.internal.FrustrationConstants.IGNORE_FRUSTRATION_COMPOSE_TAG
 import com.amplitude.android.internal.FrustrationConstants.IGNORE_FRUSTRATION_TAG
+import com.amplitude.android.utilities.DefaultEventUtils.Companion.screenName
+import com.amplitude.core.Constants.EventProperties.ACTION
+import com.amplitude.core.Constants.EventProperties.HIERARCHY
+import com.amplitude.core.Constants.EventProperties.SCREEN_NAME
+import com.amplitude.core.Constants.EventProperties.TARGET_CLASS
+import com.amplitude.core.Constants.EventProperties.TARGET_RESOURCE
+import com.amplitude.core.Constants.EventProperties.TARGET_SOURCE
+import com.amplitude.core.Constants.EventProperties.TARGET_TAG
+import com.amplitude.core.Constants.EventProperties.TARGET_TEXT
 import java.lang.ref.WeakReference
 
 /**
@@ -33,3 +43,23 @@ data class ViewTarget(
 
     enum class Type { Clickable }
 }
+
+/**
+ * Builds the base properties for ELEMENT_INTERACTED events.
+ * This is the foundation used by both standard element tracking and frustration analytics.
+ */
+fun buildElementInteractedProperties(target: ViewTarget, activity: Activity): Map<String, Any?> =
+    mapOf(
+        ACTION to "touch",
+        TARGET_CLASS to target.className,
+        TARGET_RESOURCE to target.resourceName,
+        TARGET_TAG to target.tag,
+        TARGET_TEXT to target.text,
+        TARGET_SOURCE to 
+            target.source
+                .replace("_", " ")
+                .split(" ")
+                .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } },
+        HIERARCHY to target.hierarchy,
+        SCREEN_NAME to activity.screenName,
+    )

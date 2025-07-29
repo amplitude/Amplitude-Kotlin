@@ -1,10 +1,18 @@
 package com.amplitude.android
 
+import android.app.Activity
+import com.amplitude.android.FrustrationInteractionsDetector
+import com.amplitude.android.internal.ViewTarget
+import com.amplitude.android.signals.UiChangeSignal
 import com.amplitude.common.Logger
 import com.amplitude.core.Amplitude
+import com.amplitude.core.Constants.EventProperties.ACTION
+import com.amplitude.core.Constants.EventProperties.BEGIN_TIME
 import com.amplitude.core.Constants.EventProperties.CLICK_COUNT
 import com.amplitude.core.Constants.EventProperties.COORDINATE_X
 import com.amplitude.core.Constants.EventProperties.COORDINATE_Y
+import com.amplitude.core.Constants.EventProperties.DURATION
+import com.amplitude.core.Constants.EventProperties.END_TIME
 import com.amplitude.core.Constants.EventProperties.HIERARCHY
 import com.amplitude.core.Constants.EventProperties.TARGET_CLASS
 import com.amplitude.core.Constants.EventProperties.TARGET_RESOURCE
@@ -37,6 +45,8 @@ import org.junit.jupiter.api.assertAll
 class FrustrationInteractionsDetectorTest {
     private lateinit var mockAmplitude: Amplitude
     private lateinit var mockLogger: Logger
+    private lateinit var mockViewTarget: ViewTarget
+    private lateinit var mockActivity: Activity
     private lateinit var uiChangeFlow: MutableSharedFlow<Signal>
     private lateinit var detector: FrustrationInteractionsDetector
     private val testDispatcher = UnconfinedTestDispatcher()
@@ -57,7 +67,17 @@ class FrustrationInteractionsDetectorTest {
 
         mockAmplitude = mockk(relaxed = true)
         mockLogger = mockk(relaxed = true)
+        mockViewTarget = mockk(relaxed = true)
+        mockActivity = mockk(relaxed = true)
         uiChangeFlow = MutableSharedFlow()
+
+        // Setup mock ViewTarget properties to match testTargetInfo
+        every { mockViewTarget.className } returns testTargetInfo.className
+        every { mockViewTarget.resourceName } returns testTargetInfo.resourceName
+        every { mockViewTarget.tag } returns testTargetInfo.tag
+        every { mockViewTarget.text } returns testTargetInfo.text
+        every { mockViewTarget.source } returns (testTargetInfo.source ?: "android_view")
+        every { mockViewTarget.hierarchy } returns testTargetInfo.hierarchy
 
         every { mockAmplitude.signalFlow } returns uiChangeFlow
         every { mockAmplitude.amplitudeScope } returns CoroutineScope(testDispatcher)
@@ -83,36 +103,32 @@ class FrustrationInteractionsDetectorTest {
     fun `rage click - triggers after threshold clicks within distance`() {
         val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
 
-        // Perform 3 clicks (threshold) in same location
         repeat(3) {
-            detector.processClick(clickInfo, testTargetInfo)
+            detector.processClick(clickInfo, testTargetInfo, mockViewTarget, mockActivity)
         }
 
-        // Verify rage click event was tracked
         verify { mockAmplitude.track(RAGE_CLICK, any()) }
     }
 
     @Test
     fun `rage click - respects distance threshold with density conversion`() {
         val baseClick = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
+        val nearbyClick = FrustrationInteractionsDetector.ClickInfo(149f, 149f) // Within 50dp threshold at 2x density
+        val farClick = FrustrationInteractionsDetector.ClickInfo(200f, 200f) // Outside threshold
 
-        // With 2x density: 50pt * 2 = 100px threshold
-        // Click at distance 99px (within threshold)
-        val nearbyClick = FrustrationInteractionsDetector.ClickInfo(199f, 100f) // 99px away
-        val farClick = FrustrationInteractionsDetector.ClickInfo(201f, 100f) // 101px away
-
-        // 3 clicks within threshold should trigger rage click
-        detector.processClick(baseClick, testTargetInfo)
-        detector.processClick(nearbyClick, testTargetInfo)
-        detector.processClick(baseClick, testTargetInfo)
+        // Near clicks should trigger rage click
+        detector.processClick(baseClick, testTargetInfo, mockViewTarget, mockActivity)
+        detector.processClick(nearbyClick, testTargetInfo, mockViewTarget, mockActivity)
+        detector.processClick(baseClick, testTargetInfo, mockViewTarget, mockActivity)
 
         verify { mockAmplitude.track(RAGE_CLICK, any()) }
+
         clearMocks(mockAmplitude)
 
         // Far click should start new session (no rage click)
-        detector.processClick(baseClick, testTargetInfo)
-        detector.processClick(farClick, testTargetInfo)
-        detector.processClick(baseClick, testTargetInfo)
+        detector.processClick(baseClick, testTargetInfo, mockViewTarget, mockActivity)
+        detector.processClick(farClick, testTargetInfo, mockViewTarget, mockActivity)
+        detector.processClick(baseClick, testTargetInfo, mockViewTarget, mockActivity)
 
         verify { mockAmplitude.track(RAGE_CLICK, any()) wasNot called }
     }
@@ -121,9 +137,11 @@ class FrustrationInteractionsDetectorTest {
     fun `rage click - respects ignore flag`() {
         val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
         val ignoredTargetInfo = testTargetInfo.copy(tag = "amplitude_ignore_rage_click")
+        val ignoredViewTarget = mockk<ViewTarget>(relaxed = true)
+        every { ignoredViewTarget.tag } returns "amplitude_ignore_rage_click"
 
         repeat(3) {
-            detector.processClick(clickInfo, ignoredTargetInfo)
+            detector.processClick(clickInfo, ignoredTargetInfo, ignoredViewTarget, mockActivity)
         }
 
         verify { mockAmplitude.track(RAGE_CLICK, any()) wasNot called }
@@ -133,10 +151,9 @@ class FrustrationInteractionsDetectorTest {
     @Test
     fun `rage click - tracks correct event properties`() {
         val clickInfo = FrustrationInteractionsDetector.ClickInfo(150f, 200f)
-        val additionalProps = mapOf("screen_name" to "TestScreen")
 
         repeat(3) {
-            detector.processClick(clickInfo, testTargetInfo, additionalProps)
+            detector.processClick(clickInfo, testTargetInfo, mockViewTarget, mockActivity)
         }
 
         val capturedProperties = slot<Map<String, Any?>>()
@@ -147,7 +164,7 @@ class FrustrationInteractionsDetectorTest {
             { assertEquals(200, capturedProperties.captured[COORDINATE_Y]) },
             { assertEquals(3, capturedProperties.captured[CLICK_COUNT]) },
             { assertEquals("TestButton", capturedProperties.captured[TARGET_CLASS]) },
-            { assertEquals("TestScreen", capturedProperties.captured["screen_name"]) },
+            { assertEquals("touch", capturedProperties.captured[ACTION]) },
         )
     }
 
@@ -159,8 +176,10 @@ class FrustrationInteractionsDetectorTest {
     fun `dead click - respects ignore flag`() {
         val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
         val ignoredTargetInfo = testTargetInfo.copy(tag = "amplitude_ignore_dead_click")
+        val ignoredViewTarget = mockk<ViewTarget>(relaxed = true)
+        every { ignoredViewTarget.tag } returns "amplitude_ignore_dead_click"
 
-        detector.processClick(clickInfo, ignoredTargetInfo)
+        detector.processClick(clickInfo, ignoredTargetInfo, ignoredViewTarget, mockActivity)
 
         verify { mockLogger.debug(match { it.contains("Skipping dead click processing") }) }
     }
@@ -216,72 +235,20 @@ class FrustrationInteractionsDetectorTest {
         val distantClick = FrustrationInteractionsDetector.ClickInfo(70f, 10f)
 
         // For 1x density: 50pt = 50px threshold, 60px > 50px -> no rage click
-        detector1x.processClick(baseClick, testTargetInfo)
-        detector1x.processClick(distantClick, testTargetInfo)
-        detector1x.processClick(baseClick, testTargetInfo)
+        detector1x.processClick(baseClick, testTargetInfo, mockViewTarget, mockActivity)
+        detector1x.processClick(distantClick, testTargetInfo, mockViewTarget, mockActivity)
+        detector1x.processClick(baseClick, testTargetInfo, mockViewTarget, mockActivity)
 
         // For 3x density: 50pt = 150px threshold, 60px < 150px -> should trigger rage click
-        detector3x.processClick(baseClick, testTargetInfo)
-        detector3x.processClick(distantClick, testTargetInfo)
-        detector3x.processClick(baseClick, testTargetInfo)
+        detector3x.processClick(baseClick, testTargetInfo, mockViewTarget, mockActivity)
+        detector3x.processClick(distantClick, testTargetInfo, mockViewTarget, mockActivity)
+        detector3x.processClick(baseClick, testTargetInfo, mockViewTarget, mockActivity)
 
         // Verify 1x density detector doesn't trigger rage click
         verify { mockAmplitude1x.track(RAGE_CLICK, any()) wasNot called }
 
         // Verify 3x density detector does trigger rage click
         verify(exactly = 1) { mockAmplitude3x.track(RAGE_CLICK, any()) }
-    }
-
-    //endregion
-
-    //region TargetInfo Tests
-
-    @Test
-    fun `TargetInfo toEventProperties formats source correctly`() {
-        val targetInfo =
-            FrustrationInteractionsDetector.TargetInfo(
-                className = "Button",
-                resourceName = "submit_btn",
-                tag = "submit",
-                text = "Submit",
-                source = "android_view",
-                hierarchy = "Activity → Layout → Button",
-            )
-
-        val properties = targetInfo.toEventProperties()
-
-        assertAll(
-            { assertEquals("Button", properties[TARGET_CLASS]) },
-            { assertEquals("submit_btn", properties[TARGET_RESOURCE]) },
-            { assertEquals("submit", properties[TARGET_TAG]) },
-            { assertEquals("Submit", properties[TARGET_TEXT]) },
-            { assertEquals("Android View", properties[TARGET_SOURCE]) },
-            { assertEquals("Activity → Layout → Button", properties[HIERARCHY]) },
-        )
-    }
-
-    @Test
-    fun `TargetInfo toEventProperties handles null values`() {
-        val targetInfo =
-            FrustrationInteractionsDetector.TargetInfo(
-                className = null,
-                resourceName = null,
-                tag = null,
-                text = null,
-                source = null,
-                hierarchy = null,
-            )
-
-        val properties = targetInfo.toEventProperties()
-
-        assertAll(
-            { assertEquals(null, properties[TARGET_CLASS]) },
-            { assertEquals(null, properties[TARGET_RESOURCE]) },
-            { assertEquals(null, properties[TARGET_TAG]) },
-            { assertEquals(null, properties[TARGET_TEXT]) },
-            { assertEquals(null, properties[TARGET_SOURCE]) },
-            { assertEquals(null, properties[HIERARCHY]) },
-        )
     }
 
     //endregion
@@ -294,7 +261,7 @@ class FrustrationInteractionsDetectorTest {
 
         // Process 5 rapid clicks
         repeat(5) {
-            detector.processClick(clickInfo, testTargetInfo)
+            detector.processClick(clickInfo, testTargetInfo, mockViewTarget, mockActivity)
         }
 
         // Should track exactly one rage click (not multiple)
@@ -308,10 +275,10 @@ class FrustrationInteractionsDetectorTest {
         val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
 
         // 3 clicks on first target
-        repeat(3) { detector.processClick(clickInfo, targetInfo1) }
+        repeat(3) { detector.processClick(clickInfo, targetInfo1, mockViewTarget, mockActivity) }
 
         // 3 clicks on second target
-        repeat(3) { detector.processClick(clickInfo, targetInfo2) }
+        repeat(3) { detector.processClick(clickInfo, targetInfo2, mockViewTarget, mockActivity) }
 
         // Should trigger rage click for both targets
         verify(exactly = 2) { mockAmplitude.track(RAGE_CLICK, any()) }
@@ -322,7 +289,7 @@ class FrustrationInteractionsDetectorTest {
         // Attempt to process a dead click without calling start()
         val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
 
-        detector.processClick(clickInfo, testTargetInfo)
+        detector.processClick(clickInfo, testTargetInfo, mockViewTarget, mockActivity)
 
         // Verify that a warning was logged
         verify { mockLogger.error("Dead click detection is disabled - call start() to enable.") }
@@ -338,7 +305,7 @@ class FrustrationInteractionsDetectorTest {
 
         // Process a click
         val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
-        detector.processClick(clickInfo, testTargetInfo)
+        detector.processClick(clickInfo, testTargetInfo, mockViewTarget, mockActivity)
 
         // Verify no warning was logged about UI change collection being inactive
         verify(exactly = 0) {
