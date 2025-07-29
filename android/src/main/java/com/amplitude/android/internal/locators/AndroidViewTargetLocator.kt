@@ -37,10 +37,6 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
                 ?.toString()
         val text = (this as? Button)?.text?.toString()
 
-        // Check for granular ignore flags
-        val isIgnoredForRageClick = tag == IGNORE_FRUSTRATION_TAG || tag == IGNORE_RAGE_CLICK_TAG
-        val isIgnoredForDeadClick = tag == IGNORE_FRUSTRATION_TAG || tag == IGNORE_DEAD_CLICK_TAG
-
         return ViewTarget(
             this,
             className,
@@ -49,8 +45,6 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
             text,
             SOURCE,
             hierarchy,
-            isIgnoredForRageClick,
-            isIgnoredForDeadClick,
         )
     }
 

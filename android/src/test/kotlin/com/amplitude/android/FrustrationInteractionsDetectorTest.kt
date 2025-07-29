@@ -120,10 +120,10 @@ class FrustrationInteractionsDetectorTest {
     @Test
     fun `rage click - respects ignore flag`() {
         val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
-        val ignoredProperties = mapOf("isIgnoredForRageClick" to true)
+        val ignoredTargetInfo = testTargetInfo.copy(tag = "amplitude_ignore_rage_click")
 
         repeat(3) {
-            detector.processClick(clickInfo, testTargetInfo, ignoredProperties)
+            detector.processClick(clickInfo, ignoredTargetInfo)
         }
 
         verify { mockAmplitude.track(RAGE_CLICK, any()) wasNot called }
@@ -158,9 +158,9 @@ class FrustrationInteractionsDetectorTest {
     @Test
     fun `dead click - respects ignore flag`() {
         val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
-        val ignoredProperties = mapOf("isIgnoredForDeadClick" to true)
+        val ignoredTargetInfo = testTargetInfo.copy(tag = "amplitude_ignore_dead_click")
 
-        detector.processClick(clickInfo, testTargetInfo, ignoredProperties)
+        detector.processClick(clickInfo, ignoredTargetInfo)
 
         verify { mockLogger.debug(match { it.contains("Skipping dead click processing") }) }
     }

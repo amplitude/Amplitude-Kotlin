@@ -79,12 +79,10 @@ internal class FrustrationAwareWindowCallback(
                 hierarchy = target.hierarchy,
             )
 
-        // Add Android-specific properties including ignore flags
+        // Add Android-specific properties
         val additionalProperties =
             mapOf(
                 SCREEN_NAME to activity.screenName,
-                "isIgnoredForRageClick" to target.isIgnoredForRageClick,
-                "isIgnoredForDeadClick" to target.isIgnoredForDeadClick,
             )
 
         frustrationDetector?.processClick(clickInfo, targetInfo, additionalProperties)

@@ -1,5 +1,7 @@
 package com.amplitude.android.internal
 
+import com.amplitude.android.internal.FrustrationConstants.IGNORE_FRUSTRATION_COMPOSE_TAG
+import com.amplitude.android.internal.FrustrationConstants.IGNORE_FRUSTRATION_TAG
 import java.lang.ref.WeakReference
 
 /**
@@ -17,14 +19,13 @@ data class ViewTarget(
     val text: String?,
     val source: String,
     val hierarchy: String?,
-    val isIgnoredForRageClick: Boolean = false,
-    val isIgnoredForDeadClick: Boolean = false,
 ) {
     /**
      * Convenience property to check if ignored for all frustration analytics
      */
     val isIgnoredForFrustration: Boolean
-        get() = isIgnoredForRageClick && isIgnoredForDeadClick
+        get() = tag == IGNORE_FRUSTRATION_TAG || tag == IGNORE_FRUSTRATION_COMPOSE_TAG
+    
     private val viewRef: WeakReference<Any> = WeakReference(_view)
 
     val view: Any?

@@ -1,5 +1,11 @@
 package com.amplitude.android
 
+import com.amplitude.android.internal.FrustrationConstants.IGNORE_DEAD_CLICK_COMPOSE_TAG
+import com.amplitude.android.internal.FrustrationConstants.IGNORE_DEAD_CLICK_TAG
+import com.amplitude.android.internal.FrustrationConstants.IGNORE_FRUSTRATION_COMPOSE_TAG
+import com.amplitude.android.internal.FrustrationConstants.IGNORE_FRUSTRATION_TAG
+import com.amplitude.android.internal.FrustrationConstants.IGNORE_RAGE_CLICK_COMPOSE_TAG
+import com.amplitude.android.internal.FrustrationConstants.IGNORE_RAGE_CLICK_TAG
 import com.amplitude.android.signals.UiChangeSignal
 import com.amplitude.common.Logger
 import com.amplitude.core.Amplitude
@@ -83,18 +89,22 @@ class FrustrationInteractionsDetector(
         val clickTime = System.currentTimeMillis()
         val clickId = generateClickId(clickInfo, targetInfo)
 
-        // Process for rage click detection (check specific ignore flag)
-        val isIgnoredForRageClick =
-            additionalProperties["isIgnoredForRageClick"] as? Boolean ?: false
+        // Process for rage click detection (check target tag for ignore flags)
+        val isIgnoredForRageClick = targetInfo.tag == IGNORE_FRUSTRATION_TAG || 
+                                   targetInfo.tag == IGNORE_RAGE_CLICK_TAG ||
+                                   targetInfo.tag == IGNORE_FRUSTRATION_COMPOSE_TAG ||
+                                   targetInfo.tag == IGNORE_RAGE_CLICK_COMPOSE_TAG
         if (!isIgnoredForRageClick) {
             processRageClick(clickInfo, targetInfo, clickTime, additionalProperties)
         } else {
             logger.debug("Skipping rage click processing for ignored target: ${targetInfo.className}")
         }
 
-        // Process for dead click detection (check specific ignore flag)
-        val isIgnoredForDeadClick =
-            additionalProperties["isIgnoredForDeadClick"] as? Boolean ?: false
+        // Process for dead click detection (check target tag for ignore flags)
+        val isIgnoredForDeadClick = targetInfo.tag == IGNORE_FRUSTRATION_TAG || 
+                                   targetInfo.tag == IGNORE_DEAD_CLICK_TAG ||
+                                   targetInfo.tag == IGNORE_FRUSTRATION_COMPOSE_TAG ||
+                                   targetInfo.tag == IGNORE_DEAD_CLICK_COMPOSE_TAG
         if (!isIgnoredForDeadClick) {
             processDeadClick(clickInfo, targetInfo, clickTime, clickId, additionalProperties)
         } else {
