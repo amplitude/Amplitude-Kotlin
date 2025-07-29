@@ -2,13 +2,10 @@ package com.amplitude.android
 
 import android.view.View
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
-import com.amplitude.android.internal.FrustrationConstants.IGNORE_DEAD_CLICK_COMPOSE_TAG
 import com.amplitude.android.internal.FrustrationConstants.IGNORE_DEAD_CLICK_TAG
-import com.amplitude.android.internal.FrustrationConstants.IGNORE_FRUSTRATION_COMPOSE_TAG
 import com.amplitude.android.internal.FrustrationConstants.IGNORE_FRUSTRATION_TAG
-import com.amplitude.android.internal.FrustrationConstants.IGNORE_RAGE_CLICK_COMPOSE_TAG
 import com.amplitude.android.internal.FrustrationConstants.IGNORE_RAGE_CLICK_TAG
+import com.amplitude.android.internal.compose.AmpFrustrationIgnoreElement
 
 /**
  * Utility functions for configuring frustration analytics behavior.
@@ -158,13 +155,10 @@ fun Modifier.ignoreFrustrationAnalytics(
     rageClick: Boolean = true,
     deadClick: Boolean = true,
 ): Modifier {
-    val testTag =
-        when {
-            rageClick && deadClick -> IGNORE_FRUSTRATION_COMPOSE_TAG
-            rageClick && !deadClick -> IGNORE_RAGE_CLICK_COMPOSE_TAG
-            !rageClick && deadClick -> IGNORE_DEAD_CLICK_COMPOSE_TAG
-            // Don't ignore anything, return unmodified
-            else -> return this
-        }
-    return this.testTag(testTag)
+    return if (!rageClick && !deadClick) {
+        // Don't ignore anything, return unmodified
+        this
+    } else {
+        this.then(AmpFrustrationIgnoreElement(rageClick, deadClick))
+    }
 }

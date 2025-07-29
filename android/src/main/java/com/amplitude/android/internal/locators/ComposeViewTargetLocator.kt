@@ -6,10 +6,8 @@ import ComposeLayoutNodeBoundsHelper
 import androidx.compose.ui.node.LayoutNode
 import androidx.compose.ui.node.Owner
 import androidx.compose.ui.platform.InspectableValue
-import com.amplitude.android.internal.FrustrationConstants.IGNORE_DEAD_CLICK_COMPOSE_TAG
-import com.amplitude.android.internal.FrustrationConstants.IGNORE_FRUSTRATION_COMPOSE_TAG
-import com.amplitude.android.internal.FrustrationConstants.IGNORE_RAGE_CLICK_COMPOSE_TAG
 import com.amplitude.android.internal.ViewTarget
+import com.amplitude.android.internal.compose.AmpFrustrationIgnoreElement
 import com.amplitude.common.Logger
 import java.util.ArrayDeque
 import java.util.Queue
@@ -40,6 +38,10 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
 
         // the last known tag when iterating the node tree
         var lastKnownTag: String? = null
+        
+        // Amplitude frustration analytics configuration (extracted as simple booleans)
+        var ignoreRageClick = false
+        var ignoreDeadClick = false
 
         while (queue.isNotEmpty()) {
             val node = queue.poll() ?: continue
@@ -52,6 +54,13 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
 
                 for (modifierInfo in modifiers) {
                     val modifier = modifierInfo.modifier
+                    
+                    // Check for Amplitude frustration analytics configuration
+                    if (modifier is AmpFrustrationIgnoreElement) {
+                        ignoreRageClick = modifier.ignoreRageClick
+                        ignoreDeadClick = modifier.ignoreDeadClick
+                    }
+                    
                     if (modifier is InspectableValue) {
                         when (modifier.nameFallback) {
                             "testTag" -> {
@@ -112,6 +121,8 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
                 text = null,
                 source = SOURCE,
                 hierarchy = null,
+                ampIgnoreRageClick = ignoreRageClick,
+                ampIgnoreDeadClick = ignoreDeadClick,
             )
         }
     }

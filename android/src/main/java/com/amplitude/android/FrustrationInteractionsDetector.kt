@@ -1,11 +1,8 @@
 package com.amplitude.android
 
 import android.app.Activity
-import com.amplitude.android.internal.FrustrationConstants.IGNORE_DEAD_CLICK_COMPOSE_TAG
 import com.amplitude.android.internal.FrustrationConstants.IGNORE_DEAD_CLICK_TAG
-import com.amplitude.android.internal.FrustrationConstants.IGNORE_FRUSTRATION_COMPOSE_TAG
 import com.amplitude.android.internal.FrustrationConstants.IGNORE_FRUSTRATION_TAG
-import com.amplitude.android.internal.FrustrationConstants.IGNORE_RAGE_CLICK_COMPOSE_TAG
 import com.amplitude.android.internal.FrustrationConstants.IGNORE_RAGE_CLICK_TAG
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.buildElementInteractedProperties
@@ -88,10 +85,7 @@ class FrustrationInteractionsDetector(
         val clickId = generateClickId(clickInfo, targetInfo)
 
         // Process for rage click detection (check target tag for ignore flags)
-        val isIgnoredForRageClick = targetInfo.tag == IGNORE_FRUSTRATION_TAG || 
-                                   targetInfo.tag == IGNORE_RAGE_CLICK_TAG ||
-                                   targetInfo.tag == IGNORE_FRUSTRATION_COMPOSE_TAG ||
-                                   targetInfo.tag == IGNORE_RAGE_CLICK_COMPOSE_TAG
+        val isIgnoredForRageClick = isRageClickIgnored(targetInfo, target)
         if (!isIgnoredForRageClick) {
             processRageClick(clickInfo, targetInfo, target, activity, clickTime)
         } else {
@@ -99,10 +93,7 @@ class FrustrationInteractionsDetector(
         }
 
         // Process for dead click detection (check target tag for ignore flags)
-        val isIgnoredForDeadClick = targetInfo.tag == IGNORE_FRUSTRATION_TAG || 
-                                   targetInfo.tag == IGNORE_DEAD_CLICK_TAG ||
-                                   targetInfo.tag == IGNORE_FRUSTRATION_COMPOSE_TAG ||
-                                   targetInfo.tag == IGNORE_DEAD_CLICK_COMPOSE_TAG
+        val isIgnoredForDeadClick = isDeadClickIgnored(targetInfo, target)
         if (!isIgnoredForDeadClick) {
             processDeadClick(clickInfo, targetInfo, target, activity, clickTime, clickId)
         } else {
@@ -346,4 +337,34 @@ class FrustrationInteractionsDetector(
             COORDINATE_Y to session.clickInfo.y.toInt(),
             CLICK_COUNT to 1,
         )
+
+    /**
+     * Checks if rage click detection should be ignored for this target.
+     * Supports both Android View tags and Compose AmpFrustrationIgnoreElement.
+     */
+    private fun isRageClickIgnored(targetInfo: TargetInfo, target: ViewTarget): Boolean {
+        // Check Android View tag-based ignore flags
+        val tagIgnored = targetInfo.tag == IGNORE_FRUSTRATION_TAG || 
+                        targetInfo.tag == IGNORE_RAGE_CLICK_TAG
+
+        // Check Compose modifier-based ignore flags (detected during view targeting)
+        val composeIgnored = target.ampIgnoreRageClick
+
+        return tagIgnored || composeIgnored
+    }
+
+    /**
+     * Checks if dead click detection should be ignored for this target.
+     * Supports both Android View tags and Compose AmpFrustrationIgnoreElement.
+     */
+    private fun isDeadClickIgnored(targetInfo: TargetInfo, target: ViewTarget): Boolean {
+        // Check Android View tag-based ignore flags
+        val tagIgnored = targetInfo.tag == IGNORE_FRUSTRATION_TAG || 
+                        targetInfo.tag == IGNORE_DEAD_CLICK_TAG
+
+        // Check Compose modifier-based ignore flags (detected during view targeting)
+        val composeIgnored = target.ampIgnoreDeadClick
+
+        return tagIgnored || composeIgnored
+    }
 }
