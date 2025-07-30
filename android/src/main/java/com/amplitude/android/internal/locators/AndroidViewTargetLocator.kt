@@ -3,6 +3,7 @@ package com.amplitude.android.internal.locators
 import android.view.View
 import android.widget.Button
 import androidx.core.view.isVisible
+import com.amplitude.android.R
 import com.amplitude.android.internal.ViewResourceUtils.resourceIdWithFallback
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.ViewTarget.Type
@@ -34,6 +35,9 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
                 ?.toString()
         val text = (this as? Button)?.text?.toString()
 
+        // Read custom frustration analytics attributes from XML
+        val frustrationSettings = readFrustrationAttributes()
+
         return ViewTarget(
             this,
             className,
@@ -42,7 +46,71 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
             text,
             SOURCE,
             hierarchy,
+            ampIgnoreRageClick = frustrationSettings.ignoreRageClick,
+            ampIgnoreDeadClick = frustrationSettings.ignoreDeadClick,
         )
+    }
+
+    /**
+     * Data class to hold frustration analytics settings from XML attributes
+     */
+    private data class FrustrationSettings(
+        val ignoreRageClick: Boolean = false,
+        val ignoreDeadClick: Boolean = false,
+    )
+
+    /**
+     * Reads frustration analytics settings from programmatic tags and XML attributes.
+     * Checks programmatically set flags first, then XML attributes.
+     * Note: Does NOT use android:tag for frustration analytics.
+     */
+    private fun View.readFrustrationAttributes(): FrustrationSettings {
+        // Private keys for programmatic ignore flags (must match FrustrationAnalyticsUtils)
+        val ignoreRageClickKey = "amplitude_ignore_rage_click".hashCode()
+        val ignoreDeadClickKey = "amplitude_ignore_dead_click".hashCode()
+        val ignoreFrustrationKey = "amplitude_ignore_frustration".hashCode()
+
+        // Check for programmatically set flags first
+        val programmaticIgnoreRage = getTag(ignoreRageClickKey) as? Boolean ?: false
+        val programmaticIgnoreDead = getTag(ignoreDeadClickKey) as? Boolean ?: false
+        val programmaticIgnoreAll = getTag(ignoreFrustrationKey) as? Boolean ?: false
+
+        // If programmatic flags are set, use those (takes precedence)
+        if (programmaticIgnoreRage || programmaticIgnoreDead || programmaticIgnoreAll) {
+            return FrustrationSettings(
+                ignoreRageClick = programmaticIgnoreRage || programmaticIgnoreAll,
+                ignoreDeadClick = programmaticIgnoreDead || programmaticIgnoreAll,
+            )
+        }
+
+        // Otherwise, try to read custom XML attributes if available
+        try {
+            val context = context
+            val attrs =
+                intArrayOf(
+                    R.attr.amplitudeIgnoreRageClick,
+                    R.attr.amplitudeIgnoreDeadClick,
+                    R.attr.amplitudeIgnoreFrustration,
+                )
+
+            // Get the styled attributes for this view
+            val typedArray = context.obtainStyledAttributes(null, attrs, 0, 0)
+
+            val ignoreRageFromXml = typedArray.getBoolean(0, false)
+            val ignoreDeadFromXml = typedArray.getBoolean(1, false)
+            val ignoreAllFromXml = typedArray.getBoolean(2, false)
+
+            typedArray.recycle()
+
+            // Return XML-based settings
+            return FrustrationSettings(
+                ignoreRageClick = ignoreRageFromXml || ignoreAllFromXml,
+                ignoreDeadClick = ignoreDeadFromXml || ignoreAllFromXml,
+            )
+        } catch (e: Exception) {
+            // Return default (no ignore flags)
+            return FrustrationSettings()
+        }
     }
 
     private fun View.touchWithinBounds(position: Pair<Float, Float>): Boolean {

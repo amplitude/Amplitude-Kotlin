@@ -1,9 +1,6 @@
 package com.amplitude.android
 
 import android.app.Activity
-import com.amplitude.android.internal.FrustrationConstants.IGNORE_DEAD_CLICK_TAG
-import com.amplitude.android.internal.FrustrationConstants.IGNORE_FRUSTRATION_TAG
-import com.amplitude.android.internal.FrustrationConstants.IGNORE_RAGE_CLICK_TAG
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.buildElementInteractedProperties
 import com.amplitude.android.signals.UiChangeSignal
@@ -343,39 +340,25 @@ class FrustrationInteractionsDetector(
 
     /**
      * Checks if rage click detection should be ignored for this target.
-     * Supports both Android View tags and Compose AmpFrustrationIgnoreElement.
+     * Supports custom XML attributes, programmatic API, and Compose AmpFrustrationIgnoreElement.
      */
     private fun isRageClickIgnored(
         targetInfo: TargetInfo,
         target: ViewTarget,
     ): Boolean {
-        // Check Android View tag-based ignore flags
-        val tagIgnored =
-            targetInfo.tag == IGNORE_FRUSTRATION_TAG ||
-                targetInfo.tag == IGNORE_RAGE_CLICK_TAG
-
-        // Check Compose modifier-based ignore flags (detected during view targeting)
-        val composeIgnored = target.ampIgnoreRageClick
-
-        return tagIgnored || composeIgnored
+        // Check programmatic/XML/compose ignore flags
+        return target.ampIgnoreRageClick
     }
 
     /**
      * Checks if dead click detection should be ignored for this target.
-     * Supports both Android View tags and Compose AmpFrustrationIgnoreElement.
+     * Supports custom XML attributes, programmatic API, and Compose AmpFrustrationIgnoreElement.
      */
     private fun isDeadClickIgnored(
         targetInfo: TargetInfo,
         target: ViewTarget,
     ): Boolean {
-        // Check Android View tag-based ignore flags
-        val tagIgnored =
-            targetInfo.tag == IGNORE_FRUSTRATION_TAG ||
-                targetInfo.tag == IGNORE_DEAD_CLICK_TAG
-
-        // Check Compose modifier-based ignore flags (detected during view targeting)
-        val composeIgnored = target.ampIgnoreDeadClick
-
-        return tagIgnored || composeIgnored
+        // Check programmatic/XML/compose ignore flags
+        return target.ampIgnoreDeadClick
     }
 }

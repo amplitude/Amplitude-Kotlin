@@ -1,7 +1,6 @@
 package com.amplitude.android.internal
 
 import android.app.Activity
-import com.amplitude.android.internal.FrustrationConstants.IGNORE_FRUSTRATION_TAG
 import com.amplitude.android.utilities.DefaultEventUtils.Companion.screenName
 import com.amplitude.core.Constants.EventProperties.ACTION
 import com.amplitude.core.Constants.EventProperties.HIERARCHY
@@ -35,7 +34,7 @@ data class ViewTarget(
      * Convenience property to check if ignored for all frustration analytics
      */
     val isIgnoredForFrustration: Boolean
-        get() = tag == IGNORE_FRUSTRATION_TAG || (ampIgnoreRageClick && ampIgnoreDeadClick)
+        get() = ampIgnoreRageClick && ampIgnoreDeadClick
 
     private val viewRef: WeakReference<Any> = WeakReference(_view)
 

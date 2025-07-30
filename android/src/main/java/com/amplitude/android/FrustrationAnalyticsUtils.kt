@@ -2,9 +2,6 @@ package com.amplitude.android
 
 import android.view.View
 import androidx.compose.ui.Modifier
-import com.amplitude.android.internal.FrustrationConstants.IGNORE_DEAD_CLICK_TAG
-import com.amplitude.android.internal.FrustrationConstants.IGNORE_FRUSTRATION_TAG
-import com.amplitude.android.internal.FrustrationConstants.IGNORE_RAGE_CLICK_TAG
 import com.amplitude.android.internal.compose.AmpFrustrationIgnoreElement
 
 /**
@@ -43,15 +40,30 @@ import com.amplitude.android.internal.compose.AmpFrustrationIgnoreElement
  * ```xml
  * <!-- Ignore all frustration analytics -->
  * <Button
- *     android:tag="amplitude_ignore_frustration" />
+ *     app:amplitudeIgnoreFrustration="true" />
  *
  * <!-- Ignore only rage clicks -->
  * <Button
- *     android:tag="amplitude_ignore_rage_click" />
+ *     app:amplitudeIgnoreRageClick="true" />
  *
  * <!-- Ignore only dead clicks -->
  * <Button
- *     android:tag="amplitude_ignore_dead_click" />
+ *     app:amplitudeIgnoreDeadClick="true" />
+ * ```
+ *
+ * ### Android Views (Programmatic)
+ * ```kotlin
+ * // Ignore all frustration analytics
+ * val backButton = findViewById<Button>(R.id.back_button)
+ * FrustrationAnalyticsUtils.ignoreFrustrationAnalytics(backButton)
+ *
+ * // Ignore only rage clicks
+ * val incrementButton = findViewById<Button>(R.id.increment_button)
+ * FrustrationAnalyticsUtils.ignoreFrustrationAnalytics(
+ *     incrementButton,
+ *     rageClick = true,
+ *     deadClick = false
+ * )
  * ```
  *
  * ### Jetpack Compose
@@ -87,6 +99,12 @@ import com.amplitude.android.internal.compose.AmpFrustrationIgnoreElement
  * **Note**: Regular interaction events are still tracked when frustration analytics are ignored.
  */
 object FrustrationAnalyticsUtils {
+    // Private keys for storing ignore flags using View.setTag(key, value)
+    // Using hashcodes to avoid conflicts with other tag usage
+    private val IGNORE_RAGE_CLICK_KEY = "amplitude_ignore_rage_click".hashCode()
+    private val IGNORE_DEAD_CLICK_KEY = "amplitude_ignore_dead_click".hashCode()
+    private val IGNORE_FRUSTRATION_KEY = "amplitude_ignore_frustration".hashCode()
+
     /**
      * Marks an Android View to be ignored for frustration analytics.
      *
@@ -100,13 +118,9 @@ object FrustrationAnalyticsUtils {
         rageClick: Boolean = true,
         deadClick: Boolean = true,
     ): View {
-        view.tag =
-            when {
-                rageClick && deadClick -> IGNORE_FRUSTRATION_TAG
-                rageClick && !deadClick -> IGNORE_RAGE_CLICK_TAG
-                !rageClick && deadClick -> IGNORE_DEAD_CLICK_TAG
-                else -> null // Don't ignore anything
-            }
+        view.setTag(IGNORE_RAGE_CLICK_KEY, rageClick)
+        view.setTag(IGNORE_DEAD_CLICK_KEY, deadClick)
+        view.setTag(IGNORE_FRUSTRATION_KEY, rageClick && deadClick)
         return view
     }
 
@@ -114,33 +128,35 @@ object FrustrationAnalyticsUtils {
      * Checks if an Android View is marked to be ignored for frustration analytics.
      */
     fun isViewIgnored(view: View): Boolean {
-        return view.tag == IGNORE_FRUSTRATION_TAG
+        val ignoreAll = view.getTag(IGNORE_FRUSTRATION_KEY) as? Boolean ?: false
+        return ignoreAll
     }
 
     /**
      * Checks if an Android View is marked to be ignored for rage click detection.
      */
     fun isRageClickIgnored(view: View): Boolean {
-        return view.tag == IGNORE_FRUSTRATION_TAG || view.tag == IGNORE_RAGE_CLICK_TAG
+        val ignoreAll = view.getTag(IGNORE_FRUSTRATION_KEY) as? Boolean ?: false
+        val ignoreRage = view.getTag(IGNORE_RAGE_CLICK_KEY) as? Boolean ?: false
+        return ignoreAll || ignoreRage
     }
 
     /**
      * Checks if an Android View is marked to be ignored for dead click detection.
      */
     fun isDeadClickIgnored(view: View): Boolean {
-        return view.tag == IGNORE_FRUSTRATION_TAG || view.tag == IGNORE_DEAD_CLICK_TAG
+        val ignoreAll = view.getTag(IGNORE_FRUSTRATION_KEY) as? Boolean ?: false
+        val ignoreDead = view.getTag(IGNORE_DEAD_CLICK_KEY) as? Boolean ?: false
+        return ignoreAll || ignoreDead
     }
 
     /**
      * Removes the ignore marker from an Android View.
      */
     fun unignoreView(view: View): View {
-        if (view.tag == IGNORE_FRUSTRATION_TAG ||
-            view.tag == IGNORE_RAGE_CLICK_TAG ||
-            view.tag == IGNORE_DEAD_CLICK_TAG
-        ) {
-            view.tag = null
-        }
+        view.setTag(IGNORE_RAGE_CLICK_KEY, null)
+        view.setTag(IGNORE_DEAD_CLICK_KEY, null)
+        view.setTag(IGNORE_FRUSTRATION_KEY, null)
         return view
     }
 }

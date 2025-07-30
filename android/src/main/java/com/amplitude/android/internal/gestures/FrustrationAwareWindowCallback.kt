@@ -56,7 +56,7 @@ internal class FrustrationAwareWindowCallback(
 
         // Check if this target should be ignored for all frustration analytics
         if (target.isIgnoredForFrustration) {
-            logger.debug("Ignoring all frustration interactions for target with tag: ${target.tag}")
+            logger.debug("Ignoring all frustration interactions for target: ${target.className}")
             return
         }
 

@@ -68,6 +68,8 @@ class FrustrationInteractionsDetectorTest {
         every { mockViewTarget.text } returns testTargetInfo.text
         every { mockViewTarget.source } returns (testTargetInfo.source ?: "android_view")
         every { mockViewTarget.hierarchy } returns testTargetInfo.hierarchy
+        every { mockViewTarget.ampIgnoreRageClick } returns false
+        every { mockViewTarget.ampIgnoreDeadClick } returns false
 
         every { mockAmplitude.signalFlow } returns uiChangeFlow
         every { mockAmplitude.amplitudeScope } returns CoroutineScope(testDispatcher)
@@ -128,9 +130,10 @@ class FrustrationInteractionsDetectorTest {
     @Test
     fun `rage click - respects ignore flag`() {
         val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
-        val ignoredTargetInfo = testTargetInfo.copy(tag = "amplitude_ignore_rage_click")
+        val ignoredTargetInfo = testTargetInfo // No need to modify tag
         val ignoredViewTarget = mockk<ViewTarget>(relaxed = true)
-        every { ignoredViewTarget.tag } returns "amplitude_ignore_rage_click"
+        every { ignoredViewTarget.ampIgnoreRageClick } returns true
+        every { ignoredViewTarget.ampIgnoreDeadClick } returns false
 
         repeat(4) {
             detector.processClick(clickInfo, ignoredTargetInfo, ignoredViewTarget, mockActivity)
@@ -167,9 +170,10 @@ class FrustrationInteractionsDetectorTest {
     @Test
     fun `dead click - respects ignore flag`() {
         val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
-        val ignoredTargetInfo = testTargetInfo.copy(tag = "amplitude_ignore_dead_click")
+        val ignoredTargetInfo = testTargetInfo // No need to modify tag
         val ignoredViewTarget = mockk<ViewTarget>(relaxed = true)
-        every { ignoredViewTarget.tag } returns "amplitude_ignore_dead_click"
+        every { ignoredViewTarget.ampIgnoreRageClick } returns false
+        every { ignoredViewTarget.ampIgnoreDeadClick } returns true
 
         detector.processClick(clickInfo, ignoredTargetInfo, ignoredViewTarget, mockActivity)
 
