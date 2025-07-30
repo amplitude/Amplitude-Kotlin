@@ -86,19 +86,31 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
         // Otherwise, try to read custom XML attributes if available
         try {
             val context = context
-            val attrs =
-                intArrayOf(
-                    R.attr.amplitudeIgnoreRageClick,
-                    R.attr.amplitudeIgnoreDeadClick,
-                    R.attr.amplitudeIgnoreFrustration,
+
+            // Get the styled attributes for this view using the declare-styleable
+            val typedArray =
+                context.obtainStyledAttributes(
+                    null,
+                    R.styleable.AmplitudeFrustrationAnalytics,
+                    0,
+                    0,
                 )
 
-            // Get the styled attributes for this view
-            val typedArray = context.obtainStyledAttributes(null, attrs, 0, 0)
-
-            val ignoreRageFromXml = typedArray.getBoolean(0, false)
-            val ignoreDeadFromXml = typedArray.getBoolean(1, false)
-            val ignoreAllFromXml = typedArray.getBoolean(2, false)
+            val ignoreRageFromXml =
+                typedArray.getBoolean(
+                    R.styleable.AmplitudeFrustrationAnalytics_amplitudeIgnoreRageClick,
+                    false,
+                )
+            val ignoreDeadFromXml =
+                typedArray.getBoolean(
+                    R.styleable.AmplitudeFrustrationAnalytics_amplitudeIgnoreDeadClick,
+                    false,
+                )
+            val ignoreAllFromXml =
+                typedArray.getBoolean(
+                    R.styleable.AmplitudeFrustrationAnalytics_amplitudeIgnoreFrustration,
+                    false,
+                )
 
             typedArray.recycle()
 
