@@ -35,7 +35,7 @@ data class ViewTarget(
      * Convenience property to check if ignored for all frustration analytics
      */
     val isIgnoredForFrustration: Boolean
-        get() = tag == IGNORE_FRUSTRATION_TAG
+        get() = tag == IGNORE_FRUSTRATION_TAG || (ampIgnoreRageClick && ampIgnoreDeadClick)
 
     private val viewRef: WeakReference<Any> = WeakReference(_view)
 
