@@ -1,6 +1,7 @@
 package com.amplitude.android
 
 import android.app.Activity
+import android.graphics.PointF
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.buildElementInteractedProperties
 import com.amplitude.android.signals.UiChangeSignal
@@ -66,6 +67,10 @@ class FrustrationInteractionsDetector(
 
     fun stop() {
         uiChangeCollectionJob?.cancel()
+        // Cancel all pending dead click jobs to prevent resource leaks
+        pendingDeadClicks.values.forEach { it.job?.cancel() }
+        pendingDeadClicks.clear()
+        pendingRageClicks.clear()
         logger.debug("FrustrationInteractionsDetector stopped - UI change collection is now inactive")
     }
 
@@ -82,7 +87,7 @@ class FrustrationInteractionsDetector(
         val clickId = generateClickId(clickInfo, targetInfo)
 
         // Process for rage click detection (check target tag for ignore flags)
-        val isIgnoredForRageClick = isRageClickIgnored(targetInfo, target)
+        val isIgnoredForRageClick = isRageClickIgnored(target)
         if (!isIgnoredForRageClick) {
             processRageClick(clickInfo, targetInfo, target, activity, clickTime)
         } else {
@@ -90,7 +95,7 @@ class FrustrationInteractionsDetector(
         }
 
         // Process for dead click detection (check target tag for ignore flags)
-        val isIgnoredForDeadClick = isDeadClickIgnored(targetInfo, target)
+        val isIgnoredForDeadClick = isDeadClickIgnored(target)
         if (!isIgnoredForDeadClick) {
             processDeadClick(clickInfo, targetInfo, target, activity, clickTime, clickId)
         } else {
@@ -157,6 +162,9 @@ class FrustrationInteractionsDetector(
             return
         }
 
+        // Cancel any existing dead click job for this location to prevent accumulation
+        pendingDeadClicks[clickId]?.job?.cancel()
+
         val deadClickSession =
             DeadClickSession(
                 target = target,
@@ -169,17 +177,21 @@ class FrustrationInteractionsDetector(
         pendingDeadClicks[clickId] = deadClickSession
 
         // Schedule dead click detection
-        amplitude.amplitudeScope.launch(amplitude.amplitudeDispatcher) {
-            delay(DEAD_CLICK_TIMEOUT)
+        val job =
+            amplitude.amplitudeScope.launch(amplitude.amplitudeDispatcher) {
+                delay(DEAD_CLICK_TIMEOUT)
 
-            // Check if UI changed after the click
-            if (lastUiChangeTime <= deadClickSession.preClickUiChangeTime) {
-                // No UI change detected, this is a dead click
-                trackDeadClick(deadClickSession)
+                // Check if UI changed after the click
+                if (lastUiChangeTime <= deadClickSession.preClickUiChangeTime) {
+                    // No UI change detected, this is a dead click
+                    trackDeadClick(deadClickSession)
+                }
+
+                // Clean up when done
+                pendingDeadClicks.remove(clickId)
             }
 
-            pendingDeadClicks.remove(clickId)
-        }
+        deadClickSession.job = job
     }
 
     private fun startUiChangeCollection() {
@@ -261,7 +273,10 @@ class FrustrationInteractionsDetector(
         x2: Float,
         y2: Float,
     ): Boolean {
-        val distance = kotlin.math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2))
+        // Use Android's built-in PointF.length() for distance calculation
+        val point1 = PointF(x1, y1)
+        val point2 = PointF(x2, y2)
+        val distance = PointF.length(point1.x - point2.x, point1.y - point2.y)
         return distance <= rageClickDistanceThresholdPx
     }
 
@@ -302,6 +317,7 @@ class FrustrationInteractionsDetector(
         val clickInfo: ClickInfo,
         val targetInfo: TargetInfo,
         val preClickUiChangeTime: Long,
+        var job: Job? = null,
     )
 
     /**
@@ -342,10 +358,7 @@ class FrustrationInteractionsDetector(
      * Checks if rage click detection should be ignored for this target.
      * Supports custom XML attributes, programmatic API, and Compose AmpFrustrationIgnoreElement.
      */
-    private fun isRageClickIgnored(
-        targetInfo: TargetInfo,
-        target: ViewTarget,
-    ): Boolean {
+    private fun isRageClickIgnored(target: ViewTarget): Boolean {
         // Check programmatic/XML/compose ignore flags
         return target.ampIgnoreRageClick
     }
@@ -354,10 +367,7 @@ class FrustrationInteractionsDetector(
      * Checks if dead click detection should be ignored for this target.
      * Supports custom XML attributes, programmatic API, and Compose AmpFrustrationIgnoreElement.
      */
-    private fun isDeadClickIgnored(
-        targetInfo: TargetInfo,
-        target: ViewTarget,
-    ): Boolean {
+    private fun isDeadClickIgnored(target: ViewTarget): Boolean {
         // Check programmatic/XML/compose ignore flags
         return target.ampIgnoreDeadClick
     }
