@@ -93,7 +93,7 @@ class FrustrationInteractionsDetectorTest {
     fun `rage click - triggers after threshold clicks within distance`() {
         val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
 
-        repeat(3) {
+        repeat(4) {
             detector.processClick(clickInfo, testTargetInfo, mockViewTarget, mockActivity)
         }
 
@@ -110,6 +110,7 @@ class FrustrationInteractionsDetectorTest {
         detector.processClick(baseClick, testTargetInfo, mockViewTarget, mockActivity)
         detector.processClick(nearbyClick, testTargetInfo, mockViewTarget, mockActivity)
         detector.processClick(baseClick, testTargetInfo, mockViewTarget, mockActivity)
+        detector.processClick(nearbyClick, testTargetInfo, mockViewTarget, mockActivity)
 
         verify { mockAmplitude.track(RAGE_CLICK, any()) }
 
@@ -119,6 +120,7 @@ class FrustrationInteractionsDetectorTest {
         detector.processClick(baseClick, testTargetInfo, mockViewTarget, mockActivity)
         detector.processClick(farClick, testTargetInfo, mockViewTarget, mockActivity)
         detector.processClick(baseClick, testTargetInfo, mockViewTarget, mockActivity)
+        detector.processClick(farClick, testTargetInfo, mockViewTarget, mockActivity)
 
         verify { mockAmplitude.track(RAGE_CLICK, any()) wasNot called }
     }
@@ -130,7 +132,7 @@ class FrustrationInteractionsDetectorTest {
         val ignoredViewTarget = mockk<ViewTarget>(relaxed = true)
         every { ignoredViewTarget.tag } returns "amplitude_ignore_rage_click"
 
-        repeat(3) {
+        repeat(4) {
             detector.processClick(clickInfo, ignoredTargetInfo, ignoredViewTarget, mockActivity)
         }
 
@@ -142,7 +144,7 @@ class FrustrationInteractionsDetectorTest {
     fun `rage click - tracks correct event properties`() {
         val clickInfo = FrustrationInteractionsDetector.ClickInfo(150f, 200f)
 
-        repeat(3) {
+        repeat(4) {
             detector.processClick(clickInfo, testTargetInfo, mockViewTarget, mockActivity)
         }
 
@@ -152,7 +154,7 @@ class FrustrationInteractionsDetectorTest {
         assertAll(
             { assertEquals(150, capturedProperties.captured[COORDINATE_X]) },
             { assertEquals(200, capturedProperties.captured[COORDINATE_Y]) },
-            { assertEquals(3, capturedProperties.captured[CLICK_COUNT]) },
+            { assertEquals(4, capturedProperties.captured[CLICK_COUNT]) },
             { assertEquals("TestButton", capturedProperties.captured[TARGET_CLASS]) },
             { assertEquals("touch", capturedProperties.captured[ACTION]) },
         )
@@ -233,6 +235,7 @@ class FrustrationInteractionsDetectorTest {
         detector3x.processClick(baseClick, testTargetInfo, mockViewTarget, mockActivity)
         detector3x.processClick(distantClick, testTargetInfo, mockViewTarget, mockActivity)
         detector3x.processClick(baseClick, testTargetInfo, mockViewTarget, mockActivity)
+        detector3x.processClick(distantClick, testTargetInfo, mockViewTarget, mockActivity)
 
         // Verify 1x density detector doesn't trigger rage click
         verify { mockAmplitude1x.track(RAGE_CLICK, any()) wasNot called }
@@ -249,7 +252,7 @@ class FrustrationInteractionsDetectorTest {
     fun `handles rapid clicks correctly`() {
         val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
 
-        // Process 5 rapid clicks
+        // Process 5 rapid clicks (above the 4-click threshold)
         repeat(5) {
             detector.processClick(clickInfo, testTargetInfo, mockViewTarget, mockActivity)
         }
@@ -264,11 +267,11 @@ class FrustrationInteractionsDetectorTest {
         val targetInfo2 = testTargetInfo.copy(className = "Button2")
         val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
 
-        // 3 clicks on first target
-        repeat(3) { detector.processClick(clickInfo, targetInfo1, mockViewTarget, mockActivity) }
+        // 4 clicks on first target
+        repeat(4) { detector.processClick(clickInfo, targetInfo1, mockViewTarget, mockActivity) }
 
-        // 3 clicks on second target
-        repeat(3) { detector.processClick(clickInfo, targetInfo2, mockViewTarget, mockActivity) }
+        // 4 clicks on second target
+        repeat(4) { detector.processClick(clickInfo, targetInfo2, mockViewTarget, mockActivity) }
 
         // Should trigger rage click for both targets
         verify(exactly = 2) { mockAmplitude.track(RAGE_CLICK, any()) }

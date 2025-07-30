@@ -42,7 +42,7 @@ class FrustrationInteractionsDetector(
          */
         private const val RAGE_CLICK_DISTANCE_THRESHOLD: Float = 50f
         private const val DEAD_CLICK_TIMEOUT: Long = 3_000L // 3 seconds
-        private const val RAGE_CLICK_THRESHOLD: Int = 3
+        private const val RAGE_CLICK_THRESHOLD: Int = 4
         private const val RAGE_CLICK_TIME_WINDOW: Long = 1_000L // 1 second
     }
 
@@ -128,7 +128,7 @@ class FrustrationInteractionsDetector(
                     existingSession.lastClickTime = clickTime
                     existingSession.clicks.add(clickInfo.copy(timestamp = clickTime))
 
-                    // Check if we've reached the rage click threshold
+                    // Check if we've reached the rage click threshold (4+ clicks in 1s to match iOS)
                     if (existingSession.clickCount >= RAGE_CLICK_THRESHOLD) {
                         trackRageClick(existingSession, target, activity)
                         pendingRageClicks.remove(locationKey)
