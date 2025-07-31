@@ -12,12 +12,15 @@ import com.amplitude.android.Configuration
 import com.amplitude.android.internal.fragments.FragmentActivityHandler
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.registerFragmentLifecycleCallbacks
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.unregisterFragmentLifecycleCallbacks
+import com.amplitude.android.internal.fragments.TrackEventCallback
 import com.amplitude.android.utilities.ActivityLifecycleObserver
+import com.amplitude.common.Logger
 import com.amplitude.core.Constants.EventTypes
 import com.amplitude.core.Storage
 import com.amplitude.core.utilities.InMemoryStorage
 import io.mockk.coVerify
 import io.mockk.every
+import io.mockk.justRun
 import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.spyk
@@ -324,7 +327,12 @@ class AndroidLifecyclePluginTest {
             val activity = mockk<Activity>(relaxed = true)
             plugin.setup(mockedAmplitude)
 
-            every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+            justRun {
+                activity.registerFragmentLifecycleCallbacks(
+                    any<TrackEventCallback>(),
+                    any<Logger>(),
+                )
+            }
             observer.onActivityCreated(activity, mockk())
 
             observer.onActivityStarted(activity)

@@ -12,7 +12,6 @@ import com.amplitude.core.Constants.EventProperties.TARGET_CLASS
 import com.amplitude.core.Constants.EventTypes.DEAD_CLICK
 import com.amplitude.core.Constants.EventTypes.RAGE_CLICK
 import com.amplitude.core.platform.Signal
-import io.mockk.called
 import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
@@ -124,7 +123,7 @@ class FrustrationInteractionsDetectorTest {
         detector.processClick(baseClick, testTargetInfo, mockViewTarget, mockActivity)
         detector.processClick(farClick, testTargetInfo, mockViewTarget, mockActivity)
 
-        verify { mockAmplitude.track(RAGE_CLICK, any()) wasNot called }
+        verify(exactly = 0) { mockAmplitude.track(RAGE_CLICK, any()) }
     }
 
     @Test
@@ -139,7 +138,7 @@ class FrustrationInteractionsDetectorTest {
             detector.processClick(clickInfo, ignoredTargetInfo, ignoredViewTarget, mockActivity)
         }
 
-        verify { mockAmplitude.track(RAGE_CLICK, any()) wasNot called }
+        verify(exactly = 0) { mockAmplitude.track(RAGE_CLICK, any()) }
         verify { mockLogger.debug(match { it.contains("Skipping rage click processing") }) }
     }
 
@@ -242,7 +241,7 @@ class FrustrationInteractionsDetectorTest {
         detector3x.processClick(distantClick, testTargetInfo, mockViewTarget, mockActivity)
 
         // Verify 1x density detector doesn't trigger rage click
-        verify { mockAmplitude1x.track(RAGE_CLICK, any()) wasNot called }
+        verify(exactly = 0) { mockAmplitude1x.track(RAGE_CLICK, any()) }
 
         // Verify 3x density detector does trigger rage click
         verify(exactly = 1) { mockAmplitude3x.track(RAGE_CLICK, any()) }
