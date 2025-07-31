@@ -8,9 +8,12 @@ import android.net.ParseException
 import android.net.Uri
 import android.os.Build
 import com.amplitude.android.Amplitude
+import com.amplitude.android.ExperimentalAmplitudeFeature
+import com.amplitude.android.FrustrationInteractionsDetector
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.registerFragmentLifecycleCallbacks
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.unregisterFragmentLifecycleCallbacks
 import com.amplitude.android.internal.gestures.AutocaptureWindowCallback
+import com.amplitude.android.internal.gestures.FrustrationAwareWindowCallback
 import com.amplitude.android.internal.gestures.NoCaptureWindowCallback
 import com.amplitude.android.internal.locators.ViewTargetLocators.ALL
 import com.amplitude.core.Constants
@@ -112,18 +115,39 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         }
     }
 
-    fun startUserInteractionEventTracking(activity: Activity) {
+    @JvmOverloads
+    @OptIn(ExperimentalAmplitudeFeature::class)
+    fun startUserInteractionEventTracking(
+        activity: Activity,
+        frustrationDetector: FrustrationInteractionsDetector? = null,
+    ) {
         activity.window?.let { window ->
             val delegate = window.callback ?: NoCaptureWindowCallback()
+
             window.callback =
-                AutocaptureWindowCallback(
-                    delegate,
-                    activity,
-                    amplitude::track,
-                    ALL(amplitude.logger),
-                    amplitude.logger,
-                )
-        } ?: amplitude.logger.error("Failed to track user interaction event: Activity window is null")
+                if (frustrationDetector != null) {
+                    // Use enhanced callback for frustration interactions
+                    FrustrationAwareWindowCallback(
+                        delegate,
+                        activity,
+                        amplitude::track,
+                        ALL(amplitude.logger),
+                        amplitude.logger,
+                        frustrationDetector,
+                    )
+                } else {
+                    // Use standard callback for element interactions only
+                    AutocaptureWindowCallback(
+                        delegate,
+                        activity,
+                        amplitude::track,
+                        ALL(amplitude.logger),
+                        amplitude.logger,
+                    )
+                }
+        } ?: amplitude.logger.error(
+            "Failed to track user interaction event: Activity window is null",
+        )
     }
 
     fun stopUserInteractionEventTracking(activity: Activity) {

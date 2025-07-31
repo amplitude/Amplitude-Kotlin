@@ -75,7 +75,7 @@ open class Amplitude(
             extraBufferCapacity = 1_000,
             onBufferOverflow = DROP_OLDEST,
         )
-    internal val signalFlow: SharedFlow<Signal> = _signalFlow.asSharedFlow()
+    val signalFlow: SharedFlow<Signal> = _signalFlow.asSharedFlow()
 
     /**
      * Emit a signal to the shared signal flow.

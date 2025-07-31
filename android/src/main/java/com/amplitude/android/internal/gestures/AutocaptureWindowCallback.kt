@@ -7,12 +7,12 @@ import android.view.Window
 import com.amplitude.android.internal.locators.ViewTargetLocator
 import com.amplitude.common.Logger
 
-internal class AutocaptureWindowCallback(
+internal open class AutocaptureWindowCallback(
     delegate: Window.Callback,
-    activity: Activity,
+    protected val activity: Activity,
     track: (String, Map<String, Any?>) -> Unit,
-    viewTargetLocators: List<ViewTargetLocator>,
-    private val logger: Logger,
+    protected val viewTargetLocators: List<ViewTargetLocator>,
+    protected val logger: Logger,
     private val motionEventObtainer: MotionEventObtainer = object : MotionEventObtainer {},
     private val gestureListener: AutocaptureGestureListener =
         AutocaptureGestureListener(activity, track, logger, viewTargetLocators),

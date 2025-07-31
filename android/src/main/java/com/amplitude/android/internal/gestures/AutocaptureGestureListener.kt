@@ -6,17 +6,9 @@ import android.view.MotionEvent
 import androidx.annotation.VisibleForTesting
 import com.amplitude.android.internal.ViewHierarchyScanner.findTarget
 import com.amplitude.android.internal.ViewTarget
+import com.amplitude.android.internal.buildElementInteractedProperties
 import com.amplitude.android.internal.locators.ViewTargetLocator
-import com.amplitude.android.utilities.DefaultEventUtils.Companion.screenName
 import com.amplitude.common.Logger
-import com.amplitude.core.Constants.EventProperties.ACTION
-import com.amplitude.core.Constants.EventProperties.HIERARCHY
-import com.amplitude.core.Constants.EventProperties.SCREEN_NAME
-import com.amplitude.core.Constants.EventProperties.TARGET_CLASS
-import com.amplitude.core.Constants.EventProperties.TARGET_RESOURCE
-import com.amplitude.core.Constants.EventProperties.TARGET_SOURCE
-import com.amplitude.core.Constants.EventProperties.TARGET_TAG
-import com.amplitude.core.Constants.EventProperties.TARGET_TEXT
 import com.amplitude.core.Constants.EventTypes.ELEMENT_INTERACTED
 import java.lang.ref.WeakReference
 
@@ -36,9 +28,9 @@ class AutocaptureGestureListener(
     override fun onShowPress(e: MotionEvent) {}
 
     override fun onSingleTapUp(e: MotionEvent): Boolean {
-        val decorView =
-            activityRef.get()?.window?.decorView
-                ?: logger.error("DecorView is null in onSingleTapUp()").let { return false }
+        val activity = activityRef.get() ?: logger.error("Activity is null in onSingleTapUp()").let { return false }
+        val decorView = activity.window?.decorView ?: logger.error("DecorView is null in onSingleTapUp()").let { return false }
+
         val target: ViewTarget =
             decorView.findTarget(
                 Pair(e.x, e.y),
@@ -47,20 +39,9 @@ class AutocaptureGestureListener(
                 logger,
             ) ?: logger.warn("Unable to find click target. No event captured.").let { return false }
 
-        mapOf(
-            ACTION to "touch",
-            TARGET_CLASS to target.className,
-            TARGET_RESOURCE to target.resourceName,
-            TARGET_TAG to target.tag,
-            TARGET_TEXT to target.text,
-            TARGET_SOURCE to
-                target.source
-                    .replace("_", " ")
-                    .split(" ")
-                    .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } },
-            HIERARCHY to target.hierarchy,
-            SCREEN_NAME to activityRef.get()?.screenName,
-        ).let { track(ELEMENT_INTERACTED, it) }
+        // Build ELEMENT_INTERACTED properties using shared function
+        val properties = buildElementInteractedProperties(target, activity)
+        track(ELEMENT_INTERACTED, properties)
 
         return false
     }
