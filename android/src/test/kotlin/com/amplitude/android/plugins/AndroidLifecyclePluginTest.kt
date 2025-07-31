@@ -333,7 +333,7 @@ class AndroidLifecyclePluginTest {
                 mockedAmplitude.track(
                     eq(EventTypes.APPLICATION_OPENED),
                     match { param -> param.values.first() == false },
-                    any(),
+                    null,
                 )
             }
 
@@ -343,7 +343,7 @@ class AndroidLifecyclePluginTest {
                 mockedAmplitude.track(
                     eq(EventTypes.APPLICATION_BACKGROUNDED),
                     any(),
-                    any(),
+                    null,
                 )
             }
 
@@ -351,9 +351,9 @@ class AndroidLifecyclePluginTest {
             advanceUntilIdle()
             verify(exactly = 1) {
                 mockedAmplitude.track(
-                    EventTypes.APPLICATION_OPENED,
+                    eq(EventTypes.APPLICATION_OPENED),
                     match { param -> param.values.first() == false },
-                    any(),
+                    null,
                 )
             }
             close()
