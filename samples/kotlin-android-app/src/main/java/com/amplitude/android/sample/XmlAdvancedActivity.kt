@@ -3,6 +3,7 @@ package com.amplitude.android.sample
 import android.os.Bundle
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
+import com.amplitude.android.FrustrationAnalyticsUtils
 import com.amplitude.core.events.Identify
 import com.amplitude.core.events.Revenue
 
@@ -10,6 +11,9 @@ class XmlAdvancedActivity : AppCompatActivity() {
     private val amplitude = MainApplication.amplitude
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Set up automatic XML attribute processing BEFORE setContentView
+        FrustrationAnalyticsUtils.setupAutomaticXmlProcessing(this)
+        
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_advanced)
 

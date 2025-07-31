@@ -1,32 +1,71 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".AdvancedActivity">
+    android:orientation="vertical"
+    android:padding="16dp">
 
+    <!-- Test buttons with custom attributes -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <!-- XML Ignore Both Button -->
+        <Button
+            android:id="@+id/xml_ignored_both_button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:backgroundTint="#9C27B0"
+            android:text="Ignored (Both XML)"
+            android:textColor="@android:color/white"
+            app:amplitudeIgnoreFrustration="true" />
+
+        <!-- XML Ignore Rage Button -->
+        <Button
+            android:id="@+id/xml_ignored_rage_button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:backgroundTint="#FF9800"
+            android:text="XML Ignored (Rage XML)"
+            android:textColor="@android:color/white"
+            android:textSize="12sp"
+            app:amplitudeIgnoreRageClick="true" />
+
+        <!-- XML Ignore Dead Button -->
+        <Button
+            android:id="@+id/xml_ignored_dead_button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:backgroundTint="#808080"
+            android:stateListAnimator="@null"
+            android:text="XML Ignored (Dead XML)"
+            android:textColor="@android:color/white"
+            android:textSize="12sp"
+            app:amplitudeIgnoreDeadClick="true" />
+
+    </LinearLayout>
+
+    <!-- Regular buttons -->
     <Button
         android:id="@+id/send_advanced_events_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Send Advanced Events"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_bias="0.5" />
+        android:layout_marginTop="32dp"
+        android:layout_gravity="center"
+        android:text="Send Advanced Events" />
 
     <Button
         android:id="@+id/back_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
+        android:layout_gravity="center"
         android:text="Back"
-        app:backgroundTint="#03A9F4"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.5"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/send_advanced_events_button" />
-</androidx.constraintlayout.widget.ConstraintLayout>
+        app:backgroundTint="#03A9F4" />
+
+</LinearLayout>

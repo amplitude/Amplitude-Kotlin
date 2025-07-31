@@ -1,6 +1,10 @@
 package com.amplitude.android
 
+import android.content.Context
+import android.util.AttributeSet
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import androidx.compose.ui.Modifier
 import com.amplitude.android.internal.compose.AmpFrustrationIgnoreElement
 
@@ -21,19 +25,18 @@ import com.amplitude.android.internal.compose.AmpFrustrationIgnoreElement
  *
  * ## Usage Examples
  *
- * ### Android Views (Programmatic)
+ * ### Automatic XML Processing (Recommended)
  * ```kotlin
- * // Ignore all frustration analytics
- * val backButton = findViewById<Button>(R.id.back_button)
- * FrustrationAnalyticsUtils.ignoreFrustrationAnalytics(backButton)
- *
- * // Ignore only rage clicks (allow dead click detection)
- * val incrementButton = findViewById<Button>(R.id.increment_button)
- * FrustrationAnalyticsUtils.ignoreFrustrationAnalytics(
- *     incrementButton,
- *     rageClick = true,
- *     deadClick = false
- * )
+ * class YourActivity : AppCompatActivity() {
+ *     override fun onCreate(savedInstanceState: Bundle?) {
+ *         // Set up automatic XML attribute processing BEFORE setContentView
+ *         FrustrationAnalyticsUtils.setupAutomaticXmlProcessing(this)
+ *         
+ *         super.onCreate(savedInstanceState)
+ *         setContentView(R.layout.your_layout)
+ *         // Your XML attributes will now be automatically processed!
+ *     }
+ * }
  * ```
  *
  * ### Android Views (XML)
@@ -57,13 +60,26 @@ import com.amplitude.android.internal.compose.AmpFrustrationIgnoreElement
  * val backButton = findViewById<Button>(R.id.back_button)
  * FrustrationAnalyticsUtils.ignoreFrustrationAnalytics(backButton)
  *
- * // Ignore only rage clicks
+ * // Ignore only rage clicks (allow dead click detection)
  * val incrementButton = findViewById<Button>(R.id.increment_button)
  * FrustrationAnalyticsUtils.ignoreFrustrationAnalytics(
  *     incrementButton,
  *     rageClick = true,
  *     deadClick = false
  * )
+ * ```
+ *
+ * ### Manual XML Processing (Alternative)
+ * If you can't use automatic processing, you can manually process views:
+ * ```kotlin
+ * override fun onCreate(savedInstanceState: Bundle?) {
+ *     super.onCreate(savedInstanceState)
+ *     setContentView(R.layout.your_layout)
+ *     
+ *     // Process the entire layout
+ *     val rootView = findViewById<ViewGroup>(android.R.id.content)
+ *     FrustrationAnalyticsUtils.processXmlAttributesRecursively(rootView)
+ * }
  * ```
  *
  * ### Jetpack Compose
@@ -95,6 +111,7 @@ import com.amplitude.android.internal.compose.AmpFrustrationIgnoreElement
  *
  * @see [ignoreFrustrationAnalytics] for Android Views
  * @see [Modifier.ignoreFrustrationAnalytics] for Jetpack Compose
+ * @see [setupAutomaticXmlProcessing] for automatic XML attribute processing
  *
  * **Note**: Regular interaction events are still tracked when frustration analytics are ignored.
  */
@@ -158,6 +175,146 @@ object FrustrationAnalyticsUtils {
         view.setTag(IGNORE_DEAD_CLICK_KEY, null)
         view.setTag(IGNORE_FRUSTRATION_KEY, null)
         return view
+    }
+
+    /**
+     * Processes XML attributes for frustration analytics and sets the corresponding programmatic flags.
+     * This method should be called after view inflation to ensure XML attributes are properly processed.
+     * 
+     * @param view The view to process
+     * @param attributeSet The AttributeSet from view inflation (if available)
+     * @return The same view for chaining
+     */
+    fun processXmlAttributes(view: View, attributeSet: android.util.AttributeSet? = null): View {
+        if (attributeSet != null) {
+            try {
+                val context = view.context
+                val typedArray = context.obtainStyledAttributes(
+                    attributeSet,
+                    com.amplitude.android.R.styleable.AmplitudeFrustrationAnalytics
+                )
+
+                val ignoreRageClick = typedArray.getBoolean(
+                    com.amplitude.android.R.styleable.AmplitudeFrustrationAnalytics_amplitudeIgnoreRageClick,
+                    false
+                )
+                val ignoreDeadClick = typedArray.getBoolean(
+                    com.amplitude.android.R.styleable.AmplitudeFrustrationAnalytics_amplitudeIgnoreDeadClick,
+                    false
+                )
+                val ignoreFrustration = typedArray.getBoolean(
+                    com.amplitude.android.R.styleable.AmplitudeFrustrationAnalytics_amplitudeIgnoreFrustration,
+                    false
+                )
+
+                typedArray.recycle()
+
+                // Set programmatic flags based on XML attributes
+                if (ignoreRageClick || ignoreDeadClick || ignoreFrustration) {
+                    ignoreFrustrationAnalytics(
+                        view,
+                        rageClick = ignoreRageClick || ignoreFrustration,
+                        deadClick = ignoreDeadClick || ignoreFrustration
+                    )
+                }
+            } catch (e: Exception) {
+                // Silently ignore XML processing errors
+            }
+        }
+        return view
+    }
+
+    /**
+     * Processes all views in a ViewGroup hierarchy to handle XML attributes.
+     * This is a convenience method for processing entire layouts.
+     * 
+     * @param viewGroup The ViewGroup to process recursively
+     */
+    fun processXmlAttributesRecursively(viewGroup: android.view.ViewGroup) {
+        for (i in 0 until viewGroup.childCount) {
+            val child = viewGroup.getChildAt(i)
+            processXmlAttributes(child)
+            if (child is android.view.ViewGroup) {
+                processXmlAttributesRecursively(child)
+            }
+        }
+    }
+
+    /**
+     * Sets up automatic XML attribute processing for an Activity.
+     * Call this in your Activity's onCreate() before setContentView() to automatically
+     * process all XML attributes during view inflation.
+     * 
+     * @param activity The activity to set up automatic processing for
+     */
+    fun setupAutomaticXmlProcessing(activity: android.app.Activity) {
+        val layoutInflater = activity.layoutInflater
+        val existingFactory = layoutInflater.factory2 ?: layoutInflater.factory
+        
+        layoutInflater.factory2 = AmplitudeFrustrationAttributeFactory(existingFactory)
+    }
+
+    /**
+     * LayoutInflater.Factory2 that automatically processes Amplitude frustration analytics
+     * XML attributes during view inflation.
+     */
+    private class AmplitudeFrustrationAttributeFactory(
+        private val delegate: LayoutInflater.Factory2?
+    ) : LayoutInflater.Factory2 {
+        
+        constructor(factory: LayoutInflater.Factory?) : this(
+            if (factory is LayoutInflater.Factory2) factory else null
+        )
+
+        override fun onCreateView(
+            parent: View?,
+            name: String,
+            context: Context,
+            attrs: AttributeSet
+        ): View? {
+            // First, let the delegate (or system) create the view
+            val view = delegate?.onCreateView(parent, name, context, attrs)
+                ?: onCreateView(name, context, attrs)
+            
+            // Process our custom attributes if view was created
+            view?.let { processXmlAttributes(it, attrs) }
+            
+            return view
+        }
+
+        override fun onCreateView(name: String, context: Context, attrs: AttributeSet): View? {
+            return delegate?.onCreateView(name, context, attrs)
+                ?: createViewFromTag(context, name, attrs)
+        }
+
+        private fun createViewFromTag(context: Context, name: String, attrs: AttributeSet): View? {
+            return try {
+                when {
+                    name.contains('.') -> {
+                        // Fully qualified class name
+                        val clazz = Class.forName(name)
+                        val constructor = clazz.getConstructor(Context::class.java, AttributeSet::class.java)
+                        constructor.newInstance(context, attrs) as View
+                    }
+                    else -> {
+                        // Try standard Android view packages
+                        val packages = arrayOf("android.widget.", "android.view.", "android.webkit.")
+                        for (pkg in packages) {
+                            try {
+                                val clazz = Class.forName(pkg + name)
+                                val constructor = clazz.getConstructor(Context::class.java, AttributeSet::class.java)
+                                return constructor.newInstance(context, attrs) as View
+                            } catch (e: ClassNotFoundException) {
+                                // Continue to next package
+                            }
+                        }
+                        null
+                    }
+                }
+            } catch (e: Exception) {
+                null
+            }
+        }
     }
 }
 

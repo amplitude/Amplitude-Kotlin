@@ -70,59 +70,16 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
         val ignoreDeadClickKey = "amplitude_ignore_dead_click".hashCode()
         val ignoreFrustrationKey = "amplitude_ignore_frustration".hashCode()
 
-        // Check for programmatically set flags first
+        // Check for programmatically set flags first (includes XML-to-programmatic conversions)
         val programmaticIgnoreRage = getTag(ignoreRageClickKey) as? Boolean ?: false
         val programmaticIgnoreDead = getTag(ignoreDeadClickKey) as? Boolean ?: false
         val programmaticIgnoreAll = getTag(ignoreFrustrationKey) as? Boolean ?: false
 
-        // If programmatic flags are set, use those (takes precedence)
-        if (programmaticIgnoreRage || programmaticIgnoreDead || programmaticIgnoreAll) {
-            return FrustrationSettings(
-                ignoreRageClick = programmaticIgnoreRage || programmaticIgnoreAll,
-                ignoreDeadClick = programmaticIgnoreDead || programmaticIgnoreAll,
-            )
-        }
-
-        // Otherwise, try to read custom XML attributes if available
-        try {
-            val context = context
-
-            // Get the styled attributes for this view using the declare-styleable
-            val typedArray =
-                context.obtainStyledAttributes(
-                    null,
-                    R.styleable.AmplitudeFrustrationAnalytics,
-                    0,
-                    0,
-                )
-
-            val ignoreRageFromXml =
-                typedArray.getBoolean(
-                    R.styleable.AmplitudeFrustrationAnalytics_amplitudeIgnoreRageClick,
-                    false,
-                )
-            val ignoreDeadFromXml =
-                typedArray.getBoolean(
-                    R.styleable.AmplitudeFrustrationAnalytics_amplitudeIgnoreDeadClick,
-                    false,
-                )
-            val ignoreAllFromXml =
-                typedArray.getBoolean(
-                    R.styleable.AmplitudeFrustrationAnalytics_amplitudeIgnoreFrustration,
-                    false,
-                )
-
-            typedArray.recycle()
-
-            // Return XML-based settings
-            return FrustrationSettings(
-                ignoreRageClick = ignoreRageFromXml || ignoreAllFromXml,
-                ignoreDeadClick = ignoreDeadFromXml || ignoreAllFromXml,
-            )
-        } catch (e: Exception) {
-            // Return default (no ignore flags)
-            return FrustrationSettings()
-        }
+        // Return programmatic settings (which now include XML attributes processed during inflation)
+        return FrustrationSettings(
+            ignoreRageClick = programmaticIgnoreRage || programmaticIgnoreAll,
+            ignoreDeadClick = programmaticIgnoreDead || programmaticIgnoreAll,
+        )
     }
 
     private fun View.touchWithinBounds(position: Pair<Float, Float>): Boolean {
