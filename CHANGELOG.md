@@ -1,3 +1,15 @@
+# [1.22.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.21.5...v1.22.0) (2025-07-31)
+
+
+### Bug Fixes
+
+* simplify signal provider ([#320](https://github.com/amplitude/Amplitude-Kotlin/issues/320)) ([d4787c4](https://github.com/amplitude/Amplitude-Kotlin/commit/d4787c4e439628d1db88f5ef641efbf56ac51bb1))
+
+
+### Features
+
+* frustration analytics (rage click, dead click, optional ignoring of elements) ([#319](https://github.com/amplitude/Amplitude-Kotlin/issues/319)) ([74f0d9d](https://github.com/amplitude/Amplitude-Kotlin/commit/74f0d9dffeb8c4422136cd41af9b7d92fd482943))
+
 ## [1.21.5](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.21.4...v1.21.5) (2025-07-22)
 
 
