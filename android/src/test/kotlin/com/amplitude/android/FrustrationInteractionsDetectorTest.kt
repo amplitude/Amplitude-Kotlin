@@ -2,6 +2,7 @@ package com.amplitude.android
 
 import android.app.Activity
 import com.amplitude.android.internal.ViewTarget
+import com.amplitude.android.signals.UiChangeSignal
 import com.amplitude.common.Logger
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Constants.EventProperties.ACTION
@@ -296,8 +297,15 @@ class FrustrationInteractionsDetectorTest {
 
     @Test
     fun `dead click detection should work after start()`() {
-        // Start the detector
+        val uiChangeFlow = MutableSharedFlow<Signal>(extraBufferCapacity = 1)
+        every { mockAmplitude.signalFlow } returns uiChangeFlow
+
+        // Start the detector and ensure the signal collector is subscribed
         detector.start()
+        testDispatcher.scheduler.runCurrent()
+        // Emit a UiChangeSignal to enable dead click detection
+        uiChangeFlow.tryEmit(UiChangeSignal(java.util.Date(System.currentTimeMillis())))
+        testDispatcher.scheduler.runCurrent()
 
         // Process a click
         val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
@@ -312,8 +320,55 @@ class FrustrationInteractionsDetectorTest {
         testDispatcher.scheduler.advanceTimeBy(4000L)
         testDispatcher.scheduler.runCurrent()
 
-        // Verify dead click was tracked (since no UI change signal was emitted)
+        // Verify dead click was tracked
         verify { mockAmplitude.track(DEAD_CLICK, any()) }
+    }
+
+    @Test
+    fun `dead click detection should not work after start() until UiChangeSignal is observed`() {
+        detector.start()
+
+        val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
+        detector.processClick(clickInfo, testTargetInfo, mockViewTarget, mockActivity)
+
+        // Advance time past timeout
+        testDispatcher.scheduler.advanceTimeBy(4000L)
+        testDispatcher.scheduler.runCurrent()
+
+        // Should not track without UiChangeSignal and should log the gating error
+        verify(exactly = 0) { mockAmplitude.track(DEAD_CLICK, any()) }
+        verify {
+            mockLogger.error(
+                match { it.contains("no UI change signals observed yet") },
+            )
+        }
+    }
+
+    @Test
+    fun `dead click detection should reset after stop()`() {
+        // Enable by emitting a UiChangeSignal after start
+        detector.start()
+        uiChangeFlow.tryEmit(UiChangeSignal(java.util.Date(System.currentTimeMillis())))
+        testDispatcher.scheduler.runCurrent()
+
+        // Stop should reset gating state
+        detector.stop()
+
+        // Restart but do NOT emit UiChangeSignal again
+        detector.start()
+
+        val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
+        detector.processClick(clickInfo, testTargetInfo, mockViewTarget, mockActivity)
+
+        testDispatcher.scheduler.advanceTimeBy(4000L)
+        testDispatcher.scheduler.runCurrent()
+
+        verify(exactly = 0) { mockAmplitude.track(DEAD_CLICK, any()) }
+        verify {
+            mockLogger.error(
+                match { it.contains("no UI change signals observed yet") },
+            )
+        }
     }
 
     //endregion
