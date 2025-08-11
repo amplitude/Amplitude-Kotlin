@@ -356,7 +356,7 @@ class FrustrationInteractionsDetector(
 
     /**
      * Checks if rage click detection should be ignored for this target.
-     * Supports custom XML attributes, programmatic API, and Compose AmpFrustrationIgnoreElement.
+     * Supports programmatic API and Compose AmpFrustrationIgnoreElement.
      */
     private fun isRageClickIgnored(target: ViewTarget): Boolean {
         // Check programmatic/XML/compose ignore flags
@@ -365,7 +365,7 @@ class FrustrationInteractionsDetector(
 
     /**
      * Checks if dead click detection should be ignored for this target.
-     * Supports custom XML attributes, programmatic API, and Compose AmpFrustrationIgnoreElement.
+     * Supports programmatic API and Compose AmpFrustrationIgnoreElement.
      */
     private fun isDeadClickIgnored(target: ViewTarget): Boolean {
         // Check programmatic/XML/compose ignore flags
