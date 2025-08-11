@@ -1,15 +1,15 @@
 # We rely on these Google Play services AppSet classes when useAppSetIdForDeviceId = true
 -keep class com.google.android.gms.appset.AppSet {
-  public getClient(android.content.Context);
+  public static com.google.android.gms.appset.AppSetIdClient getClient(android.content.Context);
 }
 -keep class com.google.android.gms.appset.AppSetIdClient {
-  public getAppSetIdInfo();
+  public com.google.android.gms.tasks.Task getAppSetIdInfo();
 }
 -keep class com.google.android.gms.appset.AppSetIdInfo {
-  public getId();
+  public java.lang.String getId();
 }
 -keep class com.google.android.gms.tasks.Tasks {
-  public await(com.google.android.gms.tasks.Task);
+  public static java.lang.Object await(com.google.android.gms.tasks.Task);
 }
 -keep class com.google.android.gms.tasks.Task
 
