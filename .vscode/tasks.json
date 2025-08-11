@@ -1,0 +1,101 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Install and Run MainActivity",
+			"type": "shell",
+			"command": "./gradlew samples:kotlin-android-app:installDebug && adb shell am start -n com.amplitude.android.sample/.MainActivity",
+			"group": "build",
+			"description": "Installs the debug APK and starts MainActivity",
+			"problemMatcher": [
+				"$gradle"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "Install and Run AdvancedActivity",
+			"type": "shell",
+			"command": "./gradlew samples:kotlin-android-app:installDebug && adb shell am start -n com.amplitude.android.sample/.AdvancedActivity",
+			"group": "build",
+			"description": "Installs the debug APK and starts AdvancedActivity",
+			"problemMatcher": [
+				"$gradle"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "Install Release APK",
+			"type": "shell",
+			"command": "./gradlew samples:kotlin-android-app:installRelease",
+			"group": "build",
+			"description": "Installs the release APK without starting it",
+			"problemMatcher": [
+				"$gradle"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "Clean and Install Debug",
+			"type": "shell",
+			"command": "./gradlew clean samples:kotlin-android-app:installDebug",
+			"group": "build",
+			"description": "Cleans the project and installs debug APK",
+			"problemMatcher": [
+				"$gradle"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "Run Android Tests",
+			"type": "shell",
+			"command": "./gradlew android:testDebugUnitTest",
+			"group": "test",
+			"description": "Runs Android unit tests",
+			"problemMatcher": [
+				"$gradle"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		},
+		{
+			"label": "Install Debug Only",
+			"type": "shell",
+			"command": "./gradlew samples:kotlin-android-app:installDebug",
+			"group": "build",
+			"description": "Installs the debug APK without starting it",
+			"problemMatcher": [
+				"$gradle"
+			],
+			"presentation": {
+				"echo": true,
+				"reveal": "always",
+				"focus": false,
+				"panel": "shared"
+			}
+		}
+	]
+}
