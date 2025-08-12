@@ -1,3 +1,12 @@
+## [1.22.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.22.0...v1.22.1) (2025-08-12)
+
+
+### Bug Fixes
+
+* add check for UI change signal before logging any dead clicks ([#324](https://github.com/amplitude/Amplitude-Kotlin/issues/324)) ([9735029](https://github.com/amplitude/Amplitude-Kotlin/commit/97350294b1fda32398b2fac7a658f92bc8b2b6b1))
+* include return types and proper static qualifiers where required ([#322](https://github.com/amplitude/Amplitude-Kotlin/issues/322)) ([dfdc7b8](https://github.com/amplitude/Amplitude-Kotlin/commit/dfdc7b8007dfd6285ba1be238404c8d54672a1f5))
+* remove ignoring of Views via XML, use programmatic instead ([#325](https://github.com/amplitude/Amplitude-Kotlin/issues/325)) ([1091b13](https://github.com/amplitude/Amplitude-Kotlin/commit/1091b13e9809ecb3ba308e84f29075ce25981159))
+
 # [1.22.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.21.5...v1.22.0) (2025-07-31)
 
 
