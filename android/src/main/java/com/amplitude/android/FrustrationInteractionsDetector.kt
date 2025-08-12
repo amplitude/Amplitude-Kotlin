@@ -66,6 +66,7 @@ class FrustrationInteractionsDetector(
     }
 
     fun stop() {
+        lastUiChangeTime = 0L
         uiChangeCollectionJob?.cancel()
         // Cancel all pending dead click jobs to prevent resource leaks
         pendingDeadClicks.values.forEach { it.job?.cancel() }
@@ -162,6 +163,12 @@ class FrustrationInteractionsDetector(
             return
         }
 
+        // Dead click detection requires an active SignalProvider plugin to emit UI change signals
+        if (!hasActiveSignalProvider()) {
+            logger.error("Dead click detection is disabled - no UI change signals observed yet. Ensure SessionReplay plugin is active.")
+            return
+        }
+
         // Cancel any existing dead click job for this location to prevent accumulation
         pendingDeadClicks[clickId]?.job?.cancel()
 
@@ -206,6 +213,12 @@ class FrustrationInteractionsDetector(
                 }
             }
     }
+
+    /**
+     * This is used to determine if a SignalProvider-backed plugin is active.
+     * So if we have seen at least one UiChangeSignal, lastUiChangeTime will be > 0.
+     */
+    private fun hasActiveSignalProvider(): Boolean = lastUiChangeTime > 0L
 
     private fun startNewRageClickSession(
         locationKey: String,
