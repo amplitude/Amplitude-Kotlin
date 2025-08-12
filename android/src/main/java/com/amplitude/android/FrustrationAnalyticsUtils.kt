@@ -36,36 +36,6 @@ import com.amplitude.android.internal.compose.AmpFrustrationIgnoreElement
  * )
  * ```
  *
- * ### Android Views (XML)
- * ```xml
- * <!-- Ignore all frustration analytics -->
- * <Button
- *     app:amplitudeIgnoreFrustration="true" />
- *
- * <!-- Ignore only rage clicks -->
- * <Button
- *     app:amplitudeIgnoreRageClick="true" />
- *
- * <!-- Ignore only dead clicks -->
- * <Button
- *     app:amplitudeIgnoreDeadClick="true" />
- * ```
- *
- * ### Android Views (Programmatic)
- * ```kotlin
- * // Ignore all frustration analytics
- * val backButton = findViewById<Button>(R.id.back_button)
- * FrustrationAnalyticsUtils.ignoreFrustrationAnalytics(backButton)
- *
- * // Ignore only rage clicks
- * val incrementButton = findViewById<Button>(R.id.increment_button)
- * FrustrationAnalyticsUtils.ignoreFrustrationAnalytics(
- *     incrementButton,
- *     rageClick = true,
- *     deadClick = false
- * )
- * ```
- *
  * ### Jetpack Compose
  * ```kotlin
  * // Ignore all frustration analytics
