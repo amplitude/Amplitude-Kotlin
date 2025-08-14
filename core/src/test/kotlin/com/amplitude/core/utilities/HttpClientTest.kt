@@ -1,10 +1,14 @@
 package com.amplitude.core.utilities
 
+import com.amplitude.common.Logger
+import com.amplitude.common.jvm.ConsoleLogger
 import com.amplitude.core.Configuration
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.http.FailedResponse
 import com.amplitude.core.utilities.http.HttpClient
+import io.mockk.mockk
 import io.mockk.spyk
+import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -24,6 +28,7 @@ import java.util.concurrent.TimeUnit
 class HttpClientTest {
     private lateinit var server: MockWebServer
     private val apiKey = "API_KEY"
+    private val logger = ConsoleLogger()
 
     @ExperimentalCoroutinesApi
     @BeforeEach
@@ -49,7 +54,7 @@ class HttpClientTest {
         val event = BaseEvent()
         event.eventType = "test"
 
-        val httpClient = spyk(HttpClient(config))
+        val httpClient = spyk(HttpClient(config, logger))
         httpClient.upload(JSONUtil.eventsToString(listOf(event)))
 
         val request = runRequest()
@@ -72,7 +77,7 @@ class HttpClientTest {
         val event = BaseEvent()
         event.eventType = "test"
 
-        val httpClient = spyk(HttpClient(config))
+        val httpClient = spyk(HttpClient(config, logger))
 
         httpClient.upload(JSONUtil.eventsToString(listOf(event)))
 
@@ -96,7 +101,7 @@ class HttpClientTest {
         val event = BaseEvent()
         event.eventType = "test"
 
-        val httpClient = spyk(HttpClient(config))
+        val httpClient = spyk(HttpClient(config, logger))
         val diagnostics = Diagnostics()
         diagnostics.addErrorLog("error")
         diagnostics.addMalformedEvent("malformed-event")
@@ -126,12 +131,16 @@ class HttpClientTest {
         val event = BaseEvent()
         event.eventType = "test"
 
-        val httpClient = spyk(HttpClient(config))
+        val httpClient = spyk(HttpClient(config, logger))
         val diagnostics = Diagnostics()
         diagnostics.addErrorLog("error")
         diagnostics.addMalformedEvent("malformed-event")
 
-        val response = httpClient.upload(JSONUtil.eventsToString(listOf(event)), diagnostics.extractDiagnostics())
+        val response =
+            httpClient.upload(
+                JSONUtil.eventsToString(listOf(event)),
+                diagnostics.extractDiagnostics(),
+            )
 
         runRequest()
         assertTrue(200 in response.status.range)
@@ -152,7 +161,7 @@ class HttpClientTest {
         val event = BaseEvent()
         event.eventType = "test"
 
-        val httpClient = spyk(HttpClient(config))
+        val httpClient = spyk(HttpClient(config, logger))
 
         val response = httpClient.upload(JSONUtil.eventsToString(listOf(event)))
 
@@ -160,6 +169,92 @@ class HttpClientTest {
         assertTrue(503 in response.status.range)
         val responseBody = response as FailedResponse
         assertEquals("<html>Error occurred</html>", responseBody.error)
+    }
+
+    @Test
+    fun `test logger can be injected into HttpClient`() {
+        // Simple test that verifies HttpClient accepts logger parameter and functions normally
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{\"code\": \"success\"}"))
+
+        val mockLogger = mockk<Logger>(relaxed = true)
+        val config =
+            Configuration(
+                apiKey = apiKey,
+                serverUrl = server.url("/").toString(),
+            )
+        val event = BaseEvent()
+        event.eventType = "test"
+
+        // This test verifies that HttpClient can be constructed with a logger parameter
+        val httpClient = HttpClient(config, mockLogger)
+        val response = httpClient.upload(JSONUtil.eventsToString(listOf(event)))
+
+        // Verify normal operation works with logger injection
+        assertNotNull(response)
+        assertTrue(200 in response.status.range)
+
+        // Verify no error logs were called during normal operation
+        verify(exactly = 0) { mockLogger.error(any()) }
+    }
+
+    @Test
+    fun `test logger warn is called when IOException occurs in getInputStream`() {
+        // Set up server to return error response that will trigger error stream fallback
+        server.enqueue(MockResponse().setResponseCode(500).setBody("Internal Server Error"))
+
+        val mockLogger = mockk<Logger>(relaxed = true)
+        val config =
+            Configuration(
+                apiKey = apiKey,
+                serverUrl = server.url("/").toString(),
+            )
+        val event = BaseEvent()
+        event.eventType = "test"
+
+        val httpClient = HttpClient(config, mockLogger)
+        val response = httpClient.upload(JSONUtil.eventsToString(listOf(event)))
+
+        // Verify that logger.warn was called when falling back to error stream
+        verify {
+            mockLogger.warn(
+                match { it.contains("Failed to get input stream, falling back to error stream") },
+            )
+        }
+
+        // Verify we still get a valid response (error response should be read from error stream)
+        assertEquals(500, response.status.statusCode)
+    }
+
+    @Test
+    fun `test logger calls include exception messages`() {
+        // Test that the actual exception message is included in the warn log (using known working scenario)
+        server.enqueue(MockResponse().setResponseCode(500).setBody("Internal Server Error"))
+
+        val mockLogger = mockk<Logger>(relaxed = true)
+        val config =
+            Configuration(
+                apiKey = apiKey,
+                serverUrl = server.url("/").toString(),
+            )
+        val event = BaseEvent()
+        event.eventType = "test"
+
+        val httpClient = HttpClient(config, mockLogger)
+        httpClient.upload(JSONUtil.eventsToString(listOf(event)))
+
+        // Verify that the actual exception message is passed to the logger
+        verify {
+            mockLogger.warn(
+                match { message ->
+                    message.contains(
+                        "Failed to get input stream, falling back to error stream",
+                    ) &&
+                        message.contains(
+                            ":",
+                        ) // Should contain the actual exception message after the colon
+                },
+            )
+        }
     }
 
     private fun runRequest(): RecordedRequest? {

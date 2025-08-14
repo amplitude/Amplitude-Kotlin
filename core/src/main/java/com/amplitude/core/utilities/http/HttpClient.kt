@@ -1,5 +1,6 @@
 package com.amplitude.core.utilities.http
 
+import com.amplitude.common.Logger
 import com.amplitude.core.Configuration
 import java.io.BufferedReader
 import java.io.IOException
@@ -10,6 +11,7 @@ import java.net.URL
 
 internal class HttpClient(
     private val configuration: Configuration,
+    private val logger: Logger,
 ) : HttpClientInterface {
     private fun getConnection(url: String): HttpURLConnection {
         val requestedURL: URL =
@@ -41,14 +43,14 @@ internal class HttpClient(
         connection.outputStream.close()
 
         val responseCode: Int = connection.responseCode
-        val responseBody: String?
         var inputStream: InputStream? = null
-        try {
+        return try {
             inputStream = getInputStream(connection)
-            responseBody = inputStream.bufferedReader().use(BufferedReader::readText)
-            return AnalyticsResponse.create(responseCode, responseBody)
+            val responseBody = inputStream.bufferedReader().use(BufferedReader::readText)
+            AnalyticsResponse.create(responseCode, responseBody)
         } catch (e: IOException) {
-            return AnalyticsResponse.create(408, null)
+            logger.error("Failed to read response from server: ${e.message}")
+            AnalyticsResponse.create(408, null) // Request Timeout
         } finally {
             inputStream?.close()
             connection.disconnect()
@@ -62,7 +64,8 @@ internal class HttpClient(
     private fun getInputStream(connection: HttpURLConnection): InputStream {
         return try {
             connection.inputStream
-        } catch (ignored: IOException) {
+        } catch (e: IOException) {
+            logger.warn("Failed to get input stream, falling back to error stream: ${e.message}")
             connection.errorStream
         }
     }
