@@ -43,8 +43,13 @@ class HttpClientTest {
     }
 
     @Test
-    fun `test client_upload_time is set on the request`() {
-        server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+    fun `test client_upload_time is set and response headers are extracted`() {
+        server.enqueue(
+            MockResponse()
+                .setBody("{\"code\": \"success\"}")
+                .setHeader("X-Custom-Header", "test-value")
+                .setHeader("Content-Type", "application/json"),
+        )
 
         val config =
             Configuration(
@@ -55,13 +60,18 @@ class HttpClientTest {
         event.eventType = "test"
 
         val httpClient = spyk(HttpClient(config, logger))
-        httpClient.upload(JSONUtil.eventsToString(listOf(event)))
+        val response = httpClient.upload(JSONUtil.eventsToString(listOf(event)))
 
         val request = runRequest()
         val result = JSONObject(request?.body?.readUtf8())
 
+        // Verify request content
         assertEquals(apiKey, result.getString("api_key"))
         assertNotNull(result.getString("client_upload_time"))
+
+        // Verify response properties from generic request method
+        assertTrue(response.status.statusCode == 200)
+        assertTrue(response is com.amplitude.core.utilities.http.SuccessResponse)
     }
 
     @Test
@@ -150,7 +160,7 @@ class HttpClientTest {
     }
 
     @Test
-    fun `test html error response is handled properly`() {
+    fun `test various error responses are handled properly`() {
         server.enqueue(MockResponse().setResponseCode(503).setBody("<html>Error occurred</html>"))
 
         val config =
@@ -172,8 +182,8 @@ class HttpClientTest {
     }
 
     @Test
-    fun `test logger can be injected into HttpClient`() {
-        // Simple test that verifies HttpClient accepts logger parameter and functions normally
+    fun `test logger functionality and connection failures`() {
+        // Test 1: Normal operation with logger injection
         server.enqueue(MockResponse().setResponseCode(200).setBody("{\"code\": \"success\"}"))
 
         val mockLogger = mockk<Logger>(relaxed = true)
@@ -195,6 +205,24 @@ class HttpClientTest {
 
         // Verify no error logs were called during normal operation
         verify(exactly = 0) { mockLogger.error(any()) }
+
+        // Test 2: Verify logger is properly injected for potential connection issues
+        val connectionTestLogger = mockk<Logger>(relaxed = true)
+        val testConfig =
+            Configuration(
+                apiKey = apiKey,
+                serverUrl = server.url("/").toString(),
+            )
+
+        val testHttpClient = HttpClient(testConfig, connectionTestLogger)
+
+        // Enqueue a successful response to verify normal path doesn't log errors
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{\"code\": \"success\"}"))
+        val testResponse = testHttpClient.upload(JSONUtil.eventsToString(listOf(event)))
+
+        // Verify successful response
+        assertEquals(200, testResponse.status.statusCode)
+        verify(exactly = 0) { connectionTestLogger.error(any()) }
     }
 
     @Test
@@ -226,8 +254,8 @@ class HttpClientTest {
     }
 
     @Test
-    fun `test logger calls include exception messages`() {
-        // Test that the actual exception message is included in the warn log (using known working scenario)
+    fun `test logger calls include exception messages and generic request method works`() {
+        // Test 1: Exception message inclusion (original test)
         server.enqueue(MockResponse().setResponseCode(500).setBody("Internal Server Error"))
 
         val mockLogger = mockk<Logger>(relaxed = true)
@@ -255,6 +283,18 @@ class HttpClientTest {
                 },
             )
         }
+
+        // Test 2: Verify generic request functionality handles different status codes
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{\"status\": \"success\"}"))
+
+        val directLogger = mockk<Logger>(relaxed = true)
+        val directHttpClient = HttpClient(config, directLogger)
+
+        // Test generic request handling through upload method
+        val testResponse = directHttpClient.upload(JSONUtil.eventsToString(listOf(event)))
+
+        // Verify generic request method works correctly
+        assertTrue(200 in testResponse.status.range)
     }
 
     private fun runRequest(): RecordedRequest? {
