@@ -72,15 +72,11 @@ class Timeline(
     }
 
     internal fun onEnterForeground(timestamp: Long) {
-        amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
-            eventMessageChannel.trySend(EventQueueMessage.EnterForeground(timestamp))
-        }
+        eventMessageChannel.trySend(EventQueueMessage.EnterForeground(timestamp))
     }
 
     internal fun onExitForeground(timestamp: Long) {
-        amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
-            eventMessageChannel.trySend(EventQueueMessage.ExitForeground(timestamp))
-        }
+        eventMessageChannel.trySend(EventQueueMessage.ExitForeground(timestamp))
     }
 
     /**
@@ -89,9 +85,10 @@ class Timeline(
     private suspend fun processEventMessage(message: EventQueueMessage) {
         when (message) {
             is EventQueueMessage.EnterForeground -> {
+                // If we are entering foreground, we may need to start a new session
+                val stopAndStartSessionEvents = startNewSessionIfNeeded(message.timestamp)
                 foreground.set(true)
-                val sessionEvents = startNewSessionIfNeeded(message.timestamp)
-                processAndPersistEvents(sessionEvents)
+                processAndPersistEvents(stopAndStartSessionEvents)
             }
             is EventQueueMessage.Event -> {
                 processEvent(message.event)
@@ -117,12 +114,8 @@ class Timeline(
             }
 
             else -> {
-                if (!foreground.get()) {
-                    val sessionEvents = startNewSessionIfNeeded(eventTimestamp)
-                    processAndPersistEvents(sessionEvents)
-                } else {
-                    refreshSessionTime(eventTimestamp)
-                }
+                val stopAndStartSessionEvents = startNewSessionIfNeeded(eventTimestamp)
+                processAndPersistEvents(stopAndStartSessionEvents)
             }
         }
 
@@ -149,7 +142,7 @@ class Timeline(
     }
 
     private suspend fun startNewSessionIfNeeded(timestamp: Long): List<BaseEvent> {
-        if (inSession() && isWithinMinTimeBetweenSessions(timestamp)) {
+        if (inSession() && (foreground.get() || isWithinMinTimeBetweenSessions(timestamp))) {
             refreshSessionTime(timestamp)
             return emptyList()
         }

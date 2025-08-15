@@ -262,6 +262,14 @@ open class Identify {
         return this
     }
 
+    fun setOnce(
+        property: String,
+        value: Any,
+    ): Identify {
+        setUserProperty(IdentifyOperation.SET_ONCE, property, value)
+        return this
+    }
+
     fun prepend(
         property: String,
         value: Boolean,

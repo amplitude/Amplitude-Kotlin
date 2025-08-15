@@ -119,6 +119,11 @@ class AndroidLifecyclePlugin(
             // We check for On Create in case if sdk was initialised in Main Activity
             onActivityCreated(activity, activity.intent.extras)
         }
+
+        if (started.isEmpty()) {
+            androidAmplitude.onEnterForeground(System.currentTimeMillis())
+        }
+
         started.add(activity.hashCode())
 
         if (APP_LIFECYCLES in autocapture && started.size == 1) {
@@ -140,8 +145,6 @@ class AndroidLifecyclePlugin(
 
     @OptIn(ExperimentalAmplitudeFeature::class)
     override fun onActivityResumed(activity: Activity) {
-        androidAmplitude.onEnterForeground(System.currentTimeMillis())
-
         if (ELEMENT_INTERACTIONS in autocapture || FRUSTRATION_INTERACTIONS in autocapture) {
             DefaultEventUtils(androidAmplitude).startUserInteractionEventTracking(
                 activity,
@@ -152,14 +155,6 @@ class AndroidLifecyclePlugin(
 
     @OptIn(ExperimentalAmplitudeFeature::class)
     override fun onActivityPaused(activity: Activity) {
-        with(androidAmplitude) {
-            onExitForeground(System.currentTimeMillis())
-
-            if ((configuration as Configuration).flushEventsOnClose) {
-                flush()
-            }
-        }
-
         if (ELEMENT_INTERACTIONS in autocapture || FRUSTRATION_INTERACTIONS in autocapture) {
             DefaultEventUtils(androidAmplitude).stopUserInteractionEventTracking(activity)
         }
@@ -171,6 +166,15 @@ class AndroidLifecyclePlugin(
         if (APP_LIFECYCLES in autocapture && started.isEmpty()) {
             DefaultEventUtils(androidAmplitude).trackAppBackgroundedEvent()
             appInBackground = true
+        }
+
+        if (started.isEmpty()) {
+            with(androidAmplitude) {
+                onExitForeground(System.currentTimeMillis())
+                if ((configuration as Configuration).flushEventsOnClose) {
+                    flush()
+                }
+            }
         }
     }
 
