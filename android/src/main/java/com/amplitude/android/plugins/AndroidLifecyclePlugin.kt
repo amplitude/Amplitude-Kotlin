@@ -119,9 +119,12 @@ class AndroidLifecyclePlugin(
             // We check for On Create in case if sdk was initialised in Main Activity
             onActivityCreated(activity, activity.intent.extras)
         }
-        started.add(activity.hashCode())
 
-        androidAmplitude.onEnterForeground(System.currentTimeMillis())
+        if (started.isEmpty()) {
+            androidAmplitude.onEnterForeground(System.currentTimeMillis())
+        }
+
+        started.add(activity.hashCode())
 
         if (APP_LIFECYCLES in autocapture && started.size == 1) {
             DefaultEventUtils(androidAmplitude).trackAppOpenedEvent(
@@ -152,12 +155,6 @@ class AndroidLifecyclePlugin(
 
     @OptIn(ExperimentalAmplitudeFeature::class)
     override fun onActivityPaused(activity: Activity) {
-        with(androidAmplitude) {
-            if ((configuration as Configuration).flushEventsOnClose) {
-                flush()
-            }
-        }
-
         if (ELEMENT_INTERACTIONS in autocapture || FRUSTRATION_INTERACTIONS in autocapture) {
             DefaultEventUtils(androidAmplitude).stopUserInteractionEventTracking(activity)
         }
