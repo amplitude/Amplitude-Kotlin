@@ -1,3 +1,10 @@
+## [1.22.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.22.1...v1.22.2) (2025-08-15)
+
+
+### Bug Fixes
+
+* async foreground and background ([#326](https://github.com/amplitude/Amplitude-Kotlin/issues/326)) ([4b809b0](https://github.com/amplitude/Amplitude-Kotlin/commit/4b809b0fb0a82c41f0cfb77aafbaf7c8a11f313a))
+
 ## [1.22.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.22.0...v1.22.1) (2025-08-12)
 
 
