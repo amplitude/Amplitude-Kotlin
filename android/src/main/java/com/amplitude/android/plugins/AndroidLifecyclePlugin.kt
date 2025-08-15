@@ -142,7 +142,6 @@ class AndroidLifecyclePlugin(
 
     @OptIn(ExperimentalAmplitudeFeature::class)
     override fun onActivityResumed(activity: Activity) {
-
         if (ELEMENT_INTERACTIONS in autocapture || FRUSTRATION_INTERACTIONS in autocapture) {
             DefaultEventUtils(androidAmplitude).startUserInteractionEventTracking(
                 activity,

@@ -36,16 +36,16 @@ class TroubleShootingPlugin : DestinationPlugin() {
     }
 
     override fun track(payload: BaseEvent): BaseEvent {
-        val eventString = buildString {
-            appendLine("Event Type: ${payload.eventType}")
-            appendLine("- User ID: ${payload.userId ?: "N/A"}")
-            appendLine("- Device ID: ${payload.deviceId ?: "N/A"}")
-            val properties = payload.userProperties ?: emptyMap()
-            properties.forEach {
-                appendLine("- - User Property: ${it.key} = ${it.value}")
+        val eventString =
+            buildString {
+                appendLine("Event Type: ${payload.eventType}")
+                appendLine("- User ID: ${payload.userId ?: "N/A"}")
+                appendLine("- Device ID: ${payload.deviceId ?: "N/A"}")
+                val properties = payload.userProperties ?: emptyMap()
+                properties.forEach {
+                    appendLine("- - User Property: ${it.key} = ${it.value}")
+                }
             }
-
-        }
         logger.debug("Processed event: $eventString")
         return payload
     }
