@@ -16,6 +16,7 @@ import okhttp3.mockwebserver.RecordedRequest
 import org.json.JSONObject
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -295,6 +296,73 @@ class HttpClientTest {
 
         // Verify generic request method works correctly
         assertTrue(200 in testResponse.status.range)
+    }
+
+    @Test
+    fun `test generic request method with GET requests and custom headers`() {
+        // Server setup for GET request
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("{\"config\": \"value\"}")
+                .setHeader("Content-Type", "application/json"),
+        )
+
+        val config =
+            Configuration(
+                apiKey = apiKey,
+                serverUrl = server.url("/").toString(),
+            )
+        val httpClient = HttpClient(config, logger)
+
+        // Make GET request with custom headers
+        val request =
+            HttpClient.Request(
+                url = server.url("/config").toString(),
+                method = HttpClient.Request.Method.GET,
+                headers =
+                    mapOf(
+                        "Authorization" to "Bearer token",
+                        "X-Custom-Header" to "test-value",
+                    ),
+            )
+        val response = httpClient.request(request)
+
+        // Request is successful with correct format
+        assertTrue(response.isSuccessful)
+        assertEquals(200, response.statusCode)
+        assertEquals("{\"config\": \"value\"}", response.body)
+
+        // Verify request headers were sent correctly
+        val recordedRequest = runRequest()
+        assertEquals("Bearer token", recordedRequest?.getHeader("Authorization"))
+        assertEquals("test-value", recordedRequest?.getHeader("X-Custom-Header"))
+        assertEquals("GET", recordedRequest?.method)
+    }
+
+    @Test
+    fun `test generic request method handles various HTTP methods and error responses`() {
+        // Test POST with error response
+        server.enqueue(MockResponse().setResponseCode(400).setBody("Bad Request"))
+
+        val config = Configuration(apiKey = apiKey, serverUrl = server.url("/").toString())
+        val httpClient = HttpClient(config, logger)
+
+        // Make POST request that fails
+        val postRequest =
+            HttpClient.Request(
+                url = server.url("/api").toString(),
+                method = HttpClient.Request.Method.POST,
+                body = "{\"test\": \"data\"}",
+                headers = mapOf("Content-Type" to "application/json"),
+            )
+        val response = httpClient.request(postRequest)
+
+        // Error response is handled correctly
+        assertFalse(response.isSuccessful)
+        assertEquals(400, response.statusCode)
+        assertEquals("Bad Request", response.body)
+        assertTrue(response.isClientError)
     }
 
     private fun runRequest(): RecordedRequest? {
