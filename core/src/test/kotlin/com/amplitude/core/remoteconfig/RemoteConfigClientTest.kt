@@ -30,19 +30,23 @@ class RemoteConfigClientTest {
         apiKey: String = "test-key",
         // Use emptyApiConfig to control whether to return empty config or default config
         emptyApiConfig: Boolean = true,
+        // Custom response for testing edge cases
+        customResponse: HttpClient.Response? = null,
     ): RemoteConfigClientImpl {
-        // Create a mock HttpClient that returns empty configs (matches previous behavior)
+        // Create a mock HttpClient that returns configurable responses
         val mockHttpClient = mockk<HttpClient>()
-        every { mockHttpClient.request(any()) } returns
-            HttpClient.Response(
+        every { mockHttpClient.request(any()) } returns (
+            customResponse ?: HttpClient.Response(
                 statusCode = 200,
                 statusMessage = "OK",
-                body = if (emptyApiConfig) {
-                    """{"configs": {}}"""
-                } else {
-                    DEFAULT_API_REMOTE_CONFIG_JSON.trimIndent()
-                },
+                body =
+                    if (emptyApiConfig) {
+                        """{"configs": {}}"""
+                    } else {
+                        DEFAULT_API_REMOTE_CONFIG_JSON.trimIndent()
+                    },
             )
+        )
 
         return RemoteConfigClientImpl(
             apiKey = apiKey,
@@ -119,7 +123,7 @@ class RemoteConfigClientTest {
 
             // Add persistent callback that stays in memory
             val persistentCallback =
-                RemoteConfigClient.RemoteConfigCallback { config, source, _ ->
+                RemoteConfigClient.RemoteConfigCallback { _, _, _ ->
                     persistentCallbackInvocations++
                 }
             client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG, persistentCallback)
@@ -294,6 +298,261 @@ class RemoteConfigClientTest {
         }
 
     // endregion Subscription Management
+
+    // region API Response Edge Cases
+
+    @Test
+    fun `API returns null response body`() =
+        runTest {
+            val client =
+                createClient(
+                    customResponse =
+                        HttpClient.Response(
+                            statusCode = 200,
+                            statusMessage = "OK",
+                            body = null,
+                        ),
+                )
+
+            storage.write(Storage.Constants.REMOTE_CONFIG, DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent())
+            storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
+
+            var callbackCount = 0
+            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ -> callbackCount++ }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            // Should still get cached config, no crash
+            assertTrue(callbackCount == 1, "Should receive cached config despite null API response")
+            client.updateConfigs()
+            testDispatcher.scheduler.advanceUntilIdle()
+            // No change, no crash
+            assertTrue(callbackCount == 1, "Should receive cached config despite null API response")
+        }
+
+    @Test
+    fun `API returns malformed JSON`() =
+        runTest {
+            val client =
+                createClient(
+                    customResponse =
+                        HttpClient.Response(
+                            statusCode = 200,
+                            statusMessage = "OK",
+                            body = """{this is not valid json at all}""",
+                        ),
+                )
+
+            storage.write(Storage.Constants.REMOTE_CONFIG, DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent())
+
+            var callbackCount = 0
+            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ -> callbackCount++ }
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertTrue(callbackCount == 1, "Should receive cached config despite malformed JSON")
+
+            client.updateConfigs()
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertTrue(callbackCount == 1, "Should receive cached config despite malformed JSON")
+        }
+
+    @Test
+    fun `API returns JSON with null config fields`() =
+        runTest {
+            val client =
+                createClient(
+                    customResponse =
+                        HttpClient.Response(
+                            statusCode = 200,
+                            statusMessage = "OK",
+                            body =
+                                """
+                                {
+                                    "configs": {
+                                        "sessionReplay": {
+                                            "sr_android_privacy_config": null,
+                                            "sr_android_sampling_config": {
+                                                "sample_rate": null,
+                                                "capture_enabled": null
+                                            }
+                                        }
+                                    }
+                                }
+                                """.trimIndent(),
+                        ),
+                )
+
+            var callbackCount = 0
+            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ -> callbackCount++ }
+            client.subscribe(Key.SESSION_REPLAY_SAMPLING_CONFIG) { _, _, _ -> callbackCount++ }
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertTrue(callbackCount == 4, "Client should handle null fields without crashing")
+
+            client.updateConfigs()
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertTrue(callbackCount == 6, "Client should handle null fields without crashing")
+        }
+
+    @Test
+    fun `API returns JSON with wrong data types`() =
+        runTest {
+            val client =
+                createClient(
+                    customResponse =
+                        HttpClient.Response(
+                            statusCode = 200,
+                            statusMessage = "OK",
+                            body =
+                                """
+                                {
+                                    "configs": {
+                                        "sessionReplay": {
+                                            "sr_android_privacy_config": "this should be an object",
+                                            "sr_android_sampling_config": [1, 2, 3, "array instead of object"]
+                                        }
+                                    }
+                                }
+                                """.trimIndent(),
+                        ),
+                )
+
+            storage.write(Storage.Constants.REMOTE_CONFIG, DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent())
+            storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
+
+            var callbackCount = 0
+            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { config, source, _ ->
+                callbackCount++
+            }
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertTrue(callbackCount == 1, "Client should handle wrong data types without crashing")
+
+            client.updateConfigs()
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertTrue(callbackCount == 1, "Client should handle wrong data types without crashing")
+        }
+
+    @Test
+    fun `API returns empty string response`() =
+        runTest {
+            val client =
+                createClient(
+                    customResponse =
+                        HttpClient.Response(
+                            statusCode = 200,
+                            statusMessage = "OK",
+                            body = "",
+                        ),
+                )
+
+            var callbackInvoked = false
+            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ -> callbackInvoked = true }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            client.updateConfigs()
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertFalse(callbackInvoked, "Should not invoke callback for empty response")
+        }
+
+    @Test
+    fun `API returns 500 error`() =
+        runTest {
+            val client =
+                createClient(
+                    customResponse =
+                        HttpClient.Response(
+                            statusCode = 500,
+                            statusMessage = "Internal Server Error",
+                            body = """{"error": "Something went wrong"}""",
+                        ),
+                )
+
+            storage.write(Storage.Constants.REMOTE_CONFIG, DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent())
+            storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
+
+            var callbackCount = 0
+            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ -> callbackCount++ }
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertTrue(callbackCount == 1, "Should receive cached config despite server error")
+
+            client.updateConfigs()
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertTrue(callbackCount == 1, "Should receive cached config despite server error")
+        }
+
+    @Test
+    fun `API returns deeply nested garbage JSON`() =
+        runTest {
+            val client =
+                createClient(
+                    customResponse =
+                        HttpClient.Response(
+                            statusCode = 200,
+                            statusMessage = "OK",
+                            body =
+                                """
+                                {
+                                    "configs": {
+                                        "sessionReplay": {
+                                            "sr_android_privacy_config": {
+                                                "nested": {
+                                                    "deeply": {
+                                                        "very": {
+                                                            "much": {
+                                                                "so": null,
+                                                                "random": [{"key": "value"}, null, 42, true]
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                "defaultMaskLevel": 12345
+                                            }
+                                        }
+                                    }
+                                }
+                                """.trimIndent(),
+                        ),
+                )
+
+            var callbackCount = 0
+            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ -> callbackCount++ }
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertTrue(callbackCount == 1, "Client should handle deeply nested garbage without crashing")
+
+            client.updateConfigs()
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertTrue(callbackCount == 2, "Client should handle deeply nested garbage without crashing")
+        }
+
+    @Test
+    fun `API returns valid JSON but missing configs key`() =
+        runTest {
+            val client =
+                createClient(
+                    customResponse =
+                        HttpClient.Response(
+                            statusCode = 200,
+                            statusMessage = "OK",
+                            body =
+                                """
+                                {
+                                    "status": "success",
+                                    "message": "Everything is fine",
+                                    "data": {
+                                        "someOtherField": "value"
+                                    }
+                                }
+                                """.trimIndent(),
+                        ),
+                )
+
+            var callbackCount = 0
+            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ -> callbackCount++ }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            client.updateConfigs()
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertTrue(callbackCount == 0, "Should not invoke callback when configs key is missing")
+        }
+
+    // endregion API Response Edge Cases
 
     companion object {
         private const val DEFAULT_API_REMOTE_CONFIG_JSON =

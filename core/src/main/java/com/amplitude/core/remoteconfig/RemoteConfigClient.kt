@@ -394,7 +394,7 @@ internal class RemoteConfigClientImpl(
                     }
                 }
 
-                if (result.isEmpty()) {
+                if (result.isEmpty() || result.values.all { it.isEmpty() }) {
                     logger.warn("No valid configs found in response")
                     return null
                 }
