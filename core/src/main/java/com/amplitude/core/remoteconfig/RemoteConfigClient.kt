@@ -97,7 +97,6 @@ internal class RemoteConfigClientImpl(
      */
     private data class WeakCallback(
         val weakRef: WeakReference<RemoteConfigClient.RemoteConfigCallback>,
-        val id: String = System.identityHashCode(weakRef.get()).toString(),
     ) {
         fun get(): RemoteConfigClient.RemoteConfigCallback? = weakRef.get()
 
@@ -162,35 +161,44 @@ internal class RemoteConfigClientImpl(
      * This method checks if the storage has consistent data for all expected keys.
      */
     private fun getStoredConfigData(configKey: String): ConfigData? {
-        val allStoredConfigs = getAllStoredConfigs()
+        return try {
+            val allStoredConfigs = getAllStoredConfigs()
 
-        // If storage is completely empty, return empty config
-        if (allStoredConfigs.isEmpty()) {
-            return null
-        }
-
-        // Check if storage has consistent data for all expected keys
-        val expectedKeys = Key.entries.map { it.value }.toSet()
-        val storedKeys = allStoredConfigs.keys
-        if (!storedKeys.containsAll(expectedKeys)) {
-            logger.debug(
-                "Storage inconsistent keys. Expected: $expectedKeys, Found: $storedKeys",
-            )
-            // Invalidate inconsistent storage
-            coroutineScope.launch(storageIODispatcher) {
-                storage.remove(REMOTE_CONFIG)
-                storage.remove(REMOTE_CONFIG_TIMESTAMP)
-                logger.debug("Cleared inconsistent storage")
+            // If storage is completely empty, return empty config
+            if (allStoredConfigs.isEmpty()) {
+                return null
             }
-            return null
+
+            // Check if storage has consistent data for all expected keys
+            val expectedKeys = Key.entries.map { it.value }.toSet()
+            val storedKeys = allStoredConfigs.keys
+            if (!storedKeys.containsAll(expectedKeys)) {
+                logger.debug(
+                    "Storage inconsistent keys. Expected: $expectedKeys, Found: $storedKeys",
+                )
+                // Invalidate inconsistent storage
+                coroutineScope.launch(storageIODispatcher) {
+                    try {
+                        storage.remove(REMOTE_CONFIG)
+                        storage.remove(REMOTE_CONFIG_TIMESTAMP)
+                        logger.debug("Cleared inconsistent storage")
+                    } catch (e: Exception) {
+                        logger.error("Failed to clear inconsistent storage: ${e.message}")
+                    }
+                }
+                return null
+            }
+
+            val configData = allStoredConfigs[configKey] ?: emptyMap()
+            val timestampStr = storage.read(REMOTE_CONFIG_TIMESTAMP)
+            val timestamp = timestampStr?.toLongOrNull() ?: 0L
+
+            logger.debug("Retrieved stored config for $configKey with ${configData.size} properties")
+            ConfigData(configData, timestamp)
+        } catch (e: Exception) {
+            logger.error("Failed to retrieve stored config data for $configKey: ${e.message}")
+            null
         }
-
-        val configData = allStoredConfigs[configKey] ?: emptyMap()
-        val timestampStr = storage.read(REMOTE_CONFIG_TIMESTAMP)
-        val timestamp = timestampStr?.toLongOrNull() ?: 0L
-
-        logger.debug("Retrieved stored config for $configKey with ${configData.size} properties")
-        return ConfigData(configData, timestamp)
     }
 
     private fun getAllStoredConfigs(): Map<String, ConfigMap> {
@@ -293,11 +301,9 @@ internal class RemoteConfigClientImpl(
     ) {
         val subscriberList = keySpecificSubscribers[configKey] ?: return
         val notifySubscribers =
-            if (index != null && subscriberList[index] != null) {
-                listOf(subscriberList[index])
-            } else {
-                subscriberList
-            }
+            index?.let { subscriberList.getOrNull(it) }
+                ?.let { listOf(it) }
+                ?: subscriberList
         notifySubscribers.forEach { weakCallback ->
             try {
                 weakCallback.get()?.run {

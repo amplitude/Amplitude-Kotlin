@@ -99,7 +99,7 @@ internal class HttpClient(
 
             return Response(responseCode, responseBody, headers, responseMessage)
         } catch (e: Exception) {
-            logger.error("Request failed: ${e.message}")
+            logger.error("Request failed: ${e::class.java.name}: ${e.message}")
             return Response(500, null, emptyMap(), "Request failed: ${e.message}")
         } finally {
             connection.disconnect()
