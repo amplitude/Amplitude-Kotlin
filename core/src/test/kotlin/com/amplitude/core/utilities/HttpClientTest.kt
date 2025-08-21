@@ -1,7 +1,6 @@
 package com.amplitude.core.utilities
 
 import com.amplitude.common.Logger
-import com.amplitude.common.jvm.ConsoleLogger
 import com.amplitude.core.Configuration
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.http.FailedResponse
@@ -29,7 +28,8 @@ import java.util.concurrent.TimeUnit
 class HttpClientTest {
     private lateinit var server: MockWebServer
     private val apiKey = "API_KEY"
-    private val logger = ConsoleLogger()
+    private val silentLogger = mockk<Logger>(relaxed = true) // Silent logger for clean test output
+    private val verifiableLogger = mockk<Logger>(relaxed = true) // Mock logger for verifying log calls without console output
 
     @ExperimentalCoroutinesApi
     @BeforeEach
@@ -60,7 +60,7 @@ class HttpClientTest {
         val event = BaseEvent()
         event.eventType = "test"
 
-        val httpClient = spyk(HttpClient(config, logger))
+        val httpClient = spyk(HttpClient(config, silentLogger))
         val response = httpClient.upload(JSONUtil.eventsToString(listOf(event)))
 
         val request = runRequest()
@@ -88,7 +88,7 @@ class HttpClientTest {
         val event = BaseEvent()
         event.eventType = "test"
 
-        val httpClient = spyk(HttpClient(config, logger))
+        val httpClient = spyk(HttpClient(config, silentLogger))
 
         httpClient.upload(JSONUtil.eventsToString(listOf(event)))
 
@@ -112,7 +112,7 @@ class HttpClientTest {
         val event = BaseEvent()
         event.eventType = "test"
 
-        val httpClient = spyk(HttpClient(config, logger))
+        val httpClient = spyk(HttpClient(config, silentLogger))
         val diagnostics = Diagnostics()
         diagnostics.addErrorLog("error")
         diagnostics.addMalformedEvent("malformed-event")
@@ -142,7 +142,7 @@ class HttpClientTest {
         val event = BaseEvent()
         event.eventType = "test"
 
-        val httpClient = spyk(HttpClient(config, logger))
+        val httpClient = spyk(HttpClient(config, silentLogger))
         val diagnostics = Diagnostics()
         diagnostics.addErrorLog("error")
         diagnostics.addMalformedEvent("malformed-event")
@@ -172,7 +172,7 @@ class HttpClientTest {
         val event = BaseEvent()
         event.eventType = "test"
 
-        val httpClient = spyk(HttpClient(config, logger))
+        val httpClient = spyk(HttpClient(config, silentLogger))
 
         val response = httpClient.upload(JSONUtil.eventsToString(listOf(event)))
 
@@ -187,7 +187,6 @@ class HttpClientTest {
         // Test 1: Normal operation with logger injection
         server.enqueue(MockResponse().setResponseCode(200).setBody("{\"code\": \"success\"}"))
 
-        val mockLogger = mockk<Logger>(relaxed = true)
         val config =
             Configuration(
                 apiKey = apiKey,
@@ -197,7 +196,7 @@ class HttpClientTest {
         event.eventType = "test"
 
         // This test verifies that HttpClient can be constructed with a logger parameter
-        val httpClient = HttpClient(config, mockLogger)
+        val httpClient = HttpClient(config, verifiableLogger)
         val response = httpClient.upload(JSONUtil.eventsToString(listOf(event)))
 
         // Verify normal operation works with logger injection
@@ -205,17 +204,16 @@ class HttpClientTest {
         assertTrue(200 in response.status.range)
 
         // Verify no error logs were called during normal operation
-        verify(exactly = 0) { mockLogger.error(any()) }
+        verify(exactly = 0) { verifiableLogger.error(any()) }
 
         // Test 2: Verify logger is properly injected for potential connection issues
-        val connectionTestLogger = mockk<Logger>(relaxed = true)
         val testConfig =
             Configuration(
                 apiKey = apiKey,
                 serverUrl = server.url("/").toString(),
             )
 
-        val testHttpClient = HttpClient(testConfig, connectionTestLogger)
+        val testHttpClient = HttpClient(testConfig, verifiableLogger)
 
         // Enqueue a successful response to verify normal path doesn't log errors
         server.enqueue(MockResponse().setResponseCode(200).setBody("{\"code\": \"success\"}"))
@@ -223,7 +221,7 @@ class HttpClientTest {
 
         // Verify successful response
         assertEquals(200, testResponse.status.statusCode)
-        verify(exactly = 0) { connectionTestLogger.error(any()) }
+        verify(exactly = 0) { verifiableLogger.error(any()) }
     }
 
     @Test
@@ -231,7 +229,6 @@ class HttpClientTest {
         // Set up server to return error response that will trigger error stream fallback
         server.enqueue(MockResponse().setResponseCode(500).setBody("Internal Server Error"))
 
-        val mockLogger = mockk<Logger>(relaxed = true)
         val config =
             Configuration(
                 apiKey = apiKey,
@@ -240,12 +237,12 @@ class HttpClientTest {
         val event = BaseEvent()
         event.eventType = "test"
 
-        val httpClient = HttpClient(config, mockLogger)
+        val httpClient = HttpClient(config, verifiableLogger)
         val response = httpClient.upload(JSONUtil.eventsToString(listOf(event)))
 
         // Verify that logger.warn was called when falling back to error stream
         verify {
-            mockLogger.warn(
+            verifiableLogger.warn(
                 match { it.contains("Failed to get input stream, falling back to error stream") },
             )
         }
@@ -259,7 +256,6 @@ class HttpClientTest {
         // Test 1: Exception message inclusion (original test)
         server.enqueue(MockResponse().setResponseCode(500).setBody("Internal Server Error"))
 
-        val mockLogger = mockk<Logger>(relaxed = true)
         val config =
             Configuration(
                 apiKey = apiKey,
@@ -268,12 +264,12 @@ class HttpClientTest {
         val event = BaseEvent()
         event.eventType = "test"
 
-        val httpClient = HttpClient(config, mockLogger)
+        val httpClient = HttpClient(config, verifiableLogger)
         httpClient.upload(JSONUtil.eventsToString(listOf(event)))
 
         // Verify that the actual exception message is passed to the logger
         verify {
-            mockLogger.warn(
+            verifiableLogger.warn(
                 match { message ->
                     message.contains(
                         "Failed to get input stream, falling back to error stream",
@@ -288,8 +284,7 @@ class HttpClientTest {
         // Test 2: Verify generic request functionality handles different status codes
         server.enqueue(MockResponse().setResponseCode(200).setBody("{\"status\": \"success\"}"))
 
-        val directLogger = mockk<Logger>(relaxed = true)
-        val directHttpClient = HttpClient(config, directLogger)
+        val directHttpClient = HttpClient(config, silentLogger) // Use silent logger for non-verification test
 
         // Test generic request handling through upload method
         val testResponse = directHttpClient.upload(JSONUtil.eventsToString(listOf(event)))
@@ -313,7 +308,7 @@ class HttpClientTest {
                 apiKey = apiKey,
                 serverUrl = server.url("/").toString(),
             )
-        val httpClient = HttpClient(config, logger)
+        val httpClient = HttpClient(config, silentLogger)
 
         // Make GET request with custom headers
         val request =
@@ -346,7 +341,7 @@ class HttpClientTest {
         server.enqueue(MockResponse().setResponseCode(400).setBody("Bad Request"))
 
         val config = Configuration(apiKey = apiKey, serverUrl = server.url("/").toString())
-        val httpClient = HttpClient(config, logger)
+        val httpClient = HttpClient(config, silentLogger)
 
         // Make POST request that fails
         val postRequest =

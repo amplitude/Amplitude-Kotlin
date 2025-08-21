@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test
 class RemoteConfigClientTest {
     private val storage = InMemoryStorage()
     private val logger = spyk(ConsoleLogger())
+    private val silentLogger = mockk<com.amplitude.common.Logger>(relaxed = true) // Silent logger for clean test output
     private val testDispatcher = StandardTestDispatcher()
     private val testScope = TestScope(testDispatcher)
 
@@ -39,6 +40,8 @@ class RemoteConfigClientTest {
         emptyApiConfig: Boolean = true,
         // Custom response for testing edge cases
         customResponse: HttpClient.Response? = null,
+        // Use logger that can be verified vs silent logger for clean output
+        useVerifiableLogger: Boolean = false,
     ): RemoteConfigClientImpl {
         // Create a mock HttpClient that returns configurable responses
         val mockHttpClient = mockk<HttpClient>()
@@ -64,7 +67,7 @@ class RemoteConfigClientTest {
             storageIODispatcher = testDispatcher,
             storage = storage,
             httpClient = mockHttpClient,
-            logger = logger,
+            logger = if (useVerifiableLogger) logger else silentLogger,
         )
     }
 
@@ -175,7 +178,7 @@ class RemoteConfigClientTest {
     @Test
     fun `subscribe with callback exceptions - isolate exception and don't cascade failure`() =
         runTest {
-            val client = createClient()
+            val client = createClient(useVerifiableLogger = true)
             val workingCallbacks = mutableListOf<ConfigMap>()
 
             // Pre-populate storage to ensure callbacks are triggered
@@ -242,7 +245,7 @@ class RemoteConfigClientTest {
     @Test
     fun `subscribe multiple times with same callback - each creates separate registration`() =
         runTest {
-            val client = createClient()
+            val client = createClient(useVerifiableLogger = true)
             var callCount = 0
 
             // Pre-populate storage to ensure callbacks are triggered
@@ -279,7 +282,7 @@ class RemoteConfigClientTest {
     @Test
     fun `subscribe with inconsistent storage - storage invalidated and no immediate callback`() =
         runTest {
-            val client = createClient()
+            val client = createClient(useVerifiableLogger = true)
             var callbackInvoked = false
 
             // Pre-populate storage with incomplete data (missing sampling config)
@@ -704,6 +707,7 @@ class RemoteConfigClientTest {
             val client =
                 createClient(
                     emptyApiConfig = false,
+                    useVerifiableLogger = true,
                     customResponse =
                         HttpClient.Response(
                             statusCode = 200,
@@ -793,7 +797,7 @@ class RemoteConfigClientTest {
     @Test
     fun `corrupted storage data - handles parsing exceptions`() =
         runTest {
-            val client = createClient()
+            val client = createClient(useVerifiableLogger = true)
 
             // Write corrupted JSON to storage
             storage.write(Storage.Constants.REMOTE_CONFIG, "{this is corrupted json")
@@ -811,7 +815,7 @@ class RemoteConfigClientTest {
     @Test
     fun `storage with non-map values - skips invalid entries`() =
         runTest {
-            val client = createClient()
+            val client = createClient(useVerifiableLogger = true)
 
             // Write storage with mixed data types
             storage.write(
