@@ -209,7 +209,7 @@ internal class RemoteConfigClientImpl(
                 when (value) {
                     is Map<*, *> -> {
                         @Suppress("UNCHECKED_CAST")
-                        val configMap = (value as ConfigMap).filterNotNullValues()
+                        val configMap = (value as? ConfigMap)?.filterNotNullValues() ?: emptyMap()
                         if (configMap.isNotEmpty()) {
                             result[key] = configMap
                             logger.debug("Successfully loaded stored config for key: $key")
@@ -293,7 +293,7 @@ internal class RemoteConfigClientImpl(
     ) {
         val subscriberList = keySpecificSubscribers[configKey] ?: return
         val notifySubscribers =
-            if (index != null) {
+            if (index != null && subscriberList[index] != null) {
                 listOf(subscriberList[index])
             } else {
                 subscriberList
