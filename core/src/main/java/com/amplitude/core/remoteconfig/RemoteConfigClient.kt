@@ -95,14 +95,21 @@ internal class RemoteConfigClientImpl(
     /**
      * Wrapper class for weak reference callbacks to prevent memory leaks
      */
-    private class WeakCallback(
+    private inner class WeakCallback(
         callback: RemoteConfigClient.RemoteConfigCallback,
     ) {
         private val weakRef = WeakReference(callback)
 
-        fun get(): RemoteConfigClient.RemoteConfigCallback? = weakRef.get()
-
         fun isAlive(): Boolean = weakRef.get() != null
+
+        fun runSafely(action: RemoteConfigClient.RemoteConfigCallback.() -> Unit) {
+            val callback = weakRef.get() ?: return
+            try {
+                callback.action()
+            } catch (e: Exception) {
+                logger.error("Exception in subscriber callback: ${e.message}")
+            }
+        }
     }
 
     // Subscribers for specific config keys using weak references to prevent memory leaks
@@ -312,12 +319,8 @@ internal class RemoteConfigClientImpl(
                 .filterIndexed { i, _ -> index == null || i == index }
                 .ifEmpty { subscriberList }
         notifySubscribers.forEach { weakCallback ->
-            try {
-                weakCallback.get()?.run {
-                    onUpdate(config, source, timestamp)
-                }
-            } catch (e: Exception) {
-                logger.error("Exception in subscriber callback for key $configKey: ${e.message}")
+            weakCallback.runSafely {
+                onUpdate(config, source, timestamp)
             }
         }
     }
