@@ -16,6 +16,7 @@ import com.amplitude.core.utilities.toMapObj
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.lang.ref.WeakReference
 import java.util.concurrent.ConcurrentHashMap
@@ -162,7 +163,27 @@ internal class RemoteConfigClientImpl(
      */
     override fun updateConfigs() {
         coroutineScope.launch(networkIODispatcher) {
-            fetchRemoteConfig()
+            try {
+                val configs = fetchRemoteConfig() ?: return@launch
+
+                val timestamp = System.currentTimeMillis()
+                withContext(storageIODispatcher) {
+                    storage.write(REMOTE_CONFIG, configs.toJSONObject().toString())
+                    storage.write(REMOTE_CONFIG_TIMESTAMP, timestamp.toString())
+                    logger.debug("Successfully stored remote configs to storage")
+                }
+
+                configs.forEach { (configKey, config) ->
+                    notifySubscribersForKey(
+                        configKey = configKey,
+                        config = config,
+                        source = REMOTE,
+                        timestamp = timestamp,
+                    )
+                }
+            } catch (e: Exception) {
+                logger.error("Error updating remote configs: ${e.message}")
+            }
         }
     }
 
@@ -251,53 +272,34 @@ internal class RemoteConfigClientImpl(
         }
     }
 
-    private fun fetchRemoteConfig() {
-        try {
-            // Periodic cleanup of dead references during network operations
-            cleanupDeadReferences()
+    private fun fetchRemoteConfig(): Map<String, ConfigMap>? {
+        // Periodic cleanup of dead references during network operations
+        cleanupDeadReferences()
 
-            val url = buildRemoteConfigUrl()
-            val request =
-                HttpClient.Request(
-                    url = url,
-                    method = HttpClient.Request.Method.GET,
-                    headers = buildRequestHeaders(),
+        val url = buildRemoteConfigUrl()
+        val request =
+            HttpClient.Request(
+                url = url,
+                method = HttpClient.Request.Method.GET,
+                headers = buildRequestHeaders(),
+            )
+
+        val response = httpClient.request(request)
+
+        return when {
+            response.isSuccessful -> parseConfigsFromResponse(response.body)
+            response.isClientError -> {
+                logger.error(
+                    "Client error on fetch remote config: ${response.statusCode}: ${response.statusMessage}",
                 )
-
-            val response = httpClient.request(request)
-
-            when {
-                response.isSuccessful -> {
-                    val timestamp = System.currentTimeMillis()
-                    val allConfigs = parseConfigsFromResponse(response.body) ?: return
-
-                    // Store the entire flattened config and timestamp to storage
-                    coroutineScope.launch(storageIODispatcher) {
-                        storage.write(REMOTE_CONFIG, allConfigs.toJSONObject().toString())
-                        storage.write(REMOTE_CONFIG_TIMESTAMP, timestamp.toString())
-                        logger.debug("Successfully stored remote configs to storage")
-                    }
-
-                    allConfigs.forEach { (configKey, config) ->
-                        notifySubscribersForKey(
-                            configKey = configKey,
-                            config = config,
-                            source = REMOTE,
-                            timestamp = timestamp,
-                        )
-                    }
-                }
-                response.isClientError ->
-                    logger.error(
-                        "Client error on fetch remote config: ${response.statusCode}: ${response.statusMessage}",
-                    )
-                else ->
-                    logger.warn(
-                        "Failed to fetch remote config: ${response.statusCode}: ${response.statusMessage}",
-                    )
+                null
             }
-        } catch (e: Exception) {
-            logger.error("Error fetching remote config: ${e.message}")
+            else -> {
+                logger.warn(
+                    "Failed to fetch remote config: ${response.statusCode}: ${response.statusMessage}",
+                )
+                null
+            }
         }
     }
 
