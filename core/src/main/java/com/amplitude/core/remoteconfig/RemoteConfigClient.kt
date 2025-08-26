@@ -91,6 +91,7 @@ internal class RemoteConfigClientImpl(
         // Remote config endpoints based on server zone
         private const val US_REMOTE_CONFIG_URL = "https://sr-client-cfg.amplitude.com"
         private const val EU_REMOTE_CONFIG_URL = "https://sr-client-cfg.eu.amplitude.com"
+        private const val MIN_FETCH_INTERVAL_MS: Long = 5 * 60 * 1_000L
     }
 
     /**
@@ -116,6 +117,9 @@ internal class RemoteConfigClientImpl(
     // Subscribers for specific config keys using weak references to prevent memory leaks
     private val keySpecificSubscribers =
         ConcurrentHashMap<String, CopyOnWriteArrayList<WeakCallback>>()
+
+    // Simple in-flight fetch guard; safe because networkIODispatcher is single-threaded
+    private var isFetching: Boolean = false
 
     /**
      * Subscribe to remote configuration updates for a specific configuration key.
@@ -164,6 +168,17 @@ internal class RemoteConfigClientImpl(
     override fun updateConfigs() {
         coroutineScope.launch(networkIODispatcher) {
             try {
+                if (isFetching) {
+                    logger.debug("RemoteConfig update skipped: fetch already in progress")
+                    return@launch
+                }
+
+                if (shouldRateLimit()) {
+                    logger.debug("RemoteConfig update skipped: within 5-minute window")
+                    return@launch
+                }
+
+                isFetching = true
                 val configs = fetchRemoteConfig() ?: return@launch
 
                 val timestamp = System.currentTimeMillis()
@@ -183,8 +198,18 @@ internal class RemoteConfigClientImpl(
                 }
             } catch (e: Exception) {
                 logger.error("Error updating remote configs: ${e.message}")
+            } finally {
+                isFetching = false
             }
         }
+    }
+
+    private suspend fun shouldRateLimit(): Boolean {
+        val lastTsStr = withContext(storageIODispatcher) { storage.read(REMOTE_CONFIG_TIMESTAMP) }
+        val lastTs = lastTsStr?.toLongOrNull() ?: 0L
+        if (lastTs <= 0L) return false
+        val now = System.currentTimeMillis()
+        return (now - lastTs) < MIN_FETCH_INTERVAL_MS
     }
 
     /**
@@ -207,17 +232,21 @@ internal class RemoteConfigClientImpl(
                 logger.debug(
                     "Storage inconsistent keys. Expected: $expectedKeys, Found: $storedKeys",
                 )
-                // Invalidate inconsistent storage
-                coroutineScope.launch(storageIODispatcher) {
-                    try {
-                        storage.remove(REMOTE_CONFIG)
-                        storage.remove(REMOTE_CONFIG_TIMESTAMP)
-                        logger.debug("Cleared inconsistent storage")
-                    } catch (e: Exception) {
-                        logger.error("Failed to clear inconsistent storage: ${e.message}")
+                // Middle ground: invalidate only if none of the expected keys exist (hard inconsistency)
+                val hasAnyExpected = storedKeys.any { it in expectedKeys }
+                if (!hasAnyExpected) {
+                    coroutineScope.launch(storageIODispatcher) {
+                        try {
+                            storage.remove(REMOTE_CONFIG)
+                            storage.remove(REMOTE_CONFIG_TIMESTAMP)
+                            logger.debug("Cleared storage due to hard inconsistency (no expected keys present)")
+                        } catch (e: Exception) {
+                            logger.error("Failed to clear inconsistent storage: ${e.message}")
+                        }
                     }
+                    return null
                 }
-                return null
+                // If at least one expected key exists, keep partial data and proceed.
             }
 
             val configData = allStoredConfigs[configKey] ?: emptyMap()
