@@ -123,8 +123,9 @@ internal class RemoteConfigClientImpl(
 
         // Add new weak reference callback
         val subscriberList =
-            keySpecificSubscribers[key.value]
-                ?: CopyOnWriteArrayList<WeakCallback>()
+            keySpecificSubscribers.getOrPut(key.value) {
+                CopyOnWriteArrayList<WeakCallback>()
+            }
         val weakCallback = WeakCallback(WeakReference(callback))
         subscriberList.add(weakCallback)
         keySpecificSubscribers[key.value] = subscriberList
