@@ -210,27 +210,31 @@ internal class RemoteConfigClientImpl(
             }
 
             val allConfigs = JSONObject(configJson).toMapObj()
-            val result = mutableMapOf<String, ConfigMap>()
 
-            // Parse each stored config
-            for ((key, value) in allConfigs) {
-                when (value) {
-                    is Map<*, *> -> {
-                        @Suppress("UNCHECKED_CAST")
-                        val configMap = (value as? ConfigMap)?.filterNotNullValues() ?: emptyMap()
-                        if (configMap.isNotEmpty()) {
-                            result[key] = configMap
-                            logger.debug("Successfully loaded stored config for key: $key")
+            // Parse each stored config and build the result map
+            buildMap {
+                for ((key, value) in allConfigs) {
+                    when (value) {
+                        is Map<*, *> -> {
+                            @Suppress("UNCHECKED_CAST")
+                            val configMap =
+                                (value as? ConfigMap)?.filterNotNullValues() ?: emptyMap()
+                            if (configMap.isNotEmpty()) {
+                                put(key, configMap)
+                                logger.debug("Successfully loaded stored config for key: $key")
+                            }
+                        }
+
+                        else -> {
+                            logger.debug(
+                                "Skipping non-map value for key $key: ${value?.javaClass?.simpleName}",
+                            )
                         }
                     }
-                    else -> {
-                        logger.debug("Skipping non-map value for key $key: ${value?.javaClass?.simpleName}")
-                    }
                 }
+            }.also {
+                logger.debug("Successfully loaded ${it.size} stored configs from storage")
             }
-
-            logger.debug("Successfully loaded ${result.size} stored configs from storage")
-            result
         } catch (e: Exception) {
             logger.error("Failed to parse all stored configs: ${e.message}")
             emptyMap()
@@ -368,37 +372,40 @@ internal class RemoteConfigClientImpl(
         return responseBody?.let { body ->
             try {
                 val responseJson = JSONObject(body)
-                val result = mutableMapOf<String, ConfigMap>()
+                val result =
+                    buildMap {
+                        // Handle configs-wrapped response format:
+                        // Format: {"configs": {"sessionReplay": {...}}}
+                        val configsRoot = responseJson.optJSONObject("configs")
+                        if (configsRoot == null) {
+                            logger.warn("No 'configs' key found in response")
+                            return null
+                        }
 
-                // Handle configs-wrapped response format:
-                // Format: {"configs": {"sessionReplay": {...}}}
-                val configsRoot = responseJson.optJSONObject("configs")
-                if (configsRoot == null) {
-                    logger.warn("No 'configs' key found in response")
-                    return null
-                }
+                        // Dynamically parse all top-level config objects
+                        for (topLevelKey in configsRoot.keys()) {
+                            val topLevelObj = configsRoot.optJSONObject(topLevelKey)
+                            if (topLevelObj != null) {
+                                // Parse each nested config within this top-level object
+                                for (nestedKey in topLevelObj.keys()) {
+                                    val flattenedKey = "$topLevelKey.$nestedKey"
+                                    val nestedConfig = topLevelObj.optJSONObject(nestedKey)
 
-                // Dynamically parse all top-level config objects
-                for (topLevelKey in configsRoot.keys()) {
-                    val topLevelObj = configsRoot.optJSONObject(topLevelKey)
-                    if (topLevelObj != null) {
-                        // Parse each nested config within this top-level object
-                        for (nestedKey in topLevelObj.keys()) {
-                            val flattenedKey = "$topLevelKey.$nestedKey"
-                            val nestedConfig = topLevelObj.optJSONObject(nestedKey)
-
-                            if (nestedConfig != null) {
-                                result[flattenedKey] = nestedConfig.toMapObj().filterNotNullValues()
-                                logger.debug("Successfully parsed config: $flattenedKey")
+                                    if (nestedConfig != null) {
+                                        put(flattenedKey, nestedConfig.toMapObj().filterNotNullValues())
+                                        logger.debug("Successfully parsed config: $flattenedKey")
+                                    } else {
+                                        logger.debug(
+                                            "Config $flattenedKey has no nested object, using empty map",
+                                        )
+                                        put(flattenedKey, emptyMap())
+                                    }
+                                }
                             } else {
-                                logger.debug("Config $flattenedKey has no nested object, using empty map")
-                                result[flattenedKey] = emptyMap()
+                                logger.debug("Skipping non-object top-level key: $topLevelKey")
                             }
                         }
-                    } else {
-                        logger.debug("Skipping non-object top-level key: $topLevelKey")
                     }
-                }
 
                 if (result.isEmpty() || result.values.all { it.isEmpty() }) {
                     logger.warn("No valid configs found in response")
