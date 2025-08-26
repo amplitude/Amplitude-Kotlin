@@ -95,9 +95,11 @@ internal class RemoteConfigClientImpl(
     /**
      * Wrapper class for weak reference callbacks to prevent memory leaks
      */
-    private data class WeakCallback(
-        val weakRef: WeakReference<RemoteConfigClient.RemoteConfigCallback>,
+    private class WeakCallback(
+        callback: RemoteConfigClient.RemoteConfigCallback,
     ) {
+        private val weakRef = WeakReference(callback)
+
         fun get(): RemoteConfigClient.RemoteConfigCallback? = weakRef.get()
 
         fun isAlive(): Boolean = weakRef.get() != null
@@ -126,7 +128,7 @@ internal class RemoteConfigClientImpl(
             keySpecificSubscribers.getOrPut(key.value) {
                 CopyOnWriteArrayList<WeakCallback>()
             }
-        val weakCallback = WeakCallback(WeakReference(callback))
+        val weakCallback = WeakCallback(callback)
         subscriberList.add(weakCallback)
         keySpecificSubscribers[key.value] = subscriberList
 
@@ -306,9 +308,9 @@ internal class RemoteConfigClientImpl(
     ) {
         val subscriberList = keySpecificSubscribers[configKey] ?: return
         val notifySubscribers =
-            index?.let { subscriberList.getOrNull(it) }
-                ?.let { listOf(it) }
-                ?: subscriberList
+            subscriberList
+                .filterIndexed { i, _ -> index == null || i == index }
+                .ifEmpty { subscriberList }
         notifySubscribers.forEach { weakCallback ->
             try {
                 weakCallback.get()?.run {
