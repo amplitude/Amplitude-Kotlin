@@ -15,6 +15,8 @@ interface Storage {
         Events("events"),
         APP_VERSION("app_version"),
         APP_BUILD("app_build"),
+        REMOTE_CONFIG("remote_config"),
+        REMOTE_CONFIG_TIMESTAMP("remote_config_timestamp"),
     }
 
     suspend fun writeEvent(event: BaseEvent)

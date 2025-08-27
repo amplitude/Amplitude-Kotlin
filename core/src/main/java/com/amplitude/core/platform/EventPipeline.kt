@@ -24,7 +24,7 @@ class EventPipeline(
     private val eventCount: AtomicInteger = AtomicInteger(0),
     private val httpClient: HttpClientInterface =
         amplitude.configuration.httpClient
-            ?: HttpClient(amplitude.configuration),
+            ?: HttpClient(amplitude.configuration, amplitude.logger),
     private val retryUploadHandler: ExponentialBackoffRetryHandler =
         ExponentialBackoffRetryHandler(
             maxRetryAttempt = amplitude.configuration.flushMaxRetries,

@@ -16,9 +16,12 @@ import com.amplitude.core.platform.Timeline
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.ContextPlugin
 import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
+import com.amplitude.core.remoteconfig.RemoteConfigClient
+import com.amplitude.core.remoteconfig.RemoteConfigClientImpl
 import com.amplitude.core.utilities.AnalyticsEventReceiver
 import com.amplitude.core.utilities.AnalyticsIdentityListener
 import com.amplitude.core.utilities.Diagnostics
+import com.amplitude.core.utilities.http.HttpClient
 import com.amplitude.eventbridge.EventBridgeContainer
 import com.amplitude.eventbridge.EventChannel
 import com.amplitude.id.IdentityConfiguration
@@ -55,17 +58,32 @@ open class Amplitude(
     val storageIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
 ) {
     val timeline: Timeline
-    lateinit var storage: Storage
-        private set
+    val storage: Storage by lazy {
+        configuration.storageProvider.getStorage(this)
+    }
     lateinit var identifyInterceptStorage: Storage
         private set
     lateinit var identityStorage: IdentityStorage
         private set
-    val logger: Logger
+    val logger: Logger by lazy {
+        configuration.loggerProvider.getLogger(this)
+    }
     lateinit var idContainer: IdentityContainer
         private set
     val isBuilt: Deferred<Boolean>
     val diagnostics = Diagnostics()
+    val remoteConfigClient: RemoteConfigClient by lazy {
+        RemoteConfigClientImpl(
+            apiKey = configuration.apiKey,
+            serverZone = configuration.serverZone,
+            coroutineScope = amplitudeScope,
+            networkIODispatcher = networkIODispatcher,
+            storageIODispatcher = storageIODispatcher,
+            storage = storage,
+            httpClient = HttpClient(configuration, logger),
+            logger = logger,
+        )
+    }
 
     // Signal broadcasting - single shared flow for all plugins
     private val _signalFlow =
@@ -88,7 +106,6 @@ open class Amplitude(
     init {
         require(configuration.isValid()) { "invalid configuration" }
         timeline = this.createTimeline()
-        logger = configuration.loggerProvider.getLogger(this)
         isBuilt = this.build()
         isBuilt.start()
     }
@@ -127,7 +144,6 @@ open class Amplitude(
 
         val built =
             amplitudeScope.async(amplitudeDispatcher, CoroutineStart.LAZY) {
-                storage = configuration.storageProvider.getStorage(amplitude)
                 identifyInterceptStorage =
                     configuration.identifyInterceptStorageProvider.getStorage(
                         amplitude,
