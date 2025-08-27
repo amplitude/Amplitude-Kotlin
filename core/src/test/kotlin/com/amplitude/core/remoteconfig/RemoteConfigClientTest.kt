@@ -207,9 +207,6 @@ class RemoteConfigClientTest {
             assertTrue(tempCallbackInvocations >= 2)
             // Persistent callback should have received multiple remote updates across steps
             assertTrue(persistentCallbackInvocations >= 3)
-
-            // Whether GC cleanup happened or not, the system continues to function
-            assertTrue(true, "Weak reference subscription system handles temp callbacks correctly")
         }
 
     @Test
@@ -365,6 +362,219 @@ class RemoteConfigClientTest {
 
     // endregion Subscription Management
 
+    // region Rate Limiting
+
+    @Test
+    fun `consecutive subscribe calls during in-flight fetch - both should be notified`() =
+        runTest {
+            // Create a mock HttpClient that we can control when it returns
+            val mockHttpClient = mockk<HttpClient>()
+            val requestSlot = slot<HttpClient.Request>()
+
+            every { mockHttpClient.request(capture(requestSlot)) } returns
+                HttpClient.Response(
+                    statusCode = 200,
+                    body = DEFAULT_API_REMOTE_CONFIG_JSON.trimIndent(),
+                    headers = emptyMap(),
+                    statusMessage = "OK",
+                )
+
+            val client =
+                RemoteConfigClientImpl(
+                    apiKey = "test-key",
+                    serverZone = ServerZone.US,
+                    coroutineScope = testScope,
+                    networkIODispatcher = testDispatcher,
+                    storageIODispatcher = testDispatcher,
+                    storage = storage,
+                    httpClient = mockHttpClient,
+                    logger = silentLogger,
+                )
+
+            val firstCallbackResults = mutableListOf<Pair<ConfigMap, Source>>()
+            val secondCallbackResults = mutableListOf<Pair<ConfigMap, Source>>()
+
+            // Ensure no rate limiting by setting timestamp to 0 (old enough)
+            storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
+
+            // First subscribe call - should trigger HTTP request
+            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { config, source, _ ->
+                firstCallbackResults.add(config to source)
+            }
+
+            // Second subscribe call immediately after - should NOT trigger another HTTP request
+            // but should still get notified when first request completes
+            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { config, source, _ ->
+                secondCallbackResults.add(config to source)
+            }
+
+            // Advance the dispatcher to complete both subscribe calls and the HTTP request
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            // Verify HTTP request was made only once
+            assertTrue(requestSlot.isCaptured, "Should have made exactly one HTTP request")
+
+            // Verify both callbacks received the remote config
+            assertTrue(
+                firstCallbackResults.any { it.second == Source.REMOTE },
+                "First callback should receive REMOTE config. Got: $firstCallbackResults",
+            )
+            assertTrue(
+                secondCallbackResults.any { it.second == Source.REMOTE },
+                "Second callback should receive REMOTE config. Got: $secondCallbackResults",
+            )
+
+            // Verify both got the same config data
+            val firstRemoteConfig = firstCallbackResults.first { it.second == Source.REMOTE }.first
+            val secondRemoteConfig = secondCallbackResults.first { it.second == Source.REMOTE }.first
+            assertEquals(firstRemoteConfig, secondRemoteConfig, "Both callbacks should get the same config")
+        }
+
+    @Test
+    fun `in-flight fetch protection - multiple consecutive calls result in single request with proper skipping`() =
+        runTest {
+            val requestSlot = slot<HttpClient.Request>()
+            val requestSlots = mutableListOf<HttpClient.Request>()
+            val mockHttpClient = mockk<HttpClient>()
+
+            // Capture all requests to verify only one is made
+            every { mockHttpClient.request(capture(requestSlot)) } answers {
+                requestSlots.add(requestSlot.captured)
+                HttpClient.Response(
+                    statusCode = 200,
+                    body = DEFAULT_API_REMOTE_CONFIG_JSON.trimIndent(),
+                    headers = emptyMap(),
+                    statusMessage = "OK",
+                )
+            }
+
+            val client =
+                RemoteConfigClientImpl(
+                    apiKey = "test-key",
+                    serverZone = ServerZone.US,
+                    coroutineScope = testScope,
+                    networkIODispatcher = testDispatcher,
+                    storageIODispatcher = testDispatcher,
+                    storage = storage,
+                    httpClient = mockHttpClient,
+                    logger = logger,
+                )
+
+            val callbackResults = mutableListOf<Pair<ConfigMap, Source>>()
+            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { config, source, _ ->
+                callbackResults.add(config to source)
+            }
+
+            // Make multiple consecutive updateConfigs calls
+            client.updateConfigs()
+            client.updateConfigs()
+            client.updateConfigs()
+
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            // Verify only one HTTP request was made despite multiple calls
+            assertEquals(1, requestSlots.size, "Should make only one HTTP request despite multiple updateConfigs calls")
+
+            // Verify callback received remote config
+            assertTrue(
+                callbackResults.size == 1 &&
+                    callbackResults.first().second == Source.REMOTE,
+                "Should receive one REMOTE config from successful fetch",
+            )
+
+            // Reset timestamp and verify that after fetch completes, new calls can proceed
+            storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
+            requestSlots.clear()
+
+            client.updateConfigs()
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            // Should allow new request after previous fetch completed
+            assertEquals(1, requestSlots.size, "Should allow new request after previous fetch completed")
+        }
+
+    @Test
+    fun `rate limiting - blocks calls within interval and allows calls after interval with proper timing`() =
+        runTest {
+            val requestSlots = mutableListOf<HttpClient.Request>()
+            val mockHttpClient = mockk<HttpClient>()
+
+            every { mockHttpClient.request(any()) } answers {
+                val request = firstArg<HttpClient.Request>()
+                requestSlots.add(request)
+                HttpClient.Response(
+                    statusCode = 200,
+                    body = DEFAULT_API_REMOTE_CONFIG_JSON.trimIndent(),
+                    headers = emptyMap(),
+                    statusMessage = "OK",
+                )
+            }
+
+            val client =
+                RemoteConfigClientImpl(
+                    apiKey = "test-key",
+                    serverZone = ServerZone.US,
+                    coroutineScope = testScope,
+                    networkIODispatcher = testDispatcher,
+                    storageIODispatcher = testDispatcher,
+                    storage = storage,
+                    httpClient = mockHttpClient,
+                    logger = logger,
+                )
+
+            val callbackResults = mutableListOf<Pair<ConfigMap, Source>>()
+            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { config, source, _ ->
+                callbackResults.add(config to source)
+            }
+
+            // Test 1: No previous timestamp - should allow request
+            client.updateConfigs()
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertEquals(1, requestSlots.size, "Should allow request when no previous timestamp exists")
+
+            // Test 2: Set recent timestamp (within 5 minutes) - should block requests
+            val recentTimestamp = System.currentTimeMillis() - (2 * 60 * 1_000L) // 2 minutes ago
+            storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, recentTimestamp.toString())
+            requestSlots.clear()
+
+            client.updateConfigs()
+            client.updateConfigs() // Multiple calls should all be blocked
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            assertTrue(requestSlots.isEmpty(), "Should block requests within 5-minute rate limit window")
+
+            // Test 3: Set old timestamp (older than 5 minutes) - should allow request
+            val oldTimestamp = System.currentTimeMillis() - (6 * 60 * 1_000L) // 6 minutes ago
+            storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, oldTimestamp.toString())
+            requestSlots.clear()
+
+            client.updateConfigs()
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            assertEquals(1, requestSlots.size, "Should allow request after 5-minute rate limit window expires")
+
+            // Test 4: Verify timestamp gets updated after successful fetch
+            val storedTimestamp = storage.read(Storage.Constants.REMOTE_CONFIG_TIMESTAMP)?.toLongOrNull()
+            val currentTime = System.currentTimeMillis()
+
+            assertTrue(
+                storedTimestamp != null && storedTimestamp > oldTimestamp,
+                "Should update timestamp after successful fetch",
+            )
+            assertTrue(
+                storedTimestamp != null && (currentTime - storedTimestamp) < 1000L,
+                "Updated timestamp should be very recent (within 1 second)",
+            )
+
+            // Verify callback received remote configs from allowed requests
+            assertTrue(
+                callbackResults.any { it.second == Source.REMOTE },
+                "Should receive REMOTE configs from successful fetches",
+            )
+        }
+
+    // endregion Rate Limiting
+
     // region API Response Edge Cases
 
     @Test
@@ -498,7 +708,7 @@ class RemoteConfigClientTest {
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
             var callbackCount = 0
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { config, source, _ ->
+            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ ->
                 callbackCount++
             }
             testDispatcher.scheduler.advanceUntilIdle()
