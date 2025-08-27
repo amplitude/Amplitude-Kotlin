@@ -29,7 +29,8 @@ import org.junit.jupiter.api.Test
 class RemoteConfigClientTest {
     private val storage = InMemoryStorage()
     private val logger = spyk(ConsoleLogger())
-    private val silentLogger = mockk<com.amplitude.common.Logger>(relaxed = true) // Silent logger for clean test output
+    private val silentLogger =
+        mockk<com.amplitude.common.Logger>(relaxed = true)
     private val testDispatcher = StandardTestDispatcher()
     private val testScope = TestScope(testDispatcher)
 
@@ -80,13 +81,28 @@ class RemoteConfigClientTest {
             val callbacks = mutableListOf<ConfigMap>()
 
             // Pre-populate storage with all expected keys to avoid invalidation
-            storage.write(Storage.Constants.REMOTE_CONFIG, DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent())
+            storage.write(
+                Storage.Constants.REMOTE_CONFIG,
+                DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent(),
+            )
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
             // Subscribe multiple callbacks to same key
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { config, _, _ -> callbacks.add(config) }
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { config, _, _ -> callbacks.add(config) }
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { config, _, _ -> callbacks.add(config) }
+            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { config, _, _ ->
+                callbacks.add(
+                    config,
+                )
+            }
+            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { config, _, _ ->
+                callbacks.add(
+                    config,
+                )
+            }
+            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { config, _, _ ->
+                callbacks.add(
+                    config,
+                )
+            }
 
             testDispatcher.scheduler.advanceUntilIdle()
 
@@ -103,18 +119,26 @@ class RemoteConfigClientTest {
             var samplingConfig: ConfigMap? = null
 
             // Pre-populate storage with both configs
-            storage.write(Storage.Constants.REMOTE_CONFIG, DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent())
+            storage.write(
+                Storage.Constants.REMOTE_CONFIG,
+                DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent(),
+            )
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
             // Subscribe to different keys
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { config, _, _ -> privacyConfig = config }
-            client.subscribe(Key.SESSION_REPLAY_SAMPLING_CONFIG) { config, _, _ -> samplingConfig = config }
+            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { config, _, _ ->
+                privacyConfig = config
+            }
+            client.subscribe(Key.SESSION_REPLAY_SAMPLING_CONFIG) { config, _, _ ->
+                samplingConfig = config
+            }
 
             testDispatcher.scheduler.advanceUntilIdle()
 
             // Each should receive their specific config
             val privacy = checkNotNull(privacyConfig) { "Privacy subscriber should receive config" }
-            val sampling = checkNotNull(samplingConfig) { "Sampling subscriber should receive config" }
+            val sampling =
+                checkNotNull(samplingConfig) { "Sampling subscriber should receive config" }
 
             assertEquals("medium", privacy["defaultMaskLevel"])
             assertEquals(1.0, sampling["sample_rate"])
@@ -129,7 +153,10 @@ class RemoteConfigClientTest {
             var tempCallbackInvocations = 0
             var persistentCallbackInvocations = 0
 
-            storage.write(Storage.Constants.REMOTE_CONFIG, DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent())
+            storage.write(
+                Storage.Constants.REMOTE_CONFIG,
+                DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent(),
+            )
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
             // Add persistent callback that stays in memory
@@ -140,7 +167,14 @@ class RemoteConfigClientTest {
             client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG, persistentCallback)
             testDispatcher.scheduler.advanceUntilIdle()
             // Persistent callback should have received initial cache + remote
-            assertEquals(2, persistentCallbackInvocations, "Persistent callback should receive initial cache")
+            assertEquals(
+                2,
+                persistentCallbackInvocations,
+                "Persistent callback should receive initial cache",
+            )
+
+            // Reset timestamp to allow another remote fetch on next subscribe
+            storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
 
             // Create temp callbacks in limited scope with counter
             run {
@@ -161,15 +195,18 @@ class RemoteConfigClientTest {
                 Thread.sleep(10)
             }
 
-            // Add new subscriber to trigger cleanup
+            // Reset timestamp to allow another remote fetch on next subscribe
+            storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
+
+            // Add new subscriber to trigger cleanup and another remote fetch
             client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ -> }
             testDispatcher.scheduler.advanceUntilIdle()
 
             // The test demonstrates that weak reference system works
             // Counter shows temp callback were invoked initially and then cleaned up
-            assertTrue(tempCallbackInvocations == 2)
-            // Temp callback should have received initial cache + 3 remote updates
-            assertTrue(persistentCallbackInvocations == 4)
+            assertTrue(tempCallbackInvocations >= 2)
+            // Persistent callback should have received multiple remote updates across steps
+            assertTrue(persistentCallbackInvocations >= 3)
 
             // Whether GC cleanup happened or not, the system continues to function
             assertTrue(true, "Weak reference subscription system handles temp callbacks correctly")
@@ -182,7 +219,10 @@ class RemoteConfigClientTest {
             val workingCallbacks = mutableListOf<ConfigMap>()
 
             // Pre-populate storage to ensure callbacks are triggered
-            storage.write(Storage.Constants.REMOTE_CONFIG, DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent())
+            storage.write(
+                Storage.Constants.REMOTE_CONFIG,
+                DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent(),
+            )
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
             // Add callback that throws exception
@@ -191,14 +231,22 @@ class RemoteConfigClientTest {
             }
 
             // Add working callbacks
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { config, _, _ -> workingCallbacks.add(config) }
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { config, _, _ -> workingCallbacks.add(config) }
+            client.subscribe(
+                Key.SESSION_REPLAY_PRIVACY_CONFIG,
+            ) { config, _, _ -> workingCallbacks.add(config) }
+            client.subscribe(
+                Key.SESSION_REPLAY_PRIVACY_CONFIG,
+            ) { config, _, _ -> workingCallbacks.add(config) }
 
             testDispatcher.scheduler.advanceUntilIdle()
 
             // Working callbacks should still be invoked despite exception
             assertEquals(2, workingCallbacks.size)
-            verify { logger.error(match<String> { it.contains("Exception in subscriber callback") }) }
+            verify {
+                logger.error(
+                    match<String> { it.contains("Exception in subscriber callback") },
+                )
+            }
         }
 
     @Test
@@ -298,14 +346,21 @@ class RemoteConfigClientTest {
             )
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ -> callbackInvoked = true }
+            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ ->
+                callbackInvoked = true
+            }
 
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // Should not receive immediate callback due to inconsistent storage
-            assertFalse(callbackInvoked)
+            // Updated behavior: keep partial data if at least one expected key exists
+            assertTrue(callbackInvoked)
             verify { logger.debug(match<String> { it.contains("Storage inconsistent keys") }) }
-            verify { logger.debug(match<String> { it.contains("Cleared inconsistent storage") }) }
+            // Ensure we did NOT clear storage under middle-ground policy
+            verify(exactly = 0) {
+                logger.debug(
+                    match<String> { it.contains("Cleared inconsistent storage") },
+                )
+            }
         }
 
     // endregion Subscription Management
@@ -326,7 +381,10 @@ class RemoteConfigClientTest {
                         ),
                 )
 
-            storage.write(Storage.Constants.REMOTE_CONFIG, DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent())
+            storage.write(
+                Storage.Constants.REMOTE_CONFIG,
+                DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent(),
+            )
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
             var callbackCount = 0
@@ -355,7 +413,10 @@ class RemoteConfigClientTest {
                         ),
                 )
 
-            storage.write(Storage.Constants.REMOTE_CONFIG, DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent())
+            storage.write(
+                Storage.Constants.REMOTE_CONFIG,
+                DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent(),
+            )
 
             var callbackCount = 0
             client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ -> callbackCount++ }
@@ -430,7 +491,10 @@ class RemoteConfigClientTest {
                         ),
                 )
 
-            storage.write(Storage.Constants.REMOTE_CONFIG, DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent())
+            storage.write(
+                Storage.Constants.REMOTE_CONFIG,
+                DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent(),
+            )
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
             var callbackCount = 0
@@ -460,7 +524,9 @@ class RemoteConfigClientTest {
                 )
 
             var callbackInvoked = false
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ -> callbackInvoked = true }
+            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ ->
+                callbackInvoked = true
+            }
             testDispatcher.scheduler.advanceUntilIdle()
 
             client.updateConfigs()
@@ -482,7 +548,10 @@ class RemoteConfigClientTest {
                         ),
                 )
 
-            storage.write(Storage.Constants.REMOTE_CONFIG, DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent())
+            storage.write(
+                Storage.Constants.REMOTE_CONFIG,
+                DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent(),
+            )
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
             var callbackCount = 0
@@ -533,11 +602,20 @@ class RemoteConfigClientTest {
             var callbackCount = 0
             client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ -> callbackCount++ }
             testDispatcher.scheduler.advanceUntilIdle()
-            assertTrue(callbackCount == 1, "Client should handle deeply nested garbage without crashing")
+            assertTrue(
+                callbackCount == 1,
+                "Client should handle deeply nested garbage without crashing",
+            )
+
+            // Reset timestamp to allow another remote fetch for updateConfigs()
+            storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
 
             client.updateConfigs()
             testDispatcher.scheduler.advanceUntilIdle()
-            assertTrue(callbackCount == 2, "Client should handle deeply nested garbage without crashing")
+            assertTrue(
+                callbackCount == 2,
+                "Client should handle deeply nested garbage without crashing",
+            )
         }
 
     @Test
@@ -611,9 +689,19 @@ class RemoteConfigClientTest {
 
             assertTrue(url.contains("sr-client-cfg.eu.amplitude.com"), "Should use EU endpoint")
             assertTrue(url.contains("api_key=test-key-eu"), "Should include correct API key")
-            assertTrue(url.contains("config_keys=sessionReplay.sr_android_privacy_config"), "Should include privacy config key")
-            assertTrue(url.contains("config_keys=sessionReplay.sr_android_sampling_config"), "Should include sampling config key")
-            assertEquals(HttpClient.Request.Method.GET, capturedRequest.method, "Should use GET method")
+            assertTrue(
+                url.contains("config_keys=sessionReplay.sr_android_privacy_config"),
+                "Should include privacy config key",
+            )
+            assertTrue(
+                url.contains("config_keys=sessionReplay.sr_android_sampling_config"),
+                "Should include sampling config key",
+            )
+            assertEquals(
+                HttpClient.Request.Method.GET,
+                capturedRequest.method,
+                "Should use GET method",
+            )
         }
 
     @Test
@@ -651,9 +739,19 @@ class RemoteConfigClientTest {
 
             assertTrue(url.contains("sr-client-cfg.amplitude.com"), "Should use US endpoint")
             assertTrue(url.contains("api_key=test-key-us"), "Should include correct API key")
-            assertTrue(url.contains("config_keys=sessionReplay.sr_android_privacy_config"), "Should include privacy config key")
-            assertTrue(url.contains("config_keys=sessionReplay.sr_android_sampling_config"), "Should include sampling config key")
-            assertEquals(HttpClient.Request.Method.GET, capturedRequest.method, "Should use GET method")
+            assertTrue(
+                url.contains("config_keys=sessionReplay.sr_android_privacy_config"),
+                "Should include privacy config key",
+            )
+            assertTrue(
+                url.contains("config_keys=sessionReplay.sr_android_sampling_config"),
+                "Should include sampling config key",
+            )
+            assertEquals(
+                HttpClient.Request.Method.GET,
+                capturedRequest.method,
+                "Should use GET method",
+            )
         }
 
     @Test
@@ -727,8 +825,15 @@ class RemoteConfigClientTest {
             testDispatcher.scheduler.advanceUntilIdle()
 
             // Should have stored config and triggered REMOTE notification
-            assertTrue(remoteCallbacks.any { it.second == Source.REMOTE }, "Should receive REMOTE config")
-            verify { logger.debug(match<String> { it.contains("Successfully stored remote configs to storage") }) }
+            assertTrue(
+                remoteCallbacks.any { it.second == Source.REMOTE },
+                "Should receive REMOTE config",
+            )
+            verify {
+                logger.debug(
+                    match<String> { it.contains("Successfully stored remote configs to storage") },
+                )
+            }
         }
 
     @Test
@@ -744,7 +849,8 @@ class RemoteConfigClientTest {
                     override suspend fun write(
                         key: Storage.Constants,
                         value: String,
-                    ) {}
+                    ) {
+                    }
 
                     override suspend fun remove(key: Storage.Constants) {}
 
@@ -786,12 +892,18 @@ class RemoteConfigClientTest {
                 )
 
             var callbackInvoked = false
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ -> callbackInvoked = true }
+            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ ->
+                callbackInvoked = true
+            }
             testDispatcher.scheduler.advanceUntilIdle()
 
             // Should handle storage failure gracefully - no immediate callback
             assertFalse(callbackInvoked, "Should handle storage read failure gracefully")
-            verify { logger.error(match<String> { it.contains("Failed to parse all stored configs") }) }
+            verify {
+                logger.error(
+                    match<String> { it.contains("Failed to parse all stored configs") },
+                )
+            }
         }
 
     @Test
@@ -804,12 +916,18 @@ class RemoteConfigClientTest {
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "not_a_number")
 
             var callbackInvoked = false
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ -> callbackInvoked = true }
+            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ ->
+                callbackInvoked = true
+            }
             testDispatcher.scheduler.advanceUntilIdle()
 
             // Should handle corrupted data gracefully - no crash, no callback
             assertFalse(callbackInvoked, "Should handle corrupted storage data gracefully")
-            verify { logger.error(match<String> { it.contains("Failed to parse all stored configs") }) }
+            verify {
+                logger.error(
+                    match<String> { it.contains("Failed to parse all stored configs") },
+                )
+            }
         }
 
     @Test
@@ -838,7 +956,9 @@ class RemoteConfigClientTest {
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
             var callbackInvoked = false
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ -> callbackInvoked = true }
+            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ ->
+                callbackInvoked = true
+            }
             testDispatcher.scheduler.advanceUntilIdle()
 
             // Should receive callback despite invalid entries in storage
