@@ -32,6 +32,7 @@ class MainApplication : Application() {
                         +deepLinks
                         +screenViews
                         +elementInteractions
+                        +frustrationInteractions
                     },
                 httpClient = httpClient,
             )

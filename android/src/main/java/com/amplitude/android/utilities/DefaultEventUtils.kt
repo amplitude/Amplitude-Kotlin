@@ -8,7 +8,6 @@ import android.net.ParseException
 import android.net.Uri
 import android.os.Build
 import com.amplitude.android.Amplitude
-import com.amplitude.android.ExperimentalAmplitudeFeature
 import com.amplitude.android.FrustrationInteractionsDetector
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.registerFragmentLifecycleCallbacks
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.unregisterFragmentLifecycleCallbacks
@@ -116,7 +115,6 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
     }
 
     @JvmOverloads
-    @OptIn(ExperimentalAmplitudeFeature::class)
     fun startUserInteractionEventTracking(
         activity: Activity,
         frustrationDetector: FrustrationInteractionsDetector? = null,
