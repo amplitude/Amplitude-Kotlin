@@ -149,13 +149,10 @@ internal class RemoteConfigClientImpl(
         // Immediately provide stored config if available
         val storedData = getStoredConfigData(key.value)
         if (storedData != null) {
-            notifySubscribersForKey(
-                configKey = key.value,
-                index = subscriberList.indexOf(weakCallback),
-                config = storedData.config,
-                source = CACHE,
-                timestamp = storedData.timestamp,
-            )
+            // Notify only the newly added subscriber
+            weakCallback.runSafely {
+                onUpdate(storedData.config, CACHE, storedData.timestamp)
+            }
         }
 
         // Trigger remote fetch to ensure latest config is available
@@ -189,12 +186,13 @@ internal class RemoteConfigClientImpl(
                 }
 
                 configs.forEach { (configKey, config) ->
-                    notifySubscribersForKey(
-                        configKey = configKey,
-                        config = config,
-                        source = REMOTE,
-                        timestamp = timestamp,
-                    )
+                    // Notify all subscribers for this config key
+                    val subscriberList = keySpecificSubscribers[configKey]
+                    subscriberList?.forEach { weakCallback ->
+                        weakCallback.runSafely {
+                            onUpdate(config, REMOTE, timestamp)
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 logger.error("Error updating remote configs: ${e.message}")
@@ -328,30 +326,6 @@ internal class RemoteConfigClientImpl(
                     "Failed to fetch remote config: ${response.statusCode}: ${response.statusMessage}",
                 )
                 null
-            }
-        }
-    }
-
-    /**
-     * Notify subscribers for a specific config key.
-     * Subscriber callback exceptions are isolated and logged.
-     * @param index Optional index to notify a specific subscriber
-     */
-    private fun notifySubscribersForKey(
-        configKey: String,
-        index: Int? = null,
-        config: ConfigMap,
-        source: RemoteConfigClient.Source,
-        timestamp: Long,
-    ) {
-        val subscriberList = keySpecificSubscribers[configKey] ?: return
-        val notifySubscribers =
-            subscriberList
-                .filterIndexed { i, _ -> index == null || i == index }
-                .ifEmpty { subscriberList }
-        notifySubscribers.forEach { weakCallback ->
-            weakCallback.runSafely {
-                onUpdate(config, source, timestamp)
             }
         }
     }
