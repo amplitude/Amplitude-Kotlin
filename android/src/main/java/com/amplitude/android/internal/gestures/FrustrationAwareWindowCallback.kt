@@ -3,7 +3,6 @@ package com.amplitude.android.internal.gestures
 import android.app.Activity
 import android.view.MotionEvent
 import android.view.Window
-import com.amplitude.android.ExperimentalAmplitudeFeature
 import com.amplitude.android.FrustrationInteractionsDetector
 import com.amplitude.android.internal.ViewHierarchyScanner.findTarget
 import com.amplitude.android.internal.ViewTarget
@@ -13,7 +12,6 @@ import com.amplitude.common.Logger
 /**
  * Enhanced window callback that handles frustration interactions (e.g. rage click, dead click)
  */
-@ExperimentalAmplitudeFeature
 internal class FrustrationAwareWindowCallback(
     delegate: Window.Callback,
     activity: Activity,

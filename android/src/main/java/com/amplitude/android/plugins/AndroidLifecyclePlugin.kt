@@ -13,7 +13,6 @@ import com.amplitude.android.AutocaptureOption.ELEMENT_INTERACTIONS
 import com.amplitude.android.AutocaptureOption.FRUSTRATION_INTERACTIONS
 import com.amplitude.android.AutocaptureOption.SCREEN_VIEWS
 import com.amplitude.android.Configuration
-import com.amplitude.android.ExperimentalAmplitudeFeature
 import com.amplitude.android.FrustrationInteractionsDetector
 import com.amplitude.android.GuardedAmplitudeFeature
 import com.amplitude.android.utilities.ActivityCallbackType
@@ -47,7 +46,6 @@ class AndroidLifecyclePlugin(
     @VisibleForTesting
     internal var eventJob: Job? = null
 
-    @OptIn(ExperimentalAmplitudeFeature::class)
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
         androidAmplitude = amplitude as AndroidAmplitude
@@ -143,7 +141,6 @@ class AndroidLifecyclePlugin(
         }
     }
 
-    @OptIn(ExperimentalAmplitudeFeature::class)
     override fun onActivityResumed(activity: Activity) {
         if (ELEMENT_INTERACTIONS in autocapture || FRUSTRATION_INTERACTIONS in autocapture) {
             DefaultEventUtils(androidAmplitude).startUserInteractionEventTracking(
@@ -153,7 +150,6 @@ class AndroidLifecyclePlugin(
         }
     }
 
-    @OptIn(ExperimentalAmplitudeFeature::class)
     override fun onActivityPaused(activity: Activity) {
         if (ELEMENT_INTERACTIONS in autocapture || FRUSTRATION_INTERACTIONS in autocapture) {
             DefaultEventUtils(androidAmplitude).stopUserInteractionEventTracking(activity)
