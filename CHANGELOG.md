@@ -1,3 +1,10 @@
+## [1.22.3](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.22.2...v1.22.3) (2025-09-18)
+
+
+### Bug Fixes
+
+* in-line notify for clarity ([#328](https://github.com/amplitude/Amplitude-Kotlin/issues/328)) ([dc84676](https://github.com/amplitude/Amplitude-Kotlin/commit/dc84676bc36df7855d3ad6986ff2beafbb12c9ee))
+
 ## [1.22.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.22.1...v1.22.2) (2025-08-15)
 
 
