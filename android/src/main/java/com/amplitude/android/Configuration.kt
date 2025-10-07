@@ -49,6 +49,7 @@ open class Configuration(
     override var deviceId: String? = null,
     override var sessionId: Long? = null,
     override var httpClient: HttpClientInterface? = null,
+    var interactionsOptions: InteractionsOptions = InteractionsOptions(),
 ) : Configuration(
         apiKey,
         flushQueueSize,
@@ -115,6 +116,7 @@ open class Configuration(
         deviceId: String? = null,
         sessionId: Long? = null,
         httpClient: HttpClientInterface? = null,
+        interactionsOptions: InteractionsOptions = InteractionsOptions(),
     ) : this(
         apiKey,
         context,
@@ -150,6 +152,7 @@ open class Configuration(
         deviceId,
         sessionId,
         httpClient,
+        interactionsOptions,
     ) {
         if (!trackingSessionEvents) {
             defaultTracking.sessions = false

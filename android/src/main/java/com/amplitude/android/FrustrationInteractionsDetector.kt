@@ -33,6 +33,7 @@ class FrustrationInteractionsDetector(
     private val amplitude: Amplitude,
     private val logger: Logger,
     density: Float,
+    private val interactionsOptions: InteractionsOptions = InteractionsOptions(),
 ) {
     companion object {
         /**
@@ -87,22 +88,26 @@ class FrustrationInteractionsDetector(
         val clickTime = System.currentTimeMillis()
         val clickId = generateClickId(clickInfo, targetInfo)
 
-        // Process for rage click detection (check target tag for ignore flags)
-        val isIgnoredForRageClick = isRageClickIgnored(target)
-        if (!isIgnoredForRageClick) {
-            processRageClick(clickInfo, targetInfo, target, activity, clickTime)
-        } else {
-            logger.debug("Skipping rage click processing for ignored target: ${targetInfo.className}")
+        // Process for rage click detection if enabled
+        if (interactionsOptions.rageClick.enabled) {
+            val isIgnoredForRageClick = isRageClickIgnored(target)
+            if (!isIgnoredForRageClick) {
+                processRageClick(clickInfo, targetInfo, target, activity, clickTime)
+            } else {
+                logger.debug("Skipping rage click processing for ignored target: ${targetInfo.className}")
+            }
         }
 
-        // Process for dead click detection (check target tag for ignore flags)
-        val isIgnoredForDeadClick = isDeadClickIgnored(target)
-        if (!isIgnoredForDeadClick) {
-            processDeadClick(clickInfo, targetInfo, target, activity, clickTime, clickId)
-        } else {
-            logger.debug(
-                "Skipping dead click processing for ignored target: ${targetInfo.className}",
-            )
+        // Process for dead click detection if enabled
+        if (interactionsOptions.deadClick.enabled) {
+            val isIgnoredForDeadClick = isDeadClickIgnored(target)
+            if (!isIgnoredForDeadClick) {
+                processDeadClick(clickInfo, targetInfo, target, activity, clickTime, clickId)
+            } else {
+                logger.debug(
+                    "Skipping dead click processing for ignored target: ${targetInfo.className}",
+                )
+            }
         }
     }
 

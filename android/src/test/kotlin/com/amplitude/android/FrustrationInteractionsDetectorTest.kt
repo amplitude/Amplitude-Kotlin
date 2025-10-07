@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
+import java.util.Date
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FrustrationInteractionsDetectorTest {
@@ -59,7 +60,7 @@ class FrustrationInteractionsDetectorTest {
         mockLogger = mockk(relaxed = true)
         mockViewTarget = mockk(relaxed = true)
         mockActivity = mockk(relaxed = true)
-        uiChangeFlow = MutableSharedFlow()
+        uiChangeFlow = MutableSharedFlow(extraBufferCapacity = 1)
 
         // Setup mock ViewTarget properties to match testTargetInfo
         every { mockViewTarget.className } returns testTargetInfo.className
@@ -87,6 +88,7 @@ class FrustrationInteractionsDetectorTest {
     @AfterEach
     fun tearDown() {
         Dispatchers.resetMain()
+        clearMocks(mockAmplitude, mockLogger, mockViewTarget, mockActivity)
     }
 
     //region Rage Click Tests
@@ -185,8 +187,6 @@ class FrustrationInteractionsDetectorTest {
         // This test validates that start() is needed for proper signal flow subscription
         // We'll test this by confirming that the startUiChangeCollection method is called
         val mockAmplitudeWithStart = mockk<Amplitude>(relaxed = true)
-        val uiChangeFlow = MutableSharedFlow<Signal>()
-        every { mockAmplitudeWithStart.signalFlow } returns uiChangeFlow
         every { mockAmplitudeWithStart.amplitudeScope } returns CoroutineScope(testDispatcher)
         every { mockAmplitudeWithStart.amplitudeDispatcher } returns testDispatcher
 
@@ -297,14 +297,11 @@ class FrustrationInteractionsDetectorTest {
 
     @Test
     fun `dead click detection should work after start()`() {
-        val uiChangeFlow = MutableSharedFlow<Signal>(extraBufferCapacity = 1)
-        every { mockAmplitude.signalFlow } returns uiChangeFlow
-
         // Start the detector and ensure the signal collector is subscribed
         detector.start()
         testDispatcher.scheduler.runCurrent()
         // Emit a UiChangeSignal to enable dead click detection
-        uiChangeFlow.tryEmit(UiChangeSignal(java.util.Date(System.currentTimeMillis())))
+        uiChangeFlow.tryEmit(UiChangeSignal(Date(System.currentTimeMillis())))
         testDispatcher.scheduler.runCurrent()
 
         // Process a click
@@ -348,7 +345,7 @@ class FrustrationInteractionsDetectorTest {
     fun `dead click detection should reset after stop()`() {
         // Enable by emitting a UiChangeSignal after start
         detector.start()
-        uiChangeFlow.tryEmit(UiChangeSignal(java.util.Date(System.currentTimeMillis())))
+        uiChangeFlow.tryEmit(UiChangeSignal(Date(System.currentTimeMillis())))
         testDispatcher.scheduler.runCurrent()
 
         // Stop should reset gating state
@@ -369,6 +366,201 @@ class FrustrationInteractionsDetectorTest {
                 match { it.contains("no UI change signals observed yet") },
             )
         }
+    }
+
+    //endregion
+
+    //region Granular Options Tests
+
+    @Test
+    fun `rage click disabled - does not track rage clicks`() {
+        val detectorWithOptions =
+            FrustrationInteractionsDetector(
+                amplitude = mockAmplitude,
+                logger = mockLogger,
+                density = 2f,
+                interactionsOptions = InteractionsOptions(
+                    rageClick = RageClickOptions(enabled = false),
+                    deadClick = DeadClickOptions(enabled = true)
+                )
+            )
+
+        val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
+
+        // Perform 4 rapid clicks (should trigger rage click if enabled)
+        repeat(4) {
+            detectorWithOptions.processClick(clickInfo, testTargetInfo, mockViewTarget, mockActivity)
+        }
+
+        // Verify no rage click was tracked
+        verify(exactly = 0) { mockAmplitude.track(RAGE_CLICK, any()) }
+    }
+
+    @Test
+    fun `dead click disabled - does not track dead clicks`() {
+        val detectorWithOptions =
+            FrustrationInteractionsDetector(
+                amplitude = mockAmplitude,
+                logger = mockLogger,
+                density = 2f,
+                interactionsOptions = InteractionsOptions(
+                    rageClick = RageClickOptions(enabled = true),
+                    deadClick = DeadClickOptions(enabled = false)
+                )
+            )
+        detectorWithOptions.start()
+
+        // Emit initial UI change to indicate signal provider is active
+        testDispatcher.scheduler.advanceUntilIdle()
+        uiChangeFlow.tryEmit(UiChangeSignal(Date()))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
+        detectorWithOptions.processClick(clickInfo, testTargetInfo, mockViewTarget, mockActivity)
+
+        // Advance time to trigger dead click timeout
+        testDispatcher.scheduler.advanceTimeBy(4000L)
+        testDispatcher.scheduler.runCurrent()
+
+        // Verify no dead click was tracked
+        verify(exactly = 0) { mockAmplitude.track(DEAD_CLICK, any()) }
+    }
+
+    @Test
+    fun `both interactions disabled - tracks neither rage nor dead clicks`() {
+        val detectorWithOptions =
+            FrustrationInteractionsDetector(
+                amplitude = mockAmplitude,
+                logger = mockLogger,
+                density = 2f,
+                interactionsOptions = InteractionsOptions(
+                    rageClick = RageClickOptions(enabled = false),
+                    deadClick = DeadClickOptions(enabled = false)
+                )
+            )
+        detectorWithOptions.start()
+
+        // Emit initial UI change
+        testDispatcher.scheduler.advanceUntilIdle()
+        uiChangeFlow.tryEmit(UiChangeSignal(Date()))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
+
+        // Try to trigger both rage click (4 rapid clicks) and dead click
+        repeat(4) {
+            detectorWithOptions.processClick(clickInfo, testTargetInfo, mockViewTarget, mockActivity)
+        }
+
+        // Advance time for dead click timeout
+        testDispatcher.scheduler.advanceTimeBy(4000L)
+        testDispatcher.scheduler.runCurrent()
+
+        // Verify neither type was tracked
+        verify(exactly = 0) { mockAmplitude.track(RAGE_CLICK, any()) }
+        verify(exactly = 0) { mockAmplitude.track(DEAD_CLICK, any()) }
+    }
+
+    @Test
+    fun `both interactions enabled - rage click works`() {
+        val detectorWithOptions =
+            FrustrationInteractionsDetector(
+                amplitude = mockAmplitude,
+                logger = mockLogger,
+                density = 2f,
+                interactionsOptions = InteractionsOptions(
+                    rageClick = RageClickOptions(enabled = true),
+                    deadClick = DeadClickOptions(enabled = true)
+                )
+            )
+
+        // Test rage click
+        val rageClickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
+        repeat(4) {
+            detectorWithOptions.processClick(rageClickInfo, testTargetInfo, mockViewTarget, mockActivity)
+        }
+
+        // Verify rage click was tracked
+        verify(exactly = 1) { mockAmplitude.track(RAGE_CLICK, any()) }
+    }
+
+    @Test
+    fun `both interactions enabled - dead click works`() {
+        val detectorWithOptions =
+            FrustrationInteractionsDetector(
+                amplitude = mockAmplitude,
+                logger = mockLogger,
+                density = 2f,
+                interactionsOptions = InteractionsOptions(
+                    rageClick = RageClickOptions(enabled = true),
+                    deadClick = DeadClickOptions(enabled = true)
+                )
+            )
+        detectorWithOptions.start()
+
+        // Emit initial UI change to indicate signal provider is active
+        testDispatcher.scheduler.advanceUntilIdle()
+        uiChangeFlow.tryEmit(UiChangeSignal(Date()))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        // Test dead click
+        val deadClickInfo = FrustrationInteractionsDetector.ClickInfo(500f, 500f)
+        detectorWithOptions.processClick(deadClickInfo, testTargetInfo, mockViewTarget, mockActivity)
+
+        // Advance time for dead click timeout
+        testDispatcher.scheduler.advanceTimeBy(4000L)
+        testDispatcher.scheduler.runCurrent()
+
+        // Verify dead click was tracked
+        verify(exactly = 1) { mockAmplitude.track(DEAD_CLICK, any()) }
+    }
+
+    @Test
+    fun `default options - rage click is enabled by default`() {
+        val detectorWithDefaultOptions =
+            FrustrationInteractionsDetector(
+                amplitude = mockAmplitude,
+                logger = mockLogger,
+                density = 2f,
+                // Use default InteractionsOptions()
+            )
+
+        // Test rage click
+        val rageClickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
+        repeat(4) {
+            detectorWithDefaultOptions.processClick(rageClickInfo, testTargetInfo, mockViewTarget, mockActivity)
+        }
+
+        // Verify rage click was tracked (default behavior)
+        verify(exactly = 1) { mockAmplitude.track(RAGE_CLICK, any()) }
+    }
+
+    @Test
+    fun `default options - dead click is enabled by default`() {
+        val detectorWithDefaultOptions =
+            FrustrationInteractionsDetector(
+                amplitude = mockAmplitude,
+                logger = mockLogger,
+                density = 2f,
+                // Use default InteractionsOptions()
+            )
+        detectorWithDefaultOptions.start()
+
+        // Emit initial UI change
+        testDispatcher.scheduler.advanceUntilIdle()
+        uiChangeFlow.tryEmit(UiChangeSignal(Date(System.currentTimeMillis())))
+        testDispatcher.scheduler.runCurrent()
+
+        // Test dead click
+        val deadClickInfo = FrustrationInteractionsDetector.ClickInfo(500f, 500f)
+        detectorWithDefaultOptions.processClick(deadClickInfo, testTargetInfo, mockViewTarget, mockActivity)
+
+        // Advance time for dead click timeout
+        testDispatcher.scheduler.advanceTimeBy(5_000L)
+        testDispatcher.scheduler.runCurrent()
+
+        // Verify dead click was tracked (default behavior)
+        verify(exactly = 1) { mockAmplitude.track(DEAD_CLICK, any()) }
     }
 
     //endregion

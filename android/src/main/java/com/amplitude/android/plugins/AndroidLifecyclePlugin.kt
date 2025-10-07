@@ -63,6 +63,7 @@ class AndroidLifecyclePlugin(
                     amplitude = amplitude,
                     logger = amplitude.logger,
                     density = density,
+                    interactionsOptions = androidConfiguration.interactionsOptions,
                 )
             frustrationInteractionsDetector?.start()
         }
