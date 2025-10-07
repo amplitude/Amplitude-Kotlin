@@ -6,15 +6,12 @@ import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.annotation.VisibleForTesting
-import com.amplitude.android.AutocaptureOption
-import com.amplitude.android.AutocaptureOption.APP_LIFECYCLES
-import com.amplitude.android.AutocaptureOption.DEEP_LINKS
-import com.amplitude.android.AutocaptureOption.ELEMENT_INTERACTIONS
-import com.amplitude.android.AutocaptureOption.FRUSTRATION_INTERACTIONS
-import com.amplitude.android.AutocaptureOption.SCREEN_VIEWS
+import com.amplitude.android.AutocaptureState
 import com.amplitude.android.Configuration
 import com.amplitude.android.FrustrationInteractionsDetector
 import com.amplitude.android.GuardedAmplitudeFeature
+import com.amplitude.android.InteractionType.DeadClick
+import com.amplitude.android.InteractionType.RageClick
 import com.amplitude.android.utilities.ActivityCallbackType
 import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.android.utilities.DefaultEventUtils
@@ -34,7 +31,7 @@ class AndroidLifecyclePlugin(
     override lateinit var amplitude: Amplitude
     private lateinit var packageInfo: PackageInfo
     private lateinit var androidAmplitude: AndroidAmplitude
-    private lateinit var autocapture: Set<AutocaptureOption>
+    private lateinit var autocaptureState: AutocaptureState
 
     private var frustrationInteractionsDetector: FrustrationInteractionsDetector? = null
 
@@ -50,12 +47,20 @@ class AndroidLifecyclePlugin(
         super.setup(amplitude)
         androidAmplitude = amplitude as AndroidAmplitude
         val androidConfiguration = amplitude.configuration as Configuration
-        autocapture = androidConfiguration.autocapture
+
+        // Build autocapture state once from configuration
+        autocaptureState =
+            AutocaptureState.from(
+                androidConfiguration.autocapture,
+                androidConfiguration.interactionsOptions,
+            )
 
         val application = androidConfiguration.context as Application
 
-        // Initialize frustration interactions detector if enabled
-        if (FRUSTRATION_INTERACTIONS in autocapture) {
+        // Initialize frustration interactions detector if rage or dead click is enabled
+        if (RageClick in autocaptureState.interactions ||
+            DeadClick in autocaptureState.interactions
+        ) {
             val density = application.resources.displayMetrics.density
 
             frustrationInteractionsDetector =
@@ -63,12 +68,12 @@ class AndroidLifecyclePlugin(
                     amplitude = amplitude,
                     logger = amplitude.logger,
                     density = density,
-                    interactionsOptions = androidConfiguration.interactionsOptions,
+                    autocaptureState = autocaptureState,
                 )
             frustrationInteractionsDetector?.start()
         }
 
-        if (APP_LIFECYCLES in autocapture) {
+        if (autocaptureState.appLifecycles) {
             packageInfo =
                 try {
                     application.packageManager.getPackageInfo(application.packageName, 0)
@@ -108,7 +113,7 @@ class AndroidLifecyclePlugin(
     ) {
         created.add(activity.hashCode())
 
-        if (SCREEN_VIEWS in autocapture) {
+        if (autocaptureState.screenViews) {
             DefaultEventUtils(androidAmplitude).startFragmentViewedEventTracking(activity)
         }
     }
@@ -125,7 +130,7 @@ class AndroidLifecyclePlugin(
 
         started.add(activity.hashCode())
 
-        if (APP_LIFECYCLES in autocapture && started.size == 1) {
+        if (autocaptureState.appLifecycles && started.size == 1) {
             DefaultEventUtils(androidAmplitude).trackAppOpenedEvent(
                 packageInfo = packageInfo,
                 isFromBackground = appInBackground,
@@ -133,26 +138,27 @@ class AndroidLifecyclePlugin(
             appInBackground = false
         }
 
-        if (DEEP_LINKS in autocapture) {
+        if (autocaptureState.deepLinks) {
             DefaultEventUtils(androidAmplitude).trackDeepLinkOpenedEvent(activity)
         }
 
-        if (SCREEN_VIEWS in autocapture) {
+        if (autocaptureState.screenViews) {
             DefaultEventUtils(androidAmplitude).trackScreenViewedEvent(activity)
         }
     }
 
     override fun onActivityResumed(activity: Activity) {
-        if (ELEMENT_INTERACTIONS in autocapture || FRUSTRATION_INTERACTIONS in autocapture) {
+        if (autocaptureState.interactions.isNotEmpty()) {
             DefaultEventUtils(androidAmplitude).startUserInteractionEventTracking(
                 activity,
                 frustrationInteractionsDetector,
+                autocaptureState,
             )
         }
     }
 
     override fun onActivityPaused(activity: Activity) {
-        if (ELEMENT_INTERACTIONS in autocapture || FRUSTRATION_INTERACTIONS in autocapture) {
+        if (autocaptureState.interactions.isNotEmpty()) {
             DefaultEventUtils(androidAmplitude).stopUserInteractionEventTracking(activity)
         }
     }
@@ -160,7 +166,7 @@ class AndroidLifecyclePlugin(
     override fun onActivityStopped(activity: Activity) {
         started.remove(activity.hashCode())
 
-        if (APP_LIFECYCLES in autocapture && started.isEmpty()) {
+        if (autocaptureState.appLifecycles && started.isEmpty()) {
             DefaultEventUtils(androidAmplitude).trackAppBackgroundedEvent()
             appInBackground = true
         }
@@ -184,7 +190,7 @@ class AndroidLifecyclePlugin(
     override fun onActivityDestroyed(activity: Activity) {
         created.remove(activity.hashCode())
 
-        if (SCREEN_VIEWS in autocapture) {
+        if (autocaptureState.screenViews) {
             DefaultEventUtils(androidAmplitude).stopFragmentViewedEventTracking(activity)
         }
     }

@@ -4,6 +4,8 @@ import android.app.Activity
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.Window
+import com.amplitude.android.AutocaptureState
+import com.amplitude.android.InteractionType.ElementInteraction
 import com.amplitude.android.internal.locators.AndroidViewTargetLocator
 import com.amplitude.common.Logger
 import io.mockk.every
@@ -28,15 +30,19 @@ class AutocaptureWindowCallbackTest {
                 track,
                 listOf(AndroidViewTargetLocator()),
                 logger,
-                object : AutocaptureWindowCallback.MotionEventObtainer {
-                    override fun obtain(origin: MotionEvent): MotionEvent {
-                        val actionMasked = origin.actionMasked
-                        every { motionEventCopy.actionMasked } returns actionMasked
-                        return motionEventCopy
-                    }
-                },
-                gestureListener,
-                gestureDetector,
+                AutocaptureState(
+                    interactions = listOf(ElementInteraction),
+                ),
+                motionEventObtainer =
+                    object : AutocaptureWindowCallback.MotionEventObtainer {
+                        override fun obtain(origin: MotionEvent): MotionEvent {
+                            val actionMasked = origin.actionMasked
+                            every { motionEventCopy.actionMasked } returns actionMasked
+                            return motionEventCopy
+                        }
+                    },
+                gestureListener = gestureListener,
+                gestureDetector = gestureDetector,
             )
         }
     }

@@ -82,6 +82,14 @@ class FrustrationInteractionsDetectorTest {
                 logger = mockLogger,
                 // 2x density for testing
                 density = 2f,
+                autocaptureState =
+                    AutocaptureState(
+                        interactions =
+                            listOf(
+                                InteractionType.RageClick,
+                                InteractionType.DeadClick,
+                            ),
+                    ),
             )
     }
 
@@ -195,6 +203,7 @@ class FrustrationInteractionsDetectorTest {
                 amplitude = mockAmplitudeWithStart,
                 logger = mockLogger,
                 density = 2f,
+                autocaptureState = AutocaptureState(interactions = listOf(InteractionType.RageClick, InteractionType.DeadClick)),
             )
 
         // Call start() to ensure signal flow subscription
@@ -221,8 +230,20 @@ class FrustrationInteractionsDetectorTest {
         every { mockAmplitude3x.amplitudeScope } returns CoroutineScope(testDispatcher)
         every { mockAmplitude3x.amplitudeDispatcher } returns testDispatcher
 
-        val detector1x = FrustrationInteractionsDetector(mockAmplitude1x, mockLogger, 1f)
-        val detector3x = FrustrationInteractionsDetector(mockAmplitude3x, mockLogger, 3f)
+        val detector1x =
+            FrustrationInteractionsDetector(
+                mockAmplitude1x,
+                mockLogger,
+                1f,
+                AutocaptureState(interactions = listOf(InteractionType.RageClick, InteractionType.DeadClick)),
+            )
+        val detector3x =
+            FrustrationInteractionsDetector(
+                mockAmplitude3x,
+                mockLogger,
+                3f,
+                AutocaptureState(interactions = listOf(InteractionType.RageClick, InteractionType.DeadClick)),
+            )
 
         // Base click at (10, 10)
         val baseClick = FrustrationInteractionsDetector.ClickInfo(10f, 10f)
@@ -379,10 +400,7 @@ class FrustrationInteractionsDetectorTest {
                 amplitude = mockAmplitude,
                 logger = mockLogger,
                 density = 2f,
-                interactionsOptions = InteractionsOptions(
-                    rageClick = RageClickOptions(enabled = false),
-                    deadClick = DeadClickOptions(enabled = true)
-                )
+                autocaptureState = AutocaptureState(interactions = listOf(InteractionType.DeadClick)),
             )
 
         val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
@@ -403,10 +421,7 @@ class FrustrationInteractionsDetectorTest {
                 amplitude = mockAmplitude,
                 logger = mockLogger,
                 density = 2f,
-                interactionsOptions = InteractionsOptions(
-                    rageClick = RageClickOptions(enabled = true),
-                    deadClick = DeadClickOptions(enabled = false)
-                )
+                autocaptureState = AutocaptureState(interactions = listOf(InteractionType.RageClick)),
             )
         detectorWithOptions.start()
 
@@ -433,10 +448,7 @@ class FrustrationInteractionsDetectorTest {
                 amplitude = mockAmplitude,
                 logger = mockLogger,
                 density = 2f,
-                interactionsOptions = InteractionsOptions(
-                    rageClick = RageClickOptions(enabled = false),
-                    deadClick = DeadClickOptions(enabled = false)
-                )
+                autocaptureState = AutocaptureState(interactions = emptyList()),
             )
         detectorWithOptions.start()
 
@@ -468,10 +480,7 @@ class FrustrationInteractionsDetectorTest {
                 amplitude = mockAmplitude,
                 logger = mockLogger,
                 density = 2f,
-                interactionsOptions = InteractionsOptions(
-                    rageClick = RageClickOptions(enabled = true),
-                    deadClick = DeadClickOptions(enabled = true)
-                )
+                autocaptureState = AutocaptureState(interactions = listOf(InteractionType.RageClick, InteractionType.DeadClick)),
             )
 
         // Test rage click
@@ -491,10 +500,7 @@ class FrustrationInteractionsDetectorTest {
                 amplitude = mockAmplitude,
                 logger = mockLogger,
                 density = 2f,
-                interactionsOptions = InteractionsOptions(
-                    rageClick = RageClickOptions(enabled = true),
-                    deadClick = DeadClickOptions(enabled = true)
-                )
+                autocaptureState = AutocaptureState(interactions = listOf(InteractionType.RageClick, InteractionType.DeadClick)),
             )
         detectorWithOptions.start()
 
@@ -522,7 +528,7 @@ class FrustrationInteractionsDetectorTest {
                 amplitude = mockAmplitude,
                 logger = mockLogger,
                 density = 2f,
-                // Use default InteractionsOptions()
+                autocaptureState = AutocaptureState(interactions = listOf(InteractionType.RageClick, InteractionType.DeadClick)),
             )
 
         // Test rage click
@@ -542,7 +548,7 @@ class FrustrationInteractionsDetectorTest {
                 amplitude = mockAmplitude,
                 logger = mockLogger,
                 density = 2f,
-                // Use default InteractionsOptions()
+                autocaptureState = AutocaptureState(interactions = listOf(InteractionType.RageClick, InteractionType.DeadClick)),
             )
         detectorWithDefaultOptions.start()
 

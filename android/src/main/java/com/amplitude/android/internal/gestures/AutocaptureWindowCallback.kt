@@ -4,6 +4,7 @@ import android.app.Activity
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.Window
+import com.amplitude.android.AutocaptureState
 import com.amplitude.android.internal.locators.ViewTargetLocator
 import com.amplitude.common.Logger
 
@@ -13,9 +14,10 @@ internal open class AutocaptureWindowCallback(
     track: (String, Map<String, Any?>) -> Unit,
     protected val viewTargetLocators: List<ViewTargetLocator>,
     protected val logger: Logger,
+    autocaptureState: AutocaptureState,
     private val motionEventObtainer: MotionEventObtainer = object : MotionEventObtainer {},
     private val gestureListener: AutocaptureGestureListener =
-        AutocaptureGestureListener(activity, track, logger, viewTargetLocators),
+        AutocaptureGestureListener(activity, track, logger, viewTargetLocators, autocaptureState),
     private val gestureDetector: GestureDetector = GestureDetector(activity, gestureListener),
 ) : WindowCallbackAdapter(delegate) {
     override fun dispatchTouchEvent(event: MotionEvent?): Boolean {

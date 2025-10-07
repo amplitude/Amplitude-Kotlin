@@ -3,6 +3,7 @@ package com.amplitude.android.internal.gestures
 import android.app.Activity
 import android.view.MotionEvent
 import android.view.Window
+import com.amplitude.android.AutocaptureState
 import com.amplitude.android.FrustrationInteractionsDetector
 import com.amplitude.android.internal.ViewHierarchyScanner.findTarget
 import com.amplitude.android.internal.ViewTarget
@@ -18,8 +19,9 @@ internal class FrustrationAwareWindowCallback(
     track: (String, Map<String, Any?>) -> Unit,
     viewTargetLocators: List<ViewTargetLocator>,
     logger: Logger,
+    autocaptureState: AutocaptureState,
     private val frustrationDetector: FrustrationInteractionsDetector?,
-) : AutocaptureWindowCallback(delegate, activity, track, viewTargetLocators, logger) {
+) : AutocaptureWindowCallback(delegate, activity, track, viewTargetLocators, logger, autocaptureState) {
     override fun dispatchTouchEvent(event: MotionEvent?): Boolean {
         // First handle the standard autocapture behavior
         val result = super.dispatchTouchEvent(event)

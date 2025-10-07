@@ -4,6 +4,8 @@ import android.app.Activity
 import android.view.GestureDetector
 import android.view.MotionEvent
 import androidx.annotation.VisibleForTesting
+import com.amplitude.android.AutocaptureState
+import com.amplitude.android.InteractionType.ElementInteraction
 import com.amplitude.android.internal.ViewHierarchyScanner.findTarget
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.buildElementInteractedProperties
@@ -18,6 +20,7 @@ class AutocaptureGestureListener(
     private val track: (String, Map<String, Any?>) -> Unit,
     private val logger: Logger,
     private val viewTargetLocators: List<ViewTargetLocator>,
+    private val autocaptureState: AutocaptureState,
 ) : GestureDetector.OnGestureListener {
     private val activityRef: WeakReference<Activity> = WeakReference(activity)
 
@@ -39,9 +42,12 @@ class AutocaptureGestureListener(
                 logger,
             ) ?: logger.warn("Unable to find click target. No event captured.").let { return false }
 
-        // Build ELEMENT_INTERACTED properties using shared function
-        val properties = buildElementInteractedProperties(target, activity)
-        track(ELEMENT_INTERACTED, properties)
+        // Track element interaction events only if ElementInteraction is enabled
+        if (ElementInteraction in autocaptureState.interactions) {
+            // Build ELEMENT_INTERACTED properties using shared function
+            val properties = buildElementInteractedProperties(target, activity)
+            track(ELEMENT_INTERACTED, properties)
+        }
 
         return false
     }

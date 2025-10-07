@@ -10,6 +10,8 @@ import android.view.Window
 import android.widget.CheckBox
 import android.widget.RadioButton
 import com.amplitude.MainDispatcherRule
+import com.amplitude.android.AutocaptureState
+import com.amplitude.android.InteractionType
 import com.amplitude.android.internal.locators.AndroidViewTargetLocator
 import com.amplitude.android.utilities.DefaultEventUtils.Companion.screenName
 import com.amplitude.common.Logger
@@ -91,6 +93,7 @@ class AutocaptureGestureListenerClickTest {
                 track,
                 logger,
                 listOf(AndroidViewTargetLocator()),
+                AutocaptureState(interactions = listOf(InteractionType.ElementInteraction)),
             )
         }
     }
@@ -261,6 +264,36 @@ class AutocaptureGestureListenerClickTest {
 
         sut.onSingleTapUp(event)
 
+        verify(exactly = 0) {
+            fixture.track(any(), any())
+        }
+    }
+
+    @Test
+    fun `does not track element interactions when element interaction is disabled`() {
+        val event = mockk<MotionEvent>(relaxed = true)
+        val decorView =
+            fixture.window.mockDecorView(type = ViewGroup::class, event = event, clickable = true) {
+                every { it.childCount } returns 0
+            }
+
+        fixture.resources.mockForTarget(decorView, "decor_view")
+        every { fixture.context.resources } returns fixture.resources
+        every { decorView.context } returns fixture.context
+        every { fixture.activity.window } returns fixture.window
+
+        val sut =
+            AutocaptureGestureListener(
+                fixture.activity,
+                fixture.track,
+                fixture.logger,
+                listOf(AndroidViewTargetLocator()),
+                AutocaptureState(interactions = emptyList()),
+            )
+
+        sut.onSingleTapUp(event)
+
+        // Verify that track was NOT called since element interaction is disabled
         verify(exactly = 0) {
             fixture.track(any(), any())
         }

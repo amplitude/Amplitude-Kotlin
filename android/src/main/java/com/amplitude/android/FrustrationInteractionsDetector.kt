@@ -2,6 +2,8 @@ package com.amplitude.android
 
 import android.app.Activity
 import android.graphics.PointF
+import com.amplitude.android.InteractionType.DeadClick
+import com.amplitude.android.InteractionType.RageClick
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.buildElementInteractedProperties
 import com.amplitude.android.signals.UiChangeSignal
@@ -33,7 +35,7 @@ class FrustrationInteractionsDetector(
     private val amplitude: Amplitude,
     private val logger: Logger,
     density: Float,
-    private val interactionsOptions: InteractionsOptions = InteractionsOptions(),
+    private val autocaptureState: AutocaptureState,
 ) {
     companion object {
         /**
@@ -89,7 +91,7 @@ class FrustrationInteractionsDetector(
         val clickId = generateClickId(clickInfo, targetInfo)
 
         // Process for rage click detection if enabled
-        if (interactionsOptions.rageClick.enabled) {
+        if (RageClick in autocaptureState.interactions) {
             val isIgnoredForRageClick = isRageClickIgnored(target)
             if (!isIgnoredForRageClick) {
                 processRageClick(clickInfo, targetInfo, target, activity, clickTime)
@@ -99,7 +101,7 @@ class FrustrationInteractionsDetector(
         }
 
         // Process for dead click detection if enabled
-        if (interactionsOptions.deadClick.enabled) {
+        if (DeadClick in autocaptureState.interactions) {
             val isIgnoredForDeadClick = isDeadClickIgnored(target)
             if (!isIgnoredForDeadClick) {
                 processDeadClick(clickInfo, targetInfo, target, activity, clickTime, clickId)
