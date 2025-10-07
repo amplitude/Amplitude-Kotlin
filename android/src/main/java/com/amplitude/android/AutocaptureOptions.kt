@@ -38,6 +38,27 @@ enum class AutocaptureOption {
 
     companion object {
         /**
+         * Set containing all available autocapture options.
+         *
+         * Equivalent to enabling all autocapture features:
+         * - SESSIONS
+         * - APP_LIFECYCLES
+         * - DEEP_LINKS
+         * - SCREEN_VIEWS
+         * - ELEMENT_INTERACTIONS
+         * - FRUSTRATION_INTERACTIONS
+         */
+        val ALL =
+            setOf(
+                SESSIONS,
+                APP_LIFECYCLES,
+                DEEP_LINKS,
+                SCREEN_VIEWS,
+                ELEMENT_INTERACTIONS,
+                FRUSTRATION_INTERACTIONS,
+            )
+
+        /**
          * Set of autocapture options that require Android Activity lifecycle callbacks to function properly.
          *
          * These options need access to activity lifecycle events and therefore require the ActivityLifecycleObserver to be registered with the Application.
@@ -59,12 +80,18 @@ class AutocaptureOptionsBuilder {
         options.add(this)
     }
 
+    /**
+     * Adds all autocapture options when invoked with unary plus operator.
+     */
+    fun addAll() {
+        options.addAll(AutocaptureOption.ALL)
+    }
+
     val sessions = AutocaptureOption.SESSIONS
     val appLifecycles = AutocaptureOption.APP_LIFECYCLES
     val deepLinks = AutocaptureOption.DEEP_LINKS
     val screenViews = AutocaptureOption.SCREEN_VIEWS
     val elementInteractions = AutocaptureOption.ELEMENT_INTERACTIONS
-
     val frustrationInteractions = AutocaptureOption.FRUSTRATION_INTERACTIONS
 
     fun build(): Set<AutocaptureOption> = options.toSet()
@@ -75,13 +102,22 @@ class AutocaptureOptionsBuilder {
  *
  * Example usage:
  * ```
+ * // Enable all autocapture options
+ * val allOptions = AutocaptureOption.ALL
+ *
+ * // Or use the builder for selective options
  * val options = autocaptureOptions {
  *    +sessions
  *    +appLifecycles
  *    +deepLinks
  *    +screenViews
  *    +elementInteractions
- *    +frustrationInteractions // Experimental feature
+ *    +frustrationInteractions
+ * }
+ *
+ * // Or enable all via builder
+ * val allViaBuilder = autocaptureOptions {
+ *    addAll()
  * }
  * ```
  *
