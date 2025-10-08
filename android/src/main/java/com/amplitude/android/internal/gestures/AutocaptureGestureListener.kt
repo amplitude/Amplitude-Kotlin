@@ -21,8 +21,13 @@ class AutocaptureGestureListener(
     private val logger: Logger,
     private val viewTargetLocators: List<ViewTargetLocator>,
     private val autocaptureState: AutocaptureState,
+    private var onViewTargetFound: ((ViewTarget) -> Unit)? = null,
 ) : GestureDetector.OnGestureListener {
     private val activityRef: WeakReference<Activity> = WeakReference(activity)
+
+    internal fun setViewTargetFoundCallback(callback: (ViewTarget) -> Unit) {
+        onViewTargetFound = callback
+    }
 
     override fun onDown(e: MotionEvent): Boolean {
         return false
@@ -40,7 +45,12 @@ class AutocaptureGestureListener(
                 viewTargetLocators,
                 ViewTarget.Type.Clickable,
                 logger,
-            ) ?: logger.warn("Unable to find click target. No event captured.").let { return false }
+            ) ?: logger.warn("Unable to find click target. No event captured.").let {
+                return false
+            }
+
+        // Notify callback with found target (for reuse by frustration interactions)
+        onViewTargetFound?.invoke(target)
 
         // Track element interaction events only if ElementInteraction is enabled
         if (ElementInteraction in autocaptureState.interactions) {

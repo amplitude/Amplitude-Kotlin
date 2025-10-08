@@ -43,8 +43,13 @@ internal class FrustrationAwareWindowCallback(
             return
         }
 
+        // Reuse the ViewTarget found by element interactions to avoid redundant view hierarchy traversal
         val target: ViewTarget =
-            decorView.findTarget(
+            lastFoundViewTarget
+                ?.also {
+                    // Clear the cache after use to avoid stale references
+                    lastFoundViewTarget = null
+                } ?: decorView.findTarget(
                 Pair(event.x, event.y),
                 viewTargetLocators,
                 ViewTarget.Type.Clickable,

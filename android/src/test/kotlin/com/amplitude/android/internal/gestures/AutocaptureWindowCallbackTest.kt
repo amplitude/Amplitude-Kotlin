@@ -19,7 +19,7 @@ class AutocaptureWindowCallbackTest {
         val delegate = mockk<Window.Callback>(relaxed = true)
         val track = mockk<(String, Map<String, Any?>) -> Unit>()
         val gestureDetector = mockk<GestureDetector>(relaxed = true)
-        val gestureListener = mockk<AutocaptureGestureListener>()
+        val gestureListener = mockk<AutocaptureGestureListener>(relaxed = true)
         val motionEventCopy = mockk<MotionEvent>(relaxed = true)
         val logger = mockk<Logger>(relaxed = true)
 
