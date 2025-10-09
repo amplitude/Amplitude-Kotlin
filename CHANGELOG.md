@@ -1,3 +1,10 @@
+## [1.22.4](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.22.3...v1.22.4) (2025-10-09)
+
+
+### Bug Fixes
+
+* filter element interactions ([#331](https://github.com/amplitude/Amplitude-Kotlin/issues/331)) ([c2fd00a](https://github.com/amplitude/Amplitude-Kotlin/commit/c2fd00affb0723aa94b4ebc734072ae0db68dabc))
+
 ## [1.22.3](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.22.2...v1.22.3) (2025-09-18)
 
 
