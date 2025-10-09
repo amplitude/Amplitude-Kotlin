@@ -4,6 +4,8 @@ import android.app.Activity
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.Window
+import com.amplitude.android.AutocaptureState
+import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.locators.ViewTargetLocator
 import com.amplitude.common.Logger
 
@@ -13,11 +15,24 @@ internal open class AutocaptureWindowCallback(
     track: (String, Map<String, Any?>) -> Unit,
     protected val viewTargetLocators: List<ViewTargetLocator>,
     protected val logger: Logger,
+    autocaptureState: AutocaptureState,
     private val motionEventObtainer: MotionEventObtainer = object : MotionEventObtainer {},
-    private val gestureListener: AutocaptureGestureListener =
-        AutocaptureGestureListener(activity, track, logger, viewTargetLocators),
+    protected val gestureListener: AutocaptureGestureListener =
+        AutocaptureGestureListener(activity, track, logger, viewTargetLocators, autocaptureState),
     private val gestureDetector: GestureDetector = GestureDetector(activity, gestureListener),
 ) : WindowCallbackAdapter(delegate) {
+    /**
+     * The last ViewTarget found during tap processing.
+     * This is used to avoid redundant view hierarchy traversal when both
+     * element interactions and frustration interactions are enabled.
+     */
+    protected var lastFoundViewTarget: ViewTarget? = null
+
+    init {
+        // Set up the callback to cache ViewTarget for frustration interactions
+        gestureListener.setViewTargetFoundCallback { lastFoundViewTarget = it }
+    }
+
     override fun dispatchTouchEvent(event: MotionEvent?): Boolean {
         event?.let {
             motionEventObtainer.obtain(event).let {

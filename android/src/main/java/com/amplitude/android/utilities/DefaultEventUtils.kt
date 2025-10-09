@@ -8,6 +8,7 @@ import android.net.ParseException
 import android.net.Uri
 import android.os.Build
 import com.amplitude.android.Amplitude
+import com.amplitude.android.AutocaptureState
 import com.amplitude.android.FrustrationInteractionsDetector
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.registerFragmentLifecycleCallbacks
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.unregisterFragmentLifecycleCallbacks
@@ -114,10 +115,10 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         }
     }
 
-    @JvmOverloads
     fun startUserInteractionEventTracking(
         activity: Activity,
-        frustrationDetector: FrustrationInteractionsDetector? = null,
+        frustrationDetector: FrustrationInteractionsDetector?,
+        autocaptureState: AutocaptureState,
     ) {
         activity.window?.let { window ->
             val delegate = window.callback ?: NoCaptureWindowCallback()
@@ -131,6 +132,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                         amplitude::track,
                         ALL(amplitude.logger),
                         amplitude.logger,
+                        autocaptureState,
                         frustrationDetector,
                     )
                 } else {
@@ -141,6 +143,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                         amplitude::track,
                         ALL(amplitude.logger),
                         amplitude.logger,
+                        autocaptureState,
                     )
                 }
         } ?: amplitude.logger.error(

@@ -2,6 +2,8 @@ package com.amplitude.android
 
 import android.app.Activity
 import android.graphics.PointF
+import com.amplitude.android.InteractionType.DeadClick
+import com.amplitude.android.InteractionType.RageClick
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.buildElementInteractedProperties
 import com.amplitude.android.signals.UiChangeSignal
@@ -33,6 +35,7 @@ class FrustrationInteractionsDetector(
     private val amplitude: Amplitude,
     private val logger: Logger,
     density: Float,
+    private val autocaptureState: AutocaptureState,
 ) {
     companion object {
         /**
@@ -87,22 +90,26 @@ class FrustrationInteractionsDetector(
         val clickTime = System.currentTimeMillis()
         val clickId = generateClickId(clickInfo, targetInfo)
 
-        // Process for rage click detection (check target tag for ignore flags)
-        val isIgnoredForRageClick = isRageClickIgnored(target)
-        if (!isIgnoredForRageClick) {
-            processRageClick(clickInfo, targetInfo, target, activity, clickTime)
-        } else {
-            logger.debug("Skipping rage click processing for ignored target: ${targetInfo.className}")
+        // Process for rage click detection if enabled
+        if (RageClick in autocaptureState.interactions) {
+            val isIgnoredForRageClick = isRageClickIgnored(target)
+            if (!isIgnoredForRageClick) {
+                processRageClick(clickInfo, targetInfo, target, activity, clickTime)
+            } else {
+                logger.debug("Skipping rage click processing for ignored target: ${targetInfo.className}")
+            }
         }
 
-        // Process for dead click detection (check target tag for ignore flags)
-        val isIgnoredForDeadClick = isDeadClickIgnored(target)
-        if (!isIgnoredForDeadClick) {
-            processDeadClick(clickInfo, targetInfo, target, activity, clickTime, clickId)
-        } else {
-            logger.debug(
-                "Skipping dead click processing for ignored target: ${targetInfo.className}",
-            )
+        // Process for dead click detection if enabled
+        if (DeadClick in autocaptureState.interactions) {
+            val isIgnoredForDeadClick = isDeadClickIgnored(target)
+            if (!isIgnoredForDeadClick) {
+                processDeadClick(clickInfo, targetInfo, target, activity, clickTime, clickId)
+            } else {
+                logger.debug(
+                    "Skipping dead click processing for ignored target: ${targetInfo.className}",
+                )
+            }
         }
     }
 

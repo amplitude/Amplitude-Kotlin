@@ -4,6 +4,8 @@ import android.app.Activity
 import android.view.GestureDetector
 import android.view.MotionEvent
 import androidx.annotation.VisibleForTesting
+import com.amplitude.android.AutocaptureState
+import com.amplitude.android.InteractionType.ElementInteraction
 import com.amplitude.android.internal.ViewHierarchyScanner.findTarget
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.buildElementInteractedProperties
@@ -18,8 +20,14 @@ class AutocaptureGestureListener(
     private val track: (String, Map<String, Any?>) -> Unit,
     private val logger: Logger,
     private val viewTargetLocators: List<ViewTargetLocator>,
+    private val autocaptureState: AutocaptureState,
+    private var onViewTargetFound: ((ViewTarget) -> Unit)? = null,
 ) : GestureDetector.OnGestureListener {
     private val activityRef: WeakReference<Activity> = WeakReference(activity)
+
+    internal fun setViewTargetFoundCallback(callback: (ViewTarget) -> Unit) {
+        onViewTargetFound = callback
+    }
 
     override fun onDown(e: MotionEvent): Boolean {
         return false
@@ -37,11 +45,19 @@ class AutocaptureGestureListener(
                 viewTargetLocators,
                 ViewTarget.Type.Clickable,
                 logger,
-            ) ?: logger.warn("Unable to find click target. No event captured.").let { return false }
+            ) ?: logger.warn("Unable to find click target. No event captured.").let {
+                return false
+            }
 
-        // Build ELEMENT_INTERACTED properties using shared function
-        val properties = buildElementInteractedProperties(target, activity)
-        track(ELEMENT_INTERACTED, properties)
+        // Notify callback with found target (for reuse by frustration interactions)
+        onViewTargetFound?.invoke(target)
+
+        // Track element interaction events only if ElementInteraction is enabled
+        if (ElementInteraction in autocaptureState.interactions) {
+            // Build ELEMENT_INTERACTED properties using shared function
+            val properties = buildElementInteractedProperties(target, activity)
+            track(ELEMENT_INTERACTED, properties)
+        }
 
         return false
     }
