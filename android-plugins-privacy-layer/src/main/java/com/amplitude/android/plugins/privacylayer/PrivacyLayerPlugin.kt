@@ -1,5 +1,6 @@
 package com.amplitude.android.plugins.privacylayer
 
+import com.amplitude.android.plugins.privacylayer.models.DetectedPii
 import com.amplitude.android.plugins.privacylayer.models.ScanField
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
@@ -223,7 +224,7 @@ class PrivacyLayerPlugin(
      * @param text The text to scan
      * @return List of detected PII entities with type and position information
      */
-    suspend fun scanForPii(text: String): List<com.amplitude.android.plugins.privacylayer.models.DetectedPii> {
+    suspend fun scanForPii(text: String): List<DetectedPii> {
         return eventScanner.scanText(text)
     }
 
