@@ -2,7 +2,7 @@ import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
 
 plugins {
     alias(libs.plugins.android.library)
-    kotlin("android")
+    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.mavenPublish)
     alias(libs.plugins.android.junit5)
 }
@@ -12,7 +12,8 @@ android {
     compileSdk = AndroidVersions.COMPILE_SDK
 
     defaultConfig {
-        minSdk = AndroidVersions.MIN_SDK
+        // MLKit Entity Extraction requires API 26+
+        minSdk = 26
         multiDexEnabled = true
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -34,6 +35,8 @@ android {
     }
     kotlinOptions {
         jvmTarget = KotlinConfig.JVM_TARGET
+        languageVersion = "2.1"
+        apiVersion = "2.1"
     }
     testOptions {
         targetSdk = AndroidVersions.TARGET_SDK
@@ -66,11 +69,16 @@ dependencies {
     // Depend on the android SDK
     api(project(":android"))
 
-    // MLKit Entity Extraction (will be added in Phase 2)
-    // implementation("com.google.mlkit:entity-extraction:16.0.0-beta6")
+    // MLKit Entity Extraction (Kotlin 2.1.0 compatible)
+    implementation("com.google.mlkit:entity-extraction:16.0.0-beta6")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
 
-    implementation(libs.coroutines.core)
-    implementation(libs.coroutines.android)
+    // Explicitly use Kotlin 2.1.0 stdlib
+    implementation("org.jetbrains.kotlin:kotlin-stdlib:2.1.0")
+
+    // Upgrade coroutines for Kotlin 2.1.0 compatibility
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 
     testImplementation(libs.mockk)
     testImplementation(project(":core"))

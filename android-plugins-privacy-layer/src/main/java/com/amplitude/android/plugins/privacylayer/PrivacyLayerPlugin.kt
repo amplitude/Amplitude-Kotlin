@@ -4,6 +4,8 @@ import com.amplitude.android.plugins.privacylayer.models.ScanField
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 /**
  * Privacy Layer Plugin for Amplitude Android SDK.
@@ -34,12 +36,38 @@ class PrivacyLayerPlugin(
     override val type: Plugin.Type = Plugin.Type.Before
     override lateinit var amplitude: Amplitude
 
-    private val eventScanner = EventScanner(config)
+    private lateinit var eventScanner: EventScanner
     private val piiRedactor = PiiRedactor(config)
+    private var mlKitDetector: MlKitPiiDetector? = null
 
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
-        amplitude.logger.debug("PrivacyLayerPlugin: Initialized with config: $config")
+
+        // Get Android context from Amplitude instance
+        val androidAmplitude = amplitude as? com.amplitude.android.Amplitude
+        val context = (androidAmplitude?.configuration as? com.amplitude.android.Configuration)?.context
+
+        // Initialize MLKit detector if enabled and context is available
+        if (config.useMlKit && context != null) {
+            mlKitDetector = MlKitPiiDetector(context, config)
+
+            // Download MLKit model asynchronously
+            amplitude.amplitudeScope.launch {
+                val success = mlKitDetector?.ensureModelDownloaded() ?: false
+                amplitude.logger.debug(
+                    if (success) {
+                        "PrivacyLayerPlugin: MLKit model ready"
+                    } else {
+                        "PrivacyLayerPlugin: MLKit model download failed, using regex fallback"
+                    },
+                )
+            }
+        }
+
+        // Create event scanner with both MLKit and regex detection
+        eventScanner = EventScanner(config = config, mlKitDetector = mlKitDetector)
+
+        amplitude.logger.debug("PrivacyLayerPlugin: Initialized (MLKit: ${config.useMlKit})")
     }
 
     /**
@@ -167,12 +195,11 @@ class PrivacyLayerPlugin(
             return text
         }
 
-        // Phase 1: Basic implementation without PII detection
-        // For now, just return the text as-is
-        // Phase 2 will add actual PII detection with MLKit and regex
-
-        // Detect PII (placeholder for Phase 2)
-        val detectedPii = eventScanner.scanText(text)
+        // Detect PII (using runBlocking since scanText is now suspend)
+        val detectedPii =
+            runBlocking {
+                eventScanner.scanText(text)
+            }
 
         // If no PII detected, return original text
         if (detectedPii.isEmpty()) {
@@ -185,6 +212,7 @@ class PrivacyLayerPlugin(
 
     override fun teardown() {
         super.teardown()
+        mlKitDetector?.close()
         amplitude.logger.debug("PrivacyLayerPlugin: Teardown")
     }
 

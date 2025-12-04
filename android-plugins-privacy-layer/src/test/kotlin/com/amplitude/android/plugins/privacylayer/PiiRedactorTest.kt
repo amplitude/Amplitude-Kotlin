@@ -38,7 +38,7 @@ class PiiRedactorTest {
         val detectedPii =
             listOf(
                 DetectedPii("user@test.com", EntityType.EMAIL, 7, 20),
-                DetectedPii("555-1234", EntityType.PHONE_NUMBER, 30, 38),
+                DetectedPii("555-1234", EntityType.PHONE_NUMBER, 29, 37),
             )
 
         val result = redactor.redact(text, detectedPii)
@@ -61,7 +61,7 @@ class PiiRedactorTest {
 
         assertTrue(result.startsWith("Email: hash:"))
         assertTrue(result.contains("hash:"))
-        assertEquals(19, result.length) // "Email: hash:" (12) + 8 char hash (8) = 20
+        assertEquals(20, result.length) // "Email: hash:" (12) + 8 char hash (8) = 20
     }
 
     @Test

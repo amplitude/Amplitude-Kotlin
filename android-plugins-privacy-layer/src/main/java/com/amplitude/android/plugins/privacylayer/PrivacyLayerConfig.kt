@@ -35,6 +35,7 @@ data class PrivacyLayerConfig(
     val whitelist: List<Regex> = emptyList(),
     val customPatterns: Map<String, Regex> = emptyMap(),
     val maxTextLength: Int = 10_000,
-    // Phase 2: Will enable MLKit
-    val useMlKit: Boolean = false,
+    // Enable MLKit for enhanced PII detection (Kotlin 2.1.0 required)
+    // Falls back to regex if model download fails
+    val useMlKit: Boolean = true,
 )
