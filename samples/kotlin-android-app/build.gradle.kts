@@ -3,6 +3,7 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     kotlin("android")
+    id("org.jetbrains.kotlin.plugin.compose") version "2.1.0"
 }
 
 // Load properties from local.properties in the root project
@@ -29,7 +30,7 @@ android {
 
     defaultConfig {
         applicationId = "com.amplitude.android.sample"
-        minSdk = AndroidVersions.MIN_SDK
+        minSdk = 26 // Required for MLKit Entity Extraction
         targetSdk = AndroidVersions.TARGET_SDK
         versionCode = 1
         versionName = "1.0"
@@ -66,6 +67,10 @@ android {
 
 dependencies {
     implementation(project(":android"))
+
+    // Privacy Layer plugin with MLKit support
+    implementation(project(":android-plugins-privacy-layer"))
+
     implementation(libs.core.ktx)
     implementation(libs.appcompat)
     implementation(libs.material)

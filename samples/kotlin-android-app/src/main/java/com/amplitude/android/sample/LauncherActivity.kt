@@ -103,6 +103,27 @@ class LauncherActivity : ComponentActivity() {
                     modifier = Modifier.padding(8.dp),
                 )
             }
+
+            Button(
+                onClick = {
+                    val intent = Intent(this@LauncherActivity, PrivacyLayerDemoActivity::class.java)
+                    startActivity(intent)
+                },
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF8B5CF6),
+                    ),
+            ) {
+                Text(
+                    text = "🛡️ Privacy Layer Demo",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(8.dp),
+                )
+            }
         }
     }
 

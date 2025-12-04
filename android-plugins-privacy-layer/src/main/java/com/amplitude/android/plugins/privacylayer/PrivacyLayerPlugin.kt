@@ -77,7 +77,7 @@ class PrivacyLayerPlugin(
      * @param event The event to process
      * @return The event with PII redacted, or null to drop the event
      */
-    override fun execute(event: BaseEvent): BaseEvent? {
+    override fun execute(event: BaseEvent): BaseEvent {
         try {
             // Scan each configured field
             if (ScanField.EVENT_PROPERTIES in config.scanFields) {
@@ -214,6 +214,17 @@ class PrivacyLayerPlugin(
         super.teardown()
         mlKitDetector?.close()
         amplitude.logger.debug("PrivacyLayerPlugin: Teardown")
+    }
+
+    /**
+     * Scan text for PII entities (for demo/testing purposes).
+     * This is a public method to allow external testing of the scanner.
+     *
+     * @param text The text to scan
+     * @return List of detected PII entities with type and position information
+     */
+    suspend fun scanForPii(text: String): List<com.amplitude.android.plugins.privacylayer.models.DetectedPii> {
+        return eventScanner.scanText(text)
     }
 
     companion object {

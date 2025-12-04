@@ -7,6 +7,8 @@ import com.amplitude.android.Configuration
 import com.amplitude.android.DeadClickOptions
 import com.amplitude.android.InteractionsOptions
 import com.amplitude.android.RageClickOptions
+import com.amplitude.android.plugins.privacylayer.PrivacyLayerConfig
+import com.amplitude.android.plugins.privacylayer.PrivacyLayerPlugin
 import com.amplitude.common.Logger
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
@@ -16,6 +18,7 @@ import com.amplitude.experiment.ExperimentConfig
 class MainApplication : Application() {
     companion object {
         lateinit var amplitude: Amplitude
+        lateinit var privacyLayerPlugin: PrivacyLayerPlugin
         const val AMPLITUDE_API_KEY = BuildConfig.AMPLITUDE_API_KEY
         const val EXPERIMENT_API_KEY = BuildConfig.EXPERIMENT_API_KEY
     }
@@ -75,6 +78,10 @@ class MainApplication : Application() {
 
         // add the trouble shooting plugin for debugging
         amplitude.add(TroubleShootingPlugin())
+
+        // Add Privacy Layer plugin with MLKit enabled
+        privacyLayerPlugin = PrivacyLayerPlugin(PrivacyLayerConfig(useMlKit = true))
+        amplitude.add(privacyLayerPlugin)
 
         // identify a sample user
         amplitude.setUserId("android-kotlin-sample-user")

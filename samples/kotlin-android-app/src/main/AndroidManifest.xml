@@ -51,6 +51,10 @@
             android:name=".ComposeAdvancedActivity"
             android:label="Compose - Advanced Events"
             android:exported="false" />
+        <activity
+            android:name=".PrivacyLayerDemoActivity"
+            android:label="Privacy Layer Demo"
+            android:exported="false" />
 
         <meta-data
             android:name="com.google.android.gms.ads.AD_MANAGER_APP"
