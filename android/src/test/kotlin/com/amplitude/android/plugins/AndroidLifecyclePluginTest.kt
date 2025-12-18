@@ -391,6 +391,55 @@ class AndroidLifecyclePluginTest {
             close()
         }
 
+    @OptIn(com.amplitude.android.GuardedAmplitudeFeature::class)
+    @Test
+    fun `test onEnterForeground is only called when transitioning to foreground`() =
+        runTest {
+            every { mockedConfig.autocapture } returns setOf(AutocaptureOption.APP_LIFECYCLES)
+            every { mockedAmplitude.amplitudeScope } returns this
+
+            val activity1 = mockk<Activity>(relaxed = true)
+            val activity2 = mockk<Activity>(relaxed = true)
+            plugin.setup(mockedAmplitude)
+
+            // First activity starts - should call onEnterForeground
+            observer.onActivityCreated(activity1, mockk())
+            observer.onActivityStarted(activity1)
+            advanceUntilIdle()
+
+            verify(exactly = 1) {
+                mockedAmplitude.onEnterForeground(any())
+            }
+
+            // Second activity starts (multi-activity scenario) - should NOT call onEnterForeground again
+            observer.onActivityCreated(activity2, mockk())
+            observer.onActivityStarted(activity2)
+            advanceUntilIdle()
+
+            // Should still be exactly 1, not 2 (no new foreground transition)
+            verify(exactly = 1) {
+                mockedAmplitude.onEnterForeground(any())
+            }
+
+            // Stop first activity - should NOT call onExitForeground (activity2 still running)
+            observer.onActivityStopped(activity1)
+            advanceUntilIdle()
+
+            verify(exactly = 0) {
+                mockedAmplitude.onExitForeground(any())
+            }
+
+            // Stop second activity - NOW should call onExitForeground (all activities stopped)
+            observer.onActivityStopped(activity2)
+            advanceUntilIdle()
+
+            verify(exactly = 1) {
+                mockedAmplitude.onExitForeground(any())
+            }
+
+            close()
+        }
+
     @Test
     fun `test screen viewed event is tracked`() =
         runTest {

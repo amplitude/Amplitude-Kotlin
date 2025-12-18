@@ -124,13 +124,14 @@ class AndroidLifecyclePlugin(
             onActivityCreated(activity, activity.intent.extras)
         }
 
-        if (started.isEmpty()) {
+        val wasEmpty = started.isEmpty()
+        started.add(activity.hashCode())
+
+        if (wasEmpty) {
             androidAmplitude.onEnterForeground(System.currentTimeMillis())
         }
 
-        started.add(activity.hashCode())
-
-        if (autocaptureState.appLifecycles && started.size == 1) {
+        if (autocaptureState.appLifecycles && wasEmpty) {
             DefaultEventUtils(androidAmplitude).trackAppOpenedEvent(
                 packageInfo = packageInfo,
                 isFromBackground = appInBackground,
