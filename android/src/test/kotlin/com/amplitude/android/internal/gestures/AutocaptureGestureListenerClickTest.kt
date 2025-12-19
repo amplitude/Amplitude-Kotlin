@@ -41,6 +41,7 @@ class AutocaptureGestureListenerClickTest {
 
         lateinit var target: View
         lateinit var invalidTarget: View
+        lateinit var decorView: View
 
         internal fun <T : View> getSut(
             type: KClass<T>,
@@ -73,7 +74,7 @@ class AutocaptureGestureListenerClickTest {
             }
 
             if (attachViewsToRoot) {
-                window.mockDecorView(
+                decorView = window.mockDecorView(
                     type = ViewGroup::class,
                     event = event,
                     context = context,
@@ -82,6 +83,14 @@ class AutocaptureGestureListenerClickTest {
                     every { it.getChildAt(0) } returns invalidTarget
                     every { it.getChildAt(1) } returns target
                 }
+            } else {
+                // Create a basic decorView for tests that don't attach views to root
+                decorView = mockView(
+                    type = ViewGroup::class,
+                    event = event,
+                    context = context,
+                )
+                every { window.decorView } returns decorView
             }
 
             resources.mockForTarget(this.target, resourceName)
@@ -90,6 +99,7 @@ class AutocaptureGestureListenerClickTest {
             every { activity.window } returns window
             return AutocaptureGestureListener(
                 activity,
+                decorView,
                 track,
                 logger,
                 listOf(AndroidViewTargetLocator()),
@@ -125,15 +135,10 @@ class AutocaptureGestureListenerClickTest {
                     every { it.getChildAt(2) } returns fixture.target
                 }
 
-            fixture.window.mockDecorView(
-                type = ViewGroup::class,
-                event = event,
-                context = fixture.context,
-            ) {
-                every { it.childCount } returns 2
-                every { it.getChildAt(0) } returns container1
-                every { it.getChildAt(1) } returns container2
-            }
+            // Configure the decorView that was created by getSut (instead of creating a new one)
+            every { (fixture.decorView as ViewGroup).childCount } returns 2
+            every { (fixture.decorView as ViewGroup).getChildAt(0) } returns container1
+            every { (fixture.decorView as ViewGroup).getChildAt(1) } returns container2
 
             sut.onSingleTapUp(event)
 
@@ -285,6 +290,7 @@ class AutocaptureGestureListenerClickTest {
         val sut =
             AutocaptureGestureListener(
                 fixture.activity,
+                decorView,
                 fixture.track,
                 fixture.logger,
                 listOf(AndroidViewTargetLocator()),
@@ -311,10 +317,9 @@ class AutocaptureGestureListenerClickTest {
                 attachViewsToRoot = false,
             )
 
-        fixture.window.mockDecorView(type = ViewGroup::class, event = event, touchWithinBounds = false) {
-            every { it.childCount } returns 1
-            every { it.getChildAt(0) } returns fixture.target
-        }
+        // Configure the decorView that was created by getSut (instead of creating a new one)
+        every { (fixture.decorView as ViewGroup).childCount } returns 1
+        every { (fixture.decorView as ViewGroup).getChildAt(0) } returns fixture.target
 
         sut.onSingleTapUp(event)
 

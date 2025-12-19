@@ -3,24 +3,28 @@ package com.amplitude.android.internal.gestures
 import android.app.Activity
 import android.view.GestureDetector
 import android.view.MotionEvent
+import android.view.View
 import android.view.Window
 import com.amplitude.android.AutocaptureState
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.locators.ViewTargetLocator
 import com.amplitude.common.Logger
+import java.lang.ref.WeakReference
 
 internal open class AutocaptureWindowCallback(
     delegate: Window.Callback,
     protected val activity: Activity,
+    decorView: View,
     track: (String, Map<String, Any?>) -> Unit,
     protected val viewTargetLocators: List<ViewTargetLocator>,
     protected val logger: Logger,
     autocaptureState: AutocaptureState,
     private val motionEventObtainer: MotionEventObtainer = object : MotionEventObtainer {},
     protected val gestureListener: AutocaptureGestureListener =
-        AutocaptureGestureListener(activity, track, logger, viewTargetLocators, autocaptureState),
+        AutocaptureGestureListener(activity, decorView, track, logger, viewTargetLocators, autocaptureState),
     private val gestureDetector: GestureDetector = GestureDetector(activity, gestureListener),
 ) : WindowCallbackAdapter(delegate) {
+    protected val decorViewRef: WeakReference<View> = WeakReference(decorView)
     /**
      * The last ViewTarget found during tap processing.
      * This is used to avoid redundant view hierarchy traversal when both

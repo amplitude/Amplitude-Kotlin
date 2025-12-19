@@ -77,6 +77,7 @@ dependencies {
     implementation(libs.analytics.connector)
     implementation(libs.core.ktx)
     implementation(libs.activity.ktx)
+    implementation(libs.curtains)
     compileOnly(libs.fragment.ktx)
     compileOnly(libs.compose.ui)
 
