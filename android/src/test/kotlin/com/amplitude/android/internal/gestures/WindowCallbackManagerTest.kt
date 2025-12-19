@@ -64,7 +64,10 @@ class WindowCallbackManagerTest {
     }
 
     @Test
-    fun `skips window when decorView is not ready`() {
+    fun `skips wrapping when decorView is null as fallback safety check`() {
+        // Note: Primary path uses onDecorViewReady to wait for decorView.
+        // This test verifies the fallback safety check in wrapWindow()
+        // handles the edge case where decorView is still null.
         val activity = mockk<Activity>(relaxed = true)
         val window = mockk<Window>(relaxed = true)
 

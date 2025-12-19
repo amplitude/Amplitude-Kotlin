@@ -13,7 +13,9 @@ import com.amplitude.android.internal.locators.ViewTargetLocators.ALL
 import com.amplitude.common.Logger
 import curtains.Curtains
 import curtains.OnRootViewsChangedListener
+import curtains.onDecorViewReady
 import curtains.phoneWindow
+import curtains.windowAttachCount
 
 /**
  * Manages window callback wrapping for all windows (including dialogs) using Curtains lib.
@@ -53,7 +55,13 @@ internal class WindowCallbackManager(
 
     private fun onRootViewAdded(view: View) {
         view.phoneWindow?.let { window ->
-            wrapWindow(window)
+            if (view.windowAttachCount == 0) {
+                // Window is being attached for the first time, wait for decor view to be ready
+                window.onDecorViewReady { wrapWindow(window) }
+            } else {
+                // Window was previously attached, decor view should be available
+                wrapWindow(window)
+            }
         }
     }
 
