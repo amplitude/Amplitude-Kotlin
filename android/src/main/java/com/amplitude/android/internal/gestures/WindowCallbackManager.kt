@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.view.View
 import android.view.Window
+import androidx.annotation.VisibleForTesting
 import com.amplitude.android.AutocaptureState
 import com.amplitude.android.FrustrationInteractionsDetector
 import com.amplitude.android.internal.TrackFunction
@@ -143,4 +144,10 @@ internal class WindowCallbackManager(
         }
         return null
     }
+
+    @VisibleForTesting
+    internal fun wrapWindowForTesting(window: Window) = wrapWindow(window)
+
+    @VisibleForTesting
+    internal fun unwrapWindowForTesting(window: Window) = unwrapWindow(window)
 }
