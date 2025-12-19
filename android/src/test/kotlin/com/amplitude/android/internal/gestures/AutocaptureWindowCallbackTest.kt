@@ -7,6 +7,7 @@ import android.view.View
 import android.view.Window
 import com.amplitude.android.AutocaptureState
 import com.amplitude.android.InteractionType.ElementInteraction
+import com.amplitude.android.internal.TrackFunction
 import com.amplitude.android.internal.locators.AndroidViewTargetLocator
 import com.amplitude.common.Logger
 import io.mockk.every
@@ -19,7 +20,7 @@ class AutocaptureWindowCallbackTest {
         val activity = mockk<Activity>()
         val decorView = mockk<View>(relaxed = true)
         val delegate = mockk<Window.Callback>(relaxed = true)
-        val track = mockk<(String, Map<String, Any?>) -> Unit>()
+        val track = mockk<TrackFunction>()
         val gestureDetector = mockk<GestureDetector>(relaxed = true)
         val gestureListener = mockk<AutocaptureGestureListener>(relaxed = true)
         val motionEventCopy = mockk<MotionEvent>(relaxed = true)

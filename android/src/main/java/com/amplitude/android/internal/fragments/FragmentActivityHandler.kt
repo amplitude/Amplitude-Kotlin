@@ -2,17 +2,16 @@ package com.amplitude.android.internal.fragments
 
 import android.app.Activity
 import androidx.fragment.app.FragmentActivity
+import com.amplitude.android.internal.TrackFunction
 import com.amplitude.common.Logger
 import java.util.WeakHashMap
-
-internal typealias TrackEventCallback = (String, Map<String, Any?>) -> Unit
 
 internal object FragmentActivityHandler {
     private val callbacksMap =
         WeakHashMap<FragmentActivity, MutableList<AutocaptureFragmentLifecycleCallbacks>>()
 
     fun Activity.registerFragmentLifecycleCallbacks(
-        track: TrackEventCallback,
+        track: TrackFunction,
         logger: Logger,
     ) {
         (this as? FragmentActivity)?.apply {

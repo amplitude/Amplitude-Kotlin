@@ -6,6 +6,7 @@ import android.view.View
 import android.view.Window
 import com.amplitude.android.AutocaptureState
 import com.amplitude.android.FrustrationInteractionsDetector
+import com.amplitude.android.internal.TrackFunction
 import com.amplitude.android.internal.ViewHierarchyScanner.findTarget
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.locators.ViewTargetLocator
@@ -18,7 +19,7 @@ internal class FrustrationAwareWindowCallback(
     delegate: Window.Callback,
     activity: Activity,
     decorView: View,
-    track: (String, Map<String, Any?>) -> Unit,
+    track: TrackFunction,
     viewTargetLocators: List<ViewTargetLocator>,
     logger: Logger,
     autocaptureState: AutocaptureState,

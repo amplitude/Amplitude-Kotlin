@@ -7,6 +7,7 @@ import android.view.View
 import androidx.annotation.VisibleForTesting
 import com.amplitude.android.AutocaptureState
 import com.amplitude.android.InteractionType.ElementInteraction
+import com.amplitude.android.internal.TrackFunction
 import com.amplitude.android.internal.ViewHierarchyScanner.findTarget
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.buildElementInteractedProperties
@@ -19,7 +20,7 @@ import java.lang.ref.WeakReference
 class AutocaptureGestureListener(
     activity: Activity,
     decorView: View,
-    private val track: (String, Map<String, Any?>) -> Unit,
+    private val track: TrackFunction,
     private val logger: Logger,
     private val viewTargetLocators: List<ViewTargetLocator>,
     private val autocaptureState: AutocaptureState,

@@ -6,6 +6,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.Window
 import com.amplitude.android.AutocaptureState
+import com.amplitude.android.internal.TrackFunction
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.locators.ViewTargetLocator
 import com.amplitude.common.Logger
@@ -15,7 +16,7 @@ internal open class AutocaptureWindowCallback(
     delegate: Window.Callback,
     protected val activity: Activity,
     decorView: View,
-    track: (String, Map<String, Any?>) -> Unit,
+    track: TrackFunction,
     protected val viewTargetLocators: List<ViewTargetLocator>,
     protected val logger: Logger,
     autocaptureState: AutocaptureState,
@@ -25,6 +26,7 @@ internal open class AutocaptureWindowCallback(
     private val gestureDetector: GestureDetector = GestureDetector(activity, gestureListener),
 ) : WindowCallbackAdapter(delegate) {
     protected val decorViewRef: WeakReference<View> = WeakReference(decorView)
+
     /**
      * The last ViewTarget found during tap processing.
      * This is used to avoid redundant view hierarchy traversal when both

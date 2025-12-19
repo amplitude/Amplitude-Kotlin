@@ -7,6 +7,7 @@ import android.view.View
 import android.view.Window
 import com.amplitude.android.AutocaptureState
 import com.amplitude.android.FrustrationInteractionsDetector
+import com.amplitude.android.internal.TrackFunction
 import com.amplitude.android.internal.locators.ViewTargetLocators.ALL
 import com.amplitude.common.Logger
 import curtains.Curtains
@@ -21,20 +22,21 @@ import curtains.phoneWindow
  * each window's callback.
  */
 internal class WindowCallbackManager(
-    private val logger: Logger,
-    private val track: (String, Map<String, Any?>) -> Unit,
+    private val track: TrackFunction,
     private val frustrationDetector: FrustrationInteractionsDetector?,
     private val autocaptureState: AutocaptureState,
+    private val logger: Logger,
 ) {
     private val wrappedWindows = mutableMapOf<Window, Window.Callback?>()
 
-    private val rootViewsChangedListener = OnRootViewsChangedListener { view, added ->
-        if (added) {
-            onRootViewAdded(view)
-        } else {
-            onRootViewRemoved(view)
+    private val rootViewsChangedListener =
+        OnRootViewsChangedListener { view, added ->
+            if (added) {
+                onRootViewAdded(view)
+            } else {
+                onRootViewRemoved(view)
+            }
         }
-    }
 
     fun start() {
         Curtains.onRootViewsChangedListeners += rootViewsChangedListener
@@ -85,28 +87,29 @@ internal class WindowCallbackManager(
         // Store original callback before wrapping
         wrappedWindows[window] = window.callback
 
-        val wrappedCallback = if (frustrationDetector != null) {
-            FrustrationAwareWindowCallback(
-                delegate = originalCallback,
-                activity = activity,
-                decorView = decorView,
-                track = track,
-                viewTargetLocators = ALL(logger),
-                logger = logger,
-                autocaptureState = autocaptureState,
-                frustrationDetector = frustrationDetector,
-            )
-        } else {
-            AutocaptureWindowCallback(
-                delegate = originalCallback,
-                activity = activity,
-                decorView = decorView,
-                track = track,
-                viewTargetLocators = ALL(logger),
-                logger = logger,
-                autocaptureState = autocaptureState,
-            )
-        }
+        val wrappedCallback =
+            if (frustrationDetector != null) {
+                FrustrationAwareWindowCallback(
+                    delegate = originalCallback,
+                    activity = activity,
+                    decorView = decorView,
+                    track = track,
+                    viewTargetLocators = ALL(logger),
+                    logger = logger,
+                    autocaptureState = autocaptureState,
+                    frustrationDetector = frustrationDetector,
+                )
+            } else {
+                AutocaptureWindowCallback(
+                    delegate = originalCallback,
+                    activity = activity,
+                    decorView = decorView,
+                    track = track,
+                    viewTargetLocators = ALL(logger),
+                    logger = logger,
+                    autocaptureState = autocaptureState,
+                )
+            }
 
         window.callback = wrappedCallback
 

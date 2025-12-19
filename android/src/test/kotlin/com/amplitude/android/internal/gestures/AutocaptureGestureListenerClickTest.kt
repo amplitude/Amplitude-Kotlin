@@ -12,6 +12,7 @@ import android.widget.RadioButton
 import com.amplitude.MainDispatcherRule
 import com.amplitude.android.AutocaptureState
 import com.amplitude.android.InteractionType
+import com.amplitude.android.internal.TrackFunction
 import com.amplitude.android.internal.locators.AndroidViewTargetLocator
 import com.amplitude.android.utilities.DefaultEventUtils.Companion.screenName
 import com.amplitude.common.Logger
@@ -37,7 +38,7 @@ class AutocaptureGestureListenerClickTest {
         val logger = mockk<Logger>(relaxed = true)
         val context = mockk<Context>()
         val window = mockk<Window>(relaxed = true)
-        val track = mockk<(String, Map<String, Any?>) -> Unit>(relaxed = true)
+        val track = mockk<TrackFunction>(relaxed = true)
 
         lateinit var target: View
         lateinit var invalidTarget: View
@@ -74,22 +75,24 @@ class AutocaptureGestureListenerClickTest {
             }
 
             if (attachViewsToRoot) {
-                decorView = window.mockDecorView(
-                    type = ViewGroup::class,
-                    event = event,
-                    context = context,
-                ) {
-                    every { it.childCount } returns 2
-                    every { it.getChildAt(0) } returns invalidTarget
-                    every { it.getChildAt(1) } returns target
-                }
+                decorView =
+                    window.mockDecorView(
+                        type = ViewGroup::class,
+                        event = event,
+                        context = context,
+                    ) {
+                        every { it.childCount } returns 2
+                        every { it.getChildAt(0) } returns invalidTarget
+                        every { it.getChildAt(1) } returns target
+                    }
             } else {
                 // Create a basic decorView for tests that don't attach views to root
-                decorView = mockView(
-                    type = ViewGroup::class,
-                    event = event,
-                    context = context,
-                )
+                decorView =
+                    mockView(
+                        type = ViewGroup::class,
+                        event = event,
+                        context = context,
+                    )
                 every { window.decorView } returns decorView
             }
 

@@ -1,6 +1,5 @@
 package com.amplitude.android.plugins
 
-import android.R.attr.track
 import android.app.Activity
 import android.app.Application
 import android.content.pm.PackageInfo
@@ -79,12 +78,13 @@ class AndroidLifecyclePlugin(
         // Initialize window callback manager for tracking element interactions across all windows
         // This enables tracking interactions in dialogs (including NavGraph dialogs)
         if (autocaptureState.interactions.isNotEmpty()) {
-            windowCallbackManager = WindowCallbackManager(
-                logger = androidAmplitude.logger,
-                track = androidAmplitude::track,
-                frustrationDetector = frustrationInteractionsDetector,
-                autocaptureState = autocaptureState,
-            )
+            windowCallbackManager =
+                WindowCallbackManager(
+                    track = androidAmplitude::track,
+                    frustrationDetector = frustrationInteractionsDetector,
+                    autocaptureState = autocaptureState,
+                    logger = androidAmplitude.logger,
+                )
             windowCallbackManager?.start()
         }
 
