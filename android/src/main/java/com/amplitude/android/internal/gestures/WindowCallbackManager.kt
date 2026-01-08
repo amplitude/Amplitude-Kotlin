@@ -10,12 +10,12 @@ import com.amplitude.android.AutocaptureState
 import com.amplitude.android.FrustrationInteractionsDetector
 import com.amplitude.android.internal.TrackFunction
 import com.amplitude.android.internal.locators.ViewTargetLocators.ALL
+import com.amplitude.android.utilities.DefaultEventUtils.Companion.screenName
 import com.amplitude.common.Logger
 import curtains.Curtains
 import curtains.OnRootViewsChangedListener
 import curtains.onDecorViewReady
 import curtains.phoneWindow
-import curtains.windowAttachCount
 
 /**
  * Manages window callback wrapping for all windows (including dialogs) using Curtains lib.
@@ -55,13 +55,7 @@ internal class WindowCallbackManager(
 
     private fun onRootViewAdded(view: View) {
         view.phoneWindow?.let { window ->
-            if (view.windowAttachCount == 0) {
-                // Window is being attached for the first time, wait for decor view to be ready
-                window.onDecorViewReady { wrapWindow(window) }
-            } else {
-                // Window was previously attached, decor view should be available
-                wrapWindow(window)
-            }
+            window.onDecorViewReady { decorView -> wrapWindow(window, decorView) }
         }
     }
 
@@ -71,23 +65,19 @@ internal class WindowCallbackManager(
         }
     }
 
-    private fun wrapWindow(window: Window) {
+    private fun wrapWindow(
+        window: Window,
+        decorView: View,
+    ) {
         // Avoid double-wrapping
         if (wrappedWindows.containsKey(window)) {
             return
         }
 
-        // Try to get the Activity from the Window's context
+        // Try to get the Activity from the Window's context to extract the screen name
         // Dialog windows often use ContextThemeWrapper, so we need to traverse the context chain
-        val activity = window.context.findActivity()
-        if (activity == null) {
+        val activityName = window.context.findActivity()?.screenName ?: run {
             logger.debug("Unable to get Activity from window context, skipping window")
-            return
-        }
-
-        val decorView = window.peekDecorView()
-        if (decorView == null) {
-            logger.debug("DecorView not ready for window, skipping")
             return
         }
 
@@ -100,8 +90,8 @@ internal class WindowCallbackManager(
             if (frustrationDetector != null) {
                 FrustrationAwareWindowCallback(
                     delegate = originalCallback,
-                    activity = activity,
                     decorView = decorView,
+                    activityName = activityName,
                     track = track,
                     viewTargetLocators = ALL(logger),
                     logger = logger,
@@ -111,8 +101,8 @@ internal class WindowCallbackManager(
             } else {
                 AutocaptureWindowCallback(
                     delegate = originalCallback,
-                    activity = activity,
                     decorView = decorView,
+                    activityName = activityName,
                     track = track,
                     viewTargetLocators = ALL(logger),
                     logger = logger,
@@ -122,11 +112,12 @@ internal class WindowCallbackManager(
 
         window.callback = wrappedCallback
 
-        logger.debug("Wrapped window callback for ${activity.localClassName}")
+        logger.debug("Wrapped window callback for $activityName")
     }
 
     private fun unwrapWindow(window: Window) {
-        val originalCallback = wrappedWindows.remove(window) ?: return
+        if (!wrappedWindows.containsKey(window)) return
+        val originalCallback = wrappedWindows.remove(window)
 
         // Only unwrap if the current callback is our wrapper
         val currentCallback = window.callback
@@ -154,7 +145,10 @@ internal class WindowCallbackManager(
     }
 
     @VisibleForTesting
-    internal fun wrapWindowForTesting(window: Window) = wrapWindow(window)
+    internal fun wrapWindowForTesting(
+        window: Window,
+        decorView: View,
+    ) = wrapWindow(window, decorView)
 
     @VisibleForTesting
     internal fun unwrapWindowForTesting(window: Window) = unwrapWindow(window)

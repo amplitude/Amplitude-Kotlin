@@ -1,6 +1,5 @@
 package com.amplitude.android.internal.gestures
 
-import android.app.Activity
 import android.view.MotionEvent
 import android.view.View
 import android.view.Window
@@ -17,14 +16,14 @@ import com.amplitude.common.Logger
  */
 internal class FrustrationAwareWindowCallback(
     delegate: Window.Callback,
-    activity: Activity,
     decorView: View,
+    activityName: String,
     track: TrackFunction,
     viewTargetLocators: List<ViewTargetLocator>,
     logger: Logger,
     autocaptureState: AutocaptureState,
     private val frustrationDetector: FrustrationInteractionsDetector?,
-) : AutocaptureWindowCallback(delegate, activity, decorView, track, viewTargetLocators, logger, autocaptureState) {
+) : AutocaptureWindowCallback(delegate, decorView, activityName, track, viewTargetLocators, logger, autocaptureState) {
     override fun dispatchTouchEvent(event: MotionEvent?): Boolean {
         // First handle the standard autocapture behavior
         val result = super.dispatchTouchEvent(event)
@@ -87,6 +86,6 @@ internal class FrustrationAwareWindowCallback(
 
         // Property building is now handled inside FrustrationInteractionsDetector
         // using EventPropertyUtils for consistent ELEMENT_INTERACTED -> RAGE/DEAD_CLICK hierarchy
-        frustrationDetector?.processClick(clickInfo, targetInfo, target, activity)
+        frustrationDetector?.processClick(clickInfo, targetInfo, target, activityName)
     }
 }

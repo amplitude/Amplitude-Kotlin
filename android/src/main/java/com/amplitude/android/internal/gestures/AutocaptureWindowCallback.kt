@@ -1,6 +1,5 @@
 package com.amplitude.android.internal.gestures
 
-import android.app.Activity
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
@@ -14,16 +13,16 @@ import java.lang.ref.WeakReference
 
 internal open class AutocaptureWindowCallback(
     delegate: Window.Callback,
-    protected val activity: Activity,
     decorView: View,
+    protected val activityName: String,
     track: TrackFunction,
     protected val viewTargetLocators: List<ViewTargetLocator>,
     protected val logger: Logger,
     autocaptureState: AutocaptureState,
     private val motionEventObtainer: MotionEventObtainer = object : MotionEventObtainer {},
     protected val gestureListener: AutocaptureGestureListener =
-        AutocaptureGestureListener(activity, decorView, track, logger, viewTargetLocators, autocaptureState),
-    private val gestureDetector: GestureDetector = GestureDetector(activity, gestureListener),
+        AutocaptureGestureListener(decorView, activityName, track, logger, viewTargetLocators, autocaptureState),
+    private val gestureDetector: GestureDetector = GestureDetector(decorView.context, gestureListener),
 ) : WindowCallbackAdapter(delegate) {
     protected val decorViewRef: WeakReference<View> = WeakReference(decorView)
 

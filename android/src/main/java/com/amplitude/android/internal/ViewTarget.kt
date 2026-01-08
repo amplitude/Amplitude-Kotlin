@@ -1,7 +1,5 @@
 package com.amplitude.android.internal
 
-import android.app.Activity
-import com.amplitude.android.utilities.DefaultEventUtils.Companion.screenName
 import com.amplitude.core.Constants.EventProperties.ACTION
 import com.amplitude.core.Constants.EventProperties.HIERARCHY
 import com.amplitude.core.Constants.EventProperties.SCREEN_NAME
@@ -50,7 +48,7 @@ data class ViewTarget(
  */
 fun buildElementInteractedProperties(
     target: ViewTarget,
-    activity: Activity,
+    activityName: String,
 ): Map<String, Any?> =
     mapOf(
         ACTION to "touch",
@@ -64,5 +62,5 @@ fun buildElementInteractedProperties(
                 .split(" ")
                 .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } },
         HIERARCHY to target.hierarchy,
-        SCREEN_NAME to activity.screenName,
+        SCREEN_NAME to activityName,
     )

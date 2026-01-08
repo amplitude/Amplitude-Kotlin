@@ -26,7 +26,6 @@ class WindowCallbackManagerTest {
         val originalCallback = mockk<Window.Callback>(relaxed = true)
 
         every { window.context } returns activity
-        every { window.peekDecorView() } returns decorView
         every { window.callback } returns originalCallback
 
         val sut =
@@ -37,7 +36,7 @@ class WindowCallbackManagerTest {
                 logger = logger,
             )
 
-        sut.wrapWindowForTesting(window)
+        sut.wrapWindowForTesting(window, decorView)
 
         verify { window.callback = any<AutocaptureWindowCallback>() }
     }
@@ -46,6 +45,7 @@ class WindowCallbackManagerTest {
     fun `skips window when activity cannot be found`() {
         val context = mockk<Context>(relaxed = true)
         val window = mockk<Window>(relaxed = true)
+        val decorView = mockk<View>(relaxed = true)
 
         every { window.context } returns context
 
@@ -57,35 +57,10 @@ class WindowCallbackManagerTest {
                 logger = logger,
             )
 
-        sut.wrapWindowForTesting(window)
+        sut.wrapWindowForTesting(window, decorView)
 
         verify(exactly = 0) { window.callback = any<AutocaptureWindowCallback>() }
         verify { logger.debug("Unable to get Activity from window context, skipping window") }
-    }
-
-    @Test
-    fun `skips wrapping when decorView is null as fallback safety check`() {
-        // Note: Primary path uses onDecorViewReady to wait for decorView.
-        // This test verifies the fallback safety check in wrapWindow()
-        // handles the edge case where decorView is still null.
-        val activity = mockk<Activity>(relaxed = true)
-        val window = mockk<Window>(relaxed = true)
-
-        every { window.context } returns activity
-        every { window.peekDecorView() } returns null
-
-        val sut =
-            WindowCallbackManager(
-                track = track,
-                frustrationDetector = null,
-                autocaptureState = autocaptureState,
-                logger = logger,
-            )
-
-        sut.wrapWindowForTesting(window)
-
-        verify(exactly = 0) { window.callback = any<AutocaptureWindowCallback>() }
-        verify { logger.debug("DecorView not ready for window, skipping") }
     }
 
     @Test
@@ -99,7 +74,6 @@ class WindowCallbackManagerTest {
         // Activity wrapped in ContextWrapper (like dialogs do)
         every { wrapper.baseContext } returns activity
         every { window.context } returns wrapper
-        every { window.peekDecorView() } returns decorView
         every { window.callback } returns originalCallback
 
         val sut =
@@ -110,7 +84,7 @@ class WindowCallbackManagerTest {
                 logger = logger,
             )
 
-        sut.wrapWindowForTesting(window)
+        sut.wrapWindowForTesting(window, decorView)
 
         verify { window.callback = any<AutocaptureWindowCallback>() }
     }
@@ -123,7 +97,6 @@ class WindowCallbackManagerTest {
         val originalCallback = mockk<Window.Callback>(relaxed = true)
 
         every { window.context } returns activity
-        every { window.peekDecorView() } returns decorView
         every { window.callback } returns originalCallback
 
         val sut =
@@ -134,8 +107,8 @@ class WindowCallbackManagerTest {
                 logger = logger,
             )
 
-        sut.wrapWindowForTesting(window)
-        sut.wrapWindowForTesting(window)
+        sut.wrapWindowForTesting(window, decorView)
+        sut.wrapWindowForTesting(window, decorView)
 
         verify(exactly = 1) { window.callback = any<AutocaptureWindowCallback>() }
     }
@@ -148,7 +121,6 @@ class WindowCallbackManagerTest {
         val originalCallback = mockk<Window.Callback>(relaxed = true)
 
         every { window.context } returns activity
-        every { window.peekDecorView() } returns decorView
         every { window.callback } returns originalCallback
 
         val sut =
@@ -160,7 +132,7 @@ class WindowCallbackManagerTest {
             )
 
         // Wrap
-        sut.wrapWindowForTesting(window)
+        sut.wrapWindowForTesting(window, decorView)
 
         // Simulate that window.callback returns our wrapper now
         every { window.callback } returns mockk<AutocaptureWindowCallback>(relaxed = true)
