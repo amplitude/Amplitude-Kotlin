@@ -85,7 +85,6 @@ class Timeline(
     private suspend fun processEventMessage(message: EventQueueMessage) {
         when (message) {
             is EventQueueMessage.EnterForeground -> {
-                // If we are entering foreground, we may need to start a new session
                 val stopAndStartSessionEvents = startNewSessionIfNeeded(message.timestamp)
                 foreground.set(true)
                 processAndPersistEvents(stopAndStartSessionEvents)
@@ -142,6 +141,9 @@ class Timeline(
     }
 
     private suspend fun startNewSessionIfNeeded(timestamp: Long): List<BaseEvent> {
+        if (amplitude.configuration.optOut) {
+            return emptyList()
+        }
         if (inSession() && (foreground.get() || isWithinMinTimeBetweenSessions(timestamp))) {
             refreshSessionTime(timestamp)
             return emptyList()
