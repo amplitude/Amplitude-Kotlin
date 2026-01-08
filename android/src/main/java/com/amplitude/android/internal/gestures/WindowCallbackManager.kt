@@ -76,10 +76,14 @@ internal class WindowCallbackManager(
 
         // Try to get the Activity from the Window's context to extract the screen name
         // Dialog windows often use ContextThemeWrapper, so we need to traverse the context chain
-        val activityName = window.context.findActivity()?.screenName ?: run {
-            logger.debug("Unable to get Activity from window context, skipping window")
-            return
-        }
+        val activityName =
+            window.context
+                .findActivity()
+                ?.screenName
+                ?: run {
+                    logger.debug("Unable to get Activity from window context, skipping window")
+                    return
+                }
 
         val originalCallback = window.callback ?: NoCaptureWindowCallback()
 
