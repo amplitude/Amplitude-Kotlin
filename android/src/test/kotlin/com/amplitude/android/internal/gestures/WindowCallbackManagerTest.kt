@@ -36,6 +36,7 @@ class WindowCallbackManagerTest {
                 logger = logger,
             )
 
+        sut.start()
         sut.wrapWindowForTesting(window, decorView)
 
         verify { window.callback = any<AutocaptureWindowCallback>() }
@@ -57,6 +58,7 @@ class WindowCallbackManagerTest {
                 logger = logger,
             )
 
+        sut.start()
         sut.wrapWindowForTesting(window, decorView)
 
         verify(exactly = 0) { window.callback = any<AutocaptureWindowCallback>() }
@@ -84,6 +86,7 @@ class WindowCallbackManagerTest {
                 logger = logger,
             )
 
+        sut.start()
         sut.wrapWindowForTesting(window, decorView)
 
         verify { window.callback = any<AutocaptureWindowCallback>() }
@@ -107,6 +110,7 @@ class WindowCallbackManagerTest {
                 logger = logger,
             )
 
+        sut.start()
         sut.wrapWindowForTesting(window, decorView)
         sut.wrapWindowForTesting(window, decorView)
 
@@ -130,6 +134,8 @@ class WindowCallbackManagerTest {
                 autocaptureState = autocaptureState,
                 logger = logger,
             )
+
+        sut.start()
 
         // Wrap
         sut.wrapWindowForTesting(window, decorView)

@@ -31,6 +31,7 @@ internal class WindowCallbackManager(
     private val logger: Logger,
 ) {
     private val wrappedWindows = mutableMapOf<Window, Window.Callback?>()
+    private var started = false
 
     private val rootViewsChangedListener =
         OnRootViewsChangedListener { view, added ->
@@ -42,12 +43,14 @@ internal class WindowCallbackManager(
         }
 
     fun start() {
+        started = true
         Curtains.onRootViewsChangedListeners += rootViewsChangedListener
         // Wrap any existing windows
         Curtains.rootViews.forEach(::onRootViewAdded)
     }
 
     fun stop() {
+        started = false
         Curtains.onRootViewsChangedListeners -= rootViewsChangedListener
         // Unwrap all windows
         wrappedWindows.keys.toList().forEach(::unwrapWindow)
@@ -69,6 +72,11 @@ internal class WindowCallbackManager(
         window: Window,
         decorView: View,
     ) {
+        if (!started) {
+            logger.debug("WindowCallbackManager stopped, skipping window wrap")
+            return
+        }
+
         // Avoid double-wrapping
         if (wrappedWindows.containsKey(window)) {
             return
