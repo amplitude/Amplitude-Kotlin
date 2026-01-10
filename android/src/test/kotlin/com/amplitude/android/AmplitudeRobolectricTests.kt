@@ -71,6 +71,26 @@ class AmplitudeRobolectricTests {
             assertTrue { fakeEventPlugin.trackedEvents.isEmpty() }
         }
 
+    @Test
+    fun `test optOut does not record session events on foreground`() =
+        runTest {
+            val fakeEventPlugin = FakeEventPlugin()
+            val amplitudeInstance = Amplitude(createConfiguration(100, true)) // optOut = true
+            amplitudeInstance.add(fakeEventPlugin)
+
+            // Enter foreground - would normally trigger session_start
+            enterForeground(amplitudeInstance, 1000)
+
+            // Exit foreground
+            exitForeground(amplitudeInstance, 2000)
+
+            // Enter foreground again after timeout - would normally trigger session_end + session_start
+            enterForeground(amplitudeInstance, 400000) // 400 seconds later, well past the 100ms timeout
+
+            // Verify NO events were recorded (including session events)
+            assertTrue { fakeEventPlugin.trackedEvents.isEmpty() }
+        }
+
     private fun createConfiguration(
         minTimeBetweenSessionsMillis: Long? = null,
         optOut: Boolean? = null,
