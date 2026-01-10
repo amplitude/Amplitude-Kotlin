@@ -37,6 +37,7 @@ class AndroidLifecyclePlugin(
 
     private val created: MutableSet<Int> = mutableSetOf()
     private val started: MutableSet<Int> = mutableSetOf()
+    private val processedDeepLinkIntents: MutableMap<Int, Int> = mutableMapOf()
 
     private var appInBackground = false
 
@@ -139,7 +140,7 @@ class AndroidLifecyclePlugin(
         }
 
         if (autocaptureState.deepLinks) {
-            DefaultEventUtils(androidAmplitude).trackDeepLinkOpenedEvent(activity)
+            trackDeepLinkIfNew(activity)
         }
 
         if (autocaptureState.screenViews) {
@@ -189,10 +190,29 @@ class AndroidLifecyclePlugin(
 
     override fun onActivityDestroyed(activity: Activity) {
         created.remove(activity.hashCode())
+        processedDeepLinkIntents.remove(activity.hashCode())
 
         if (autocaptureState.screenViews) {
             DefaultEventUtils(androidAmplitude).stopFragmentViewedEventTracking(activity)
         }
+    }
+
+    /**
+     * Tracks a deep link event only if this intent has not been processed before.
+     * Uses the intent's identity to allow the same URL to be tracked from different intents,
+     * while preventing duplicate tracking when returning from background to foreground.
+     */
+    private fun trackDeepLinkIfNew(activity: Activity) {
+        val intent = activity.intent ?: return
+        val intentIdentity = System.identityHashCode(intent)
+        val activityHash = activity.hashCode()
+
+        if (processedDeepLinkIntents[activityHash] == intentIdentity) {
+            return
+        }
+
+        processedDeepLinkIntents[activityHash] = intentIdentity
+        DefaultEventUtils(androidAmplitude).trackDeepLinkOpenedEvent(activity)
     }
 
     override fun teardown() {

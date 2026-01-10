@@ -516,6 +516,99 @@ class AndroidLifecyclePluginTest {
         }
 
     @Test
+    fun `test deep link opened event is not duplicated when resuming from background`() =
+        runTest {
+            every { mockedConfig.autocapture } returns
+                setOf(
+                    AutocaptureOption.DEEP_LINKS,
+                )
+            every { mockedAmplitude.amplitudeScope } returns this
+
+            val activity = mockk<Activity>(relaxed = true)
+            val deepLinkIntent =
+                Intent().apply {
+                    data = Uri.parse("android-app://com.android.unit-test")
+                }
+
+            plugin.setup(mockedAmplitude)
+
+            every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+            every { activity.intent } returns deepLinkIntent
+
+            // First launch with deeplink
+            observer.onActivityCreated(activity, mockk())
+            observer.onActivityStarted(activity)
+            advanceUntilIdle()
+
+            // Background the app
+            observer.onActivityStopped(activity)
+            advanceUntilIdle()
+
+            // Resume from background (same intent object)
+            observer.onActivityStarted(activity)
+            advanceUntilIdle()
+
+            // Deep link should only be tracked once
+            verify(exactly = 1) {
+                mockedAmplitude.track(
+                    eq(EventTypes.DEEP_LINK_OPENED),
+                    any(),
+                )
+            }
+
+            close()
+        }
+
+    @Test
+    fun `test deep link opened event is tracked for new intent on same activity`() =
+        runTest {
+            every { mockedConfig.autocapture } returns
+                setOf(
+                    AutocaptureOption.DEEP_LINKS,
+                )
+            every { mockedAmplitude.amplitudeScope } returns this
+
+            val activity = mockk<Activity>(relaxed = true)
+            val firstDeepLinkIntent =
+                Intent().apply {
+                    data = Uri.parse("android-app://com.android.unit-test/first")
+                }
+            val secondDeepLinkIntent =
+                Intent().apply {
+                    data = Uri.parse("android-app://com.android.unit-test/second")
+                }
+
+            plugin.setup(mockedAmplitude)
+
+            every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+
+            // First launch with first deeplink
+            every { activity.intent } returns firstDeepLinkIntent
+            observer.onActivityCreated(activity, mockk())
+            observer.onActivityStarted(activity)
+            advanceUntilIdle()
+
+            // Background the app
+            observer.onActivityStopped(activity)
+            advanceUntilIdle()
+
+            // Resume with a NEW intent (e.g., user clicked another deeplink)
+            every { activity.intent } returns secondDeepLinkIntent
+            observer.onActivityStarted(activity)
+            advanceUntilIdle()
+
+            // Both deep links should be tracked
+            verify(exactly = 2) {
+                mockedAmplitude.track(
+                    eq(EventTypes.DEEP_LINK_OPENED),
+                    any(),
+                )
+            }
+
+            close()
+        }
+
+    @Test
     fun `test complete screen views functionality works independently`() =
         runTest {
             every { mockedConfig.autocapture } returns setOf(AutocaptureOption.SCREEN_VIEWS)
