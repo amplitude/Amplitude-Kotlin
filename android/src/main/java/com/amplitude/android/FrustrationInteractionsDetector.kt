@@ -1,6 +1,5 @@
 package com.amplitude.android
 
-import android.app.Activity
 import android.graphics.PointF
 import com.amplitude.android.InteractionType.DeadClick
 import com.amplitude.android.InteractionType.RageClick
@@ -85,7 +84,7 @@ class FrustrationInteractionsDetector(
         clickInfo: ClickInfo,
         targetInfo: TargetInfo,
         target: ViewTarget,
-        activity: Activity,
+        activityName: String,
     ) {
         val clickTime = System.currentTimeMillis()
         val clickId = generateClickId(clickInfo, targetInfo)
@@ -94,7 +93,7 @@ class FrustrationInteractionsDetector(
         if (RageClick in autocaptureState.interactions) {
             val isIgnoredForRageClick = isRageClickIgnored(target)
             if (!isIgnoredForRageClick) {
-                processRageClick(clickInfo, targetInfo, target, activity, clickTime)
+                processRageClick(clickInfo, targetInfo, target, activityName, clickTime)
             } else {
                 logger.debug("Skipping rage click processing for ignored target: ${targetInfo.className}")
             }
@@ -104,7 +103,7 @@ class FrustrationInteractionsDetector(
         if (DeadClick in autocaptureState.interactions) {
             val isIgnoredForDeadClick = isDeadClickIgnored(target)
             if (!isIgnoredForDeadClick) {
-                processDeadClick(clickInfo, targetInfo, target, activity, clickTime, clickId)
+                processDeadClick(clickInfo, targetInfo, target, activityName, clickTime, clickId)
             } else {
                 logger.debug(
                     "Skipping dead click processing for ignored target: ${targetInfo.className}",
@@ -117,7 +116,7 @@ class FrustrationInteractionsDetector(
         clickInfo: ClickInfo,
         targetInfo: TargetInfo,
         target: ViewTarget,
-        activity: Activity,
+        activityName: String,
         clickTime: Long,
     ) {
         val locationKey = generateLocationKey(clickInfo, targetInfo)
@@ -140,7 +139,7 @@ class FrustrationInteractionsDetector(
 
                     // Check if we've reached the rage click threshold (4+ clicks in 1s to match iOS)
                     if (existingSession.clickCount >= RAGE_CLICK_THRESHOLD) {
-                        trackRageClick(existingSession, target, activity)
+                        trackRageClick(existingSession, target, activityName)
                         pendingRageClicks.remove(locationKey)
                     }
                 } else {
@@ -161,7 +160,7 @@ class FrustrationInteractionsDetector(
         clickInfo: ClickInfo,
         targetInfo: TargetInfo,
         target: ViewTarget,
-        activity: Activity,
+        activityName: String,
         clickTime: Long,
         clickId: String,
     ) {
@@ -182,7 +181,7 @@ class FrustrationInteractionsDetector(
         val deadClickSession =
             DeadClickSession(
                 target = target,
-                activity = activity,
+                activityName = activityName,
                 clickInfo = clickInfo.copy(timestamp = clickTime),
                 targetInfo = targetInfo,
                 preClickUiChangeTime = lastUiChangeTime,
@@ -249,11 +248,11 @@ class FrustrationInteractionsDetector(
     private fun trackRageClick(
         session: RageClickSession,
         target: ViewTarget,
-        activity: Activity,
+        activityName: String,
     ) {
         // Build final properties: ELEMENT_INTERACTED + RAGE_CLICK specific
         val properties =
-            buildElementInteractedProperties(target, activity) +
+            buildElementInteractedProperties(target, activityName) +
                 buildRageClickProperties(session)
 
         amplitude.track(RAGE_CLICK, properties)
@@ -263,7 +262,7 @@ class FrustrationInteractionsDetector(
     private fun trackDeadClick(session: DeadClickSession) {
         // Build final properties: ELEMENT_INTERACTED + DEAD_CLICK specific
         val properties =
-            buildElementInteractedProperties(session.target, session.activity) +
+            buildElementInteractedProperties(session.target, session.activityName) +
                 buildDeadClickProperties(session)
 
         amplitude.track(DEAD_CLICK, properties)
@@ -333,7 +332,7 @@ class FrustrationInteractionsDetector(
 
     internal data class DeadClickSession(
         val target: ViewTarget,
-        val activity: Activity,
+        val activityName: String,
         val clickInfo: ClickInfo,
         val targetInfo: TargetInfo,
         val preClickUiChangeTime: Long,

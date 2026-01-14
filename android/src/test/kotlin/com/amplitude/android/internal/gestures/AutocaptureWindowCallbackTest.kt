@@ -1,11 +1,12 @@
 package com.amplitude.android.internal.gestures
 
-import android.app.Activity
 import android.view.GestureDetector
 import android.view.MotionEvent
+import android.view.View
 import android.view.Window
 import com.amplitude.android.AutocaptureState
 import com.amplitude.android.InteractionType.ElementInteraction
+import com.amplitude.android.internal.TrackFunction
 import com.amplitude.android.internal.locators.AndroidViewTargetLocator
 import com.amplitude.common.Logger
 import io.mockk.every
@@ -15,9 +16,10 @@ import org.junit.jupiter.api.Test
 
 class AutocaptureWindowCallbackTest {
     class Fixture {
-        val activity = mockk<Activity>()
+        val decorView = mockk<View>(relaxed = true)
+        val activityName = "TestActivity"
         val delegate = mockk<Window.Callback>(relaxed = true)
-        val track = mockk<(String, Map<String, Any?>) -> Unit>()
+        val track = mockk<TrackFunction>()
         val gestureDetector = mockk<GestureDetector>(relaxed = true)
         val gestureListener = mockk<AutocaptureGestureListener>(relaxed = true)
         val motionEventCopy = mockk<MotionEvent>(relaxed = true)
@@ -26,7 +28,8 @@ class AutocaptureWindowCallbackTest {
         internal fun getSut(): AutocaptureWindowCallback {
             return AutocaptureWindowCallback(
                 delegate,
-                activity,
+                decorView,
+                activityName,
                 track,
                 listOf(AndroidViewTargetLocator()),
                 logger,

@@ -8,8 +8,6 @@ import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.ViewTarget.Type
 
 internal class AndroidViewTargetLocator : ViewTargetLocator {
-    private val coordinates = IntArray(2)
-
     companion object {
         private const val HIERARCHY_DELIMITER = " → "
 
@@ -25,7 +23,7 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
             ?.let { createViewTarget() }
 
     private fun View.createViewTarget(): ViewTarget {
-        val className = javaClass.canonicalName ?: javaClass.simpleName ?: null
+        val className = javaClass.canonicalName ?: javaClass.simpleName
         val resourceName = resourceIdWithFallback
         val hierarchy = hierarchy
         val tag =
@@ -79,16 +77,19 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
     }
 
     private fun View.touchWithinBounds(position: Pair<Float, Float>): Boolean {
-        val (x, y) = position
+        val (x, y) = position // Window coordinates
 
+        // Get window-relative position of the view
+        val rootCoordinates = IntArray(2)
+        val coordinates = IntArray(2)
+
+        rootView.getLocationOnScreen(rootCoordinates)
         getLocationOnScreen(coordinates)
-        val vx = coordinates[0]
-        val vy = coordinates[1]
 
-        val w = width
-        val h = height
+        val viewX = coordinates[0] - rootCoordinates[0]
+        val viewY = coordinates[1] - rootCoordinates[1]
 
-        return !(x < vx || x > vx + w || y < vy || y > vy + h)
+        return x >= viewX && x <= viewX + width && y >= viewY && y <= viewY + height
     }
 
     private fun View.isViewTappable(): Boolean = isClickable && isVisible

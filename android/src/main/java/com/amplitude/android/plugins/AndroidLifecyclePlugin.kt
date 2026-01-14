@@ -12,6 +12,7 @@ import com.amplitude.android.FrustrationInteractionsDetector
 import com.amplitude.android.GuardedAmplitudeFeature
 import com.amplitude.android.InteractionType.DeadClick
 import com.amplitude.android.InteractionType.RageClick
+import com.amplitude.android.internal.gestures.WindowCallbackManager
 import com.amplitude.android.utilities.ActivityCallbackType
 import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.android.utilities.DefaultEventUtils
@@ -34,6 +35,7 @@ class AndroidLifecyclePlugin(
     private lateinit var autocaptureState: AutocaptureState
 
     private var frustrationInteractionsDetector: FrustrationInteractionsDetector? = null
+    private var windowCallbackManager: WindowCallbackManager? = null
 
     private val created: MutableSet<Int> = mutableSetOf()
     private val started: MutableSet<Int> = mutableSetOf()
@@ -72,6 +74,19 @@ class AndroidLifecyclePlugin(
                     autocaptureState = autocaptureState,
                 )
             frustrationInteractionsDetector?.start()
+        }
+
+        // Initialize window callback manager for tracking element interactions across all windows
+        // This enables tracking interactions in dialogs (including NavGraph dialogs)
+        if (autocaptureState.interactions.isNotEmpty()) {
+            windowCallbackManager =
+                WindowCallbackManager(
+                    track = androidAmplitude::track,
+                    frustrationDetector = frustrationInteractionsDetector,
+                    autocaptureState = autocaptureState,
+                    logger = androidAmplitude.logger,
+                )
+            windowCallbackManager?.start()
         }
 
         if (autocaptureState.appLifecycles) {
@@ -148,21 +163,9 @@ class AndroidLifecyclePlugin(
         }
     }
 
-    override fun onActivityResumed(activity: Activity) {
-        if (autocaptureState.interactions.isNotEmpty()) {
-            DefaultEventUtils(androidAmplitude).startUserInteractionEventTracking(
-                activity,
-                frustrationInteractionsDetector,
-                autocaptureState,
-            )
-        }
-    }
+    override fun onActivityResumed(activity: Activity) = Unit
 
-    override fun onActivityPaused(activity: Activity) {
-        if (autocaptureState.interactions.isNotEmpty()) {
-            DefaultEventUtils(androidAmplitude).stopUserInteractionEventTracking(activity)
-        }
-    }
+    override fun onActivityPaused(activity: Activity) = Unit
 
     override fun onActivityStopped(activity: Activity) {
         started.remove(activity.hashCode())
@@ -218,6 +221,7 @@ class AndroidLifecyclePlugin(
     override fun teardown() {
         super.teardown()
         eventJob?.cancel()
+        windowCallbackManager?.stop()
         frustrationInteractionsDetector?.stop()
     }
 }
