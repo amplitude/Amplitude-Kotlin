@@ -31,6 +31,7 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
                 ?.takeIf { it is String || it is Number || it is Boolean || it is Char }
                 ?.toString()
         val text = (this as? Button)?.text?.toString()
+        val accessibilityLabel = contentDescription?.toString()
 
         // Read frustration analytics settings from programmatic tags (and Compose)
         val frustrationSettings = readFrustrationAttributes()
@@ -41,6 +42,7 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
             resourceName,
             tag,
             text,
+            accessibilityLabel,
             SOURCE,
             hierarchy,
             ampIgnoreRageClick = frustrationSettings.ignoreRageClick,

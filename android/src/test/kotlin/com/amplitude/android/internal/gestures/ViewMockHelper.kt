@@ -49,6 +49,7 @@ internal fun <T : View> mockView(
     every { mockView.context } returns context
     every { mockView.isClickable } returns clickable
     every { mockView.visibility } returns if (visible) View.VISIBLE else View.GONE
+    every { mockView.contentDescription } returns null
 
     every { mockView.getLocationOnScreen(any()) } answers {
         val array = invocation.args[0] as IntArray
