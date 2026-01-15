@@ -1,3 +1,18 @@
+# [1.23.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.22.4...v1.23.0) (2026-01-15)
+
+
+### Bug Fixes
+
+* prevent duplicate deep link tracking ([#339](https://github.com/amplitude/Amplitude-Kotlin/issues/339)) ([2064446](https://github.com/amplitude/Amplitude-Kotlin/commit/2064446ed810296f93291f5aaef7301cb702efd5))
+* prevent session events when optOut is enabled ([#340](https://github.com/amplitude/Amplitude-Kotlin/issues/340)) ([92f6989](https://github.com/amplitude/Amplitude-Kotlin/commit/92f6989159ba602285b5bc10b617b9bcb332d59f))
+
+
+### Features
+
+* add accessibility label support for auto capture elements ([#343](https://github.com/amplitude/Amplitude-Kotlin/issues/343)) ([1e1173d](https://github.com/amplitude/Amplitude-Kotlin/commit/1e1173d6d2f9c6005928ca4015942765ff25fa3b))
+* add deep link tracking on activity resume for singleTop/singleTask scenarios ([#342](https://github.com/amplitude/Amplitude-Kotlin/issues/342)) ([0f309c3](https://github.com/amplitude/Amplitude-Kotlin/commit/0f309c3104e53688307b7497e229eec50df3c0ea))
+* nav graph dialogs for autocapture ([#338](https://github.com/amplitude/Amplitude-Kotlin/issues/338)) ([0a63300](https://github.com/amplitude/Amplitude-Kotlin/commit/0a633008bdb0bd5dcb985193298569273fd08c30))
+
 ## [1.22.4](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.22.3...v1.22.4) (2025-10-09)
 
 
