@@ -609,6 +609,108 @@ class AndroidLifecyclePluginTest {
         }
 
     @Test
+    fun `test deep link opened event is tracked via onResume after setIntent (onNewIntent scenario)`() =
+        runTest {
+            every { mockedConfig.autocapture } returns
+                setOf(
+                    AutocaptureOption.DEEP_LINKS,
+                )
+            every { mockedAmplitude.amplitudeScope } returns this
+
+            val activity = mockk<Activity>(relaxed = true)
+            val firstDeepLinkIntent =
+                Intent().apply {
+                    data = Uri.parse("android-app://com.android.unit-test/first")
+                }
+            val secondDeepLinkIntent =
+                Intent().apply {
+                    data = Uri.parse("android-app://com.android.unit-test/second")
+                }
+
+            plugin.setup(mockedAmplitude)
+
+            every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+
+            // First launch with first deeplink
+            every { activity.intent } returns firstDeepLinkIntent
+            observer.onActivityCreated(activity, mockk())
+            observer.onActivityStarted(activity)
+            observer.onActivityResumed(activity)
+            advanceUntilIdle()
+
+            // Verify first deep link tracked
+            verify(exactly = 1) {
+                mockedAmplitude.track(
+                    eq(EventTypes.DEEP_LINK_OPENED),
+                    any(),
+                )
+            }
+
+            // Activity is paused (but NOT stopped) - e.g., a dialog appears or partial occlusion
+            observer.onActivityPaused(activity)
+            advanceUntilIdle()
+
+            // Simulate onNewIntent() scenario:
+            // Developer receives new intent and calls setIntent() in onNewIntent()
+            // Then onResume() is called (but NOT onStart() since activity wasn't stopped)
+            every { activity.intent } returns secondDeepLinkIntent
+            observer.onActivityResumed(activity)
+            advanceUntilIdle()
+
+            // Both deep links should be tracked - the second one via onResume
+            verify(exactly = 2) {
+                mockedAmplitude.track(
+                    eq(EventTypes.DEEP_LINK_OPENED),
+                    any(),
+                )
+            }
+
+            close()
+        }
+
+    @Test
+    fun `test deep link is not duplicated when resuming without new intent`() =
+        runTest {
+            every { mockedConfig.autocapture } returns
+                setOf(
+                    AutocaptureOption.DEEP_LINKS,
+                )
+            every { mockedAmplitude.amplitudeScope } returns this
+
+            val activity = mockk<Activity>(relaxed = true)
+            val deepLinkIntent =
+                Intent().apply {
+                    data = Uri.parse("android-app://com.android.unit-test")
+                }
+
+            plugin.setup(mockedAmplitude)
+
+            every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+            every { activity.intent } returns deepLinkIntent
+
+            // Full lifecycle: create -> start -> resume
+            observer.onActivityCreated(activity, mockk())
+            observer.onActivityStarted(activity)
+            observer.onActivityResumed(activity)
+            advanceUntilIdle()
+
+            // Pause and resume (same intent, no onNewIntent called)
+            observer.onActivityPaused(activity)
+            observer.onActivityResumed(activity)
+            advanceUntilIdle()
+
+            // Deep link should only be tracked once despite being checked in both onStart and onResume
+            verify(exactly = 1) {
+                mockedAmplitude.track(
+                    eq(EventTypes.DEEP_LINK_OPENED),
+                    any(),
+                )
+            }
+
+            close()
+        }
+
+    @Test
     fun `test complete screen views functionality works independently`() =
         runTest {
             every { mockedConfig.autocapture } returns setOf(AutocaptureOption.SCREEN_VIEWS)

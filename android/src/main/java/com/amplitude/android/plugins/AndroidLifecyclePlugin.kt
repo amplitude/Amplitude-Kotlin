@@ -163,7 +163,13 @@ class AndroidLifecyclePlugin(
         }
     }
 
-    override fun onActivityResumed(activity: Activity) = Unit
+    override fun onActivityResumed(activity: Activity) {
+        // Handle onNewIntent() deep links for singleTop/singleTask activities.
+        // Requires developers to call setIntent(newIntent) in their onNewIntent().
+        if (autocaptureState.deepLinks) {
+            trackDeepLinkIfNew(activity)
+        }
+    }
 
     override fun onActivityPaused(activity: Activity) = Unit
 
