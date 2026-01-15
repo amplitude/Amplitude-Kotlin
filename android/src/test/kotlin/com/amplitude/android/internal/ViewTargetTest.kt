@@ -1,6 +1,9 @@
 package com.amplitude.android.internal
 
+import com.amplitude.core.Constants.EventProperties.TARGET_ACCESSIBILITY_LABEL
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -14,6 +17,7 @@ class ViewTargetTest {
                 resourceName = "test_resource",
                 tag = "normal_tag",
                 text = "Test",
+                accessibilityLabel = null,
                 source = "android_view",
                 hierarchy = "Activity → TestView",
                 ampIgnoreRageClick = false,
@@ -33,6 +37,7 @@ class ViewTargetTest {
                 // Regular tag, not used for frustration analytics
                 tag = "some_other_tag",
                 text = "Test",
+                accessibilityLabel = null,
                 source = "android_view",
                 hierarchy = "Activity → TestView",
                 ampIgnoreRageClick = true,
@@ -51,6 +56,7 @@ class ViewTargetTest {
                 resourceName = null,
                 tag = null,
                 text = "Compose Button",
+                accessibilityLabel = null,
                 source = "jetpack_compose",
                 hierarchy = "Activity → ComposableScreen → Button",
                 ampIgnoreRageClick = true,
@@ -69,6 +75,7 @@ class ViewTargetTest {
                 resourceName = null,
                 tag = null,
                 text = "Icon Button",
+                accessibilityLabel = null,
                 source = "jetpack_compose",
                 hierarchy = "Activity → ComposableScreen → IconButton",
                 ampIgnoreRageClick = true,
@@ -87,6 +94,7 @@ class ViewTargetTest {
                 resourceName = null,
                 tag = null,
                 text = "FAB",
+                accessibilityLabel = null,
                 source = "jetpack_compose",
                 hierarchy = "Activity → ComposableScreen → FloatingActionButton",
                 ampIgnoreRageClick = false,
@@ -105,6 +113,7 @@ class ViewTargetTest {
                 resourceName = null,
                 tag = null,
                 text = "Input Field",
+                accessibilityLabel = null,
                 source = "jetpack_compose",
                 hierarchy = "Activity → ComposableScreen → TextField",
                 ampIgnoreRageClick = false,
@@ -123,6 +132,7 @@ class ViewTargetTest {
                 resourceName = "test_resource",
                 tag = null,
                 text = "Test View",
+                accessibilityLabel = null,
                 source = "android_view",
                 hierarchy = "Activity → TestView",
                 ampIgnoreRageClick = true,
@@ -141,6 +151,7 @@ class ViewTargetTest {
                 resourceName = "test_resource",
                 tag = null,
                 text = "Test View",
+                accessibilityLabel = null,
                 source = "android_view",
                 hierarchy = "Activity → TestView",
                 ampIgnoreRageClick = true,
@@ -159,6 +170,7 @@ class ViewTargetTest {
                 resourceName = "test_resource",
                 tag = null,
                 text = "Test View",
+                accessibilityLabel = null,
                 source = "android_view",
                 hierarchy = "Activity → TestView",
                 ampIgnoreRageClick = false,
@@ -188,6 +200,7 @@ class ViewTargetTest {
                     resourceName = null,
                     tag = null,
                     text = text,
+                    accessibilityLabel = null,
                     source = "jetpack_compose",
                     hierarchy = hierarchy,
                     ampIgnoreRageClick = true,
@@ -206,6 +219,7 @@ class ViewTargetTest {
                     resourceName = null,
                     tag = null,
                     text = text,
+                    accessibilityLabel = null,
                     source = "jetpack_compose",
                     hierarchy = hierarchy,
                     ampIgnoreRageClick = false,
@@ -216,5 +230,88 @@ class ViewTargetTest {
                 "Component $className should NOT be ignored when both flags are false",
             )
         }
+    }
+
+    @Test
+    fun `buildElementInteractedProperties - includes accessibilityLabel when set`() {
+        val viewTarget =
+            ViewTarget(
+                _view = null,
+                className = "android.widget.Button",
+                resourceName = "submit_button",
+                tag = null,
+                text = "Submit",
+                accessibilityLabel = "Submit form button",
+                source = "android_view",
+                hierarchy = "Activity → Button",
+                ampIgnoreRageClick = false,
+                ampIgnoreDeadClick = false,
+            )
+
+        val properties = buildElementInteractedProperties(viewTarget, "MainActivity")
+
+        assertEquals("Submit form button", properties[TARGET_ACCESSIBILITY_LABEL])
+    }
+
+    @Test
+    fun `buildElementInteractedProperties - accessibilityLabel is null when not set`() {
+        val viewTarget =
+            ViewTarget(
+                _view = null,
+                className = "android.widget.Button",
+                resourceName = "submit_button",
+                tag = null,
+                text = "Submit",
+                accessibilityLabel = null,
+                source = "android_view",
+                hierarchy = "Activity → Button",
+                ampIgnoreRageClick = false,
+                ampIgnoreDeadClick = false,
+            )
+
+        val properties = buildElementInteractedProperties(viewTarget, "MainActivity")
+
+        assertNull(properties[TARGET_ACCESSIBILITY_LABEL])
+    }
+
+    @Test
+    fun `accessibilityLabel - stores contentDescription value correctly`() {
+        val viewTarget =
+            ViewTarget(
+                _view = null,
+                className = "android.widget.ImageButton",
+                resourceName = "close_button",
+                tag = null,
+                text = null,
+                accessibilityLabel = "Close dialog",
+                source = "android_view",
+                hierarchy = "Activity → Dialog → ImageButton",
+                ampIgnoreRageClick = false,
+                ampIgnoreDeadClick = false,
+            )
+
+        assertEquals("Close dialog", viewTarget.accessibilityLabel)
+    }
+
+    @Test
+    fun `buildElementInteractedProperties - includes accessibilityLabel for Compose element`() {
+        val viewTarget =
+            ViewTarget(
+                _view = null,
+                className = null,
+                resourceName = null,
+                tag = "submit_button",
+                text = null,
+                accessibilityLabel = "Submit form",
+                source = "jetpack_compose",
+                hierarchy = null,
+                ampIgnoreRageClick = false,
+                ampIgnoreDeadClick = false,
+            )
+
+        val properties = buildElementInteractedProperties(viewTarget, "ComposeActivity")
+
+        assertEquals("Submit form", properties[TARGET_ACCESSIBILITY_LABEL])
+        assertEquals("Jetpack Compose", properties["[Amplitude] Target Source"])
     }
 }

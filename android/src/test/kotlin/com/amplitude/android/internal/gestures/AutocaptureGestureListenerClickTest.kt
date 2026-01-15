@@ -148,6 +148,7 @@ class AutocaptureGestureListenerClickTest {
                         "[Amplitude] Target Resource" to "test_button",
                         "[Amplitude] Target Tag" to null,
                         "[Amplitude] Target Text" to null,
+                        "[Amplitude] Target Accessibility Label" to null,
                         "[Amplitude] Target Source" to "Android View",
                         "[Amplitude] Hierarchy" to "View",
                         "[Amplitude] Screen Name" to "test_screen",

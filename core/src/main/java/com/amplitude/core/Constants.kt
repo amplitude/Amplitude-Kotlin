@@ -59,6 +59,9 @@ object Constants {
         const val NETWORK_TRACKING_REQUEST_BODY_SIZE = "[Amplitude] Request Body Size"
         const val NETWORK_TRACKING_RESPONSE_BODY_SIZE = "[Amplitude] Response Body Size"
 
+        // Accessibility properties
+        const val TARGET_ACCESSIBILITY_LABEL = "[Amplitude] Target Accessibility Label"
+
         // Frustration interactions properties
         const val BEGIN_TIME = "[Amplitude] Begin Time"
         const val END_TIME = "[Amplitude] End Time"

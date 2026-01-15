@@ -33,11 +33,17 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
         // the final tag to return (can be null if no test tag is found)
         var targetTag: String? = null
 
+        // the final accessibility label to return
+        var targetAccessibilityLabel: String? = null
+
         // track if we found a clickable element
         var foundClickableElement = false
 
         // the last known tag when iterating the node tree
         var lastKnownTag: String? = null
+
+        // the last known accessibility label when iterating the node tree
+        var lastKnownAccessibilityLabel: String? = null
 
         // Amplitude frustration analytics configuration (extracted as simple booleans)
         var ignoreRageClick = false
@@ -78,9 +84,17 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
                                         val elementValue = element.value
                                         if (elementValue is LinkedHashMap<*, *>) {
                                             for ((key, value) in elementValue.entries) {
-                                                if (key == "TestTag") {
-                                                    lastKnownTag = value as? String
-                                                    break
+                                                when (key) {
+                                                    "TestTag" -> {
+                                                        lastKnownTag = value as? String
+                                                    }
+                                                    "ContentDescription" -> {
+                                                        // ContentDescription is a List<String> in Compose semantics
+                                                        lastKnownAccessibilityLabel =
+                                                            (value as? List<*>)
+                                                                ?.filterIsInstance<String>()
+                                                                ?.joinToString(", ")
+                                                    }
                                                 }
                                             }
                                         }
@@ -105,6 +119,7 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
                 if (isClickable && targetType == ViewTarget.Type.Clickable) {
                     foundClickableElement = true
                     targetTag = lastKnownTag // can be null if no test tag is found
+                    targetAccessibilityLabel = lastKnownAccessibilityLabel // can be null
                 }
             }
             queue.addAll(node.zSortedChildren.asMutableList())
@@ -119,6 +134,7 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
                 resourceName = null,
                 tag = targetTag,
                 text = null,
+                accessibilityLabel = targetAccessibilityLabel,
                 source = SOURCE,
                 hierarchy = null,
                 ampIgnoreRageClick = ignoreRageClick,

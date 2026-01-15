@@ -3,6 +3,7 @@ package com.amplitude.android.internal
 import com.amplitude.core.Constants.EventProperties.ACTION
 import com.amplitude.core.Constants.EventProperties.HIERARCHY
 import com.amplitude.core.Constants.EventProperties.SCREEN_NAME
+import com.amplitude.core.Constants.EventProperties.TARGET_ACCESSIBILITY_LABEL
 import com.amplitude.core.Constants.EventProperties.TARGET_CLASS
 import com.amplitude.core.Constants.EventProperties.TARGET_RESOURCE
 import com.amplitude.core.Constants.EventProperties.TARGET_SOURCE
@@ -23,6 +24,7 @@ data class ViewTarget(
     val resourceName: String?,
     val tag: String?,
     val text: String?,
+    val accessibilityLabel: String?,
     val source: String,
     val hierarchy: String?,
     internal val ampIgnoreRageClick: Boolean = false,
@@ -56,6 +58,7 @@ fun buildElementInteractedProperties(
         TARGET_RESOURCE to target.resourceName,
         TARGET_TAG to target.tag,
         TARGET_TEXT to target.text,
+        TARGET_ACCESSIBILITY_LABEL to target.accessibilityLabel,
         TARGET_SOURCE to
             target.source
                 .replace("_", " ")
