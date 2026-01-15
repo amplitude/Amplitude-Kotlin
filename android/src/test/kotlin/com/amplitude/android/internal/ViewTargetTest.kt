@@ -292,4 +292,26 @@ class ViewTargetTest {
 
         assertEquals("Close dialog", viewTarget.accessibilityLabel)
     }
+
+    @Test
+    fun `buildElementInteractedProperties - includes accessibilityLabel for Compose element`() {
+        val viewTarget =
+            ViewTarget(
+                _view = null,
+                className = null,
+                resourceName = null,
+                tag = "submit_button",
+                text = null,
+                accessibilityLabel = "Submit form",
+                source = "jetpack_compose",
+                hierarchy = null,
+                ampIgnoreRageClick = false,
+                ampIgnoreDeadClick = false,
+            )
+
+        val properties = buildElementInteractedProperties(viewTarget, "ComposeActivity")
+
+        assertEquals("Submit form", properties[TARGET_ACCESSIBILITY_LABEL])
+        assertEquals("Jetpack Compose", properties["[Amplitude] Target Source"])
+    }
 }
