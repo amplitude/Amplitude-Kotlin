@@ -3,6 +3,8 @@ package com.amplitude.android.internal.gestures
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.os.Handler
+import android.os.Looper
 import android.view.View
 import android.view.Window
 import androidx.annotation.VisibleForTesting
@@ -33,27 +35,37 @@ internal class WindowCallbackManager(
     private val wrappedWindows = mutableMapOf<Window, Window.Callback?>()
     private var started = false
 
+    private val mainHandler = Handler(Looper.getMainLooper())
+
     private val rootViewsChangedListener =
         OnRootViewsChangedListener { view, added ->
-            if (added) {
-                onRootViewAdded(view)
-            } else {
-                onRootViewRemoved(view)
+            // ensure all window operations happen on main thread since AutocaptureWindowCallback
+            // creates GestureDetector which requires main thread.
+            mainHandler.post {
+                if (added) {
+                    onRootViewAdded(view)
+                } else {
+                    onRootViewRemoved(view)
+                }
             }
         }
 
     fun start() {
-        started = true
-        Curtains.onRootViewsChangedListeners += rootViewsChangedListener
-        // Wrap any existing windows
-        Curtains.rootViews.forEach(::onRootViewAdded)
+        mainHandler.post {
+            started = true
+            Curtains.onRootViewsChangedListeners += rootViewsChangedListener
+            // Wrap any existing windows
+            Curtains.rootViews.forEach(::onRootViewAdded)
+        }
     }
 
     fun stop() {
-        started = false
-        Curtains.onRootViewsChangedListeners -= rootViewsChangedListener
-        // Unwrap all windows
-        wrappedWindows.keys.toList().forEach(::unwrapWindow)
+        mainHandler.post {
+            started = false
+            Curtains.onRootViewsChangedListeners -= rootViewsChangedListener
+            // Unwrap all windows
+            wrappedWindows.keys.toList().forEach(::unwrapWindow)
+        }
     }
 
     private fun onRootViewAdded(view: View) {

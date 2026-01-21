@@ -3,8 +3,10 @@ package com.amplitude.android.internal.gestures
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.os.Looper
 import android.view.View
 import android.view.Window
+import androidx.test.core.app.ApplicationProvider
 import com.amplitude.android.AutocaptureState
 import com.amplitude.android.internal.TrackFunction
 import com.amplitude.common.Logger
@@ -12,11 +14,18 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
+import org.robolectric.annotation.Config
 
+@RunWith(RobolectricTestRunner::class)
+@Config(manifest = Config.NONE)
 class WindowCallbackManagerTest {
     private val track = mockk<TrackFunction>(relaxed = true)
     private val logger = mockk<Logger>(relaxed = true)
     private val autocaptureState = AutocaptureState(interactions = emptyList())
+    private val appContext: Context get() = ApplicationProvider.getApplicationContext()
 
     @Test
     fun `wraps window callback for activity window`() {
@@ -27,6 +36,7 @@ class WindowCallbackManagerTest {
 
         every { window.context } returns activity
         every { window.callback } returns originalCallback
+        every { decorView.context } returns appContext
 
         val sut =
             WindowCallbackManager(
@@ -37,6 +47,7 @@ class WindowCallbackManagerTest {
             )
 
         sut.start()
+        shadowOf(Looper.getMainLooper()).idle()
         sut.wrapWindowForTesting(window, decorView)
 
         verify { window.callback = any<AutocaptureWindowCallback>() }
@@ -59,6 +70,7 @@ class WindowCallbackManagerTest {
             )
 
         sut.start()
+        shadowOf(Looper.getMainLooper()).idle()
         sut.wrapWindowForTesting(window, decorView)
 
         verify(exactly = 0) { window.callback = any<AutocaptureWindowCallback>() }
@@ -77,6 +89,7 @@ class WindowCallbackManagerTest {
         every { wrapper.baseContext } returns activity
         every { window.context } returns wrapper
         every { window.callback } returns originalCallback
+        every { decorView.context } returns appContext
 
         val sut =
             WindowCallbackManager(
@@ -87,6 +100,7 @@ class WindowCallbackManagerTest {
             )
 
         sut.start()
+        shadowOf(Looper.getMainLooper()).idle()
         sut.wrapWindowForTesting(window, decorView)
 
         verify { window.callback = any<AutocaptureWindowCallback>() }
@@ -101,6 +115,7 @@ class WindowCallbackManagerTest {
 
         every { window.context } returns activity
         every { window.callback } returns originalCallback
+        every { decorView.context } returns appContext
 
         val sut =
             WindowCallbackManager(
@@ -111,6 +126,7 @@ class WindowCallbackManagerTest {
             )
 
         sut.start()
+        shadowOf(Looper.getMainLooper()).idle()
         sut.wrapWindowForTesting(window, decorView)
         sut.wrapWindowForTesting(window, decorView)
 
@@ -126,6 +142,7 @@ class WindowCallbackManagerTest {
 
         every { window.context } returns activity
         every { window.callback } returns originalCallback
+        every { decorView.context } returns appContext
 
         val sut =
             WindowCallbackManager(
@@ -136,6 +153,7 @@ class WindowCallbackManagerTest {
             )
 
         sut.start()
+        shadowOf(Looper.getMainLooper()).idle()
 
         // Wrap
         sut.wrapWindowForTesting(window, decorView)
