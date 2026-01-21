@@ -3,8 +3,10 @@ package com.amplitude.android.internal.gestures
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.os.Looper
 import android.view.View
 import android.view.Window
+import androidx.test.core.app.ApplicationProvider
 import com.amplitude.android.AutocaptureState
 import com.amplitude.android.internal.TrackFunction
 import com.amplitude.common.Logger
@@ -16,8 +18,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
-import android.os.Looper
-import androidx.test.core.app.ApplicationProvider
 
 @RunWith(RobolectricTestRunner::class)
 @Config(manifest = Config.NONE)
