@@ -1,3 +1,10 @@
+## [1.23.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.23.0...v1.23.1) (2026-01-21)
+
+
+### Bug Fixes
+
+* ensure start method runs on main thread to prevent crashes ([#345](https://github.com/amplitude/Amplitude-Kotlin/issues/345)) ([0653f41](https://github.com/amplitude/Amplitude-Kotlin/commit/0653f41c2013a022e9cf5bcffaecaa7d46b88486))
+
 # [1.23.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.22.4...v1.23.0) (2026-01-15)
 
 
