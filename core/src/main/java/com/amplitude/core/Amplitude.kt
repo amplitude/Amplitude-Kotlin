@@ -1,6 +1,9 @@
 package com.amplitude.core
 
 import com.amplitude.common.Logger
+import com.amplitude.core.diagnostics.DiagnosticsClient
+import com.amplitude.core.diagnostics.DiagnosticsClientImpl
+import com.amplitude.core.diagnostics.DiagnosticsContextProvider
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.EventOptions
 import com.amplitude.core.events.GroupIdentifyEvent
@@ -72,6 +75,22 @@ open class Amplitude(
         private set
     val isBuilt: Deferred<Boolean>
     val diagnostics = Diagnostics()
+    val diagnosticsClient: DiagnosticsClient by lazy {
+        DiagnosticsClientImpl(
+            apiKey = configuration.apiKey,
+            serverZone = configuration.serverZone,
+            instanceName = configuration.instanceName,
+            storageDirectory = diagnosticsStorageDirectory(),
+            logger = logger,
+            coroutineScope = amplitudeScope,
+            networkIODispatcher = networkIODispatcher,
+            storageIODispatcher = storageIODispatcher,
+            remoteConfigClient = remoteConfigClient,
+            httpClient = HttpClient(configuration, logger),
+            contextProvider = diagnosticsContextProvider(),
+            enabled = configuration.enableDiagnostics,
+        )
+    }
     val remoteConfigClient: RemoteConfigClient by lazy {
         RemoteConfigClientImpl(
             apiKey = configuration.apiKey,
@@ -173,6 +192,14 @@ open class Amplitude(
         )
         add(GetAmpliExtrasPlugin())
         add(AmplitudeDestination())
+    }
+
+    protected open fun diagnosticsContextProvider(): DiagnosticsContextProvider? {
+        return null
+    }
+
+    protected open fun diagnosticsStorageDirectory(): File {
+        return File("/tmp/amplitude-diagnostics/${configuration.instanceName}")
     }
 
     @Deprecated("Please use 'track' instead.", ReplaceWith("track"))

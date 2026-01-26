@@ -2,6 +2,7 @@ package com.amplitude.core.utilities
 
 import com.amplitude.common.Logger
 import com.amplitude.core.Configuration
+import com.amplitude.core.diagnostics.DiagnosticsClient
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline
 import com.amplitude.core.utilities.http.BadRequestResponse
@@ -22,6 +23,7 @@ class FileResponseHandler(
     private val storage: EventsFileStorage,
     private val eventPipeline: EventPipeline,
     private val configuration: Configuration,
+    private val diagnosticsClient: DiagnosticsClient,
     private val scope: CoroutineScope,
     private val storageDispatcher: CoroutineDispatcher,
     private val logger: Logger?,
@@ -183,6 +185,23 @@ class FileResponseHandler(
         status: Int,
         message: String,
     ) {
+        if (events.isNotEmpty()) {
+            scope.launch(storageDispatcher) {
+                if (status in 1..299) {
+                    diagnosticsClient.increment(name = "analytics.events.sent", size = events.size)
+                } else {
+                    diagnosticsClient.increment(name = "analytics.events.dropped", size = events.size)
+                    val properties: Map<String, Any> =
+                        mapOf(
+                            "events" to events.map { it.eventType },
+                            "count" to events.size,
+                            "code" to status,
+                            "message" to message,
+                        )
+                    diagnosticsClient.recordEvent(name = "analytics.events.dropped", properties = properties)
+                }
+            }
+        }
         events.forEach { event ->
             configuration.callback?.let {
                 it(event, status, message)

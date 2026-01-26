@@ -43,6 +43,7 @@ class EventPipeline(
         overrideResponseHandler ?: storage.getResponseHandler(
             this@EventPipeline,
             amplitude.configuration,
+            amplitude.diagnosticsClient,
             scope,
             amplitude.storageIODispatcher,
         )

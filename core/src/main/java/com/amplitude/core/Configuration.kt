@@ -37,6 +37,7 @@ open class Configuration
         open var deviceId: String? = null,
         open var sessionId: Long? = null,
         open var httpClient: HttpClientInterface? = null,
+        open var enableDiagnostics: Boolean = true,
     ) {
         companion object {
             const val FLUSH_QUEUE_SIZE = 30

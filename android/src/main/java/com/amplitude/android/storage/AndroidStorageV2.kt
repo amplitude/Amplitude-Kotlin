@@ -10,6 +10,7 @@ import com.amplitude.core.Configuration
 import com.amplitude.core.EventCallBack
 import com.amplitude.core.Storage
 import com.amplitude.core.StorageProvider
+import com.amplitude.core.diagnostics.DiagnosticsClient
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline
 import com.amplitude.core.utilities.Diagnostics
@@ -97,6 +98,7 @@ class AndroidStorageV2(
     override fun getResponseHandler(
         eventPipeline: EventPipeline,
         configuration: Configuration,
+        diagnosticsClient: DiagnosticsClient,
         scope: CoroutineScope,
         storageDispatcher: CoroutineDispatcher,
     ): ResponseHandler {
@@ -104,6 +106,7 @@ class AndroidStorageV2(
             this,
             eventPipeline,
             configuration,
+            diagnosticsClient,
             scope,
             storageDispatcher,
             logger,

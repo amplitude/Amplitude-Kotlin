@@ -7,6 +7,7 @@ import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
+import kotlinx.coroutines.launch
 import java.util.UUID
 
 open class AndroidContextPlugin : Plugin {
@@ -25,6 +26,13 @@ open class AndroidContextPlugin : Plugin {
                 configuration.trackingOptions.shouldTrackAppSetId(),
             )
         initializeDeviceId(configuration)
+
+        amplitude.amplitudeScope.launch {
+            amplitude.diagnosticsClient.setTag(
+                name = "sdk.${SDK_LIBRARY}.version",
+                value = SDK_VERSION,
+            )
+        }
     }
 
     override fun execute(event: BaseEvent): BaseEvent? {

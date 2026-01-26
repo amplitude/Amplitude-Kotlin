@@ -13,6 +13,7 @@ import com.amplitude.android.GuardedAmplitudeFeature
 import com.amplitude.android.InteractionType.DeadClick
 import com.amplitude.android.InteractionType.RageClick
 import com.amplitude.android.internal.gestures.WindowCallbackManager
+import com.amplitude.android.stringRepresentation
 import com.amplitude.android.utilities.ActivityCallbackType
 import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.android.utilities.DefaultEventUtils
@@ -57,6 +58,12 @@ class AndroidLifecyclePlugin(
                 androidConfiguration.autocapture,
                 androidConfiguration.interactionsOptions,
             )
+        amplitude.amplitudeScope.launch {
+            amplitude.diagnosticsClient.setTag(
+                name = "autocapture.enabled",
+                value = androidConfiguration.autocapture.stringRepresentation(),
+            )
+        }
 
         val application = androidConfiguration.context as Application
 

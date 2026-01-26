@@ -4,6 +4,7 @@ import com.amplitude.common.jvm.ConsoleLogger
 import com.amplitude.core.Configuration
 import com.amplitude.core.ServerZone
 import com.amplitude.core.Storage
+import com.amplitude.core.diagnostics.DiagnosticsClient
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline
 import com.amplitude.core.remoteconfig.RemoteConfigClient.Key
@@ -1075,6 +1076,7 @@ class RemoteConfigClientTest {
                     override fun getResponseHandler(
                         eventPipeline: EventPipeline,
                         configuration: Configuration,
+                        diagnosticsClient: DiagnosticsClient,
                         scope: CoroutineScope,
                         storageDispatcher: CoroutineDispatcher,
                     ): ResponseHandler = mockk()

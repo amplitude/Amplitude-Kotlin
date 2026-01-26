@@ -7,6 +7,7 @@ import com.amplitude.common.Logger
 import com.amplitude.core.Configuration
 import com.amplitude.core.EventCallBack
 import com.amplitude.core.Storage
+import com.amplitude.core.diagnostics.DiagnosticsClient
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline
 import com.amplitude.core.utilities.Diagnostics
@@ -82,10 +83,11 @@ class AndroidStorage(
     override fun getResponseHandler(
         eventPipeline: EventPipeline,
         configuration: Configuration,
+        diagnosticsClient: DiagnosticsClient,
         scope: CoroutineScope,
         storageDispatcher: CoroutineDispatcher,
     ): ResponseHandler {
-        return storageV2.getResponseHandler(eventPipeline, configuration, scope, storageDispatcher)
+        return storageV2.getResponseHandler(eventPipeline, configuration, diagnosticsClient, scope, storageDispatcher)
     }
 
     override fun removeFile(filePath: String): Boolean {
