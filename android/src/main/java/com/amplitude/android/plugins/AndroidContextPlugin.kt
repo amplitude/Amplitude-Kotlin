@@ -27,12 +27,10 @@ open class AndroidContextPlugin : Plugin {
             )
         initializeDeviceId(configuration)
 
-        amplitude.amplitudeScope.launch {
-            amplitude.diagnosticsClient.setTag(
-                name = "sdk.${SDK_LIBRARY}.version",
-                value = SDK_VERSION,
-            )
-        }
+        amplitude.diagnosticsClient.setTag(
+            name = "sdk.${SDK_LIBRARY}.version",
+            value = SDK_VERSION,
+        )
     }
 
     override fun execute(event: BaseEvent): BaseEvent? {

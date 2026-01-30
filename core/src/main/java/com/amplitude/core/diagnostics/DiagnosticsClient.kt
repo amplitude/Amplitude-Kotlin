@@ -13,7 +13,7 @@ interface DiagnosticsClient {
      * @param name The tag name
      * @param value The tag value
      */
-    suspend fun setTag(
+    fun setTag(
         name: String,
         value: String,
     )
@@ -23,7 +23,7 @@ interface DiagnosticsClient {
      *
      * @param tags Map of tag names to values
      */
-    suspend fun setTags(tags: Map<String, String>)
+    fun setTags(tags: Map<String, String>)
 
     /**
      * Increment a counter by the specified size.
@@ -32,9 +32,9 @@ interface DiagnosticsClient {
      * @param name The counter name
      * @param size The amount to increment (default 1)
      */
-    suspend fun increment(
+    fun increment(
         name: String,
-        size: Int = 1,
+        size: Long = 1,
     )
 
     /**
@@ -44,7 +44,7 @@ interface DiagnosticsClient {
      * @param name The histogram name
      * @param value The value to record
      */
-    suspend fun recordHistogram(
+    fun recordHistogram(
         name: String,
         value: Double,
     )
@@ -55,7 +55,7 @@ interface DiagnosticsClient {
      * @param name The event name
      * @param properties Optional properties map for the event
      */
-    suspend fun recordEvent(
+    fun recordEvent(
         name: String,
         properties: Map<String, Any>? = null,
     )
@@ -63,5 +63,5 @@ interface DiagnosticsClient {
     /**
      * Flush all collected diagnostics data to the server.
      */
-    suspend fun flush()
+    fun flush()
 }

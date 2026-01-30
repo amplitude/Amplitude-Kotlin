@@ -121,7 +121,7 @@ open class Amplitude internal constructor(
 
     override fun diagnosticsStorageDirectory(): File {
         val configuration = configuration as Configuration
-        return File(configuration.getStorageDirectory(), "diagnostics")
+        return configuration.getStorageDirectory()
     }
 
     /**

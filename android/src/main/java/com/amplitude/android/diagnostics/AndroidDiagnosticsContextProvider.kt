@@ -9,25 +9,23 @@ import com.amplitude.core.diagnostics.DiagnosticsContextProvider
 class AndroidDiagnosticsContextProvider(
     private val context: Context,
 ) : DiagnosticsContextProvider {
-    override suspend fun getContextInfo(): DiagnosticsContextInfo {
+    override fun getContextInfo(): DiagnosticsContextInfo {
         return DiagnosticsContextInfo(
-            manufacturer = Build.MANUFACTURER ?: "",
-            model = Build.MODEL ?: "",
+            manufacturer = Build.MANUFACTURER,
+            model = Build.MODEL,
             osName = "Android",
-            osVersion = Build.VERSION.RELEASE ?: "",
+            osVersion = Build.VERSION.RELEASE,
             platform = "Android",
-            appVersion = getAppVersion(),
+            appVersion = fetchVersionName(),
         )
     }
 
-    private fun getAppVersion(): String {
+    private fun fetchVersionName(): String? {
         return try {
             val info = context.packageManager.getPackageInfo(context.packageName, 0)
-            info.versionName ?: ""
-        } catch (_: PackageManager.NameNotFoundException) {
-            ""
+            info.versionName
         } catch (_: Exception) {
-            ""
+            null
         }
     }
 }

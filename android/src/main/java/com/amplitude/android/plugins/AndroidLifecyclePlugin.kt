@@ -58,12 +58,12 @@ class AndroidLifecyclePlugin(
                 androidConfiguration.autocapture,
                 androidConfiguration.interactionsOptions,
             )
-        amplitude.amplitudeScope.launch {
-            amplitude.diagnosticsClient.setTag(
-                name = "autocapture.enabled",
-                value = androidConfiguration.autocapture.stringRepresentation(),
-            )
-        }
+
+        // Set autocapture state to diagnostics client
+        amplitude.diagnosticsClient.setTag(
+            name = "autocapture.enabled",
+            value = androidConfiguration.autocapture.stringRepresentation(),
+        )
 
         val application = androidConfiguration.context as Application
 
