@@ -4,6 +4,7 @@ import com.amplitude.core.Amplitude
 import com.amplitude.core.Configuration
 import com.amplitude.core.Storage
 import com.amplitude.core.StorageProvider
+import com.amplitude.core.diagnostics.DiagnosticsClient
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline
 import com.amplitude.core.utilities.http.ResponseHandler
@@ -58,10 +59,17 @@ class InMemoryStorage : Storage {
     override fun getResponseHandler(
         eventPipeline: EventPipeline,
         configuration: Configuration,
+        diagnosticsClient: DiagnosticsClient,
         scope: CoroutineScope,
         storageDispatcher: CoroutineDispatcher,
     ): ResponseHandler {
-        return InMemoryResponseHandler(eventPipeline, configuration, scope, storageDispatcher)
+        return InMemoryResponseHandler(
+            eventPipeline,
+            configuration,
+            diagnosticsClient,
+            scope,
+            storageDispatcher,
+        )
     }
 
     fun removeEvents() {
