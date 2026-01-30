@@ -35,14 +35,12 @@ internal data class DiagnosticsEvent(
             if (time.isNaN()) return null
             val propsJson = json.optJSONObject("event_properties")
             val properties =
-                if (propsJson != null) {
-                    val map = mutableMapOf<String, Any?>()
-                    for (key in propsJson.keys()) {
-                        map[key] = fromJsonValue(propsJson.opt(key))
+                propsJson?.let { props ->
+                    buildMap {
+                        for (key in props.keys()) {
+                            put(key, fromJsonValue(props.opt(key)))
+                        }
                     }
-                    map
-                } else {
-                    null
                 }
             return DiagnosticsEvent(name, time, properties)
         }
@@ -76,20 +74,18 @@ internal data class DiagnosticsEvent(
         private fun fromJsonValue(value: Any?): Any? {
             return when (value) {
                 JSONObject.NULL -> null
-                is JSONObject -> {
-                    val map = mutableMapOf<String, Any?>()
-                    for (key in value.keys()) {
-                        map[key] = fromJsonValue(value.get(key))
+                is JSONObject ->
+                    buildMap {
+                        for (key in value.keys()) {
+                            put(key, fromJsonValue(value.get(key)))
+                        }
                     }
-                    map
-                }
-                is JSONArray -> {
-                    val list = mutableListOf<Any?>()
-                    for (i in 0 until value.length()) {
-                        list.add(fromJsonValue(value.get(i)))
+                is JSONArray ->
+                    buildList {
+                        for (i in 0 until value.length()) {
+                            add(fromJsonValue(value.get(i)))
+                        }
                     }
-                    list
-                }
                 else -> value
             }
         }

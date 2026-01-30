@@ -6,10 +6,9 @@ import com.amplitude.core.utilities.toHexString
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -39,25 +38,7 @@ internal class DiagnosticsStorage(
     private val logger: Logger,
     private val coroutineScope: CoroutineScope,
     private val storageIODispatcher: CoroutineDispatcher,
-    private val persistIntervalMillis: Long = DEFAULT_PERSIST_INTERVAL_MILLIS,
-    private var shouldStore: Boolean,
 ) {
-    private val mutex = Mutex()
-
-    // In-memory data
-    private val tags = mutableMapOf<String, String>()
-    private val counters = mutableMapOf<String, Long>()
-    private val histograms = mutableMapOf<String, HistogramStats>()
-    private val events = mutableListOf<DiagnosticsEvent>()
-
-    private val unsavedEvents = mutableListOf<DiagnosticsEvent>()
-
-    private var hasUnsavedTags = false
-    private var hasUnsavedCounters = false
-    private var hasUnsavedHistograms = false
-
-    private var persistenceJob: Job? = null
-
     private val sanitizedInstance: String = Hash.fnv1a64(instanceName).toHexString()
 
     companion object {
@@ -66,204 +47,111 @@ internal class DiagnosticsStorage(
         private const val COUNTERS_FILE = "counters.json"
         private const val HISTOGRAMS_FILE = "histograms.json"
         private const val EVENTS_FILE = "events.log"
-        private const val MAX_EVENT_COUNT_PER_PERSIST = 10
-        private const val MAX_EVENT_COUNT_PER_FLUSH = 10
         private const val MAX_EVENTS_LOG_BYTES = 256 * 1024
-        private const val DEFAULT_PERSIST_INTERVAL_MILLIS = 1_000L
     }
 
-    suspend fun setShouldStore(shouldStore: Boolean) =
-        mutex.withLock {
-            this.shouldStore = shouldStore
-            if (shouldStore) {
-                startPersistenceTimerIfNeeded()
-            } else {
-                stopPersistenceTimer()
+    private sealed class Operation {
+        data class SaveSnapshot(val snapshot: DiagnosticsSnapshot) : Operation()
+
+        data object DeleteActiveFiles : Operation()
+    }
+
+    private val channel: Channel<Operation> = Channel(8192)
+
+    private val actorJob: Job =
+        coroutineScope.launch(storageIODispatcher) {
+            while (isActive) {
                 try {
-                    removeAllStoredFiles()
+                    when (val operation = channel.receive()) {
+                        is Operation.SaveSnapshot -> {
+                            val directory = activeStorageDirectory()
+                            ensureDirectoryExists(directory)
+                            persistSnapshot(operation.snapshot, directory)
+                        }
+                        is Operation.DeleteActiveFiles -> {
+                            removeActiveFiles()
+                        }
+                    }
                 } catch (e: Exception) {
-                    logger.error("DiagnosticsStorage: Failed to remove files: ${e.message}")
+                    logger.error("DiagnosticsStorage: Error processing operation: ${e.message}")
                 }
             }
         }
 
-    suspend fun didChanged(): Boolean =
-        mutex.withLock {
-            counters.isNotEmpty() || histograms.isNotEmpty() || events.isNotEmpty()
-        }
-
-    suspend fun setTag(
-        name: String,
-        value: String,
-    ) = mutex.withLock {
-        tags[name] = value
-        hasUnsavedTags = true
-        startPersistenceTimerIfNeeded()
+    fun saveSnapshot(snapshot: DiagnosticsSnapshot) {
+        logger.debug("DiagnosticsStorage: Saving snapshot to active storage directory")
+        channel.trySend(Operation.SaveSnapshot(snapshot))
     }
 
-    suspend fun setTags(newTags: Map<String, String>) =
-        mutex.withLock {
-            tags.putAll(newTags)
-            hasUnsavedTags = true
-            startPersistenceTimerIfNeeded()
-        }
-
-    suspend fun increment(
-        name: String,
-        size: Int,
-    ) = mutex.withLock {
-        val current = counters[name] ?: 0L
-        counters[name] = current + size
-        hasUnsavedCounters = true
-        startPersistenceTimerIfNeeded()
+    fun deleteActiveFiles() {
+        channel.trySend(Operation.DeleteActiveFiles)
     }
-
-    suspend fun recordHistogram(
-        name: String,
-        value: Double,
-    ) = mutex.withLock {
-        val stats = histograms.getOrPut(name) { HistogramStats() }
-        stats.record(value)
-        hasUnsavedHistograms = true
-        startPersistenceTimerIfNeeded()
-    }
-
-    suspend fun recordEvent(
-        name: String,
-        properties: Map<String, Any>?,
-    ) = mutex.withLock {
-        if (unsavedEvents.size >= MAX_EVENT_COUNT_PER_PERSIST ||
-            events.size >= MAX_EVENT_COUNT_PER_FLUSH
-        ) {
-            logger.debug("DiagnosticsStorage: Event limit reached")
-            return@withLock
-        }
-        val event =
-            DiagnosticsEvent(
-                eventName = name,
-                time = System.currentTimeMillis() / 1000.0,
-                eventProperties = properties,
-            )
-        events.add(event)
-        unsavedEvents.add(event)
-        startPersistenceTimerIfNeeded()
-    }
-
-    /**
-     * Dump and clear current session data.
-     * Tags are preserved after dump.
-     */
-    suspend fun dumpAndClearCurrentSession(): DiagnosticsSnapshot =
-        mutex.withLock {
-            val snapshotHistograms = copyHistograms(histograms)
-            val snapshot =
-                DiagnosticsSnapshot(
-                    tags = tags.toMap(),
-                    counters = counters.toMap(),
-                    histograms = snapshotHistograms,
-                    events = events.toList(),
-                )
-
-            counters.clear()
-            histograms.clear()
-            events.clear()
-            unsavedEvents.clear()
-            hasUnsavedCounters = false
-            hasUnsavedHistograms = false
-
-            try {
-                removeFiles(includeTags = false)
-            } catch (e: Exception) {
-                logger.error("DiagnosticsStorage: Failed to remove files during dump: ${e.message}")
-            }
-
-            snapshot
-        }
 
     /**
      * Load and clear data from previous sessions.
+     * Do not nned to run from storage actor as it operates on different folders.
      */
-    suspend fun loadAndClearPreviousSessions(): List<DiagnosticsSnapshot> =
-        mutex.withLock {
-            val instanceDirectory = instanceDirectory()
-            if (!instanceDirectory.exists() || !instanceDirectory.isDirectory) {
-                return@withLock emptyList()
-            }
-
-            val snapshots = mutableListOf<DiagnosticsSnapshot>()
-            val sessionDirs =
-                instanceDirectory.listFiles { file ->
-                    file.isDirectory && file.name != sessionStartAt
-                } ?: emptyArray()
-
-            for (sessionDir in sessionDirs) {
-                try {
-                    loadSnapshot(sessionDir)?.let { snapshots.add(it) }
-                    deleteDirectory(sessionDir)
-                } catch (e: Exception) {
-                    logger.error("DiagnosticsStorage: Failed to load previous session ${sessionDir.name}: ${e.message}")
-                    deleteDirectory(sessionDir)
-                }
-            }
-
-            snapshots
+    fun loadAndClearPreviousSessions(): List<DiagnosticsSnapshot> {
+        val instanceDirectory = instanceDirectory()
+        if (!instanceDirectory.exists() || !instanceDirectory.isDirectory) {
+            return emptyList()
         }
 
-    suspend fun persistIfNeeded() =
-        mutex.withLock {
-            if (!shouldStore) return@withLock
+        val snapshots = mutableListOf<DiagnosticsSnapshot>()
+        val sessionDirs =
+            instanceDirectory.listFiles { file ->
+                file.isDirectory && file.name != sessionStartAt
+            } ?: emptyArray()
 
-            if (hasUnsavedTags) {
-                try {
-                    val directory = storageDirectory()
-                    persistTags(directory)
-                    hasUnsavedTags = false
-                } catch (e: IOException) {
-                    logger.error("DiagnosticsStorage: Failed to write tags: ${e.message}")
-                }
+        for (sessionDir in sessionDirs) {
+            try {
+                loadSnapshot(sessionDir)?.let { snapshots.add(it) }
+            } catch (e: Exception) {
+                logger.error("DiagnosticsStorage: Failed to load previous session ${sessionDir.name}: ${e.message}")
+            } finally {
+                deleteDirectory(sessionDir)
             }
+        }
+        return snapshots
+    }
 
-            if (hasUnsavedCounters) {
-                try {
-                    val directory = storageDirectory()
-                    persistCounters(directory)
-                    hasUnsavedCounters = false
-                } catch (e: IOException) {
-                    logger.error("DiagnosticsStorage: Failed to write counters: ${e.message}")
-                }
-            }
+    private fun persistSnapshot(
+        snapshot: DiagnosticsSnapshot,
+        directory: File,
+    ) {
+        logger.debug("DiagnosticsStorage: Persisting snapshot to directory: ${directory.absolutePath}")
 
-            if (hasUnsavedHistograms) {
-                try {
-                    val directory = storageDirectory()
-                    persistHistograms(directory)
-                    hasUnsavedHistograms = false
-                } catch (e: IOException) {
-                    logger.error("DiagnosticsStorage: Failed to write histograms: ${e.message}")
-                }
-            }
-
-            if (unsavedEvents.isNotEmpty()) {
-                try {
-                    val directory = storageDirectory()
-                    val eventsLog = File(directory, EVENTS_FILE)
-                    prepareEventsLog(eventsLog, directory)
-                    appendEvents(unsavedEvents, eventsLog)
-                    unsavedEvents.clear()
-                } catch (e: IOException) {
-                    logger.error("DiagnosticsStorage: Failed to add events: ${e.message}")
-                }
+        snapshot.tags?.let {
+            try {
+                persistTags(it, directory)
+            } catch (e: IOException) {
+                logger.error("DiagnosticsStorage: Failed to write tags: ${e.message}")
             }
         }
 
-    private fun copyHistograms(source: Map<String, HistogramStats>): Map<String, HistogramStats> {
-        val copy = mutableMapOf<String, HistogramStats>()
-        for ((key, stats) in source) {
-            val statsCopy = HistogramStats()
-            statsCopy.merge(stats)
-            copy[key] = statsCopy
+        snapshot.counters?.let {
+            try {
+                persistCounters(it, directory)
+            } catch (e: IOException) {
+                logger.error("DiagnosticsStorage: Failed to write counters: ${e.message}")
+            }
         }
-        return copy
+
+        snapshot.histograms?.let {
+            try {
+                persistHistograms(it, directory)
+            } catch (e: IOException) {
+                logger.error("DiagnosticsStorage: Failed to write histograms: ${e.message}")
+            }
+        }
+
+        snapshot.events?.let {
+            try {
+                persistEvents(it, directory)
+            } catch (e: IOException) {
+                logger.error("DiagnosticsStorage: Failed to write events: ${e.message}")
+            }
+        }
     }
 
     private fun loadSnapshot(directory: File): DiagnosticsSnapshot? {
@@ -272,7 +160,7 @@ internal class DiagnosticsStorage(
         val loadedHistograms = loadHistograms(File(directory, HISTOGRAMS_FILE))
         val loadedEvents = loadEventsFromDirectory(directory)
 
-        if (loadedTags.isEmpty() && loadedCounters.isEmpty() && loadedHistograms.isEmpty() && loadedEvents.isEmpty()) {
+        if (loadedCounters.isEmpty() && loadedHistograms.isEmpty() && loadedEvents.isEmpty()) {
             return null
         }
 
@@ -314,13 +202,13 @@ internal class DiagnosticsStorage(
         }
     }
 
-    private fun loadHistograms(file: File): Map<String, HistogramStats> {
+    private fun loadHistograms(file: File): Map<String, HistogramSnapshot> {
         if (!file.exists()) return emptyMap()
         return try {
             val json = readJsonFromFile(file)
-            val result = mutableMapOf<String, HistogramStats>()
+            val result = mutableMapOf<String, HistogramSnapshot>()
             for (key in json.keys()) {
-                result[key] = HistogramStats.fromJSONObject(json.getJSONObject(key))
+                result[key] = HistogramSnapshot.fromJSONObject(json.getJSONObject(key))
             }
             result
         } catch (e: Exception) {
@@ -378,7 +266,10 @@ internal class DiagnosticsStorage(
         return result
     }
 
-    private fun persistTags(directory: File) {
+    private fun persistTags(
+        tags: Map<String, String>,
+        directory: File,
+    ) {
         val json = JSONObject()
         for ((key, value) in tags) {
             json.put(key, value)
@@ -386,7 +277,10 @@ internal class DiagnosticsStorage(
         writeJsonToFile(File(directory, TAGS_FILE), json)
     }
 
-    private fun persistCounters(directory: File) {
+    private fun persistCounters(
+        counters: Map<String, Long>,
+        directory: File,
+    ) {
         val json = JSONObject()
         for ((key, value) in counters) {
             json.put(key, value)
@@ -394,12 +288,24 @@ internal class DiagnosticsStorage(
         writeJsonToFile(File(directory, COUNTERS_FILE), json)
     }
 
-    private fun persistHistograms(directory: File) {
+    private fun persistHistograms(
+        histograms: Map<String, HistogramSnapshot>,
+        directory: File,
+    ) {
         val json = JSONObject()
-        for ((key, stats) in histograms) {
-            json.put(key, stats.toJSONObject())
+        for ((key, value) in histograms) {
+            json.put(key, value.toJSONObject())
         }
         writeJsonToFile(File(directory, HISTOGRAMS_FILE), json)
+    }
+
+    private fun persistEvents(
+        events: List<DiagnosticsEvent>,
+        directory: File,
+    ) {
+        val eventsLog = File(directory, EVENTS_FILE)
+        prepareEventsLog(eventsLog, directory)
+        appendEvents(events, eventsLog)
     }
 
     private fun prepareEventsLog(
@@ -450,11 +356,12 @@ internal class DiagnosticsStorage(
             }
             if (!tempFile.renameTo(file)) {
                 tempFile.copyTo(file, overwrite = true)
-                tempFile.delete()
             }
         } catch (e: IOException) {
-            tempFile.delete()
+            logger.error("DiagnosticsStorage: Failed to write JSON to file: ${file.absolutePath}: ${e.message}")
             throw e
+        } finally {
+            tempFile.delete()
         }
     }
 
@@ -467,18 +374,15 @@ internal class DiagnosticsStorage(
         }
     }
 
-    private fun removeAllStoredFiles() {
-        removeFiles(includeTags = true)
-    }
-
-    private fun removeFiles(includeTags: Boolean) {
-        val directory = File(instanceDirectory(), sessionStartAt)
+    /**
+     * Removes the files from the active storage directory.
+     * Tags file will not be removed.
+     * This is called when the snapshot is flushed to the network.
+     */
+    private fun removeActiveFiles() {
+        val directory = activeStorageDirectory()
         if (!directory.exists()) return
 
-        if (includeTags) {
-            File(directory, TAGS_FILE).delete()
-        }
-        File(directory, "${TAGS_FILE}.tmp").delete()
         File(directory, COUNTERS_FILE).delete()
         File(directory, "${COUNTERS_FILE}.tmp").delete()
         File(directory, HISTOGRAMS_FILE).delete()
@@ -491,12 +395,11 @@ internal class DiagnosticsStorage(
                 file.delete()
             }
         }
+        logger.debug("DiagnosticsStorage: Removed active files from directory: ${directory.absolutePath}")
     }
 
-    private fun storageDirectory(): File {
-        val sessionDirectory = File(instanceDirectory(), sessionStartAt)
-        ensureDirectoryExists(sessionDirectory)
-        return sessionDirectory
+    private fun activeStorageDirectory(): File {
+        return File(instanceDirectory(), sessionStartAt)
     }
 
     private fun instanceDirectory(): File {
@@ -522,39 +425,5 @@ internal class DiagnosticsStorage(
             }
         }
         directory.delete()
-    }
-
-    // Callers must hold mutex.
-    private fun startPersistenceTimerIfNeeded() {
-        if (!shouldStore || persistenceJob != null || !hasUnsavedData()) return
-
-        lateinit var job: Job
-        job =
-            coroutineScope.launch(storageIODispatcher) {
-                try {
-                    delay(persistIntervalMillis)
-                    persistIfNeeded()
-                } finally {
-                    markPersistenceTimerFinished(job)
-                }
-            }
-        persistenceJob = job
-    }
-
-    // Callers must hold mutex.
-    private fun stopPersistenceTimer() {
-        persistenceJob?.cancel()
-        persistenceJob = null
-    }
-
-    private suspend fun markPersistenceTimerFinished(job: Job) =
-        mutex.withLock {
-            if (persistenceJob == job) {
-                persistenceJob = null
-            }
-        }
-
-    private fun hasUnsavedData(): Boolean {
-        return hasUnsavedTags || hasUnsavedCounters || hasUnsavedHistograms || unsavedEvents.isNotEmpty()
     }
 }

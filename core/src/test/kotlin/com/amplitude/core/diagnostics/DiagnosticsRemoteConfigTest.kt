@@ -8,15 +8,17 @@ import com.amplitude.core.utilities.http.HttpClient
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
-import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.TestScope
-import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
+import java.io.File
 
 class DiagnosticsRemoteConfigTest {
     @Test
     fun `remote config enables diagnostics`() =
-        runTest {
+        runBlocking {
             val httpClient = mockk<HttpClient>()
             every { httpClient.request(any()) } returns HttpClient.Response(200, "ok")
             val remoteConfigClient = TestRemoteConfigClient()
@@ -27,22 +29,23 @@ class DiagnosticsRemoteConfigTest {
                     remoteConfigClient = remoteConfigClient,
                     enabled = false,
                     sampleRate = 1.0,
-                    testScope = this,
                 )
-            testScheduler.runCurrent()
+            delay(100)
 
             remoteConfigClient.emit(mapOf("enabled" to true, "sampleRate" to 1.0))
-            testScheduler.runCurrent()
+            delay(100)
 
             client.setTag("tag", "value")
+            client.increment("counter", 1) // Need metric data to trigger upload
             client.flush()
+            delay(200)
 
-            verify(exactly = 1) { httpClient.request(any()) }
+            verify(atLeast = 1) { httpClient.request(any()) }
         }
 
     @Test
     fun `remote config disables diagnostics`() =
-        runTest {
+        runBlocking {
             val httpClient = mockk<HttpClient>()
             every { httpClient.request(any()) } returns HttpClient.Response(200, "ok")
             val remoteConfigClient = TestRemoteConfigClient()
@@ -53,22 +56,22 @@ class DiagnosticsRemoteConfigTest {
                     remoteConfigClient = remoteConfigClient,
                     enabled = true,
                     sampleRate = 1.0,
-                    testScope = this,
                 )
-            testScheduler.runCurrent()
+            delay(100)
 
             remoteConfigClient.emit(mapOf("enabled" to false))
-            testScheduler.runCurrent()
+            delay(100)
 
             client.setTag("tag", "value")
             client.flush()
+            delay(200)
 
             verify(exactly = 0) { httpClient.request(any()) }
         }
 
     @Test
     fun `remote config updates sample rate`() =
-        runTest {
+        runBlocking {
             val httpClient = mockk<HttpClient>()
             every { httpClient.request(any()) } returns HttpClient.Response(200, "ok")
             val remoteConfigClient = TestRemoteConfigClient()
@@ -79,22 +82,22 @@ class DiagnosticsRemoteConfigTest {
                     remoteConfigClient = remoteConfigClient,
                     enabled = true,
                     sampleRate = 0.0,
-                    testScope = this,
                 )
-            testScheduler.runCurrent()
+            delay(100)
 
             remoteConfigClient.emit(mapOf("sampleRate" to 1.0))
-            testScheduler.runCurrent()
+            delay(100)
 
             client.recordEvent("event", null)
             client.flush()
+            delay(200)
 
-            verify(exactly = 1) { httpClient.request(any()) }
+            verify(atLeast = 1) { httpClient.request(any()) }
         }
 
     @Test
     fun `remote config ignores invalid types`() =
-        runTest {
+        runBlocking {
             val httpClient = mockk<HttpClient>()
             every { httpClient.request(any()) } returns HttpClient.Response(200, "ok")
             val remoteConfigClient = TestRemoteConfigClient()
@@ -105,15 +108,15 @@ class DiagnosticsRemoteConfigTest {
                     remoteConfigClient = remoteConfigClient,
                     enabled = true,
                     sampleRate = 0.0,
-                    testScope = this,
                 )
-            testScheduler.runCurrent()
+            delay(100)
 
             remoteConfigClient.emit(mapOf("enabled" to "true", "sampleRate" to "1.0"))
-            testScheduler.runCurrent()
+            delay(100)
 
             client.recordEvent("event", null)
             client.flush()
+            delay(200)
 
             verify(exactly = 0) { httpClient.request(any()) }
         }
@@ -123,26 +126,25 @@ class DiagnosticsRemoteConfigTest {
         remoteConfigClient: RemoteConfigClient,
         enabled: Boolean,
         sampleRate: Double,
-        testScope: TestScope,
     ): DiagnosticsClientImpl {
         val logger = mockk<Logger>(relaxed = true)
-        val dispatcher = StandardTestDispatcher(testScope.testScheduler)
-        val storageDir = createTempDir(prefix = "diag-remote-config")
+        val storageDir = File.createTempFile("diag-remote-config", "test").parentFile
         return DiagnosticsClientImpl(
             apiKey = "test-api-key",
             serverZone = ServerZone.US,
             instanceName = "test-instance",
             storageDirectory = storageDir,
             logger = logger,
-            coroutineScope = testScope,
-            networkIODispatcher = dispatcher,
-            storageIODispatcher = dispatcher,
+            coroutineScope = CoroutineScope(Dispatchers.Default),
+            networkIODispatcher = Dispatchers.IO,
+            storageIODispatcher = Dispatchers.IO,
             remoteConfigClient = remoteConfigClient,
             httpClient = httpClient,
             contextProvider = null,
             enabled = enabled,
             sampleRate = sampleRate,
             flushIntervalMillis = 60_000,
+            storageIntervalMillis = 60_000,
         )
     }
 

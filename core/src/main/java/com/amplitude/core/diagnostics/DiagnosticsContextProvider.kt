@@ -6,9 +6,9 @@ data class DiagnosticsContextInfo(
     val osName: String,
     val osVersion: String,
     val platform: String,
-    val appVersion: String,
+    val appVersion: String?,
 )
 
 fun interface DiagnosticsContextProvider {
-    suspend fun getContextInfo(): DiagnosticsContextInfo
+    fun getContextInfo(): DiagnosticsContextInfo
 }

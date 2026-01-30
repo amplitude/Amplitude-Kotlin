@@ -12,7 +12,6 @@ internal class HistogramStats {
     private var max: Double = Double.NEGATIVE_INFINITY
     private var sum: Double = 0.0
 
-    @Synchronized
     fun record(value: Double) {
         count++
         min = kotlin.math.min(min, value)
@@ -20,7 +19,6 @@ internal class HistogramStats {
         sum += value
     }
 
-    @Synchronized
     fun toResult(avg: Double): HistogramResult {
         return HistogramResult(
             count = count,
@@ -30,37 +28,25 @@ internal class HistogramStats {
         )
     }
 
-    @Synchronized
-    fun merge(other: HistogramStats) {
-        if (other.count == 0L) return
-        count += other.count
-        min = kotlin.math.min(min, other.min)
-        max = kotlin.math.max(max, other.max)
-        sum += other.sum
-    }
-
-    @Synchronized
-    fun snapshot(): HistogramSnapshot {
+    fun toSnapshot(): HistogramSnapshot {
         return HistogramSnapshot(count = count, min = min, max = max, sum = sum)
     }
+}
 
+internal data class HistogramSnapshot(
+    val count: Long,
+    val min: Double,
+    val max: Double,
+    val sum: Double,
+) {
     companion object {
-        fun fromResult(result: HistogramResult): HistogramStats {
-            return HistogramStats().apply {
-                count = result.count
-                min = result.min
-                max = result.max
-                sum = result.avg * result.count
-            }
-        }
-
-        fun fromJSONObject(json: JSONObject): HistogramStats {
-            return HistogramStats().apply {
-                count = json.getLong("count")
-                min = json.getDouble("min")
-                max = json.getDouble("max")
-                sum = json.getDouble("sum")
-            }
+        fun fromJSONObject(json: JSONObject): HistogramSnapshot {
+            return HistogramSnapshot(
+                count = json.getLong("count"),
+                min = json.getDouble("min"),
+                max = json.getDouble("max"),
+                sum = json.getDouble("sum"),
+            )
         }
     }
 
@@ -72,14 +58,16 @@ internal class HistogramStats {
         json.put("sum", sum)
         return json
     }
-}
 
-internal data class HistogramSnapshot(
-    val count: Long,
-    val min: Double,
-    val max: Double,
-    val sum: Double,
-)
+    fun toResult(): HistogramResult {
+        return HistogramResult(
+            count = count,
+            min = min,
+            max = max,
+            avg = if (count > 0L) sum / count else 0.0,
+        )
+    }
+}
 
 /**
  * Immutable result of histogram aggregation.
