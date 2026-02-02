@@ -80,6 +80,22 @@ class Timeline(
     }
 
     /**
+     * Queue a user ID change to be processed in order with events.
+     * This ensures identity changes happen in FIFO order with other events.
+     */
+    override fun queueSetUserId(userId: String?) {
+        eventMessageChannel.trySend(EventQueueMessage.SetUserId(userId))
+    }
+
+    /**
+     * Queue a device ID change to be processed in order with events.
+     * This ensures identity changes happen in FIFO order with other events.
+     */
+    override fun queueSetDeviceId(deviceId: String) {
+        eventMessageChannel.trySend(EventQueueMessage.SetDeviceId(deviceId))
+    }
+
+    /**
      * Process an event message from the event queue.
      */
     private suspend fun processEventMessage(message: EventQueueMessage) {
@@ -95,6 +111,14 @@ class Timeline(
             is EventQueueMessage.ExitForeground -> {
                 foreground.set(false)
                 refreshSessionTime(message.timestamp)
+            }
+            is EventQueueMessage.SetUserId -> {
+                amplitude.idContainer.identityManager.editIdentity()
+                    .setUserId(message.userId).commit()
+            }
+            is EventQueueMessage.SetDeviceId -> {
+                amplitude.idContainer.identityManager.editIdentity()
+                    .setDeviceId(message.deviceId).commit()
             }
         }
     }
@@ -216,4 +240,8 @@ sealed class EventQueueMessage {
     data class EnterForeground(val timestamp: Long) : EventQueueMessage()
 
     data class ExitForeground(val timestamp: Long) : EventQueueMessage()
+
+    data class SetUserId(val userId: String?) : EventQueueMessage()
+
+    data class SetDeviceId(val deviceId: String) : EventQueueMessage()
 }

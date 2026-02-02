@@ -10,6 +10,8 @@ import com.amplitude.android.utilities.createFakeAmplitude
 import com.amplitude.android.utilities.setupMockAndroidContext
 import com.amplitude.core.StorageProvider
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.events.EventOptions
+import com.amplitude.core.events.Identify
 import com.amplitude.core.platform.EventPlugin
 import com.amplitude.core.platform.Plugin
 import com.amplitude.core.utilities.ConsoleLoggerProvider
@@ -312,6 +314,110 @@ class AmplitudeTest {
 
             // test_event should have created a new session and not extended an existing session
             assertEquals(1100, amplitude.sessionId)
+        }
+
+    /**
+     * Test that identity changes (setUserId) are properly ordered with events.
+     * When setUserId() is called followed by track(), the tracked event should
+     * have the userId that was set, because both go through the same Timeline queue.
+     */
+    @Test
+    fun amplitude_setUserId_should_be_ordered_before_subsequent_events() =
+        runTest {
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = createConfiguration(),
+                )
+            val fakeEventPlugin = FakeEventPlugin()
+            amplitude.add(fakeEventPlugin)
+            amplitude.isBuilt.await()
+            advanceUntilIdle()
+
+            // Set userId and immediately track an event
+            amplitude.setUserId("ordered-user-id")
+            val event = BaseEvent()
+            event.eventType = "test_after_setUserId"
+            amplitude.track(event)
+            advanceUntilIdle()
+
+            // The event should have the userId that was set
+            val trackedEvent = fakeEventPlugin.trackedEvents.find { it.eventType == "test_after_setUserId" }
+            assertNotNull("Event should have been tracked", trackedEvent)
+            assertEquals(
+                "Event should have the userId set before it",
+                "ordered-user-id",
+                trackedEvent!!.userId,
+            )
+        }
+
+    /**
+     * Test that identity changes (setDeviceId) are properly ordered with events.
+     */
+    @Test
+    fun amplitude_setDeviceId_should_be_ordered_before_subsequent_events() =
+        runTest {
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = createConfiguration(),
+                )
+            val fakeEventPlugin = FakeEventPlugin()
+            amplitude.add(fakeEventPlugin)
+            amplitude.isBuilt.await()
+            advanceUntilIdle()
+
+            // Set deviceId and immediately track an event
+            amplitude.setDeviceId("ordered-device-id")
+            val event = BaseEvent()
+            event.eventType = "test_after_setDeviceId"
+            amplitude.track(event)
+            advanceUntilIdle()
+
+            // The event should have the deviceId that was set
+            val trackedEvent = fakeEventPlugin.trackedEvents.find { it.eventType == "test_after_setDeviceId" }
+            assertNotNull("Event should have been tracked", trackedEvent)
+            assertEquals(
+                "Event should have the deviceId set before it",
+                "ordered-device-id",
+                trackedEvent!!.deviceId,
+            )
+        }
+
+    /**
+     * Test that identify() with userId in options properly orders the identity change.
+     */
+    @Test
+    fun amplitude_identify_with_userId_should_be_ordered_before_subsequent_events() =
+        runTest {
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = createConfiguration(),
+                )
+            val fakeEventPlugin = FakeEventPlugin()
+            amplitude.add(fakeEventPlugin)
+            amplitude.isBuilt.await()
+            advanceUntilIdle()
+
+            // Call identify with userId in options, then track an event
+            amplitude.identify(
+                Identify().set("test_property", "value"),
+                EventOptions().apply { userId = "identify-user-id" },
+            )
+            val event = BaseEvent()
+            event.eventType = "test_after_identify"
+            amplitude.track(event)
+            advanceUntilIdle()
+
+            // The regular event should have the userId from identify
+            val trackedEvent = fakeEventPlugin.trackedEvents.find { it.eventType == "test_after_identify" }
+            assertNotNull("Event should have been tracked", trackedEvent)
+            assertEquals(
+                "Event should have the userId from identify call",
+                "identify-user-id",
+                trackedEvent!!.userId,
+            )
         }
 
     companion object {
