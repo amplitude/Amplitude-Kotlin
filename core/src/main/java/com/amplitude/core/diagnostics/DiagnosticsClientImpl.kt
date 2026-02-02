@@ -126,6 +126,7 @@ internal class DiagnosticsClientImpl(
             addedEvents.clear()
             countersChanged = false
             histogramsChanged = false
+            tagsChanged = false
 
             return snapshot
         }
@@ -261,8 +262,6 @@ internal class DiagnosticsClientImpl(
     }
 
     private fun handleUpdate(update: Update) {
-        logger.debug("DiagnosticsClient: Handling update: $update")
-
         when (update) {
             is Update.SetTag -> {
                 activeBuffer.tags[update.key] = update.value
@@ -373,10 +372,8 @@ internal class DiagnosticsClientImpl(
     }
 
     private fun storeActiveBuffer() {
-        logger.debug("DiagnosticsClient: Flushing active buffer to storage")
         if (!shouldTrack) return
         if (!activeBuffer.needsStorage()) return
-        logger.debug("DiagnosticsClient: Active buffer needs to be flushed to storage")
 
         val snapshot = activeBuffer.createStorageSnapshot()
 

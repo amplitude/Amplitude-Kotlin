@@ -79,7 +79,6 @@ internal class DiagnosticsStorage(
         }
 
     fun saveSnapshot(snapshot: DiagnosticsSnapshot) {
-        logger.debug("DiagnosticsStorage: Saving snapshot to active storage directory")
         channel.trySend(Operation.SaveSnapshot(snapshot))
     }
 
@@ -119,8 +118,6 @@ internal class DiagnosticsStorage(
         snapshot: DiagnosticsSnapshot,
         directory: File,
     ) {
-        logger.debug("DiagnosticsStorage: Persisting snapshot to directory: ${directory.absolutePath}")
-
         snapshot.tags?.let {
             try {
                 persistTags(it, directory)
@@ -395,7 +392,6 @@ internal class DiagnosticsStorage(
                 file.delete()
             }
         }
-        logger.debug("DiagnosticsStorage: Removed active files from directory: ${directory.absolutePath}")
     }
 
     private fun activeStorageDirectory(): File {
