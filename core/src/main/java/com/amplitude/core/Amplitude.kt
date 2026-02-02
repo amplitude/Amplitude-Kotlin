@@ -184,14 +184,7 @@ open class Amplitude(
         EventBridgeContainer.getInstance(
             configuration.instanceName,
         ).eventBridge.setEventReceiver(EventChannel.EVENT, AnalyticsEventReceiver(this))
-        add(
-            object : ContextPlugin() {
-                override fun setDeviceId(deviceId: String) {
-                    // set device id immediately, don't wait for isBuilt
-                    setDeviceIdInternal(deviceId)
-                }
-            },
-        )
+        add(ContextPlugin())
         add(GetAmpliExtrasPlugin())
         add(AmplitudeDestination())
     }
@@ -318,28 +311,6 @@ open class Amplitude(
      */
     fun getUserId(): String? {
         return if (this::idContainer.isInitialized) idContainer.identityManager.getIdentity().userId else null
-    }
-
-    /**
-     * <b>INTERNAL METHOD!</b>
-     *
-     * Sets user id immediately without waiting for build() to complete.
-     *
-     * <b>Note: only do this if you know what you are doing!</b>
-     */
-    protected fun setUserIdInternal(userId: String?) {
-        idContainer.identityManager.editIdentity().setUserId(userId).commit()
-    }
-
-    /**
-     * <b>INTERNAL METHOD!</b>
-     *
-     * Sets device id immediately without waiting for build() to complete.
-     *
-     * <b>Note: only do this if you know what you are doing!</b>
-     */
-    protected fun setDeviceIdInternal(deviceId: String) {
-        idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
     }
 
     /**
