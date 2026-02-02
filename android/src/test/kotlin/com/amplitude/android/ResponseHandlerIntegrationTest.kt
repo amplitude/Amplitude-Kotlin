@@ -28,7 +28,9 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.io.ByteArrayInputStream
 import java.util.concurrent.TimeUnit
+import java.util.zip.GZIPInputStream
 
 @ExperimentalCoroutinesApi
 @RunWith(RobolectricTestRunner::class)
@@ -353,7 +355,13 @@ class ResponseHandlerIntegrationTest {
     }
 
     private fun getEventsFromRequest(request: RecordedRequest): List<BaseEvent> {
-        val body = request.body.readUtf8()
+        val body =
+            if (request.getHeader("Content-Encoding") == "gzip") {
+                val bytes = request.body.readByteArray()
+                GZIPInputStream(ByteArrayInputStream(bytes)).bufferedReader().use { it.readText() }
+            } else {
+                request.body.readUtf8()
+            }
         return JSONObject(body).getJSONArray("events").toEvents()
     }
 

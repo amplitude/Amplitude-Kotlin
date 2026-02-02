@@ -73,6 +73,7 @@ open class Configuration(
         offline,
         deviceId,
         sessionId,
+        httpClient,
     ) {
     companion object {
         const val MIN_TIME_BETWEEN_SESSIONS_MILLIS: Long = 300000

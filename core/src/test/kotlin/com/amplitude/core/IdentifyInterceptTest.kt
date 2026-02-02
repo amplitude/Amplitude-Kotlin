@@ -25,7 +25,9 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import java.io.ByteArrayInputStream
 import java.util.concurrent.TimeUnit
+import java.util.zip.GZIPInputStream
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class IdentifyInterceptTest {
@@ -291,7 +293,13 @@ class IdentifyInterceptTest {
         }
 
     private fun getEventsFromRequest(request: RecordedRequest): List<BaseEvent> {
-        val body = request.body.readUtf8()
+        val body =
+            if (request.getHeader("Content-Encoding") == "gzip") {
+                val bytes = request.body.readByteArray()
+                GZIPInputStream(ByteArrayInputStream(bytes)).bufferedReader().use { it.readText() }
+            } else {
+                request.body.readUtf8()
+            }
         return JSONObject(body).getJSONArray("events").toEvents()
     }
 
