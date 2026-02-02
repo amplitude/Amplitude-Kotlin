@@ -28,10 +28,11 @@ class GzipRequestInterceptor : Interceptor {
             return chain.proceed(originalRequest)
         }
 
-        val compressedRequest = originalRequest.newBuilder()
-            .header("Content-Encoding", "gzip")
-            .method(originalRequest.method, gzip(body))
-            .build()
+        val compressedRequest =
+            originalRequest.newBuilder()
+                .header("Content-Encoding", "gzip")
+                .method(originalRequest.method, gzip(body))
+                .build()
 
         return chain.proceed(compressedRequest)
     }
@@ -39,12 +40,13 @@ class GzipRequestInterceptor : Interceptor {
     private fun gzip(body: RequestBody): RequestBody {
         return object : RequestBody() {
             override fun contentType(): MediaType? = body.contentType()
+
             override fun contentLength(): Long = -1 // Unknown after compression
 
             override fun writeTo(sink: BufferedSink) {
-                val gzipSink = GzipSink(sink).buffer()
-                body.writeTo(gzipSink)
-                gzipSink.close()
+                GzipSink(sink).buffer().use { gzipSink ->
+                    body.writeTo(gzipSink)
+                }
             }
         }
     }

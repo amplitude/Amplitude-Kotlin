@@ -12,9 +12,10 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 
 class CustomOkHttpClient(
-    private val okHttpClient: OkHttpClient = OkHttpClient.Builder()
-        .addInterceptor(GzipRequestInterceptor())
-        .build(),
+    private val okHttpClient: OkHttpClient =
+        OkHttpClient.Builder()
+            .addInterceptor(GzipRequestInterceptor())
+            .build(),
 ) : HttpClientInterface {
     private lateinit var configuration: Configuration
 
