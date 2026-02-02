@@ -22,7 +22,9 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import java.io.ByteArrayInputStream
 import java.util.concurrent.TimeUnit
+import java.util.zip.GZIPInputStream
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class HttpClientTest {
@@ -64,7 +66,7 @@ class HttpClientTest {
         val response = httpClient.upload(JSONUtil.eventsToString(listOf(event)))
 
         val request = runRequest()
-        val result = JSONObject(request?.body?.readUtf8())
+        val result = JSONObject(decompressGzip(request?.body?.readByteArray()))
 
         // Verify request content
         assertEquals(apiKey, result.getString("api_key"))
@@ -93,7 +95,7 @@ class HttpClientTest {
         httpClient.upload(JSONUtil.eventsToString(listOf(event)))
 
         val request = runRequest()
-        val result = JSONObject(request?.body?.readUtf8())
+        val result = JSONObject(decompressGzip(request?.body?.readByteArray()))
 
         assertEquals(apiKey, result.getString("api_key"))
         assertNotNull(result.getString("client_upload_time"))
@@ -120,7 +122,7 @@ class HttpClientTest {
         httpClient.upload(JSONUtil.eventsToString(listOf(event)), diagnostics.extractDiagnostics())
 
         val request = runRequest()
-        val result = JSONObject(request?.body?.readUtf8())
+        val result = JSONObject(decompressGzip(request?.body?.readByteArray()))
 
         assertEquals(apiKey, result.getString("api_key"))
         assertEquals(
@@ -360,11 +362,43 @@ class HttpClientTest {
         assertTrue(response.isClientError)
     }
 
+    @Test
+    fun `test gzip compression is always applied`() {
+        server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+
+        val config =
+            Configuration(
+                apiKey = apiKey,
+                serverUrl = server.url("/").toString(),
+            )
+        val event = BaseEvent()
+        event.eventType = "test"
+
+        val httpClient = HttpClient(config, silentLogger)
+        httpClient.upload(JSONUtil.eventsToString(listOf(event)))
+
+        val request = runRequest()
+
+        // Verify Content-Encoding header is set
+        assertEquals("gzip", request?.getHeader("Content-Encoding"))
+
+        // Verify body starts with gzip magic bytes
+        val body = request?.body?.readByteArray()
+        assertNotNull(body)
+        assertEquals(0x1f.toByte(), body!![0])
+        assertEquals(0x8b.toByte(), body[1])
+    }
+
     private fun runRequest(): RecordedRequest? {
         return try {
             server.takeRequest(5, TimeUnit.SECONDS)
         } catch (e: InterruptedException) {
             null
         }
+    }
+
+    private fun decompressGzip(data: ByteArray?): String {
+        if (data == null) return ""
+        return GZIPInputStream(ByteArrayInputStream(data)).bufferedReader().use { it.readText() }
     }
 }

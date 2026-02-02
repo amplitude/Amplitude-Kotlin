@@ -2,6 +2,7 @@ package com.amplitude.core.utilities.http
 
 import com.amplitude.common.Logger
 import com.amplitude.core.Configuration
+import com.amplitude.core.utilities.GzipUtils
 import com.amplitude.core.utilities.http.HttpClient.Request.Method.POST
 import java.io.BufferedReader
 import java.io.IOException
@@ -69,7 +70,16 @@ internal class HttpClient(
             // Set request body if present
             request.body?.let { body ->
                 connection.doOutput = true
-                val input = body.toByteArray()
+                val input =
+                    try {
+                        GzipUtils.compress(body)
+                            .also {
+                                connection.setRequestProperty("Content-Encoding", "gzip")
+                            }
+                    } catch (e: Exception) {
+                        logger.warn("Gzip compression failed, sending uncompressed: ${e.message}")
+                        body.toByteArray()
+                    }
                 connection.outputStream.write(input, 0, input.size)
                 connection.outputStream.close()
             }
