@@ -10,6 +10,8 @@ import com.amplitude.core.Storage.Constants.PREVIOUS_SESSION_ID
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Timeline
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.ChannelResult
+import kotlinx.coroutines.channels.onFailure
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
@@ -65,18 +67,18 @@ class Timeline(
             incomingEvent.timestamp = System.currentTimeMillis()
         }
 
-        val result = eventMessageChannel.trySend(EventQueueMessage.Event(incomingEvent))
-        if (result.isFailure) {
-            amplitude.logger.error("Failed to enqueue event: ${incomingEvent.eventType}. Channel is closed or full.")
-        }
+        eventMessageChannel.trySend(EventQueueMessage.Event(incomingEvent))
+            .logOnFailure("Failed to enqueue event: ${incomingEvent.eventType}. Channel is closed or full.")
     }
 
     internal fun onEnterForeground(timestamp: Long) {
         eventMessageChannel.trySend(EventQueueMessage.EnterForeground(timestamp))
+            .logOnFailure("Failed to enqueue EnterForeground. Channel is closed or full.")
     }
 
     internal fun onExitForeground(timestamp: Long) {
         eventMessageChannel.trySend(EventQueueMessage.ExitForeground(timestamp))
+            .logOnFailure("Failed to enqueue ExitForeground. Channel is closed or full.")
     }
 
     /**
@@ -85,6 +87,7 @@ class Timeline(
      */
     override fun queueSetUserId(userId: String?) {
         eventMessageChannel.trySend(EventQueueMessage.SetUserId(userId))
+            .logOnFailure("Failed to enqueue SetUserId. Channel is closed or full.")
     }
 
     /**
@@ -93,6 +96,7 @@ class Timeline(
      */
     override fun queueSetDeviceId(deviceId: String) {
         eventMessageChannel.trySend(EventQueueMessage.SetDeviceId(deviceId))
+            .logOnFailure("Failed to enqueue SetDeviceId. Channel is closed or full.")
     }
 
     /**
@@ -225,6 +229,11 @@ class Timeline(
     private fun inSession(): Boolean {
         return sessionId > DEFAULT_SESSION_ID
     }
+
+    private fun <T> ChannelResult<T>.logOnFailure(message: String) =
+        onFailure {
+            amplitude.logger.error(message)
+        }
 
     private fun Storage.readLong(
         key: Constants,
