@@ -46,7 +46,11 @@ internal data class DiagnosticsEvent(
         }
 
         fun fromJsonString(jsonString: String): DiagnosticsEvent? {
-            return fromJSONObject(JSONObject(jsonString))
+            return try {
+                fromJSONObject(JSONObject(jsonString))
+            } catch (_: Exception) {
+                null
+            }
         }
 
         private fun toJsonValue(value: Any?): Any? {

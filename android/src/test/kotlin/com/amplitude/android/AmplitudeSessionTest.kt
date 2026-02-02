@@ -26,9 +26,12 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 import java.io.File
 
 @ExperimentalCoroutinesApi
+@RunWith(RobolectricTestRunner::class)
 class AmplitudeSessionTest {
     private fun createConfiguration(
         storageProvider: StorageProvider? = null,
