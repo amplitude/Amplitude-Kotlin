@@ -2,6 +2,7 @@ package com.amplitude.core.platform
 
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
+import kotlinx.coroutines.launch
 
 open class Timeline {
     internal val plugins: Map<Plugin.Type, Mediator> =
@@ -68,6 +69,31 @@ open class Timeline {
     fun applyClosure(closure: (Plugin) -> Unit) {
         plugins.forEach { (_, mediator) ->
             mediator.applyClosure(closure)
+        }
+    }
+
+    /**
+     * Queue a user ID change to be processed in order with events.
+     * Default implementation uses async dispatch (original behavior).
+     * Android Timeline overrides to queue through the event channel for FIFO ordering.
+     */
+    open fun queueSetUserId(userId: String?) {
+        amplitude.amplitudeScope.launch(amplitude.amplitudeDispatcher) {
+            if (amplitude.isBuilt.await()) {
+                amplitude.idContainer.identityManager.editIdentity().setUserId(userId).commit()
+            }
+        }
+    }
+
+    /**
+     * Queue a device ID change to be processed in order with events.
+     * Default implementation uses async dispatch (original behavior).
+     * Android Timeline overrides to queue through the event channel for FIFO ordering.
+     */
+    open fun queueSetDeviceId(deviceId: String) {
+        amplitude.amplitudeScope.launch(amplitude.amplitudeDispatcher) {
+            amplitude.isBuilt.await()
+            amplitude.idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
         }
     }
 }

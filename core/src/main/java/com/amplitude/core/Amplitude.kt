@@ -301,16 +301,13 @@ open class Amplitude(
 
     /**
      * Set the user id (can be null).
+     * The identity change is queued through the Timeline to ensure proper ordering with events.
      *
      * @param userId custom user id
      * @return the Amplitude instance
      */
     fun setUserId(userId: String?): Amplitude {
-        amplitudeScope.launch(amplitudeDispatcher) {
-            if (isBuilt.await()) {
-                idContainer.identityManager.editIdentity().setUserId(userId).commit()
-            }
-        }
+        timeline.queueSetUserId(userId)
         return this
     }
 
@@ -326,6 +323,17 @@ open class Amplitude(
     /**
      * <b>INTERNAL METHOD!</b>
      *
+     * Sets user id immediately without waiting for build() to complete.
+     *
+     * <b>Note: only do this if you know what you are doing!</b>
+     */
+    protected fun setUserIdInternal(userId: String?) {
+        idContainer.identityManager.editIdentity().setUserId(userId).commit()
+    }
+
+    /**
+     * <b>INTERNAL METHOD!</b>
+     *
      * Sets device id immediately without waiting for build() to complete.
      *
      * <b>Note: only do this if you know what you are doing!</b>
@@ -336,15 +344,13 @@ open class Amplitude(
 
     /**
      * Sets a custom device id. <b>Note: only do this if you know what you are doing!</b>
+     * The identity change is queued through the Timeline to ensure proper ordering with events.
      *
      * @param deviceId custom device id
      * @return the Amplitude instance
      */
     fun setDeviceId(deviceId: String): Amplitude {
-        amplitudeScope.launch(amplitudeDispatcher) {
-            isBuilt.await()
-            setDeviceIdInternal(deviceId)
-        }
+        timeline.queueSetDeviceId(deviceId)
         return this
     }
 
