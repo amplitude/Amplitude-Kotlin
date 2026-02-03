@@ -6,6 +6,9 @@ import com.amplitude.android.EventQueueMessage.EnterForeground
 import com.amplitude.android.EventQueueMessage.Event
 import com.amplitude.android.EventQueueMessage.ExitForeground
 import com.amplitude.android.EventQueueMessage.SetIdentity
+import com.amplitude.android.IdentityField.DeviceId
+import com.amplitude.android.IdentityField.ResetDeviceId
+import com.amplitude.android.IdentityField.UserId
 import com.amplitude.core.Storage
 import com.amplitude.core.Storage.Constants
 import com.amplitude.core.Storage.Constants.LAST_EVENT_ID
@@ -18,6 +21,7 @@ import kotlinx.coroutines.channels.onFailure
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
+import com.amplitude.android.Amplitude as AndroidAmplitude
 
 private const val DEFAULT_SESSION_ID = -1L
 private const val DEFAULT_EVENT_ID_OR_TIME = 0L
@@ -107,14 +111,16 @@ class Timeline(
                 refreshSessionTime(message.timestamp)
             }
             is SetIdentity -> {
+                val editIdentity = amplitude.idContainer.identityManager.editIdentity()
+
                 when (val field = message.field) {
-                    is IdentityField.UserId -> {
-                        amplitude.idContainer.identityManager.editIdentity()
-                            .setUserId(field.value).commit()
-                    }
-                    is IdentityField.DeviceId -> {
-                        amplitude.idContainer.identityManager.editIdentity()
-                            .setDeviceId(field.value).commit()
+                    is UserId -> editIdentity.setUserId(field.value).commit()
+                    is DeviceId -> editIdentity.setDeviceId(field.value).commit()
+                    is ResetDeviceId -> {
+                        editIdentity.setDeviceId(null).commit()
+                        (amplitude as AndroidAmplitude).androidContextPlugin.initializeDeviceId(
+                            amplitude.configuration as Configuration,
+                        )
                     }
                 }
             }
@@ -242,6 +248,8 @@ sealed class IdentityField {
     data class UserId(val value: String?) : IdentityField()
 
     data class DeviceId(val value: String) : IdentityField()
+
+    data object ResetDeviceId : IdentityField()
 }
 
 sealed class EventQueueMessage {
