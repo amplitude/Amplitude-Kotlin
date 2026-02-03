@@ -117,10 +117,10 @@ class Timeline(
                     is UserId -> editIdentity.setUserId(field.value).commit()
                     is DeviceId -> editIdentity.setDeviceId(field.value).commit()
                     is ResetDeviceId -> {
+                        val androidAmplitude = amplitude as AndroidAmplitude
                         editIdentity.setDeviceId(null).commit()
-                        (amplitude as AndroidAmplitude).androidContextPlugin.initializeDeviceId(
-                            amplitude.configuration as Configuration,
-                        )
+                        val newDeviceId = androidAmplitude.androidContextPlugin.generateDeviceId()
+                        editIdentity.setDeviceId(newDeviceId).commit()
                     }
                 }
             }

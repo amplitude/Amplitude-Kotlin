@@ -1,7 +1,6 @@
 package com.amplitude.core.platform.plugins
 
 import com.amplitude.core.Amplitude
-import com.amplitude.core.Configuration
 import com.amplitude.core.Constants
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
@@ -11,22 +10,19 @@ open class ContextPlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Before
     override lateinit var amplitude: Amplitude
 
-    override fun setup(amplitude: Amplitude) {
-        super.setup(amplitude)
-        initializeDeviceId(amplitude.configuration)
+    /**
+     * Generate a device ID based on platform-specific logic.
+     * Subclasses can override to provide platform-specific generation (e.g., advertising ID).
+     *
+     * @return the generated device ID, or null if no deviceId is configured
+     */
+    open fun generateDeviceId(): String? {
+        return amplitude.configuration.deviceId
     }
 
-    protected open fun setDeviceId(deviceId: String) {
-        amplitude.setDeviceId(deviceId)
-    }
-
-    private fun initializeDeviceId(configuration: Configuration) {
-        // Check configuration
-        var deviceId = configuration.deviceId
-        if (deviceId != null) {
-            setDeviceId(deviceId)
-            return
-        }
+    override fun execute(event: BaseEvent): BaseEvent? {
+        applyContextData(event)
+        return event
     }
 
     private fun applyContextData(event: BaseEvent) {
@@ -64,10 +60,5 @@ open class ContextPlugin : Plugin {
                 event.ingestionMetadata = it.clone()
             }
         }
-    }
-
-    override fun execute(event: BaseEvent): BaseEvent? {
-        applyContextData(event)
-        return event
     }
 }

@@ -98,6 +98,7 @@ open class Amplitude internal constructor(
         }
         androidContextPlugin = AndroidContextPlugin()
         add(androidContextPlugin)
+        setDeviceId(androidContextPlugin.generateDeviceId())
         add(GetAmpliExtrasPlugin())
         add(AndroidLifecyclePlugin(activityLifecycleCallbacks))
         add(AnalyticsConnectorIdentityPlugin())

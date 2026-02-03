@@ -7,13 +7,11 @@ import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.core.Amplitude
 import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.events.BaseEvent
-import com.amplitude.core.platform.Plugin
+import com.amplitude.core.platform.plugins.ContextPlugin
 import java.util.UUID
 
 @OptIn(RestrictedAmplitudeFeature::class)
-open class AndroidContextPlugin : Plugin {
-    override val type: Plugin.Type = Plugin.Type.Before
-    override lateinit var amplitude: Amplitude
+open class AndroidContextPlugin : ContextPlugin() {
     private lateinit var contextProvider: AndroidContextProvider
 
     override fun setup(amplitude: Amplitude) {
@@ -26,8 +24,6 @@ open class AndroidContextPlugin : Plugin {
                 configuration.trackingOptions.shouldTrackAdid(),
                 configuration.trackingOptions.shouldTrackAppSetId(),
             )
-        initializeDeviceId(configuration)
-
         amplitude.diagnosticsClient.setTag(
             name = "sdk.${SDK_LIBRARY}.version",
             value = SDK_VERSION,
@@ -39,45 +35,65 @@ open class AndroidContextPlugin : Plugin {
         return event
     }
 
-    fun initializeDeviceId(configuration: Configuration) {
+    /**
+     * Generate a device ID using Android-specific logic.
+     * Priority: configuration -> store -> advertising ID -> app set ID -> random UUID
+     *
+     * @return the generated device ID (never null for Android)
+     */
+    override fun generateDeviceId(): String {
+        val configuration = amplitude.configuration as Configuration
+
         // Check configuration
-        var deviceId = configuration.deviceId
-        if (deviceId != null) {
-            setDeviceId(deviceId)
-            return
-        }
+        configuration.deviceId?.let { return it }
 
         // Check store
-        deviceId = amplitude.store.deviceId
-        if (deviceId != null && validDeviceId(deviceId) && !deviceId.endsWith("S")) {
-            return
+        amplitude.store.deviceId?.let { deviceId ->
+            if (validDeviceId(deviceId) && !deviceId.endsWith("S")) {
+                return deviceId
+            }
         }
 
-        // Check new device id per install
+        // Check advertising ID (if enabled and not per-install)
         if (!configuration.newDeviceIdPerInstall &&
             configuration.useAdvertisingIdForDeviceId &&
             !contextProvider.isLimitAdTrackingEnabled()
         ) {
-            val advertisingId = contextProvider.advertisingId
-            if (advertisingId != null && validDeviceId(advertisingId)) {
-                setDeviceId(advertisingId)
-                return
+            contextProvider.advertisingId?.let { advertisingId ->
+                if (validDeviceId(advertisingId)) {
+                    return advertisingId
+                }
             }
         }
 
-        // Check app set id
+        // Check app set ID (if enabled)
         if (configuration.useAppSetIdForDeviceId) {
-            val appSetId = contextProvider.appSetId
-            if (appSetId != null && validDeviceId(appSetId)) {
-                setDeviceId("${appSetId}S")
-                return
+            contextProvider.appSetId?.let { appSetId ->
+                if (validDeviceId(appSetId)) {
+                    return "${appSetId}S"
+                }
             }
         }
 
-        // Generate random id
-        val generatedUuid = UUID.randomUUID().toString()
-        val randomId = generatedUuid + "R"
-        setDeviceId(randomId)
+        // Generate random ID
+        return UUID.randomUUID().toString() + "R"
+    }
+
+    @Suppress("UNUSED_PARAMETER")
+    @Deprecated(
+        message = "Use generateDeviceId() instead. Amplitude now handles setting the deviceId.",
+        replaceWith = ReplaceWith("generateDeviceId()"),
+    )
+    fun initializeDeviceId(configuration: Configuration) {
+        amplitude.setDeviceId(generateDeviceId())
+    }
+
+    @Deprecated(
+        message = "Use Amplitude.setDeviceId() instead. The plugin should not set identity directly.",
+        replaceWith = ReplaceWith("amplitude.setDeviceId(deviceId)"),
+    )
+    protected open fun setDeviceId(deviceId: String) {
+        amplitude.setDeviceId(deviceId)
     }
 
     private fun applyContextData(event: BaseEvent) {
@@ -169,10 +185,6 @@ open class AndroidContextPlugin : Plugin {
                 event.ingestionMetadata = it.clone()
             }
         }
-    }
-
-    protected open fun setDeviceId(deviceId: String) {
-        amplitude.setDeviceId(deviceId)
     }
 
     companion object {
