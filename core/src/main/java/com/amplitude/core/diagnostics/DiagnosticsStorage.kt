@@ -3,6 +3,7 @@ package com.amplitude.core.diagnostics
 import com.amplitude.common.Logger
 import com.amplitude.core.utilities.Hash
 import com.amplitude.core.utilities.toHexString
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -72,6 +73,8 @@ internal class DiagnosticsStorage(
                             removeActiveFiles()
                         }
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     logger.error("DiagnosticsStorage: Error processing operation: ${e.message}")
                 }
@@ -88,7 +91,7 @@ internal class DiagnosticsStorage(
 
     /**
      * Load and clear data from previous sessions.
-     * Do not nned to run from storage actor as it operates on different folders.
+     * Do not need to run from storage actor as it operates on different folders.
      */
     fun loadAndClearPreviousSessions(): List<DiagnosticsSnapshot> {
         val instanceDirectory = instanceDirectory()
@@ -108,7 +111,13 @@ internal class DiagnosticsStorage(
             } catch (e: Exception) {
                 logger.error("DiagnosticsStorage: Failed to load previous session ${sessionDir.name}: ${e.message}")
             } finally {
-                deleteDirectory(sessionDir)
+                // Delete after loading snapshot even load failed to avoid the directory from growing too large
+                // Loss of diagnostic data is not critical.
+                try {
+                    deleteDirectory(sessionDir)
+                } catch (e: Exception) {
+                    logger.error("DiagnosticsStorage: Failed to delete session directory ${sessionDir.name}: ${e.message}")
+                }
             }
         }
         return snapshots
@@ -173,11 +182,11 @@ internal class DiagnosticsStorage(
         if (!file.exists()) return emptyMap()
         return try {
             val json = readJsonFromFile(file)
-            val result = mutableMapOf<String, String>()
-            for (key in json.keys()) {
-                result[key] = json.getString(key)
+            buildMap {
+                for (key in json.keys()) {
+                    put(key, json.getString(key))
+                }
             }
-            result
         } catch (e: Exception) {
             logger.error("DiagnosticsStorage: Failed to load tags: ${e.message}")
             emptyMap()
@@ -188,11 +197,11 @@ internal class DiagnosticsStorage(
         if (!file.exists()) return emptyMap()
         return try {
             val json = readJsonFromFile(file)
-            val result = mutableMapOf<String, Long>()
-            for (key in json.keys()) {
-                result[key] = json.getLong(key)
+            buildMap {
+                for (key in json.keys()) {
+                    put(key, json.getLong(key))
+                }
             }
-            result
         } catch (e: Exception) {
             logger.error("DiagnosticsStorage: Failed to load counters: ${e.message}")
             emptyMap()
@@ -203,11 +212,11 @@ internal class DiagnosticsStorage(
         if (!file.exists()) return emptyMap()
         return try {
             val json = readJsonFromFile(file)
-            val result = mutableMapOf<String, HistogramSnapshot>()
-            for (key in json.keys()) {
-                result[key] = HistogramSnapshot.fromJSONObject(json.getJSONObject(key))
+            buildMap {
+                for (key in json.keys()) {
+                    put(key, HistogramSnapshot.fromJSONObject(json.getJSONObject(key)))
+                }
             }
-            result
         } catch (e: Exception) {
             logger.error("DiagnosticsStorage: Failed to load histograms: ${e.message}")
             emptyMap()

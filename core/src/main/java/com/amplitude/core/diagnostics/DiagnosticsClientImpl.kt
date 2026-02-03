@@ -232,11 +232,12 @@ internal class DiagnosticsClientImpl(
         if (!enabled || didFlushPreviousSession) return
         didFlushPreviousSession = true
 
+        val sampleRate = sampleRate
         coroutineScope.launch(storageIODispatcher) {
             val historicSnapshots = storage.loadAndClearPreviousSessions()
             for (snapshot in historicSnapshots) {
                 coroutineScope.launch(networkIODispatcher) {
-                    uploadSnapshot(snapshot)
+                    uploadSnapshot(snapshot, sampleRate)
                 }
             }
         }
@@ -386,13 +387,17 @@ internal class DiagnosticsClientImpl(
 
         val snapshot = activeBuffer.createFlushSnapshot()
         storage.deleteActiveFiles()
+        val sampleRate = sampleRate
 
         coroutineScope.launch(networkIODispatcher) {
-            uploadSnapshot(snapshot)
+            uploadSnapshot(snapshot, sampleRate)
         }
     }
 
-    private suspend fun uploadSnapshot(snapshot: DiagnosticsSnapshot) {
+    private suspend fun uploadSnapshot(
+        snapshot: DiagnosticsSnapshot,
+        sampleRate: Double,
+    ) {
         val payload = snapshot.toPayload()
 
         try {
