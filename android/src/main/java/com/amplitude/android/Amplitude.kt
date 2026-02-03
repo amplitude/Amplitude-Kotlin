@@ -121,6 +121,16 @@ open class Amplitude internal constructor(
         return this
     }
 
+    override fun setUserId(userId: String?): Amplitude {
+        (timeline as Timeline).queueSetUserId(userId)
+        return this
+    }
+
+    override fun setDeviceId(deviceId: String): Amplitude {
+        (timeline as Timeline).queueSetDeviceId(deviceId)
+        return this
+    }
+
     @GuardedAmplitudeFeature
     fun onEnterForeground(timestamp: Long) {
         (timeline as Timeline).onEnterForeground(timestamp)
