@@ -303,6 +303,16 @@ open class Amplitude(
     }
 
     /**
+     * Internal method for setting device ID synchronously during initialization.
+     * This avoids the await cycle that would occur if calling setDeviceId() during buildInternal(),
+     * since setDeviceId() awaits isBuilt which isn't complete until buildInternal() finishes.
+     * Should only be called after idContainer is initialized but before isBuilt completes.
+     */
+    internal open fun setDeviceIdDuringInit(deviceId: String) {
+        idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
+    }
+
+    /**
      * Get the device id.
      *
      * @return Device id.
