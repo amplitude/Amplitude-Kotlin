@@ -135,12 +135,12 @@ open class Amplitude internal constructor(
     }
 
     override fun setUserId(userId: String?): Amplitude {
-        (timeline as Timeline).queueSetUserId(userId)
+        (timeline as Timeline).queueSetIdentity(IdentityField.UserId(userId))
         return this
     }
 
     override fun setDeviceId(deviceId: String): Amplitude {
-        (timeline as Timeline).queueSetDeviceId(deviceId)
+        (timeline as Timeline).queueSetIdentity(IdentityField.DeviceId(deviceId))
         return this
     }
 
