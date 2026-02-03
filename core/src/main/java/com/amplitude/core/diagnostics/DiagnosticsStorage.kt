@@ -90,6 +90,15 @@ internal class DiagnosticsStorage(
     }
 
     /**
+     * Closes the storage, cancelling the actor job and closing the channel.
+     * This prevents resource leaks when instances are abandoned.
+     */
+    fun close() {
+        channel.close()
+        actorJob.cancel()
+    }
+
+    /**
      * Load and clear data from previous sessions.
      * Do not need to run from storage actor as it operates on different folders.
      */

@@ -167,7 +167,7 @@ internal class InMemoryResponseHandler(
     ) {
         if (events.isNotEmpty()) {
             scope.launch(storageDispatcher) {
-                if (status in 1..299) {
+                if (status in 200..299) {
                     diagnosticsClient.increment(name = "analytics.events.sent", size = events.size.toLong())
                 } else {
                     diagnosticsClient.increment(name = "analytics.events.dropped", size = events.size.toLong())

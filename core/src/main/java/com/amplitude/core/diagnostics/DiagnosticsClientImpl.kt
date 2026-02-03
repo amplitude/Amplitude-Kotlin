@@ -136,6 +136,21 @@ internal class DiagnosticsClientImpl(
 
     private val activeBuffer = Buffer()
 
+    // RemoteConfigClient uses WeakReference for callbacks, so we must hold a strong reference.
+    private val remoteConfigCallback: RemoteConfigClient.RemoteConfigCallback? =
+        if (remoteConfigClient != null) {
+            RemoteConfigClient.RemoteConfigCallback { config, _, _ ->
+                val enabledConfig = config["enabled"] as? Boolean
+                val sampleRateConfig = (config["sampleRate"] as? Number)?.toDouble()
+
+                logger.debug("DiagnosticsClient: Did fetch remote config with sampleRate: $sampleRateConfig")
+
+                channel.trySend(Update.UpdateConfig(enabled = enabledConfig, sampleRate = sampleRateConfig))
+            }
+        } else {
+            null
+        }
+
     private val actorJob: Job =
         coroutineScope.launch {
             while (isActive) {
@@ -165,16 +180,39 @@ internal class DiagnosticsClientImpl(
                 storageIODispatcher = storageIODispatcher,
             )
 
-        remoteConfigClient?.subscribe(RemoteConfigClient.Key.DIAGNOSTICS) { config, _, _ ->
-            val enabledConfig = config["enabled"] as? Boolean
-            val sampleRateConfig = (config["sampleRate"] as? Number)?.toDouble()
-
-            logger.debug("DiagnosticsClient: Did fetch remote config with sampleRate: $sampleRateConfig")
-
-            channel.trySend(Update.UpdateConfig(enabled = enabledConfig, sampleRate = sampleRateConfig))
+        remoteConfigCallback?.let { callback ->
+            remoteConfigClient?.subscribe(RemoteConfigClient.Key.DIAGNOSTICS, callback)
         }
 
         channel.trySend(Update.InitializeTasks)
+
+        registerShutdownHook()
+    }
+
+    /**
+     * Closes the diagnostics client, cancelling the actor job and closing the channel.
+     * This prevents resource leaks when instances are abandoned.
+     */
+    fun close() {
+        channel.close()
+        actorJob.cancel()
+        storage.close()
+    }
+
+    private fun registerShutdownHook() {
+        try {
+            Runtime.getRuntime().addShutdownHook(
+                object : Thread() {
+                    override fun run() {
+                        this@DiagnosticsClientImpl.close()
+                    }
+                },
+            )
+        } catch (_: IllegalStateException) {
+            // Once the shutdown sequence has begun it is impossible to register a shutdown hook,
+            // so we just ignore the IllegalStateException that's thrown.
+            // https://developer.android.com/reference/java/lang/Runtime#addShutdownHook(java.lang.Thread)
+        }
     }
 
     override fun setTag(

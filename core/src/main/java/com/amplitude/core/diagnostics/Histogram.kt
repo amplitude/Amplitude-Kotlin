@@ -19,15 +19,6 @@ internal class HistogramStats {
         sum += value
     }
 
-    fun toResult(avg: Double): HistogramResult {
-        return HistogramResult(
-            count = count,
-            min = min,
-            max = max,
-            avg = avg,
-        )
-    }
-
     fun toSnapshot(): HistogramSnapshot {
         return HistogramSnapshot(count = count, min = min, max = max, sum = sum)
     }
