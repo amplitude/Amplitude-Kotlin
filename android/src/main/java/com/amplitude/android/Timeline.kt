@@ -2,6 +2,10 @@ package com.amplitude.android
 
 import com.amplitude.android.Amplitude.Companion.END_SESSION_EVENT
 import com.amplitude.android.Amplitude.Companion.START_SESSION_EVENT
+import com.amplitude.android.EventQueueMessage.EnterForeground
+import com.amplitude.android.EventQueueMessage.Event
+import com.amplitude.android.EventQueueMessage.ExitForeground
+import com.amplitude.android.EventQueueMessage.SetIdentity
 import com.amplitude.core.Storage
 import com.amplitude.core.Storage.Constants
 import com.amplitude.core.Storage.Constants.LAST_EVENT_ID
@@ -10,7 +14,6 @@ import com.amplitude.core.Storage.Constants.PREVIOUS_SESSION_ID
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Timeline
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.ChannelResult
 import kotlinx.coroutines.channels.onFailure
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
@@ -67,36 +70,23 @@ class Timeline(
             incomingEvent.timestamp = System.currentTimeMillis()
         }
 
-        eventMessageChannel.trySend(EventQueueMessage.Event(incomingEvent))
-            .logOnFailure("Failed to enqueue event: ${incomingEvent.eventType}. Channel is closed or full.")
+        eventMessageChannel.trySendAndLog(Event(incomingEvent))
     }
 
     internal fun onEnterForeground(timestamp: Long) {
-        eventMessageChannel.trySend(EventQueueMessage.EnterForeground(timestamp))
-            .logOnFailure("Failed to enqueue EnterForeground. Channel is closed or full.")
+        eventMessageChannel.trySendAndLog(EnterForeground(timestamp))
     }
 
     internal fun onExitForeground(timestamp: Long) {
-        eventMessageChannel.trySend(EventQueueMessage.ExitForeground(timestamp))
-            .logOnFailure("Failed to enqueue ExitForeground. Channel is closed or full.")
+        eventMessageChannel.trySendAndLog(ExitForeground(timestamp))
     }
 
     /**
-     * Queue a user ID change to be processed in order with events.
+     * Queue an identity field change to be processed in order with events.
      * This ensures identity changes happen in FIFO order with other events.
      */
-    internal fun queueSetUserId(userId: String?) {
-        eventMessageChannel.trySend(EventQueueMessage.SetUserId(userId))
-            .logOnFailure("Failed to enqueue SetUserId. Channel is closed or full.")
-    }
-
-    /**
-     * Queue a device ID change to be processed in order with events.
-     * This ensures identity changes happen in FIFO order with other events.
-     */
-    internal fun queueSetDeviceId(deviceId: String) {
-        eventMessageChannel.trySend(EventQueueMessage.SetDeviceId(deviceId))
-            .logOnFailure("Failed to enqueue SetDeviceId. Channel is closed or full.")
+    internal fun queueSetIdentity(field: IdentityField) {
+        eventMessageChannel.trySendAndLog(SetIdentity(field))
     }
 
     /**
@@ -104,25 +94,29 @@ class Timeline(
      */
     private suspend fun processEventMessage(message: EventQueueMessage) {
         when (message) {
-            is EventQueueMessage.EnterForeground -> {
+            is EnterForeground -> {
                 val stopAndStartSessionEvents = startNewSessionIfNeeded(message.timestamp)
                 foreground.set(true)
                 processAndPersistEvents(stopAndStartSessionEvents)
             }
-            is EventQueueMessage.Event -> {
+            is Event -> {
                 processEvent(message.event)
             }
-            is EventQueueMessage.ExitForeground -> {
+            is ExitForeground -> {
                 foreground.set(false)
                 refreshSessionTime(message.timestamp)
             }
-            is EventQueueMessage.SetUserId -> {
-                amplitude.idContainer.identityManager.editIdentity()
-                    .setUserId(message.userId).commit()
-            }
-            is EventQueueMessage.SetDeviceId -> {
-                amplitude.idContainer.identityManager.editIdentity()
-                    .setDeviceId(message.deviceId).commit()
+            is SetIdentity -> {
+                when (val field = message.field) {
+                    is IdentityField.UserId -> {
+                        amplitude.idContainer.identityManager.editIdentity()
+                            .setUserId(field.value).commit()
+                    }
+                    is IdentityField.DeviceId -> {
+                        amplitude.idContainer.identityManager.editIdentity()
+                            .setDeviceId(field.value).commit()
+                    }
+                }
             }
         }
     }
@@ -230,10 +224,11 @@ class Timeline(
         return sessionId > DEFAULT_SESSION_ID
     }
 
-    private fun <T> ChannelResult<T>.logOnFailure(message: String) =
-        onFailure {
-            amplitude.logger.error(message)
-        }
+    private fun Channel<EventQueueMessage>.trySendAndLog(event: EventQueueMessage) =
+        trySend(event)
+            .onFailure {
+                amplitude.logger.error("Failed to enqueue event $event. Channel is closed or full.")
+            }
 
     private fun Storage.readLong(
         key: Constants,
@@ -243,6 +238,12 @@ class Timeline(
     }
 }
 
+sealed class IdentityField {
+    data class UserId(val value: String?) : IdentityField()
+
+    data class DeviceId(val value: String) : IdentityField()
+}
+
 sealed class EventQueueMessage {
     data class Event(val event: BaseEvent) : EventQueueMessage()
 
@@ -250,7 +251,5 @@ sealed class EventQueueMessage {
 
     data class ExitForeground(val timestamp: Long) : EventQueueMessage()
 
-    data class SetUserId(val userId: String?) : EventQueueMessage()
-
-    data class SetDeviceId(val deviceId: String) : EventQueueMessage()
+    data class SetIdentity(val field: IdentityField) : EventQueueMessage()
 }
