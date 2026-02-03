@@ -17,7 +17,7 @@ open class ContextPlugin : Plugin {
     }
 
     protected open fun setDeviceId(deviceId: String) {
-        amplitude.setDeviceId(deviceId)
+        amplitude.setDeviceIdDuringInit(deviceId)
     }
 
     private fun initializeDeviceId(configuration: Configuration) {

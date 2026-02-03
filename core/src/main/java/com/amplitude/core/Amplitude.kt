@@ -163,14 +163,7 @@ open class Amplitude(
         EventBridgeContainer.getInstance(
             configuration.instanceName,
         ).eventBridge.setEventReceiver(EventChannel.EVENT, AnalyticsEventReceiver(this))
-        add(
-            object : ContextPlugin() {
-                override fun setDeviceId(deviceId: String) {
-                    // set device id immediately, don't wait for isBuilt
-                    setDeviceIdInternal(deviceId)
-                }
-            },
-        )
+        add(ContextPlugin())
         add(GetAmpliExtrasPlugin())
         add(AmplitudeDestination())
     }
@@ -303,6 +296,18 @@ open class Amplitude(
      */
     protected fun setDeviceIdInternal(deviceId: String) {
         idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
+    }
+
+    /**
+     * Internal method for setting device id during initialization.
+     * This method sets deviceId immediately without awaiting isBuilt,
+     * avoiding the await cycle when called from ContextPlugin.initializeDeviceId().
+     *
+     * This should only be used during SDK initialization. For post-initialization
+     * device ID changes, use the public setDeviceId() method.
+     */
+    internal fun setDeviceIdDuringInit(deviceId: String) {
+        setDeviceIdInternal(deviceId)
     }
 
     /**

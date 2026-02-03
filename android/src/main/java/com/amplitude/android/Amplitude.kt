@@ -94,13 +94,7 @@ open class Amplitude internal constructor(
         if (this.configuration.offline != AndroidNetworkConnectivityCheckerPlugin.Disabled) {
             add(AndroidNetworkConnectivityCheckerPlugin())
         }
-        androidContextPlugin =
-            object : AndroidContextPlugin() {
-                override fun setDeviceId(deviceId: String) {
-                    // call internal method to set deviceId immediately i.e. dont' wait for build() to complete
-                    this@Amplitude.setDeviceIdInternal(deviceId)
-                }
-            }
+        androidContextPlugin = AndroidContextPlugin()
         add(androidContextPlugin)
         add(GetAmpliExtrasPlugin())
         add(AndroidLifecyclePlugin(activityLifecycleCallbacks))
@@ -109,6 +103,18 @@ open class Amplitude internal constructor(
         add(AmplitudeDestination())
 
         (timeline as Timeline).start()
+    }
+
+    /**
+     * Internal method for setting device id during initialization.
+     * This method sets deviceId immediately without awaiting isBuilt,
+     * avoiding the await cycle when called from AndroidContextPlugin.initializeDeviceId().
+     *
+     * This should only be used during SDK initialization. For post-initialization
+     * device ID changes, use the public setDeviceId() method.
+     */
+    internal fun setDeviceIdDuringInit(deviceId: String) {
+        setDeviceIdInternal(deviceId)
     }
 
     /**

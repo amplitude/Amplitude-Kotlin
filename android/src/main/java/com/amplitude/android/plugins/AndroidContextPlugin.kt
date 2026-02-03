@@ -165,7 +165,7 @@ open class AndroidContextPlugin : Plugin {
     }
 
     protected open fun setDeviceId(deviceId: String) {
-        amplitude.setDeviceId(deviceId)
+        (amplitude as com.amplitude.android.Amplitude).setDeviceIdDuringInit(deviceId)
     }
 
     companion object {
