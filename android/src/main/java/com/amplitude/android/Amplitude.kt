@@ -21,7 +21,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.launch
 import java.io.File
 import java.util.concurrent.Executors
 import com.amplitude.core.Amplitude as CoreAmplitude
@@ -43,7 +42,7 @@ open class Amplitude internal constructor(
     ) {
     constructor(configuration: Configuration) : this(configuration, State())
 
-    private lateinit var androidContextPlugin: AndroidContextPlugin
+    internal lateinit var androidContextPlugin: AndroidContextPlugin
 
     val sessionId: Long
         get() {
@@ -126,11 +125,7 @@ open class Amplitude internal constructor(
      */
     override fun reset(): Amplitude {
         this.setUserId(null)
-        amplitudeScope.launch(amplitudeDispatcher) {
-            isBuilt.await()
-            idContainer.identityManager.editIdentity().setDeviceId(null).commit()
-            androidContextPlugin.initializeDeviceId(configuration as Configuration)
-        }
+        (timeline as Timeline).queueSetIdentity(IdentityField.ResetDeviceId)
         return this
     }
 
