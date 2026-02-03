@@ -294,13 +294,16 @@ open class Amplitude(
 
     /**
      * Set the user id (can be null).
-     * The identity change is queued through the Timeline to ensure proper ordering with events.
      *
      * @param userId custom user id
      * @return the Amplitude instance
      */
-    fun setUserId(userId: String?): Amplitude {
-        timeline.queueSetUserId(userId)
+    open fun setUserId(userId: String?): Amplitude {
+        amplitudeScope.launch(amplitudeDispatcher) {
+            if (isBuilt.await()) {
+                idContainer.identityManager.editIdentity().setUserId(userId).commit()
+            }
+        }
         return this
     }
 
@@ -315,13 +318,16 @@ open class Amplitude(
 
     /**
      * Sets a custom device id. <b>Note: only do this if you know what you are doing!</b>
-     * The identity change is queued through the Timeline to ensure proper ordering with events.
      *
      * @param deviceId custom device id
      * @return the Amplitude instance
      */
-    fun setDeviceId(deviceId: String): Amplitude {
-        timeline.queueSetDeviceId(deviceId)
+    open fun setDeviceId(deviceId: String): Amplitude {
+        amplitudeScope.launch(amplitudeDispatcher) {
+            if (isBuilt.await()) {
+                idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
+            }
+        }
         return this
     }
 

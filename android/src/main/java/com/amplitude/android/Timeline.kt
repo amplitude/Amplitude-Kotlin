@@ -85,7 +85,7 @@ class Timeline(
      * Queue a user ID change to be processed in order with events.
      * This ensures identity changes happen in FIFO order with other events.
      */
-    override fun queueSetUserId(userId: String?) {
+    internal fun queueSetUserId(userId: String?) {
         eventMessageChannel.trySend(EventQueueMessage.SetUserId(userId))
             .logOnFailure("Failed to enqueue SetUserId. Channel is closed or full.")
     }
@@ -94,7 +94,7 @@ class Timeline(
      * Queue a device ID change to be processed in order with events.
      * This ensures identity changes happen in FIFO order with other events.
      */
-    override fun queueSetDeviceId(deviceId: String) {
+    internal fun queueSetDeviceId(deviceId: String) {
         eventMessageChannel.trySend(EventQueueMessage.SetDeviceId(deviceId))
             .logOnFailure("Failed to enqueue SetDeviceId. Channel is closed or full.")
     }
