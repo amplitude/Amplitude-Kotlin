@@ -5,9 +5,10 @@ internal object Sample {
         seed: String,
         sampleRate: Double,
     ): Boolean {
-        val hash = Hash.javaStyleHash64(seed)
-        val scaledHash = (hash * 31uL) % 100_000uL
-        val threshold = (sampleRate * 100_000).toLong().coerceAtLeast(0).toULong()
-        return scaledHash < threshold
+        val hash = Hash.xxHash32(seed).toULong()
+        val hashMultiply = hash * 31uL
+        val hashMod = hashMultiply % 1_000_000uL
+        val effectiveSampleRate = hashMod.toDouble() / 1_000_000.0
+        return effectiveSampleRate < sampleRate
     }
 }
