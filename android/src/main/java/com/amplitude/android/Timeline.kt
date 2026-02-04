@@ -6,7 +6,6 @@ import com.amplitude.android.EventQueueMessage.EnterForeground
 import com.amplitude.android.EventQueueMessage.Event
 import com.amplitude.android.EventQueueMessage.ExitForeground
 import com.amplitude.android.EventQueueMessage.SetIdentity
-import com.amplitude.android.IdentityChange.ResetDeviceId
 import com.amplitude.core.Storage
 import com.amplitude.core.Storage.Constants
 import com.amplitude.core.Storage.Constants.LAST_EVENT_ID
@@ -20,7 +19,6 @@ import kotlinx.coroutines.channels.onFailure
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
-import com.amplitude.android.Amplitude as AndroidAmplitude
 
 private const val DEFAULT_SESSION_ID = -1L
 private const val DEFAULT_EVENT_ID_OR_TIME = 0L
@@ -88,8 +86,8 @@ class Timeline(
      * Queue an identity change to be processed in order with events.
      * This ensures identity changes happen in FIFO order with other events.
      */
-    internal fun queueSetIdentity(change: IdentityChange) {
-        eventMessageChannel.trySendAndLog(SetIdentity(change))
+    internal fun queueSetIdentity(identity: Identity) {
+        eventMessageChannel.trySendAndLog(SetIdentity(identity))
     }
 
     /**
@@ -110,21 +108,10 @@ class Timeline(
                 refreshSessionTime(message.timestamp)
             }
             is SetIdentity -> {
-                val editIdentity = amplitude.idContainer.identityManager.editIdentity()
-
-                when (val change = message.change) {
-                    is IdentityChange.SetIdentity ->
-                        editIdentity
-                            .setUserId(change.identity.userId)
-                            .setDeviceId(change.identity.deviceId)
-                            .commit()
-                    is ResetDeviceId -> {
-                        val androidAmplitude = amplitude as AndroidAmplitude
-                        editIdentity.setDeviceId(null).commit()
-                        val newDeviceId = androidAmplitude.androidContextPlugin.generateDeviceId()
-                        editIdentity.setDeviceId(newDeviceId).commit()
-                    }
-                }
+                amplitude.idContainer.identityManager.editIdentity()
+                    .setUserId(message.identity.userId)
+                    .setDeviceId(message.identity.deviceId)
+                    .commit()
             }
         }
     }
@@ -246,12 +233,6 @@ class Timeline(
     }
 }
 
-sealed class IdentityChange {
-    data class SetIdentity(val identity: Identity) : IdentityChange()
-
-    data object ResetDeviceId : IdentityChange()
-}
-
 sealed class EventQueueMessage {
     data class Event(val event: BaseEvent) : EventQueueMessage()
 
@@ -259,5 +240,5 @@ sealed class EventQueueMessage {
 
     data class ExitForeground(val timestamp: Long) : EventQueueMessage()
 
-    data class SetIdentity(val change: IdentityChange) : EventQueueMessage()
+    data class SetIdentity(val identity: Identity) : EventQueueMessage()
 }

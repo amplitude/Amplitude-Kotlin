@@ -15,31 +15,42 @@ class State {
     var userId: String?
         get() = synchronized(lock) { _identity.userId }
         set(value) {
-            setIdentityInternal(Identity(userId = value, deviceId = _identity.deviceId))
+            synchronized(lock) {
+                applyIdentityChange(Identity(userId = value, deviceId = _identity.deviceId))
+            }
         }
 
     // Delegating property for backwards compatibility
     var deviceId: String?
         get() = synchronized(lock) { _identity.deviceId }
         set(value) {
-            setIdentityInternal(Identity(userId = _identity.userId, deviceId = value))
+            synchronized(lock) {
+                applyIdentityChange(Identity(userId = _identity.userId, deviceId = value))
+            }
         }
 
     private fun setIdentityInternal(newIdentity: Identity) {
         synchronized(lock) {
-            val oldIdentity = _identity
-            if (oldIdentity == newIdentity) return // Idempotent
+            applyIdentityChange(newIdentity)
+        }
+    }
 
-            _identity = newIdentity
+    /**
+     * Apply an identity change. Must be called while holding [lock].
+     */
+    private fun applyIdentityChange(newIdentity: Identity) {
+        val oldIdentity = _identity
+        if (oldIdentity == newIdentity) return // Idempotent
 
-            val userIdChanged = oldIdentity.userId != newIdentity.userId
-            val deviceIdChanged = oldIdentity.deviceId != newIdentity.deviceId
+        _identity = newIdentity
 
-            plugins.toList().forEach { plugin ->
-                if (userIdChanged) plugin.onUserIdChanged(newIdentity.userId)
-                if (deviceIdChanged) plugin.onDeviceIdChanged(newIdentity.deviceId)
-                plugin.onIdentityChanged(newIdentity)
-            }
+        val userIdChanged = oldIdentity.userId != newIdentity.userId
+        val deviceIdChanged = oldIdentity.deviceId != newIdentity.deviceId
+
+        plugins.toList().forEach { plugin ->
+            if (userIdChanged) plugin.onUserIdChanged(newIdentity.userId)
+            if (deviceIdChanged) plugin.onDeviceIdChanged(newIdentity.deviceId)
+            plugin.onIdentityChanged(newIdentity)
         }
     }
 

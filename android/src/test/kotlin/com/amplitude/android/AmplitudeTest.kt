@@ -420,6 +420,55 @@ class AmplitudeTest {
             )
         }
 
+    /**
+     * Test that reset() updates deviceId immediately before subsequent events.
+     * After reset(), the next tracked event should have a NEW deviceId (not the old one).
+     */
+    @Test
+    fun amplitude_reset_should_update_deviceId_before_subsequent_events() =
+        runTest {
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = createConfiguration(),
+                )
+            val fakeEventPlugin = FakeEventPlugin()
+            amplitude.add(fakeEventPlugin)
+            amplitude.isBuilt.await()
+            advanceUntilIdle()
+
+            // Set initial identity
+            amplitude.setUserId("initial-user")
+            amplitude.setDeviceId("initial-device-id")
+            advanceUntilIdle()
+
+            val deviceIdBeforeReset = amplitude.store.deviceId
+
+            // Reset and immediately track an event
+            amplitude.reset()
+            val event = BaseEvent()
+            event.eventType = "test_after_reset"
+            amplitude.track(event)
+            advanceUntilIdle()
+
+            // The event should have a NEW deviceId (not the old one)
+            val trackedEvent = fakeEventPlugin.trackedEvents.find { it.eventType == "test_after_reset" }
+            assertNotNull("Event should have been tracked", trackedEvent)
+            assertNull(
+                "Event should have null userId after reset",
+                trackedEvent!!.userId,
+            )
+            assertNotEquals(
+                "Event should have a NEW deviceId after reset",
+                deviceIdBeforeReset,
+                trackedEvent.deviceId,
+            )
+            assertNotNull(
+                "Event deviceId should not be null",
+                trackedEvent.deviceId,
+            )
+        }
+
     companion object {
         private const val INSTANCE_NAME = "testInstance"
     }

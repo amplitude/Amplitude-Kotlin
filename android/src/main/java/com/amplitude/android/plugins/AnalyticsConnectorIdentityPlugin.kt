@@ -3,7 +3,6 @@ package com.amplitude.android.plugins
 import com.amplitude.analytics.connector.AnalyticsConnector
 import com.amplitude.core.Amplitude
 import com.amplitude.core.platform.ObservePlugin
-import com.amplitude.id.Identity
 import com.amplitude.analytics.connector.Identity as ConnectorIdentity
 
 internal class AnalyticsConnectorIdentityPlugin : ObservePlugin() {
@@ -25,9 +24,5 @@ internal class AnalyticsConnectorIdentityPlugin : ObservePlugin() {
 
     override fun onDeviceIdChanged(deviceId: String?) {
         connector.identityStore.editIdentity().setDeviceId(deviceId).commit()
-    }
-
-    override fun onIdentityChanged(identity: Identity) {
-        // Per-field callbacks already handle updates
     }
 }

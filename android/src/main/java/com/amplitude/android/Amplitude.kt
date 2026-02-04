@@ -120,15 +120,19 @@ open class Amplitude internal constructor(
 
     /**
      * Reset identity:
-     *  - reset userId to "null"
-     *  - reset deviceId via AndroidContextPlugin
+     *  - reset userId to null
+     *  - generate and set a new deviceId
      * @return the Amplitude instance
      */
     override fun reset(): Amplitude {
-        // setUserId handles immediate notification + queued persistence
-        this.setUserId(null)
-        // QUEUED: Reset deviceId with new generation
-        (timeline as Timeline).queueSetIdentity(IdentityChange.ResetDeviceId)
+        // IMMEDIATE: Clear identity first so generateDeviceId() creates a new one
+        store.userId = null
+        store.deviceId = null
+        // Generate new deviceId (won't reuse store since we cleared it)
+        val newDeviceId = androidContextPlugin.generateDeviceId()
+        store.deviceId = newDeviceId
+        // QUEUED: For event ordering + persistence
+        (timeline as Timeline).queueSetIdentity(store.identity)
         return this
     }
 
@@ -136,7 +140,7 @@ open class Amplitude internal constructor(
         // IMMEDIATE: Update state, triggers ObservePlugins
         store.userId = userId
         // QUEUED: For event ordering + persistence
-        (timeline as Timeline).queueSetIdentity(IdentityChange.SetIdentity(store.identity))
+        (timeline as Timeline).queueSetIdentity(store.identity)
         return this
     }
 
@@ -144,7 +148,7 @@ open class Amplitude internal constructor(
         // IMMEDIATE: Update state, triggers ObservePlugins
         store.deviceId = deviceId
         // QUEUED: For event ordering + persistence
-        (timeline as Timeline).queueSetIdentity(IdentityChange.SetIdentity(store.identity))
+        (timeline as Timeline).queueSetIdentity(store.identity)
         return this
     }
 
