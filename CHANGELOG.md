@@ -1,3 +1,10 @@
+# [1.24.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.23.1...v1.24.0) (2026-02-04)
+
+
+### Features
+
+* upload body as gzip ([#348](https://github.com/amplitude/Amplitude-Kotlin/issues/348)) ([92a0463](https://github.com/amplitude/Amplitude-Kotlin/commit/92a04639aa04514e05fb20df390459d5a721435f))
+
 ## [1.23.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.23.0...v1.23.1) (2026-01-21)
 
 
