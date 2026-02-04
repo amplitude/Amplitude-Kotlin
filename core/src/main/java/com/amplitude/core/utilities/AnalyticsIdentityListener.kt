@@ -19,9 +19,7 @@ class AnalyticsIdentityListener(private val state: State) : IdentityListener {
         updateType: IdentityUpdateType,
     ) {
         if (updateType == IdentityUpdateType.Initialized) {
-            state.userId = identity.userId
-            state.deviceId = identity.deviceId
-            // TODO("update device id based on configuration")
+            state.identity = identity
         }
     }
 }

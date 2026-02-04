@@ -5,6 +5,7 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.GroupIdentifyEvent
 import com.amplitude.core.events.IdentifyEvent
 import com.amplitude.core.events.RevenueEvent
+import com.amplitude.id.Identity
 
 interface Plugin {
     enum class Type {
@@ -111,6 +112,14 @@ abstract class ObservePlugin : Plugin {
     abstract fun onUserIdChanged(userId: String?)
 
     abstract fun onDeviceIdChanged(deviceId: String?)
+
+    /**
+     * Called when identity changes. Invoked after per-field callbacks.
+     * Default empty implementation for backwards compatibility.
+     */
+    open fun onIdentityChanged(identity: Identity) {
+        // Default empty implementation
+    }
 
     final override fun execute(event: BaseEvent): BaseEvent? {
         return null

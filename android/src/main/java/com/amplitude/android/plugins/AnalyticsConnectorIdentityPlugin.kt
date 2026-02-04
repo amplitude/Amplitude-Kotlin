@@ -1,9 +1,10 @@
 package com.amplitude.android.plugins
 
 import com.amplitude.analytics.connector.AnalyticsConnector
-import com.amplitude.analytics.connector.Identity
 import com.amplitude.core.Amplitude
 import com.amplitude.core.platform.ObservePlugin
+import com.amplitude.id.Identity
+import com.amplitude.analytics.connector.Identity as ConnectorIdentity
 
 internal class AnalyticsConnectorIdentityPlugin : ObservePlugin() {
     override lateinit var amplitude: Amplitude
@@ -13,8 +14,9 @@ internal class AnalyticsConnectorIdentityPlugin : ObservePlugin() {
         super.setup(amplitude)
         val instanceName = amplitude.configuration.instanceName
         connector = AnalyticsConnector.getInstance(instanceName)
-        // Set user ID and device ID in core identity store for use in Experiment SDK
-        connector.identityStore.setIdentity(Identity(amplitude.store.userId, amplitude.store.deviceId))
+        // Use unified identity access
+        val identity = amplitude.store.identity
+        connector.identityStore.setIdentity(ConnectorIdentity(identity.userId, identity.deviceId))
     }
 
     override fun onUserIdChanged(userId: String?) {
@@ -23,5 +25,9 @@ internal class AnalyticsConnectorIdentityPlugin : ObservePlugin() {
 
     override fun onDeviceIdChanged(deviceId: String?) {
         connector.identityStore.editIdentity().setDeviceId(deviceId).commit()
+    }
+
+    override fun onIdentityChanged(identity: Identity) {
+        // Per-field callbacks already handle updates
     }
 }

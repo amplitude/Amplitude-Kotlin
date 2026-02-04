@@ -125,18 +125,26 @@ open class Amplitude internal constructor(
      * @return the Amplitude instance
      */
     override fun reset(): Amplitude {
+        // setUserId handles immediate notification + queued persistence
         this.setUserId(null)
-        (timeline as Timeline).queueSetIdentity(IdentityField.ResetDeviceId)
+        // QUEUED: Reset deviceId with new generation
+        (timeline as Timeline).queueSetIdentity(IdentityChange.ResetDeviceId)
         return this
     }
 
     override fun setUserId(userId: String?): Amplitude {
-        (timeline as Timeline).queueSetIdentity(IdentityField.UserId(userId))
+        // IMMEDIATE: Update state, triggers ObservePlugins
+        store.userId = userId
+        // QUEUED: For event ordering + persistence
+        (timeline as Timeline).queueSetIdentity(IdentityChange.SetIdentity(store.identity))
         return this
     }
 
     override fun setDeviceId(deviceId: String): Amplitude {
-        (timeline as Timeline).queueSetIdentity(IdentityField.DeviceId(deviceId))
+        // IMMEDIATE: Update state, triggers ObservePlugins
+        store.deviceId = deviceId
+        // QUEUED: For event ordering + persistence
+        (timeline as Timeline).queueSetIdentity(IdentityChange.SetIdentity(store.identity))
         return this
     }
 

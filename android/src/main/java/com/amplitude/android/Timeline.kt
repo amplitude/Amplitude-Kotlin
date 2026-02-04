@@ -6,9 +6,7 @@ import com.amplitude.android.EventQueueMessage.EnterForeground
 import com.amplitude.android.EventQueueMessage.Event
 import com.amplitude.android.EventQueueMessage.ExitForeground
 import com.amplitude.android.EventQueueMessage.SetIdentity
-import com.amplitude.android.IdentityField.DeviceId
-import com.amplitude.android.IdentityField.ResetDeviceId
-import com.amplitude.android.IdentityField.UserId
+import com.amplitude.android.IdentityChange.ResetDeviceId
 import com.amplitude.core.Storage
 import com.amplitude.core.Storage.Constants
 import com.amplitude.core.Storage.Constants.LAST_EVENT_ID
@@ -16,6 +14,7 @@ import com.amplitude.core.Storage.Constants.LAST_EVENT_TIME
 import com.amplitude.core.Storage.Constants.PREVIOUS_SESSION_ID
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Timeline
+import com.amplitude.id.Identity
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.onFailure
 import kotlinx.coroutines.launch
@@ -86,11 +85,11 @@ class Timeline(
     }
 
     /**
-     * Queue an identity field change to be processed in order with events.
+     * Queue an identity change to be processed in order with events.
      * This ensures identity changes happen in FIFO order with other events.
      */
-    internal fun queueSetIdentity(field: IdentityField) {
-        eventMessageChannel.trySendAndLog(SetIdentity(field))
+    internal fun queueSetIdentity(change: IdentityChange) {
+        eventMessageChannel.trySendAndLog(SetIdentity(change))
     }
 
     /**
@@ -113,9 +112,12 @@ class Timeline(
             is SetIdentity -> {
                 val editIdentity = amplitude.idContainer.identityManager.editIdentity()
 
-                when (val field = message.field) {
-                    is UserId -> editIdentity.setUserId(field.value).commit()
-                    is DeviceId -> editIdentity.setDeviceId(field.value).commit()
+                when (val change = message.change) {
+                    is IdentityChange.SetIdentity ->
+                        editIdentity
+                            .setUserId(change.identity.userId)
+                            .setDeviceId(change.identity.deviceId)
+                            .commit()
                     is ResetDeviceId -> {
                         val androidAmplitude = amplitude as AndroidAmplitude
                         editIdentity.setDeviceId(null).commit()
@@ -244,12 +246,10 @@ class Timeline(
     }
 }
 
-sealed class IdentityField {
-    data class UserId(val value: String?) : IdentityField()
+sealed class IdentityChange {
+    data class SetIdentity(val identity: Identity) : IdentityChange()
 
-    data class DeviceId(val value: String) : IdentityField()
-
-    data object ResetDeviceId : IdentityField()
+    data object ResetDeviceId : IdentityChange()
 }
 
 sealed class EventQueueMessage {
@@ -259,5 +259,5 @@ sealed class EventQueueMessage {
 
     data class ExitForeground(val timestamp: Long) : EventQueueMessage()
 
-    data class SetIdentity(val field: IdentityField) : EventQueueMessage()
+    data class SetIdentity(val change: IdentityChange) : EventQueueMessage()
 }
