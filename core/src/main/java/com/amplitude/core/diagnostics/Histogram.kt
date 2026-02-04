@@ -4,7 +4,6 @@ import org.json.JSONObject
 
 /**
  * Tracks histogram statistics including count, min, max, and sum.
- * Thread-safe through synchronized access.
  */
 internal class HistogramStats {
     private var count: Long = 0

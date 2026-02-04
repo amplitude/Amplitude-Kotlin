@@ -6,6 +6,7 @@ import com.amplitude.core.ServerZone
 import com.amplitude.core.remoteconfig.RemoteConfigClient
 import com.amplitude.core.utilities.Sample
 import com.amplitude.core.utilities.http.HttpClient
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -14,7 +15,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
-import java.util.HashMap
 import kotlin.math.min
 
 /**
@@ -80,9 +80,9 @@ internal class DiagnosticsClientImpl(
     }
 
     private class Buffer {
-        val tags: MutableMap<String, String> = HashMap()
-        val counters: MutableMap<String, Long> = HashMap()
-        val histograms: MutableMap<String, HistogramStats> = HashMap()
+        val tags: MutableMap<String, String> = mutableMapOf()
+        val counters: MutableMap<String, Long> = mutableMapOf()
+        val histograms: MutableMap<String, HistogramStats> = mutableMapOf()
         val events: ArrayDeque<DiagnosticsEvent> = ArrayDeque()
         val addedEvents: ArrayDeque<DiagnosticsEvent> = ArrayDeque()
 
@@ -154,17 +154,25 @@ internal class DiagnosticsClientImpl(
     private val actorJob: Job =
         coroutineScope.launch {
             while (isActive) {
-                val now = System.currentTimeMillis()
-                val nextTimeoutDelayMs = nextTimeoutDelayMs(now)
-                if (nextTimeoutDelayMs == null) {
-                    handleUpdate(channel.receive())
-                } else {
-                    val update = withTimeoutOrNull(nextTimeoutDelayMs) { channel.receive() }
-                    if (update != null) {
-                        handleUpdate(update)
+                try {
+                    val now = System.currentTimeMillis()
+                    val nextTimeoutDelayMs = nextTimeoutDelayMs(now)
+                    if (nextTimeoutDelayMs == null) {
+                        val result = channel.receiveCatching()
+                        if (result.isClosed) break
+                        result.getOrNull()?.let { handleUpdate(it) }
                     } else {
-                        handleTimeout()
+                        val update = withTimeoutOrNull(nextTimeoutDelayMs) { channel.receiveCatching().getOrNull() }
+                        if (update != null) {
+                            handleUpdate(update)
+                        } else {
+                            handleTimeout()
+                        }
                     }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    logger.error("DiagnosticsClient: Error in actor loop: ${e.message}")
                 }
             }
         }
@@ -190,12 +198,12 @@ internal class DiagnosticsClientImpl(
     }
 
     /**
-     * Closes the diagnostics client, cancelling the actor job and closing the channel.
-     * This prevents resource leaks when instances are abandoned.
+     * Closes the diagnostics client and allows the actor to finish processing queued operations.
+     * The actor will exit gracefully after processing remaining items in the channel.
+     * This is non-blocking; the storage will continue processing asynchronously.
      */
-    fun close() {
+    override fun close() {
         channel.close()
-        actorJob.cancel()
         storage.close()
     }
 
@@ -287,15 +295,17 @@ internal class DiagnosticsClientImpl(
 
         increment(name = "sampled.in.and.enabled")
 
-        val staticContext = mutableMapOf<String, String>()
         val contextInfo = contextProvider?.getContextInfo()
-        staticContext["version_name"] = contextInfo?.appVersion ?: ""
-        staticContext["device_manufacturer"] = contextInfo?.manufacturer ?: ""
-        staticContext["device_model"] = contextInfo?.model ?: ""
-        staticContext["os_name"] = contextInfo?.osName ?: ""
-        staticContext["os_version"] = contextInfo?.osVersion ?: ""
-        staticContext["platform"] = contextInfo?.platform ?: ""
-        staticContext["sdk.${Constants.SDK_LIBRARY}.version"] = Constants.SDK_VERSION
+        val staticContext =
+            buildMap {
+                put("version_name", contextInfo?.appVersion ?: "")
+                put("device_manufacturer", contextInfo?.manufacturer ?: "")
+                put("device_model", contextInfo?.model ?: "")
+                put("os_name", contextInfo?.osName ?: "")
+                put("os_version", contextInfo?.osVersion ?: "")
+                put("platform", contextInfo?.platform ?: "")
+                put("sdk.${Constants.SDK_LIBRARY}.version", Constants.SDK_VERSION)
+            }
 
         setTags(staticContext)
     }
@@ -321,8 +331,8 @@ internal class DiagnosticsClientImpl(
                 ensureFlushDeadlineIfAllowed()
             }
             is Update.RecordHistogram -> {
-                val historgram = activeBuffer.histograms.getOrPut(update.key) { HistogramStats() }
-                historgram.record(update.value)
+                val histogram = activeBuffer.histograms.getOrPut(update.key) { HistogramStats() }
+                histogram.record(update.value)
                 activeBuffer.histogramsChanged = true
                 ensureStorageDeadlineIfAllowed()
                 ensureFlushDeadlineIfAllowed()
@@ -371,8 +381,8 @@ internal class DiagnosticsClientImpl(
     private fun handleTimeout() {
         val now = System.currentTimeMillis()
 
-        val flushDue = flushAtMs != null && flushAtMs!! <= now
-        val storageDue = storageAtMs != null && storageAtMs!! <= now
+        val flushDue = flushAtMs?.let { it <= now } ?: false
+        val storageDue = storageAtMs?.let { it <= now } ?: false
 
         if (flushDue) {
             flushAtMs = null

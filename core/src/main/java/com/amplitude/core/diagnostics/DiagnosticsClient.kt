@@ -64,4 +64,9 @@ interface DiagnosticsClient {
      * Flush all collected diagnostics data to the server.
      */
     fun flush()
+
+    /**
+     * Close the diagnostics client and release resources.
+     */
+    fun close()
 }

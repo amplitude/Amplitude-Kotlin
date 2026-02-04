@@ -167,19 +167,7 @@ internal class InMemoryResponseHandler(
     ) {
         if (events.isNotEmpty()) {
             scope.launch(storageDispatcher) {
-                if (status in 200..299) {
-                    diagnosticsClient.increment(name = "analytics.events.sent", size = events.size.toLong())
-                } else {
-                    diagnosticsClient.increment(name = "analytics.events.dropped", size = events.size.toLong())
-                    val properties: Map<String, Any> =
-                        mapOf(
-                            "events" to events.map { it.eventType },
-                            "count" to events.size,
-                            "code" to status,
-                            "message" to message,
-                        )
-                    diagnosticsClient.recordEvent(name = "analytics.events.dropped", properties = properties)
-                }
+                diagnosticsClient.recordEventOutcome(events, status, message)
             }
         }
         events.forEach { event ->

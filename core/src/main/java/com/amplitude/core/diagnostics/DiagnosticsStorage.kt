@@ -62,21 +62,25 @@ internal class DiagnosticsStorage(
     private val actorJob: Job =
         coroutineScope.launch(storageIODispatcher) {
             while (isActive) {
-                try {
-                    when (val operation = channel.receive()) {
-                        is Operation.SaveSnapshot -> {
-                            val directory = activeStorageDirectory()
-                            ensureDirectoryExists(directory)
-                            persistSnapshot(operation.snapshot, directory)
+                val result = channel.receiveCatching()
+                if (result.isClosed) break
+                result.getOrNull()?.let { operation ->
+                    try {
+                        when (operation) {
+                            is Operation.SaveSnapshot -> {
+                                val directory = activeStorageDirectory()
+                                ensureDirectoryExists(directory)
+                                persistSnapshot(operation.snapshot, directory)
+                            }
+                            is Operation.DeleteActiveFiles -> {
+                                removeActiveFiles()
+                            }
                         }
-                        is Operation.DeleteActiveFiles -> {
-                            removeActiveFiles()
-                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        logger.error("DiagnosticsStorage: Error processing operation: ${e.message}")
                     }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    logger.error("DiagnosticsStorage: Error processing operation: ${e.message}")
                 }
             }
         }
@@ -90,12 +94,21 @@ internal class DiagnosticsStorage(
     }
 
     /**
-     * Closes the storage, cancelling the actor job and closing the channel.
-     * This prevents resource leaks when instances are abandoned.
+     * Closes the storage channel and allows the actor to finish processing queued operations.
+     * The actor will exit gracefully after processing remaining items in the channel.
+     * This is non-blocking; use [closeAndJoin] if you need to wait for completion.
      */
     fun close() {
         channel.close()
-        actorJob.cancel()
+    }
+
+    /**
+     * Closes the storage and waits for all queued operations to complete.
+     * Use this when you need to ensure all pending writes are flushed before proceeding.
+     */
+    suspend fun closeAndJoin() {
+        channel.close()
+        actorJob.join()
     }
 
     /**
