@@ -73,7 +73,7 @@ class MainApplication : Application() {
             },
         )
 
-        // add the trouble shooting plugin for debugging
+        // add the troubleshooting plugin for debugging
         amplitude.add(TroubleShootingPlugin())
 
         // identify a sample user

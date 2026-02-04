@@ -74,6 +74,7 @@ open class Configuration(
         offline,
         deviceId,
         sessionId,
+        httpClient,
         enableDiagnostics = enableDiagnostics,
     ) {
     companion object {
