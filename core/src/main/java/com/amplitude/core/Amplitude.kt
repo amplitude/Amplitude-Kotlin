@@ -184,9 +184,8 @@ open class Amplitude(
         EventBridgeContainer.getInstance(
             configuration.instanceName,
         ).eventBridge.setEventReceiver(EventChannel.EVENT, AnalyticsEventReceiver(this))
-        val contextPlugin = ContextPlugin()
-        add(contextPlugin)
-        contextPlugin.generateDeviceId()?.let { setDeviceId(it) }
+        configuration.deviceId?.let { setDeviceId(it) }
+        add(ContextPlugin())
         add(GetAmpliExtrasPlugin())
         add(AmplitudeDestination())
     }

@@ -10,16 +10,6 @@ open class ContextPlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Before
     override lateinit var amplitude: Amplitude
 
-    /**
-     * Generate a device ID based on platform-specific logic.
-     * Subclasses can override to provide platform-specific generation (e.g., advertising ID).
-     *
-     * @return the generated device ID, or null if no deviceId is configured
-     */
-    open fun generateDeviceId(): String? {
-        return amplitude.configuration.deviceId
-    }
-
     override fun execute(event: BaseEvent): BaseEvent? {
         applyContextData(event)
         return event

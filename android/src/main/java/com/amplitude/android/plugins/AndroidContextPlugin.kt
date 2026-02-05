@@ -36,26 +36,11 @@ open class AndroidContextPlugin : ContextPlugin() {
     }
 
     /**
-     * Generate a device ID using Android-specific logic.
-     * Priority: configuration -> store (if not forceNew) -> advertising ID -> app set ID -> random UUID
-     *
-     * @param forceNew If true, skip checking the store and generate a fresh deviceId
-     * @return the generated device ID (never null for Android)
+     * Create a device ID from available sources.
+     * Priority: advertising ID -> app set ID -> random UUID
      */
-    fun generateDeviceId(forceNew: Boolean = false): String {
+    internal fun createDeviceId(): String {
         val configuration = amplitude.configuration as Configuration
-
-        // Check configuration (always respected, even with forceNew)
-        configuration.deviceId?.let { return it }
-
-        // Check store (skip if forcing new)
-        if (!forceNew) {
-            amplitude.store.deviceId?.let { deviceId ->
-                if (validDeviceId(deviceId) && !deviceId.endsWith("S")) {
-                    return deviceId
-                }
-            }
-        }
 
         // Check advertising ID (if enabled and not per-install)
         if (!configuration.newDeviceIdPerInstall &&
@@ -73,13 +58,13 @@ open class AndroidContextPlugin : ContextPlugin() {
         if (configuration.useAppSetIdForDeviceId) {
             contextProvider.appSetId?.let { appSetId ->
                 if (validDeviceId(appSetId)) {
-                    return "${appSetId}S"
+                    return "$appSetId$DEVICE_ID_SUFFIX_APP_SET_ID"
                 }
             }
         }
 
         // Generate random ID
-        return UUID.randomUUID().toString() + "R"
+        return UUID.randomUUID().toString() + DEVICE_ID_SUFFIX_RANDOM
     }
 
     @Deprecated(
@@ -87,7 +72,11 @@ open class AndroidContextPlugin : ContextPlugin() {
         replaceWith = ReplaceWith("generateDeviceId()"),
     )
     fun initializeDeviceId(configuration: Configuration) {
-        amplitude.setDeviceId(generateDeviceId(forceNew = false))
+        val deviceId =
+            configuration.deviceId
+                ?: amplitude.store.deviceId?.takeIf { validDeviceId(it, allowAppSetId = false) }
+                ?: createDeviceId()
+        amplitude.setDeviceId(deviceId)
     }
 
     @Deprecated(
@@ -193,11 +182,33 @@ open class AndroidContextPlugin : ContextPlugin() {
         const val PLATFORM = "Android"
         const val SDK_LIBRARY = "amplitude-analytics-android"
         const val SDK_VERSION = BuildConfig.AMPLITUDE_VERSION
+
+        /**
+         * Device ID suffix indicating the ID was derived from App Set ID.
+         *
+         * When a stored device ID ends with this suffix, [createDeviceId] will attempt
+         * to regenerate it to potentially upgrade to a better identifier (e.g., advertising ID
+         * if the user later grants permission).
+         */
+        private const val DEVICE_ID_SUFFIX_APP_SET_ID = "S"
+
+        /**
+         * Device ID suffix indicating the ID is a randomly generated UUID.
+         */
+        private const val DEVICE_ID_SUFFIX_RANDOM = "R"
+
         private val INVALID_DEVICE_IDS =
             setOf("", "9774d56d682e549c", "unknown", "000000000000000", "Android", "DEFACE", "00000000-0000-0000-0000-000000000000")
 
-        fun validDeviceId(deviceId: String): Boolean {
-            return !(deviceId.isEmpty() || INVALID_DEVICE_IDS.contains(deviceId))
+        fun validDeviceId(
+            deviceId: String,
+            allowAppSetId: Boolean = true,
+        ): Boolean {
+            return when {
+                deviceId.isEmpty() || INVALID_DEVICE_IDS.contains(deviceId) -> false
+                !allowAppSetId && deviceId.endsWith(DEVICE_ID_SUFFIX_APP_SET_ID) -> false
+                else -> true
+            }
         }
     }
 }

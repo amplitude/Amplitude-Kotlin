@@ -7,6 +7,7 @@ import com.amplitude.android.migration.MigrationManager
 import com.amplitude.android.plugins.AnalyticsConnectorIdentityPlugin
 import com.amplitude.android.plugins.AnalyticsConnectorPlugin
 import com.amplitude.android.plugins.AndroidContextPlugin
+import com.amplitude.android.plugins.AndroidContextPlugin.Companion.validDeviceId
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.android.plugins.AndroidNetworkConnectivityCheckerPlugin
 import com.amplitude.android.storage.AndroidStorageContextV3
@@ -99,7 +100,11 @@ open class Amplitude internal constructor(
         }
         androidContextPlugin = AndroidContextPlugin()
         add(androidContextPlugin)
-        setDeviceId(androidContextPlugin.generateDeviceId(forceNew = false))
+        val deviceId =
+            configuration.deviceId
+                ?: store.deviceId?.takeIf { validDeviceId(it, allowAppSetId = false) }
+                ?: androidContextPlugin.createDeviceId()
+        setDeviceId(deviceId)
         add(GetAmpliExtrasPlugin())
         add(AndroidLifecyclePlugin(activityLifecycleCallbacks))
         add(AnalyticsConnectorIdentityPlugin())
@@ -130,7 +135,7 @@ open class Amplitude internal constructor(
             logger.error("Cannot reset identity before Amplitude is initialized.")
             return this
         }
-        val newDeviceId = androidContextPlugin.generateDeviceId(forceNew = true)
+        val newDeviceId = configuration.deviceId ?: androidContextPlugin.createDeviceId()
         val newIdentity = Identity(userId = null, deviceId = newDeviceId)
         store.identity = newIdentity
         (timeline as Timeline).queueSetIdentity(newIdentity)
