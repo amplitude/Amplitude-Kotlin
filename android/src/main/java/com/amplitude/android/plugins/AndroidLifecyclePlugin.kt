@@ -25,7 +25,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import com.amplitude.android.Amplitude as AndroidAmplitude
 
-@OptIn(GuardedAmplitudeFeature::class)
+@OptIn(GuardedAmplitudeFeature::class, RestrictedAmplitudeFeature::class)
 class AndroidLifecyclePlugin(
     private val activityLifecycleObserver: ActivityLifecycleObserver,
 ) : Application.ActivityLifecycleCallbacks,
@@ -48,7 +48,6 @@ class AndroidLifecyclePlugin(
     @VisibleForTesting
     internal var eventJob: Job? = null
 
-    @OptIn(RestrictedAmplitudeFeature::class)
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
         androidAmplitude = amplitude as AndroidAmplitude

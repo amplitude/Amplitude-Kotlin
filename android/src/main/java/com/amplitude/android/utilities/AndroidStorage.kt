@@ -21,7 +21,6 @@ import org.json.JSONArray
 
 @OptIn(RestrictedAmplitudeFeature::class)
 class AndroidStorage
-    @OptIn(RestrictedAmplitudeFeature::class)
     internal constructor(
         context: Context,
         val storageKey: String,

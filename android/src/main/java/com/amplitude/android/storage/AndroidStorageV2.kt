@@ -25,8 +25,8 @@ import kotlinx.coroutines.CoroutineScope
 import org.json.JSONArray
 import java.io.File
 
+@OptIn(RestrictedAmplitudeFeature::class)
 class AndroidStorageV2
-    @OptIn(RestrictedAmplitudeFeature::class)
     internal constructor(
         /**
          * A generic key to differentiate multiple storage instances.
@@ -107,7 +107,6 @@ class AndroidStorageV2
             return eventsFile.getEventString(filePath as String)
         }
 
-        @OptIn(RestrictedAmplitudeFeature::class)
         override fun getResponseHandler(
             eventPipeline: EventPipeline,
             configuration: Configuration,
@@ -149,8 +148,8 @@ class AndroidStorageV2
         }
     }
 
+@OptIn(RestrictedAmplitudeFeature::class)
 class AndroidEventsStorageProviderV2 : StorageProvider {
-    @OptIn(RestrictedAmplitudeFeature::class)
     override fun getStorage(
         amplitude: Amplitude,
         prefix: String?,
@@ -170,8 +169,8 @@ class AndroidEventsStorageProviderV2 : StorageProvider {
     }
 }
 
+@OptIn(RestrictedAmplitudeFeature::class)
 class AndroidIdentifyInterceptStorageProviderV2 : StorageProvider {
-    @OptIn(RestrictedAmplitudeFeature::class)
     override fun getStorage(
         amplitude: Amplitude,
         prefix: String?,

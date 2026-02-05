@@ -18,8 +18,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+@OptIn(RestrictedAmplitudeFeature::class)
 internal class InMemoryResponseHandler
-    @OptIn(RestrictedAmplitudeFeature::class)
     constructor(
         private val eventPipeline: EventPipeline,
         private val configuration: Configuration,
@@ -170,7 +170,6 @@ internal class InMemoryResponseHandler
             }
         }
 
-        @OptIn(RestrictedAmplitudeFeature::class)
         private fun triggerEventsCallback(
             events: List<BaseEvent>,
             status: Int,

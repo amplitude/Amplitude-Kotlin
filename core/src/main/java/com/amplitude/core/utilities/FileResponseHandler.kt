@@ -20,8 +20,8 @@ import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONException
 
+@OptIn(RestrictedAmplitudeFeature::class)
 class FileResponseHandler
-    @OptIn(RestrictedAmplitudeFeature::class)
     constructor(
         private val storage: EventsFileStorage,
         private val eventPipeline: EventPipeline,
@@ -192,7 +192,6 @@ class FileResponseHandler
             return rawEvents
         }
 
-        @OptIn(RestrictedAmplitudeFeature::class)
         private fun triggerEventsCallback(
             events: List<BaseEvent>,
             status: Int,

@@ -13,8 +13,8 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import java.util.concurrent.ConcurrentHashMap
 
+@OptIn(RestrictedAmplitudeFeature::class)
 class InMemoryStorage
-    @OptIn(RestrictedAmplitudeFeature::class)
     internal constructor(
         private val diagnosticsClientProvider: DiagnosticsClientProvider? = null,
     ) : Storage {
@@ -63,7 +63,6 @@ class InMemoryStorage
             return JSONUtil.eventsToString(content as List<BaseEvent>)
         }
 
-        @OptIn(RestrictedAmplitudeFeature::class)
         override fun getResponseHandler(
             eventPipeline: EventPipeline,
             configuration: Configuration,
@@ -86,8 +85,8 @@ class InMemoryStorage
         }
     }
 
+@OptIn(RestrictedAmplitudeFeature::class)
 class InMemoryStorageProvider : StorageProvider {
-    @OptIn(RestrictedAmplitudeFeature::class)
     override fun getStorage(
         amplitude: Amplitude,
         prefix: String?,

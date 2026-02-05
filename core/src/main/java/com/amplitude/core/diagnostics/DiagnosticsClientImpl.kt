@@ -220,10 +220,12 @@ internal class DiagnosticsClientImpl(
                     }
                 },
             )
-        } catch (_: IllegalStateException) {
-            // Once the shutdown sequence has begun it is impossible to register a shutdown hook,
-            // so we just ignore the IllegalStateException that's thrown.
-            // https://developer.android.com/reference/java/lang/Runtime#addShutdownHook(java.lang.Thread)
+        } catch (_: Exception) {
+            // Shutdown hook registration can fail due to:
+            // - IllegalStateException: VM is already shutting down
+            // - SecurityException: Security manager denies RuntimePermission("shutdownHooks")
+            // - IllegalArgumentException: Hook already registered
+            // None of these are critical since the shutdown hook is just for cleanup.
         }
     }
 

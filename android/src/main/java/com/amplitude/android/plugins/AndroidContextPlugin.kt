@@ -10,12 +10,12 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
 import java.util.UUID
 
+@OptIn(RestrictedAmplitudeFeature::class)
 open class AndroidContextPlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Before
     override lateinit var amplitude: Amplitude
     private lateinit var contextProvider: AndroidContextProvider
 
-    @OptIn(RestrictedAmplitudeFeature::class)
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
         val configuration = amplitude.configuration as Configuration

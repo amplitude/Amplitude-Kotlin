@@ -25,6 +25,7 @@ import java.io.File
  * /shared_prefs
  *   /amplitude-android-{instance_name}.xml
  */
+@OptIn(RestrictedAmplitudeFeature::class)
 internal class AndroidStorageContextV2(
     private val amplitude: Amplitude,
     configuration: Configuration,
@@ -86,7 +87,6 @@ internal class AndroidStorageContextV2(
         )
     }
 
-    @OptIn(RestrictedAmplitudeFeature::class)
     private fun createAndroidStorage(
         configuration: Configuration,
         storageDirName: String,

@@ -18,8 +18,8 @@ import kotlinx.coroutines.CoroutineScope
 import org.json.JSONArray
 import java.io.File
 
+@OptIn(RestrictedAmplitudeFeature::class)
 class FileStorage
-    @OptIn(RestrictedAmplitudeFeature::class)
     internal constructor(
         storageKey: String,
         private val logger: Logger,
@@ -103,7 +103,6 @@ class FileStorage
             return eventsFile.getEventString(filePath as String)
         }
 
-        @OptIn(RestrictedAmplitudeFeature::class)
         override fun getResponseHandler(
             eventPipeline: EventPipeline,
             configuration: Configuration,
@@ -145,8 +144,8 @@ class FileStorage
         }
     }
 
+@OptIn(RestrictedAmplitudeFeature::class)
 class FileStorageProvider : StorageProvider {
-    @OptIn(RestrictedAmplitudeFeature::class)
     override fun getStorage(
         amplitude: Amplitude,
         prefix: String?,
