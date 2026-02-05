@@ -60,11 +60,10 @@ class State {
     /**
      * Notify observers about identity change. Called outside the lock.
      */
-    private fun notifyObservers(changeInfo: IdentityChangeInfo) {
-        changeInfo.plugins.forEach { plugin ->
-            if (changeInfo.userIdChanged) plugin.onUserIdChanged(changeInfo.newIdentity.userId)
-            if (changeInfo.deviceIdChanged) plugin.onDeviceIdChanged(changeInfo.newIdentity.deviceId)
-            plugin.onIdentityChanged(changeInfo.newIdentity)
+    private fun notifyObservers(changeInfo: IdentityChangeInfo) = with(changeInfo) {
+        plugins.forEach { plugin ->
+            if (userIdChanged) plugin.onUserIdChanged(changeInfo.newIdentity.userId)
+            if (deviceIdChanged) plugin.onDeviceIdChanged(changeInfo.newIdentity.deviceId)
         }
     }
 
