@@ -1,5 +1,6 @@
 package com.amplitude.core.utilities
 
+import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.diagnostics.DiagnosticsClient
 import com.amplitude.core.events.BaseEvent
 
@@ -11,6 +12,7 @@ import com.amplitude.core.events.BaseEvent
  * @param status The HTTP status code of the response
  * @param message The response message or error description
  */
+@OptIn(RestrictedAmplitudeFeature::class)
 internal fun DiagnosticsClient.recordEventOutcome(
     events: List<BaseEvent>,
     status: Int,

@@ -1,6 +1,5 @@
 package com.amplitude.core
 
-import com.amplitude.core.diagnostics.DiagnosticsClient
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline
 import com.amplitude.core.utilities.http.ResponseHandler
@@ -40,7 +39,6 @@ interface Storage {
     fun getResponseHandler(
         eventPipeline: EventPipeline,
         configuration: Configuration,
-        diagnosticsClient: DiagnosticsClient,
         scope: CoroutineScope,
         storageDispatcher: CoroutineDispatcher,
     ): ResponseHandler

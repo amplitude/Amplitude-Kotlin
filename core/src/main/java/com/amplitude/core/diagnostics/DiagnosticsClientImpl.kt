@@ -2,6 +2,7 @@ package com.amplitude.core.diagnostics
 
 import com.amplitude.common.Logger
 import com.amplitude.core.Constants
+import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.ServerZone
 import com.amplitude.core.remoteconfig.RemoteConfigClient
 import com.amplitude.core.utilities.Sample
@@ -15,11 +16,13 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
+import java.lang.ref.WeakReference
 import kotlin.math.min
 
 /**
  * Client for collecting and uploading SDK diagnostics data.
  */
+@OptIn(RestrictedAmplitudeFeature::class)
 internal class DiagnosticsClientImpl(
     private val apiKey: String,
     private val serverZone: ServerZone,
@@ -162,11 +165,11 @@ internal class DiagnosticsClientImpl(
                         if (result.isClosed) break
                         result.getOrNull()?.let { handleUpdate(it) }
                     } else {
-                        val update = withTimeoutOrNull(nextTimeoutDelayMs) { channel.receiveCatching().getOrNull() }
-                        if (update != null) {
-                            handleUpdate(update)
-                        } else {
-                            handleTimeout()
+                        val result = withTimeoutOrNull(nextTimeoutDelayMs) { channel.receiveCatching() }
+                        when {
+                            result == null -> handleTimeout()
+                            result.isClosed -> break
+                            else -> result.getOrNull()?.let { handleUpdate(it) }
                         }
                     }
                 } catch (e: CancellationException) {
@@ -209,10 +212,11 @@ internal class DiagnosticsClientImpl(
 
     private fun registerShutdownHook() {
         try {
+            val weakRef = WeakReference(this)
             Runtime.getRuntime().addShutdownHook(
                 object : Thread() {
                     override fun run() {
-                        this@DiagnosticsClientImpl.close()
+                        weakRef.get()?.close()
                     }
                 },
             )
@@ -293,7 +297,9 @@ internal class DiagnosticsClientImpl(
         if (didSetBasicTags) return
         didSetBasicTags = true
 
-        increment(name = "sampled.in.and.enabled")
+        if (shouldTrack) {
+            increment(name = "sampled.in.and.enabled")
+        }
 
         val contextInfo = contextProvider?.getContextInfo()
         val staticContext =

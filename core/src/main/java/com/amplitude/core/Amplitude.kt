@@ -75,6 +75,8 @@ open class Amplitude(
         private set
     val isBuilt: Deferred<Boolean>
     val diagnostics = Diagnostics()
+
+    @RestrictedAmplitudeFeature
     val diagnosticsClient: DiagnosticsClient by lazy {
         DiagnosticsClientImpl(
             apiKey = configuration.apiKey,

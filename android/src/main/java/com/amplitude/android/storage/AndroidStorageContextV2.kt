@@ -5,6 +5,8 @@ import com.amplitude.android.Amplitude
 import com.amplitude.android.Configuration
 import com.amplitude.android.migration.AndroidStorageMigration
 import com.amplitude.android.migration.IdentityStorageMigration
+import com.amplitude.core.RestrictedAmplitudeFeature
+import com.amplitude.core.diagnostics.DiagnosticsClientProvider
 import com.amplitude.core.utilities.FileStorage
 import com.amplitude.id.FileIdentityStorage
 import com.amplitude.id.IdentityConfiguration
@@ -84,6 +86,7 @@ internal class AndroidStorageContextV2(
         )
     }
 
+    @OptIn(RestrictedAmplitudeFeature::class)
     private fun createAndroidStorage(
         configuration: Configuration,
         storageDirName: String,
@@ -100,6 +103,7 @@ internal class AndroidStorageContextV2(
             sharedPreferences,
             storageDirectory,
             amplitude.diagnostics,
+            DiagnosticsClientProvider { amplitude.diagnosticsClient },
         )
     }
 

@@ -1,10 +1,13 @@
 package com.amplitude.core.diagnostics
 
+import com.amplitude.core.RestrictedAmplitudeFeature
+
 /**
  * Interface for diagnostic tracking operations.
  * Provides methods to record tags, counters, histograms, and events
  * for SDK diagnostics and telemetry.
  */
+@RestrictedAmplitudeFeature
 interface DiagnosticsClient {
     /**
      * Set a tag with the given name and value.

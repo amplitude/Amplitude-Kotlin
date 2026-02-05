@@ -1,6 +1,9 @@
+@file:OptIn(RestrictedAmplitudeFeature::class)
+
 package com.amplitude.core.utilities
 
 import com.amplitude.core.Configuration
+import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.diagnostics.DiagnosticsClient
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline

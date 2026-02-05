@@ -1,7 +1,6 @@
 package com.amplitude.core.utilities
 
 import com.amplitude.core.Configuration
-import com.amplitude.core.diagnostics.DiagnosticsClient
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline
 import com.amplitude.core.utilities.http.BadRequestResponse
@@ -23,13 +22,11 @@ class InMemoryResponseHandlerTest {
                 )
             val storage = mockk<EventsFileStorage>()
             val pipeline = mockk<EventPipeline>()
-            val diagnosticsClient = mockk<DiagnosticsClient>(relaxed = true)
             val dispatcher = StandardTestDispatcher(testScheduler)
             val handler =
                 InMemoryResponseHandler(
                     pipeline,
                     Configuration("test"),
-                    diagnosticsClient,
                     this,
                     dispatcher,
                 )

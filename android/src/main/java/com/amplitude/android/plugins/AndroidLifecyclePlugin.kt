@@ -18,6 +18,7 @@ import com.amplitude.android.utilities.ActivityCallbackType
 import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.android.utilities.DefaultEventUtils
 import com.amplitude.core.Amplitude
+import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.platform.Plugin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -47,6 +48,7 @@ class AndroidLifecyclePlugin(
     @VisibleForTesting
     internal var eventJob: Job? = null
 
+    @OptIn(RestrictedAmplitudeFeature::class)
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
         androidAmplitude = amplitude as AndroidAmplitude

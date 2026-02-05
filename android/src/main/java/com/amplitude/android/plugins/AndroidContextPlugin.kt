@@ -5,6 +5,7 @@ import com.amplitude.android.Configuration
 import com.amplitude.android.TrackingOptions
 import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.core.Amplitude
+import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
 import java.util.UUID
@@ -14,6 +15,7 @@ open class AndroidContextPlugin : Plugin {
     override lateinit var amplitude: Amplitude
     private lateinit var contextProvider: AndroidContextProvider
 
+    @OptIn(RestrictedAmplitudeFeature::class)
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
         val configuration = amplitude.configuration as Configuration

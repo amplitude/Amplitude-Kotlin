@@ -4,9 +4,10 @@ import com.amplitude.common.Logger
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Configuration
 import com.amplitude.core.EventCallBack
+import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.Storage
 import com.amplitude.core.StorageProvider
-import com.amplitude.core.diagnostics.DiagnosticsClient
+import com.amplitude.core.diagnostics.DiagnosticsClientProvider
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline
 import com.amplitude.core.utilities.http.HttpStatus
@@ -17,124 +18,135 @@ import kotlinx.coroutines.CoroutineScope
 import org.json.JSONArray
 import java.io.File
 
-class FileStorage(
-    storageKey: String,
-    private val logger: Logger,
-    private val prefix: String?,
-    diagnostics: Diagnostics,
-) : Storage, EventsFileStorage {
-    companion object {
-        const val STORAGE_PREFIX = "amplitude-kotlin"
-    }
+class FileStorage
+    @OptIn(RestrictedAmplitudeFeature::class)
+    internal constructor(
+        storageKey: String,
+        private val logger: Logger,
+        private val prefix: String?,
+        diagnostics: Diagnostics,
+        private val diagnosticsClientProvider: DiagnosticsClientProvider? = null,
+    ) : Storage, EventsFileStorage {
+        constructor(
+            storageKey: String,
+            logger: Logger,
+            prefix: String?,
+            diagnostics: Diagnostics,
+        ) : this(storageKey, logger, prefix, diagnostics, null)
 
-    private val storageDirectory = File("/tmp/${getPrefix()}/$storageKey")
-    private val storageDirectoryEvents = File(storageDirectory, "events")
+        companion object {
+            const val STORAGE_PREFIX = "amplitude-kotlin"
+        }
 
-    private val propertiesFile =
-        PropertiesFile(
-            storageDirectory,
-            "${getPrefix()}-$storageKey",
-            null,
-        )
-    private val eventsFile =
-        EventsFileManager(
-            storageDirectoryEvents,
-            storageKey,
-            propertiesFile,
-            logger,
-            diagnostics,
-        )
-    private val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
+        private val storageDirectory = File("/tmp/${getPrefix()}/$storageKey")
+        private val storageDirectoryEvents = File(storageDirectory, "events")
 
-    init {
-        propertiesFile.load()
-    }
+        private val propertiesFile =
+            PropertiesFile(
+                storageDirectory,
+                "${getPrefix()}-$storageKey",
+                null,
+            )
+        private val eventsFile =
+            EventsFileManager(
+                storageDirectoryEvents,
+                storageKey,
+                propertiesFile,
+                logger,
+                diagnostics,
+            )
+        private val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
 
-    override suspend fun writeEvent(event: BaseEvent) {
-        eventsFile.storeEvent(JSONUtil.eventToString(event))
-        event.callback?.let { callback ->
-            event.insertId?.let {
-                eventCallbacksMap.put(it, callback)
+        init {
+            propertiesFile.load()
+        }
+
+        override suspend fun writeEvent(event: BaseEvent) {
+            eventsFile.storeEvent(JSONUtil.eventToString(event))
+            event.callback?.let { callback ->
+                event.insertId?.let {
+                    eventCallbacksMap.put(it, callback)
+                }
             }
+        }
+
+        override suspend fun write(
+            key: Storage.Constants,
+            value: String,
+        ) {
+            propertiesFile.putString(key.rawVal, value)
+        }
+
+        override suspend fun remove(key: Storage.Constants) {
+            propertiesFile.remove(key.rawVal)
+        }
+
+        override suspend fun rollover() {
+            eventsFile.rollover()
+        }
+
+        override fun read(key: Storage.Constants): String? {
+            return propertiesFile.getString(key.rawVal, null)
+        }
+
+        override fun readEventsContent(): List<Any> {
+            // return List<String> list of file paths
+            return eventsFile.read()
+        }
+
+        override fun releaseFile(filePath: String) {
+            eventsFile.release(filePath)
+        }
+
+        override suspend fun getEventsString(filePath: Any): String {
+            // content is filePath String
+            return eventsFile.getEventString(filePath as String)
+        }
+
+        @OptIn(RestrictedAmplitudeFeature::class)
+        override fun getResponseHandler(
+            eventPipeline: EventPipeline,
+            configuration: Configuration,
+            scope: CoroutineScope,
+            storageDispatcher: CoroutineDispatcher,
+        ): ResponseHandler {
+            return FileResponseHandler(
+                this,
+                eventPipeline,
+                configuration,
+                scope,
+                storageDispatcher,
+                logger,
+                diagnosticsClientProvider?.get(),
+            )
+        }
+
+        override fun removeFile(filePath: String): Boolean {
+            return eventsFile.remove(filePath)
+        }
+
+        override fun getEventCallback(insertId: String): EventCallBack? {
+            return eventCallbacksMap.getOrDefault(insertId, null)
+        }
+
+        override fun removeEventCallback(insertId: String) {
+            eventCallbacksMap.remove(insertId)
+        }
+
+        override fun splitEventFile(
+            filePath: String,
+            events: JSONArray,
+        ) {
+            eventsFile.splitFile(filePath, events)
+        }
+
+        private fun getPrefix(): String {
+            return prefix ?: STORAGE_PREFIX
         }
     }
 
-    override suspend fun write(
-        key: Storage.Constants,
-        value: String,
-    ) {
-        propertiesFile.putString(key.rawVal, value)
-    }
-
-    override suspend fun remove(key: Storage.Constants) {
-        propertiesFile.remove(key.rawVal)
-    }
-
-    override suspend fun rollover() {
-        eventsFile.rollover()
-    }
-
-    override fun read(key: Storage.Constants): String? {
-        return propertiesFile.getString(key.rawVal, null)
-    }
-
-    override fun readEventsContent(): List<Any> {
-        // return List<String> list of file paths
-        return eventsFile.read()
-    }
-
-    override fun releaseFile(filePath: String) {
-        eventsFile.release(filePath)
-    }
-
-    override suspend fun getEventsString(filePath: Any): String {
-        // content is filePath String
-        return eventsFile.getEventString(filePath as String)
-    }
-
-    override fun getResponseHandler(
-        eventPipeline: EventPipeline,
-        configuration: Configuration,
-        diagnosticsClient: DiagnosticsClient,
-        scope: CoroutineScope,
-        storageDispatcher: CoroutineDispatcher,
-    ): ResponseHandler {
-        return FileResponseHandler(
-            this,
-            eventPipeline,
-            configuration,
-            diagnosticsClient,
-            scope,
-            storageDispatcher,
-            logger,
-        )
-    }
-
-    override fun removeFile(filePath: String): Boolean {
-        return eventsFile.remove(filePath)
-    }
-
-    override fun getEventCallback(insertId: String): EventCallBack? {
-        return eventCallbacksMap.getOrDefault(insertId, null)
-    }
-
-    override fun removeEventCallback(insertId: String) {
-        eventCallbacksMap.remove(insertId)
-    }
-
-    override fun splitEventFile(
-        filePath: String,
-        events: JSONArray,
-    ) {
-        eventsFile.splitFile(filePath, events)
-    }
-
-    private fun getPrefix(): String {
-        return prefix ?: STORAGE_PREFIX
-    }
-}
-
 class FileStorageProvider : StorageProvider {
+    @OptIn(RestrictedAmplitudeFeature::class)
     override fun getStorage(
         amplitude: Amplitude,
         prefix: String?,
@@ -144,6 +156,7 @@ class FileStorageProvider : StorageProvider {
             amplitude.configuration.loggerProvider.getLogger(amplitude),
             prefix,
             amplitude.diagnostics,
+            DiagnosticsClientProvider { amplitude.diagnosticsClient },
         )
     }
 }
