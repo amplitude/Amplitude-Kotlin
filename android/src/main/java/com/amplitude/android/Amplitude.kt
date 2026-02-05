@@ -15,6 +15,7 @@ import com.amplitude.core.State
 import com.amplitude.core.diagnostics.DiagnosticsContextProvider
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
+import com.amplitude.id.Identity
 import com.amplitude.id.IdentityConfiguration
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -42,7 +43,7 @@ open class Amplitude internal constructor(
     ) {
     constructor(configuration: Configuration) : this(configuration, State())
 
-    internal lateinit var androidContextPlugin: AndroidContextPlugin
+    private lateinit var androidContextPlugin: AndroidContextPlugin
 
     val sessionId: Long
         get() {
@@ -98,7 +99,7 @@ open class Amplitude internal constructor(
         }
         androidContextPlugin = AndroidContextPlugin()
         add(androidContextPlugin)
-        setDeviceId(androidContextPlugin.generateDeviceId())
+        setDeviceId(androidContextPlugin.generateDeviceId(forceNew = false))
         add(GetAmpliExtrasPlugin())
         add(AndroidLifecyclePlugin(activityLifecycleCallbacks))
         add(AnalyticsConnectorIdentityPlugin())
@@ -125,29 +126,25 @@ open class Amplitude internal constructor(
      * @return the Amplitude instance
      */
     override fun reset(): Amplitude {
-        // IMMEDIATE: Clear identity first so generateDeviceId() creates a new one
-        store.userId = null
-        store.deviceId = null
-        // Generate new deviceId (won't reuse store since we cleared it)
-        val newDeviceId = androidContextPlugin.generateDeviceId()
-        store.deviceId = newDeviceId
-        // QUEUED: For event ordering + persistence
-        (timeline as Timeline).queueSetIdentity(store.identity)
+        if (!isBuilt.isCompleted) {
+            logger.error("Cannot reset identity before Amplitude is initialized.")
+            return this
+        }
+        val newDeviceId = androidContextPlugin.generateDeviceId(forceNew = true)
+        val newIdentity = Identity(userId = null, deviceId = newDeviceId)
+        store.identity = newIdentity
+        (timeline as Timeline).queueSetIdentity(newIdentity)
         return this
     }
 
     override fun setUserId(userId: String?): Amplitude {
-        // IMMEDIATE: Update state, triggers ObservePlugins
         store.userId = userId
-        // QUEUED: For event ordering + persistence
         (timeline as Timeline).queueSetIdentity(store.identity)
         return this
     }
 
     override fun setDeviceId(deviceId: String): Amplitude {
-        // IMMEDIATE: Update state, triggers ObservePlugins
         store.deviceId = deviceId
-        // QUEUED: For event ordering + persistence
         (timeline as Timeline).queueSetIdentity(store.identity)
         return this
     }

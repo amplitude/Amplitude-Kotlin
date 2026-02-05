@@ -9,50 +9,71 @@ class State {
 
     var identity: Identity
         get() = synchronized(lock) { _identity }
-        set(value) = setIdentityInternal(value)
+        set(value) {
+            val changeInfo =
+                synchronized(lock) {
+                    computeIdentityChange(value)
+                } ?: return
+            notifyObservers(changeInfo)
+        }
 
     // Delegating property for backwards compatibility
     var userId: String?
         get() = synchronized(lock) { _identity.userId }
         set(value) {
-            synchronized(lock) {
-                applyIdentityChange(Identity(userId = value, deviceId = _identity.deviceId))
-            }
+            val changeInfo =
+                synchronized(lock) {
+                    computeIdentityChange(Identity(userId = value, deviceId = _identity.deviceId))
+                } ?: return
+            notifyObservers(changeInfo)
         }
 
     // Delegating property for backwards compatibility
     var deviceId: String?
         get() = synchronized(lock) { _identity.deviceId }
         set(value) {
-            synchronized(lock) {
-                applyIdentityChange(Identity(userId = _identity.userId, deviceId = value))
-            }
+            val changeInfo =
+                synchronized(lock) {
+                    computeIdentityChange(Identity(userId = _identity.userId, deviceId = value))
+                } ?: return
+            notifyObservers(changeInfo)
         }
-
-    private fun setIdentityInternal(newIdentity: Identity) {
-        synchronized(lock) {
-            applyIdentityChange(newIdentity)
-        }
-    }
 
     /**
-     * Apply an identity change. Must be called while holding [lock].
+     * Compute identity change info. Must be called while holding [lock].
+     * Returns null if no change occurred (idempotent).
      */
-    private fun applyIdentityChange(newIdentity: Identity) {
+    private fun computeIdentityChange(newIdentity: Identity): IdentityChangeInfo? {
         val oldIdentity = _identity
-        if (oldIdentity == newIdentity) return // Idempotent
+        if (oldIdentity == newIdentity) return null
 
         _identity = newIdentity
 
-        val userIdChanged = oldIdentity.userId != newIdentity.userId
-        val deviceIdChanged = oldIdentity.deviceId != newIdentity.deviceId
+        return IdentityChangeInfo(
+            newIdentity = newIdentity,
+            plugins = plugins.toList(),
+            userIdChanged = oldIdentity.userId != newIdentity.userId,
+            deviceIdChanged = oldIdentity.deviceId != newIdentity.deviceId,
+        )
+    }
 
-        plugins.toList().forEach { plugin ->
-            if (userIdChanged) plugin.onUserIdChanged(newIdentity.userId)
-            if (deviceIdChanged) plugin.onDeviceIdChanged(newIdentity.deviceId)
-            plugin.onIdentityChanged(newIdentity)
+    /**
+     * Notify observers about identity change. Called outside the lock.
+     */
+    private fun notifyObservers(changeInfo: IdentityChangeInfo) {
+        changeInfo.plugins.forEach { plugin ->
+            if (changeInfo.userIdChanged) plugin.onUserIdChanged(changeInfo.newIdentity.userId)
+            if (changeInfo.deviceIdChanged) plugin.onDeviceIdChanged(changeInfo.newIdentity.deviceId)
+            plugin.onIdentityChanged(changeInfo.newIdentity)
         }
     }
+
+    private data class IdentityChangeInfo(
+        val newIdentity: Identity,
+        val plugins: List<ObservePlugin>,
+        val userIdChanged: Boolean,
+        val deviceIdChanged: Boolean,
+    )
 
     val plugins: MutableList<ObservePlugin> = mutableListOf()
 

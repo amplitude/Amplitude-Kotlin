@@ -37,20 +37,23 @@ open class AndroidContextPlugin : ContextPlugin() {
 
     /**
      * Generate a device ID using Android-specific logic.
-     * Priority: configuration -> store -> advertising ID -> app set ID -> random UUID
+     * Priority: configuration -> store (if not forceNew) -> advertising ID -> app set ID -> random UUID
      *
+     * @param forceNew If true, skip checking the store and generate a fresh deviceId
      * @return the generated device ID (never null for Android)
      */
-    override fun generateDeviceId(): String {
+    fun generateDeviceId(forceNew: Boolean = false): String {
         val configuration = amplitude.configuration as Configuration
 
-        // Check configuration
+        // Check configuration (always respected, even with forceNew)
         configuration.deviceId?.let { return it }
 
-        // Check store
-        amplitude.store.deviceId?.let { deviceId ->
-            if (validDeviceId(deviceId) && !deviceId.endsWith("S")) {
-                return deviceId
+        // Check store (skip if forcing new)
+        if (!forceNew) {
+            amplitude.store.deviceId?.let { deviceId ->
+                if (validDeviceId(deviceId) && !deviceId.endsWith("S")) {
+                    return deviceId
+                }
             }
         }
 
@@ -79,13 +82,12 @@ open class AndroidContextPlugin : ContextPlugin() {
         return UUID.randomUUID().toString() + "R"
     }
 
-    @Suppress("UNUSED_PARAMETER")
     @Deprecated(
         message = "Use generateDeviceId() instead. Amplitude now handles setting the deviceId.",
         replaceWith = ReplaceWith("generateDeviceId()"),
     )
     fun initializeDeviceId(configuration: Configuration) {
-        amplitude.setDeviceId(generateDeviceId())
+        amplitude.setDeviceId(generateDeviceId(forceNew = false))
     }
 
     @Deprecated(

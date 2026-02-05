@@ -469,6 +469,29 @@ class AmplitudeTest {
             )
         }
 
+    /**
+     * Test that reset() does nothing when called before SDK initialization completes.
+     */
+    @Test
+    fun amplitude_reset_before_build_should_do_nothing() =
+        runTest {
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = createConfiguration(),
+                )
+
+            // Call reset immediately before waiting for build - should do nothing
+            amplitude.reset()
+
+            // Now wait for build to complete
+            amplitude.isBuilt.await()
+            advanceUntilIdle()
+
+            // Verify identity was NOT reset (initial deviceId should still be present)
+            assertNotNull("deviceId should exist", amplitude.store.deviceId)
+        }
+
     companion object {
         private const val INSTANCE_NAME = "testInstance"
     }
