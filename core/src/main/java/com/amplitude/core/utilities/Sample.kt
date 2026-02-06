@@ -1,6 +1,6 @@
 package com.amplitude.core.utilities
 
-internal object Sample {
+object Sample {
     fun isInSample(
         seed: String,
         sampleRate: Double,
