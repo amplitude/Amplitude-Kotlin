@@ -1,3 +1,10 @@
+# [1.25.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.24.0...v1.25.0) (2026-02-07)
+
+
+### Features
+
+* add diagnostics client ([#346](https://github.com/amplitude/Amplitude-Kotlin/issues/346)) ([1ac4c51](https://github.com/amplitude/Amplitude-Kotlin/commit/1ac4c510527866b487fae4e900f9092eb9f9b051))
+
 # [1.24.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.23.1...v1.24.0) (2026-02-04)
 
 
