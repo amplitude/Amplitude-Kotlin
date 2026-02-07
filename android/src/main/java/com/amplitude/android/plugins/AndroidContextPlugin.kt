@@ -5,10 +5,12 @@ import com.amplitude.android.Configuration
 import com.amplitude.android.TrackingOptions
 import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.core.Amplitude
+import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
 import java.util.UUID
 
+@OptIn(RestrictedAmplitudeFeature::class)
 open class AndroidContextPlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Before
     override lateinit var amplitude: Amplitude
@@ -25,6 +27,11 @@ open class AndroidContextPlugin : Plugin {
                 configuration.trackingOptions.shouldTrackAppSetId(),
             )
         initializeDeviceId(configuration)
+
+        amplitude.diagnosticsClient.setTag(
+            name = "sdk.${SDK_LIBRARY}.version",
+            value = SDK_VERSION,
+        )
     }
 
     override fun execute(event: BaseEvent): BaseEvent? {

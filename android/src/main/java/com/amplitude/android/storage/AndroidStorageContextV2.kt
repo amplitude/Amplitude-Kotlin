@@ -5,6 +5,8 @@ import com.amplitude.android.Amplitude
 import com.amplitude.android.Configuration
 import com.amplitude.android.migration.AndroidStorageMigration
 import com.amplitude.android.migration.IdentityStorageMigration
+import com.amplitude.core.RestrictedAmplitudeFeature
+import com.amplitude.core.diagnostics.DiagnosticsClientProvider
 import com.amplitude.core.utilities.FileStorage
 import com.amplitude.id.FileIdentityStorage
 import com.amplitude.id.IdentityConfiguration
@@ -23,6 +25,7 @@ import java.io.File
  * /shared_prefs
  *   /amplitude-android-{instance_name}.xml
  */
+@OptIn(RestrictedAmplitudeFeature::class)
 internal class AndroidStorageContextV2(
     private val amplitude: Amplitude,
     configuration: Configuration,
@@ -100,6 +103,7 @@ internal class AndroidStorageContextV2(
             sharedPreferences,
             storageDirectory,
             amplitude.diagnostics,
+            DiagnosticsClientProvider { amplitude.diagnosticsClient },
         )
     }
 

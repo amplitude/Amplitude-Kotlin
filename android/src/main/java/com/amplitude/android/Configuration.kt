@@ -50,6 +50,7 @@ open class Configuration(
     override var sessionId: Long? = null,
     override var httpClient: HttpClientInterface? = null,
     var interactionsOptions: InteractionsOptions = InteractionsOptions(),
+    override var enableDiagnostics: Boolean = true,
 ) : Configuration(
         apiKey,
         flushQueueSize,
@@ -74,6 +75,7 @@ open class Configuration(
         deviceId,
         sessionId,
         httpClient,
+        enableDiagnostics = enableDiagnostics,
     ) {
     companion object {
         const val MIN_TIME_BETWEEN_SESSIONS_MILLIS: Long = 300000
@@ -118,6 +120,7 @@ open class Configuration(
         sessionId: Long? = null,
         httpClient: HttpClientInterface? = null,
         interactionsOptions: InteractionsOptions = InteractionsOptions(),
+        enableDiagnostics: Boolean = true,
     ) : this(
         apiKey,
         context,
@@ -154,6 +157,7 @@ open class Configuration(
         sessionId,
         httpClient,
         interactionsOptions,
+        enableDiagnostics,
     ) {
         if (!trackingSessionEvents) {
             defaultTracking.sessions = false

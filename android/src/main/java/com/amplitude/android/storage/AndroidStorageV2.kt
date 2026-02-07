@@ -8,8 +8,10 @@ import com.amplitude.common.Logger
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Configuration
 import com.amplitude.core.EventCallBack
+import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.Storage
 import com.amplitude.core.StorageProvider
+import com.amplitude.core.diagnostics.DiagnosticsClientProvider
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline
 import com.amplitude.core.utilities.Diagnostics
@@ -23,117 +25,130 @@ import kotlinx.coroutines.CoroutineScope
 import org.json.JSONArray
 import java.io.File
 
-class AndroidStorageV2(
-    /**
-     * A generic key to differentiate multiple storage instances.
-     */
-    storageKey: String,
-    private val logger: Logger,
-    /**
-     * A place where the storage stores some metadata to manage this storage
-     */
-    val sharedPreferences: SharedPreferences,
-    /**
-     * A directory where the storage stores the actual data. This should not be shared with other
-     * storage instances
-     */
-    storageDirectory: File,
-    diagnostics: Diagnostics,
-) : Storage, EventsFileStorage {
-    private val eventsFile =
-        EventsFileManager(
-            storageDirectory,
-            storageKey,
-            AndroidKVS(sharedPreferences),
-            logger,
-            diagnostics,
-        )
-    private val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
+@OptIn(RestrictedAmplitudeFeature::class)
+class AndroidStorageV2
+    internal constructor(
+        /**
+         * A generic key to differentiate multiple storage instances.
+         */
+        storageKey: String,
+        private val logger: Logger,
+        /**
+         * A place where the storage stores some metadata to manage this storage
+         */
+        val sharedPreferences: SharedPreferences,
+        /**
+         * A directory where the storage stores the actual data. This should not be shared with other
+         * storage instances
+         */
+        storageDirectory: File,
+        diagnostics: Diagnostics,
+        private val diagnosticsClientProvider: DiagnosticsClientProvider? = null,
+    ) : Storage, EventsFileStorage {
+        constructor(
+            storageKey: String,
+            logger: Logger,
+            sharedPreferences: SharedPreferences,
+            storageDirectory: File,
+            diagnostics: Diagnostics,
+        ) : this(storageKey, logger, sharedPreferences, storageDirectory, diagnostics, null)
 
-    override suspend fun writeEvent(event: BaseEvent) {
-        eventsFile.storeEvent(JSONUtil.eventToString(event))
-        event.callback?.let { callback ->
-            event.insertId?.let {
-                eventCallbacksMap.put(it, callback)
+        private val eventsFile =
+            EventsFileManager(
+                storageDirectory,
+                storageKey,
+                AndroidKVS(sharedPreferences),
+                logger,
+                diagnostics,
+            )
+        private val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
+
+        override suspend fun writeEvent(event: BaseEvent) {
+            eventsFile.storeEvent(JSONUtil.eventToString(event))
+            event.callback?.let { callback ->
+                event.insertId?.let {
+                    eventCallbacksMap.put(it, callback)
+                }
             }
         }
-    }
 
-    override suspend fun write(
-        key: Storage.Constants,
-        value: String,
-    ) {
-        sharedPreferences.edit {
-            putString(key.rawVal, value)
+        override suspend fun write(
+            key: Storage.Constants,
+            value: String,
+        ) {
+            sharedPreferences.edit {
+                putString(key.rawVal, value)
+            }
+        }
+
+        override suspend fun remove(key: Storage.Constants) {
+            sharedPreferences.edit {
+                remove(key.rawVal)
+            }
+        }
+
+        override suspend fun rollover() {
+            eventsFile.rollover()
+        }
+
+        override fun read(key: Storage.Constants): String? {
+            return sharedPreferences.getString(key.rawVal, null)
+        }
+
+        override fun readEventsContent(): List<Any> {
+            return eventsFile.read()
+        }
+
+        override fun releaseFile(filePath: String) {
+            eventsFile.release(filePath)
+        }
+
+        override suspend fun getEventsString(filePath: Any): String {
+            return eventsFile.getEventString(filePath as String)
+        }
+
+        override fun getResponseHandler(
+            eventPipeline: EventPipeline,
+            configuration: Configuration,
+            scope: CoroutineScope,
+            storageDispatcher: CoroutineDispatcher,
+        ): ResponseHandler {
+            return FileResponseHandler(
+                this,
+                eventPipeline,
+                configuration,
+                scope,
+                storageDispatcher,
+                logger,
+                diagnosticsClientProvider?.get(),
+            )
+        }
+
+        override fun removeFile(filePath: String): Boolean {
+            return eventsFile.remove(filePath)
+        }
+
+        override fun getEventCallback(insertId: String): EventCallBack? {
+            return eventCallbacksMap[insertId]
+        }
+
+        override fun removeEventCallback(insertId: String) {
+            eventCallbacksMap.remove(insertId)
+        }
+
+        override fun splitEventFile(
+            filePath: String,
+            events: JSONArray,
+        ) {
+            eventsFile.splitFile(filePath, events)
+        }
+
+        fun cleanupMetadata() {
+            eventsFile.cleanupMetadata()
         }
     }
 
-    override suspend fun remove(key: Storage.Constants) {
-        sharedPreferences.edit {
-            remove(key.rawVal)
-        }
-    }
-
-    override suspend fun rollover() {
-        eventsFile.rollover()
-    }
-
-    override fun read(key: Storage.Constants): String? {
-        return sharedPreferences.getString(key.rawVal, null)
-    }
-
-    override fun readEventsContent(): List<Any> {
-        return eventsFile.read()
-    }
-
-    override fun releaseFile(filePath: String) {
-        eventsFile.release(filePath)
-    }
-
-    override suspend fun getEventsString(filePath: Any): String {
-        return eventsFile.getEventString(filePath as String)
-    }
-
-    override fun getResponseHandler(
-        eventPipeline: EventPipeline,
-        configuration: Configuration,
-        scope: CoroutineScope,
-        storageDispatcher: CoroutineDispatcher,
-    ): ResponseHandler {
-        return FileResponseHandler(
-            this,
-            eventPipeline,
-            configuration,
-            scope,
-            storageDispatcher,
-            logger,
-        )
-    }
-
-    override fun removeFile(filePath: String): Boolean {
-        return eventsFile.remove(filePath)
-    }
-
-    override fun getEventCallback(insertId: String): EventCallBack? {
-        return eventCallbacksMap[insertId]
-    }
-
-    override fun removeEventCallback(insertId: String) {
-        eventCallbacksMap.remove(insertId)
-    }
-
-    override fun splitEventFile(
-        filePath: String,
-        events: JSONArray,
-    ) {
-        eventsFile.splitFile(filePath, events)
-    }
-
-    fun cleanupMetadata() {
-        eventsFile.cleanupMetadata()
-    }
-}
-
+@OptIn(RestrictedAmplitudeFeature::class)
 class AndroidEventsStorageProviderV2 : StorageProvider {
     override fun getStorage(
         amplitude: Amplitude,
@@ -149,10 +164,12 @@ class AndroidEventsStorageProviderV2 : StorageProvider {
             sharedPreferences,
             AndroidStorageContextV3.getEventsStorageDirectory(configuration),
             amplitude.diagnostics,
+            DiagnosticsClientProvider { amplitude.diagnosticsClient },
         )
     }
 }
 
+@OptIn(RestrictedAmplitudeFeature::class)
 class AndroidIdentifyInterceptStorageProviderV2 : StorageProvider {
     override fun getStorage(
         amplitude: Amplitude,
@@ -170,6 +187,7 @@ class AndroidIdentifyInterceptStorageProviderV2 : StorageProvider {
             sharedPreferences,
             AndroidStorageContextV3.getIdentifyInterceptStorageDirectory(configuration),
             amplitude.diagnostics,
+            DiagnosticsClientProvider { amplitude.diagnosticsClient },
         )
     }
 }

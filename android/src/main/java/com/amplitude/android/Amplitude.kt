@@ -2,6 +2,7 @@ package com.amplitude.android
 
 import android.app.Application
 import android.content.Context
+import com.amplitude.android.diagnostics.AndroidDiagnosticsContextProvider
 import com.amplitude.android.migration.MigrationManager
 import com.amplitude.android.plugins.AnalyticsConnectorIdentityPlugin
 import com.amplitude.android.plugins.AnalyticsConnectorPlugin
@@ -11,6 +12,7 @@ import com.amplitude.android.plugins.AndroidNetworkConnectivityCheckerPlugin
 import com.amplitude.android.storage.AndroidStorageContextV3
 import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.core.State
+import com.amplitude.core.diagnostics.DiagnosticsContextProvider
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
 import com.amplitude.id.IdentityConfiguration
@@ -20,6 +22,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
+import java.io.File
 import java.util.concurrent.Executors
 import com.amplitude.core.Amplitude as CoreAmplitude
 
@@ -109,6 +112,16 @@ open class Amplitude internal constructor(
         add(AmplitudeDestination())
 
         (timeline as Timeline).start()
+    }
+
+    override fun diagnosticsContextProvider(): DiagnosticsContextProvider? {
+        val configuration = configuration as Configuration
+        return AndroidDiagnosticsContextProvider(configuration.context)
+    }
+
+    override fun diagnosticsStorageDirectory(): File {
+        val configuration = configuration as Configuration
+        return configuration.getStorageDirectory()
     }
 
     /**

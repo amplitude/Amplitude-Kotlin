@@ -13,17 +13,19 @@ import com.amplitude.android.GuardedAmplitudeFeature
 import com.amplitude.android.InteractionType.DeadClick
 import com.amplitude.android.InteractionType.RageClick
 import com.amplitude.android.internal.gestures.WindowCallbackManager
+import com.amplitude.android.stringRepresentation
 import com.amplitude.android.utilities.ActivityCallbackType
 import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.android.utilities.DefaultEventUtils
 import com.amplitude.core.Amplitude
+import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.platform.Plugin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import com.amplitude.android.Amplitude as AndroidAmplitude
 
-@OptIn(GuardedAmplitudeFeature::class)
+@OptIn(GuardedAmplitudeFeature::class, RestrictedAmplitudeFeature::class)
 class AndroidLifecyclePlugin(
     private val activityLifecycleObserver: ActivityLifecycleObserver,
 ) : Application.ActivityLifecycleCallbacks,
@@ -57,6 +59,12 @@ class AndroidLifecyclePlugin(
                 androidConfiguration.autocapture,
                 androidConfiguration.interactionsOptions,
             )
+
+        // Set autocapture state to diagnostics client
+        amplitude.diagnosticsClient.setTag(
+            name = "autocapture.enabled",
+            value = androidConfiguration.autocapture.stringRepresentation(),
+        )
 
         val application = androidConfiguration.context as Application
 
