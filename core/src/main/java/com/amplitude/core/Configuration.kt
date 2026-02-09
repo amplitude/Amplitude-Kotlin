@@ -66,11 +66,11 @@ open class Configuration
          * for custom URLs when [enableRequestBodyCompression] is explicitly set to true.
          */
         fun shouldCompressUploadBody(): Boolean {
-            return if (serverUrl != null) enableRequestBodyCompression else true
+            return if (!serverUrl.isNullOrBlank()) enableRequestBodyCompression else true
         }
 
         fun getApiHost(): String {
-            return this.serverUrl ?: with(this) {
+            return this.serverUrl?.takeIf { it.isNotBlank() } ?: with(this) {
                 when {
                     serverZone == ServerZone.EU && useBatch -> Constants.EU_BATCH_API_HOST
                     serverZone == ServerZone.EU -> Constants.EU_DEFAULT_API_HOST

@@ -57,4 +57,25 @@ internal class ConfigurationTest {
         configuration = Configuration("test-apikey", useBatch = true, serverZone = ServerZone.EU)
         assertEquals("https://api.eu.amplitude.com/batch", configuration.getApiHost())
     }
+
+    @Test
+    fun `test empty or blank serverUrl falls back to default api host`() {
+        val empty = Configuration("test-apikey", serverUrl = "")
+        assertEquals("https://api2.amplitude.com/2/httpapi", empty.getApiHost())
+
+        val blank = Configuration("test-apikey", serverUrl = "   ")
+        assertEquals("https://api2.amplitude.com/2/httpapi", blank.getApiHost())
+
+        val emptyEu = Configuration("test-apikey", serverUrl = "", serverZone = ServerZone.EU)
+        assertEquals("https://api.eu.amplitude.com/2/httpapi", emptyEu.getApiHost())
+    }
+
+    @Test
+    fun `test empty or blank serverUrl enables compression by default`() {
+        val empty = Configuration("test-apikey", serverUrl = "")
+        assertTrue(empty.shouldCompressUploadBody())
+
+        val blank = Configuration("test-apikey", serverUrl = "   ")
+        assertTrue(blank.shouldCompressUploadBody())
+    }
 }
