@@ -38,6 +38,7 @@ open class Configuration
         open var sessionId: Long? = null,
         open var httpClient: HttpClientInterface? = null,
         open var enableDiagnostics: Boolean = true,
+        open var enableRequestBodyCompression: Boolean = false,
     ) {
         companion object {
             const val FLUSH_QUEUE_SIZE = 30
@@ -57,6 +58,15 @@ open class Configuration
             } ?: let {
                 true
             }
+        }
+
+        /**
+         * Whether the upload request body should be gzip-compressed.
+         * Custom server URLs may not support gzip, so compression is only enabled
+         * for custom URLs when [enableRequestBodyCompression] is explicitly set to true.
+         */
+        fun shouldCompressUploadBody(): Boolean {
+            return if (serverUrl != null) enableRequestBodyCompression else true
         }
 
         fun getApiHost(): String {

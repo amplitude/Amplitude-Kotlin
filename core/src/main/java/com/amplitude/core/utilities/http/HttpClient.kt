@@ -71,13 +71,17 @@ internal class HttpClient(
             request.body?.let { body ->
                 connection.doOutput = true
                 val input =
-                    try {
-                        GzipUtils.compress(body)
-                            .also {
-                                connection.setRequestProperty("Content-Encoding", "gzip")
-                            }
-                    } catch (e: Exception) {
-                        logger.warn("Gzip compression failed, sending uncompressed: ${e.message}")
+                    if (configuration.shouldCompressUploadBody()) {
+                        try {
+                            GzipUtils.compress(body)
+                                .also {
+                                    connection.setRequestProperty("Content-Encoding", "gzip")
+                                }
+                        } catch (e: Exception) {
+                            logger.warn("Gzip compression failed, sending uncompressed: ${e.message}")
+                            body.toByteArray()
+                        }
+                    } else {
                         body.toByteArray()
                     }
                 connection.outputStream.write(input, 0, input.size)

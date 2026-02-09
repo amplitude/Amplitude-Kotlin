@@ -58,6 +58,7 @@ class HttpClientTest {
             Configuration(
                 apiKey = apiKey,
                 serverUrl = server.url("/").toString(),
+                enableRequestBodyCompression = true,
             )
         val event = BaseEvent()
         event.eventType = "test"
@@ -86,6 +87,7 @@ class HttpClientTest {
                 apiKey = apiKey,
                 serverUrl = server.url("/").toString(),
                 minIdLength = 3,
+                enableRequestBodyCompression = true,
             )
         val event = BaseEvent()
         event.eventType = "test"
@@ -110,6 +112,7 @@ class HttpClientTest {
             Configuration(
                 apiKey = apiKey,
                 serverUrl = server.url("/").toString(),
+                enableRequestBodyCompression = true,
             )
         val event = BaseEvent()
         event.eventType = "test"
@@ -363,13 +366,14 @@ class HttpClientTest {
     }
 
     @Test
-    fun `test gzip compression is always applied`() {
+    fun `test gzip compression is applied for default server url`() {
         server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
 
         val config =
             Configuration(
                 apiKey = apiKey,
                 serverUrl = server.url("/").toString(),
+                enableRequestBodyCompression = true,
             )
         val event = BaseEvent()
         event.eventType = "test"
@@ -387,6 +391,85 @@ class HttpClientTest {
         assertNotNull(body)
         assertEquals(0x1f.toByte(), body!![0])
         assertEquals(0x8b.toByte(), body[1])
+    }
+
+    @Test
+    fun `test gzip compression is disabled for custom server url by default`() {
+        server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+
+        val config =
+            Configuration(
+                apiKey = apiKey,
+                serverUrl = server.url("/").toString(),
+            )
+        val event = BaseEvent()
+        event.eventType = "test"
+
+        val httpClient = HttpClient(config, silentLogger)
+        httpClient.upload(JSONUtil.eventsToString(listOf(event)))
+
+        val request = runRequest()
+
+        // Verify Content-Encoding header is NOT set
+        assertNull(request?.getHeader("Content-Encoding"))
+
+        // Verify body is plain JSON (not gzip)
+        val body = request?.body?.readByteArray()
+        assertNotNull(body)
+        val bodyStr = String(body!!)
+        assertTrue(bodyStr.startsWith("{"))
+    }
+
+    @Test
+    fun `test gzip compression enabled for custom server url when opted in`() {
+        server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+
+        val config =
+            Configuration(
+                apiKey = apiKey,
+                serverUrl = server.url("/").toString(),
+                enableRequestBodyCompression = true,
+            )
+        val event = BaseEvent()
+        event.eventType = "test"
+
+        val httpClient = HttpClient(config, silentLogger)
+        httpClient.upload(JSONUtil.eventsToString(listOf(event)))
+
+        val request = runRequest()
+
+        // Verify Content-Encoding header is set
+        assertEquals("gzip", request?.getHeader("Content-Encoding"))
+
+        // Verify body starts with gzip magic bytes
+        val body = request?.body?.readByteArray()
+        assertNotNull(body)
+        assertEquals(0x1f.toByte(), body!![0])
+        assertEquals(0x8b.toByte(), body[1])
+    }
+
+    @Test
+    fun `test shouldCompressUploadBody returns correct value`() {
+        // Default Amplitude URL (no custom serverUrl) — always compress
+        val defaultConfig = Configuration(apiKey = apiKey)
+        assertTrue(defaultConfig.shouldCompressUploadBody())
+
+        // Default URL with enableRequestBodyCompression = false — still compresses
+        val defaultConfigExplicitFalse = Configuration(apiKey = apiKey, enableRequestBodyCompression = false)
+        assertTrue(defaultConfigExplicitFalse.shouldCompressUploadBody())
+
+        // Custom serverUrl without opt-in — no compression
+        val customConfig = Configuration(apiKey = apiKey, serverUrl = "https://proxy.example.com")
+        assertFalse(customConfig.shouldCompressUploadBody())
+
+        // Custom serverUrl with opt-in — compresses
+        val customConfigOptIn =
+            Configuration(
+                apiKey = apiKey,
+                serverUrl = "https://proxy.example.com",
+                enableRequestBodyCompression = true,
+            )
+        assertTrue(customConfigOptIn.shouldCompressUploadBody())
     }
 
     private fun runRequest(): RecordedRequest? {
