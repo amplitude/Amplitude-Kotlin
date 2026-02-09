@@ -27,7 +27,7 @@ internal class HttpClient(
                 configuration.minIdLength,
                 diagnostics,
             ).getBodyStr()
-        val request = Request(url, POST, body = requestBody)
+        val request = Request(url, POST, body = requestBody, compressBody = configuration.shouldCompressUploadBody())
         val httpResponse = request(request)
         return AnalyticsResponse.create(httpResponse.statusCode, httpResponse.body)
     }
@@ -71,7 +71,7 @@ internal class HttpClient(
             request.body?.let { body ->
                 connection.doOutput = true
                 val input =
-                    if (configuration.shouldCompressUploadBody()) {
+                    if (request.compressBody) {
                         try {
                             GzipUtils.compress(body)
                                 .also {
@@ -141,6 +141,7 @@ internal class HttpClient(
         val method: Method,
         val headers: Map<String, String> = emptyMap(),
         val body: String? = null,
+        val compressBody: Boolean = false,
         val connectTimeoutMs: Int = DEFAULT_CONNECT_TIMEOUT_MS,
         val readTimeoutMs: Int = DEFAULT_READ_TIMEOUT_MS,
     ) {
