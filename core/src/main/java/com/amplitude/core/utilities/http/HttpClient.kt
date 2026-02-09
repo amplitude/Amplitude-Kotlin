@@ -27,7 +27,7 @@ internal class HttpClient(
                 configuration.minIdLength,
                 diagnostics,
             ).getBodyStr()
-        val request = Request(url, POST, body = requestBody)
+        val request = Request(url, POST, body = requestBody, compressBody = configuration.shouldCompressUploadBody())
         val httpResponse = request(request)
         return AnalyticsResponse.create(httpResponse.statusCode, httpResponse.body)
     }
@@ -71,13 +71,17 @@ internal class HttpClient(
             request.body?.let { body ->
                 connection.doOutput = true
                 val input =
-                    try {
-                        GzipUtils.compress(body)
-                            .also {
-                                connection.setRequestProperty("Content-Encoding", "gzip")
-                            }
-                    } catch (e: Exception) {
-                        logger.warn("Gzip compression failed, sending uncompressed: ${e.message}")
+                    if (request.compressBody) {
+                        try {
+                            GzipUtils.compress(body)
+                                .also {
+                                    connection.setRequestProperty("Content-Encoding", "gzip")
+                                }
+                        } catch (e: Exception) {
+                            logger.warn("Gzip compression failed, sending uncompressed: ${e.message}")
+                            body.toByteArray()
+                        }
+                    } else {
                         body.toByteArray()
                     }
                 connection.outputStream.write(input, 0, input.size)
@@ -137,6 +141,7 @@ internal class HttpClient(
         val method: Method,
         val headers: Map<String, String> = emptyMap(),
         val body: String? = null,
+        val compressBody: Boolean = false,
         val connectTimeoutMs: Int = DEFAULT_CONNECT_TIMEOUT_MS,
         val readTimeoutMs: Int = DEFAULT_READ_TIMEOUT_MS,
     ) {

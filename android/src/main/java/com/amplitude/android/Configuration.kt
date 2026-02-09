@@ -51,6 +51,7 @@ open class Configuration(
     override var httpClient: HttpClientInterface? = null,
     var interactionsOptions: InteractionsOptions = InteractionsOptions(),
     override var enableDiagnostics: Boolean = true,
+    override var enableRequestBodyCompression: Boolean = false,
 ) : Configuration(
         apiKey,
         flushQueueSize,
@@ -76,6 +77,7 @@ open class Configuration(
         sessionId,
         httpClient,
         enableDiagnostics = enableDiagnostics,
+        enableRequestBodyCompression = enableRequestBodyCompression,
     ) {
     companion object {
         const val MIN_TIME_BETWEEN_SESSIONS_MILLIS: Long = 300000
@@ -121,6 +123,7 @@ open class Configuration(
         httpClient: HttpClientInterface? = null,
         interactionsOptions: InteractionsOptions = InteractionsOptions(),
         enableDiagnostics: Boolean = true,
+        enableRequestBodyCompression: Boolean = false,
     ) : this(
         apiKey,
         context,
@@ -158,6 +161,7 @@ open class Configuration(
         httpClient,
         interactionsOptions,
         enableDiagnostics,
+        enableRequestBodyCompression,
     ) {
         if (!trackingSessionEvents) {
             defaultTracking.sessions = false
