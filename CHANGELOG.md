@@ -1,3 +1,10 @@
+## [1.25.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.25.0...v1.25.1) (2026-02-10)
+
+
+### Bug Fixes
+
+* sane defaults for gzip ([#352](https://github.com/amplitude/Amplitude-Kotlin/issues/352)) ([9f2acb0](https://github.com/amplitude/Amplitude-Kotlin/commit/9f2acb092c1de2225bdda1d5eb83c25da9ab6e25))
+
 # [1.25.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.24.0...v1.25.0) (2026-02-07)
 
 
