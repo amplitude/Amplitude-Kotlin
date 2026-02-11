@@ -16,7 +16,6 @@ import com.amplitude.core.State
 import com.amplitude.core.diagnostics.DiagnosticsContextProvider
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
-import com.amplitude.id.Identity
 import com.amplitude.id.IdentityConfiguration
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -135,22 +134,20 @@ open class Amplitude internal constructor(
             logger.error("Cannot reset identity before Amplitude is initialized.")
             return this
         }
-        val newDeviceId = configuration.deviceId ?: androidContextPlugin.createDeviceId()
-        val newIdentity = Identity(userId = null, deviceId = newDeviceId)
-        store.identity = newIdentity
-        (timeline as Timeline).queueSetIdentity(newIdentity)
+        setUserId(null)
+        setDeviceId(androidContextPlugin.createDeviceId())
         return this
     }
 
     override fun setUserId(userId: String?): Amplitude {
         store.userId = userId
-        (timeline as Timeline).queueSetIdentity(store.identity)
+        super.setUserId(userId)
         return this
     }
 
     override fun setDeviceId(deviceId: String): Amplitude {
         store.deviceId = deviceId
-        (timeline as Timeline).queueSetIdentity(store.identity)
+        super.setDeviceId(deviceId)
         return this
     }
 

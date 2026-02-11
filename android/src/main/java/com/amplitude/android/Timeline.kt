@@ -5,7 +5,6 @@ import com.amplitude.android.Amplitude.Companion.START_SESSION_EVENT
 import com.amplitude.android.EventQueueMessage.EnterForeground
 import com.amplitude.android.EventQueueMessage.Event
 import com.amplitude.android.EventQueueMessage.ExitForeground
-import com.amplitude.android.EventQueueMessage.SetIdentity
 import com.amplitude.core.Storage
 import com.amplitude.core.Storage.Constants
 import com.amplitude.core.Storage.Constants.LAST_EVENT_ID
@@ -13,7 +12,6 @@ import com.amplitude.core.Storage.Constants.LAST_EVENT_TIME
 import com.amplitude.core.Storage.Constants.PREVIOUS_SESSION_ID
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Timeline
-import com.amplitude.id.Identity
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.onFailure
 import kotlinx.coroutines.launch
@@ -83,14 +81,6 @@ class Timeline(
     }
 
     /**
-     * Queue an identity change to be processed in order with events.
-     * This ensures identity changes happen in FIFO order with other events.
-     */
-    internal fun queueSetIdentity(identity: Identity) {
-        eventMessageChannel.trySendAndLog(SetIdentity(identity))
-    }
-
-    /**
      * Process an event message from the event queue.
      */
     private suspend fun processEventMessage(message: EventQueueMessage) {
@@ -106,12 +96,6 @@ class Timeline(
             is ExitForeground -> {
                 foreground.set(false)
                 refreshSessionTime(message.timestamp)
-            }
-            is SetIdentity -> {
-                amplitude.idContainer.identityManager.editIdentity()
-                    .setUserId(message.identity.userId)
-                    .setDeviceId(message.identity.deviceId)
-                    .commit()
             }
         }
     }
@@ -239,6 +223,4 @@ sealed class EventQueueMessage {
     data class EnterForeground(val timestamp: Long) : EventQueueMessage()
 
     data class ExitForeground(val timestamp: Long) : EventQueueMessage()
-
-    data class SetIdentity(val identity: Identity) : EventQueueMessage()
 }
