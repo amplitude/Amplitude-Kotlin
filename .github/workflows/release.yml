@@ -1,17 +1,25 @@
 # This workflow is bumping the version of the SDK and publishing it to Maven Central.
-name: Update version and Publish Release
+#
+# Regular release:
+#   - true — preview what semantic-release would do (dry-run)
+#   - false — full release (bump version + publish)
+#
+# If for some reason publish fails:
+#   - publish-only — just publish current version to Maven Central
+name: Release
 
 on:
   workflow_dispatch:
     inputs:
       dryRun:
         type: choice
-        description: 'Dry run to preview, or real release with version update and publish'
+        description: 'Do a dry run to preview instead of a real release [true/false/publish-only]'
         options:
-          - dry-run
-          - release
+          - 'true'
+          - 'false'
+          - publish-only
         required: true
-        default: 'dry-run'
+        default: 'true'
 
 jobs:
   authorize:
@@ -56,7 +64,7 @@ jobs:
           cache: 'gradle'
 
       - name: Semantic Release --dry-run
-        if: ${{ github.event.inputs.dryRun == 'dry-run' }}
+        if: ${{ github.event.inputs.dryRun == 'true' }}
         run: |
           npx \
           -p lodash \
@@ -68,7 +76,7 @@ jobs:
           semantic-release --dry-run
 
       - name: Semantic Release
-        if: ${{ github.event.inputs.dryRun == 'release' }}
+        if: ${{ github.event.inputs.dryRun == 'false' }}
         run: |
           npx \
           -p lodash \
@@ -78,3 +86,7 @@ jobs:
           -p @google/semantic-release-replace-plugin@1.2.0 \
           -p @semantic-release/exec@5 \
           semantic-release
+
+      - name: Publish to Maven Central
+        if: ${{ github.event.inputs.dryRun == 'publish-only' }}
+        run: ./gradlew publishAllPublicationsToMavenCentral --no-configuration-cache
