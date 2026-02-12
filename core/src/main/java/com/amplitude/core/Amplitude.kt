@@ -300,6 +300,7 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     open fun setUserId(userId: String?): Amplitude {
+        store.userId = userId
         amplitudeScope.launch(amplitudeDispatcher) {
             if (isBuilt.await()) {
                 idContainer.identityManager.editIdentity().setUserId(userId).commit()
@@ -318,12 +319,24 @@ open class Amplitude(
     }
 
     /**
+     * Sets device id immediately without waiting for build() to complete.
+     */
+    @Deprecated(
+        message = "Use setDeviceId() instead.",
+        replaceWith = ReplaceWith("setDeviceId(deviceId)"),
+    )
+    protected fun setDeviceIdInternal(deviceId: String) {
+        setDeviceId(deviceId)
+    }
+
+    /**
      * Sets a custom device id. <b>Note: only do this if you know what you are doing!</b>
      *
      * @param deviceId custom device id
      * @return the Amplitude instance
      */
     open fun setDeviceId(deviceId: String): Amplitude {
+        store.deviceId = deviceId
         amplitudeScope.launch(amplitudeDispatcher) {
             if (isBuilt.await()) {
                 idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()

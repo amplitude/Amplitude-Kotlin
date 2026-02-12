@@ -22,6 +22,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.launch
 import java.io.File
 import java.util.concurrent.Executors
 import com.amplitude.core.Amplitude as CoreAmplitude
@@ -103,7 +104,9 @@ open class Amplitude internal constructor(
             configuration.deviceId
                 ?: store.deviceId?.takeIf { validDeviceId(it, allowAppSetId = false) }
                 ?: androidContextPlugin.createDeviceId()
-        setDeviceId(deviceId)
+        // Persist device ID synchronously during build (not via coroutine dispatch)
+        store.deviceId = deviceId
+        idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
         add(GetAmpliExtrasPlugin())
         add(AndroidLifecyclePlugin(activityLifecycleCallbacks))
         add(AnalyticsConnectorIdentityPlugin())
@@ -130,23 +133,20 @@ open class Amplitude internal constructor(
      * @return the Amplitude instance
      */
     override fun reset(): Amplitude {
-        if (!isBuilt.isCompleted) {
-            logger.error("Cannot reset identity before Amplitude is initialized.")
-            return this
+        amplitudeScope.launch(amplitudeDispatcher) {
+            isBuilt.await()
+            setUserId(null)
+            setDeviceId(androidContextPlugin.createDeviceId())
         }
-        setUserId(null)
-        setDeviceId(androidContextPlugin.createDeviceId())
         return this
     }
 
     override fun setUserId(userId: String?): Amplitude {
-        store.userId = userId
         super.setUserId(userId)
         return this
     }
 
     override fun setDeviceId(deviceId: String): Amplitude {
-        store.deviceId = deviceId
         super.setDeviceId(deviceId)
         return this
     }

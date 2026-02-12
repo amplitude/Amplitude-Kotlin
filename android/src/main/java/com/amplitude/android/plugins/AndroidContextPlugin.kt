@@ -68,8 +68,8 @@ open class AndroidContextPlugin : ContextPlugin() {
     }
 
     @Deprecated(
-        message = "Use generateDeviceId() instead. Amplitude now handles setting the deviceId.",
-        replaceWith = ReplaceWith("generateDeviceId()"),
+        message = "Use createDeviceId() instead. Amplitude now handles setting the deviceId.",
+        replaceWith = ReplaceWith("createDeviceId()"),
     )
     fun initializeDeviceId(configuration: Configuration) {
         val deviceId =
