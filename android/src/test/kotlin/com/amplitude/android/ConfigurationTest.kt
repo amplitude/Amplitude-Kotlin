@@ -138,22 +138,6 @@ class ConfigurationTest {
         Assertions.assertFalse(AutocaptureOption.SCREEN_VIEWS in configuration.autocapture)
     }
 
-    @Test
-    fun autocaptureOption_requiresActivityCallbacks_containsExpectedOptions() {
-        val expectedOptions =
-            setOf(
-                AutocaptureOption.APP_LIFECYCLES,
-                AutocaptureOption.SCREEN_VIEWS,
-                AutocaptureOption.ELEMENT_INTERACTIONS,
-                AutocaptureOption.DEEP_LINKS,
-            )
-
-        Assertions.assertEquals(expectedOptions, AutocaptureOption.REQUIRES_ACTIVITY_CALLBACKS)
-
-        // Verify SESSIONS is NOT included (it doesn't need activity callbacks)
-        Assertions.assertFalse(AutocaptureOption.SESSIONS in AutocaptureOption.REQUIRES_ACTIVITY_CALLBACKS)
-    }
-
     @Suppress("DEPRECATION")
     @Test
     fun configuration_defaultTracking_replaces_autocapture_entirely_configuration() {
