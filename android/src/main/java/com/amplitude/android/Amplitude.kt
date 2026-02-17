@@ -21,7 +21,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.launch
 import java.io.File
 import java.util.concurrent.Executors
 import com.amplitude.core.Amplitude as CoreAmplitude
@@ -122,20 +121,17 @@ open class Amplitude internal constructor(
         return configuration.getStorageDirectory()
     }
 
-    /**
-     * Reset identity:
-     *  - reset userId to "null"
-     *  - reset deviceId via AndroidContextPlugin
-     * @return the Amplitude instance
-     */
     override fun reset(): Amplitude {
-        this.setUserId(null)
-        amplitudeScope.launch(amplitudeDispatcher) {
-            isBuilt.await()
-            idContainer.identityManager.editIdentity().setDeviceId(null).commit()
-            androidContextPlugin.initializeDeviceId(configuration as Configuration)
-        }
+        super.reset()
         return this
+    }
+
+    override fun regenerateDeviceId() {
+        if (::androidContextPlugin.isInitialized) {
+            androidContextPlugin.initializeDeviceId(configuration as Configuration)
+        } else {
+            super.regenerateDeviceId()
+        }
     }
 
     @GuardedAmplitudeFeature

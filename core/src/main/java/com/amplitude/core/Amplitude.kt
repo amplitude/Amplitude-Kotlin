@@ -30,7 +30,6 @@ import com.amplitude.eventbridge.EventChannel
 import com.amplitude.id.IdentityConfiguration
 import com.amplitude.id.IdentityContainer
 import com.amplitude.id.IdentityStorage
-import com.amplitude.id.IdentityUpdateType
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -75,6 +74,7 @@ open class Amplitude(
         private set
     val isBuilt: Deferred<Boolean>
     val diagnostics = Diagnostics()
+    internal val identityCoordinator = IdentityCoordinator(store)
 
     @RestrictedAmplitudeFeature
     val diagnosticsClient: DiagnosticsClient by lazy {
@@ -153,11 +153,10 @@ open class Amplitude(
 
     protected fun createIdentityContainer(identityConfiguration: IdentityConfiguration) {
         idContainer = IdentityContainer.getInstance(identityConfiguration)
-        val listener = AnalyticsIdentityListener(store)
-        idContainer.identityManager.addIdentityListener(listener)
-        if (idContainer.identityManager.isInitialized()) {
-            listener.onIdentityChanged(idContainer.identityManager.getIdentity(), IdentityUpdateType.Initialized)
-        }
+        identityCoordinator.bootstrap(idContainer.identityManager)
+        // Kept for backward compatibility — this is a public class that external consumers may reference.
+        @Suppress("DEPRECATION")
+        idContainer.identityManager.addIdentityListener(AnalyticsIdentityListener(store))
     }
 
     protected open fun build(): Deferred<Boolean> {
@@ -306,11 +305,7 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     fun setUserId(userId: String?): Amplitude {
-        amplitudeScope.launch(amplitudeDispatcher) {
-            if (isBuilt.await()) {
-                idContainer.identityManager.editIdentity().setUserId(userId).commit()
-            }
-        }
+        identityCoordinator.setUserId(userId)
         return this
     }
 
@@ -320,7 +315,7 @@ open class Amplitude(
      * @return User id.
      */
     fun getUserId(): String? {
-        return if (this::idContainer.isInitialized) idContainer.identityManager.getIdentity().userId else null
+        return store.userId
     }
 
     /**
@@ -331,7 +326,7 @@ open class Amplitude(
      * <b>Note: only do this if you know what you are doing!</b>
      */
     protected fun setDeviceIdInternal(deviceId: String) {
-        idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
+        identityCoordinator.setDeviceId(deviceId)
     }
 
     /**
@@ -341,10 +336,7 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     fun setDeviceId(deviceId: String): Amplitude {
-        amplitudeScope.launch(amplitudeDispatcher) {
-            isBuilt.await()
-            setDeviceIdInternal(deviceId)
-        }
+        identityCoordinator.setDeviceId(deviceId)
         return this
     }
 
@@ -354,7 +346,7 @@ open class Amplitude(
      * @return Device id.
      */
     fun getDeviceId(): String? {
-        return if (this::idContainer.isInitialized) idContainer.identityManager.getIdentity().deviceId else null
+        return store.deviceId
     }
 
     /**
@@ -364,9 +356,17 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     open fun reset(): Amplitude {
-        this.setUserId(null)
-        this.setDeviceId(UUID.randomUUID().toString() + "R")
+        identityCoordinator.resetIdentity()
+        regenerateDeviceId()
         return this
+    }
+
+    /**
+     * Called during [reset] to assign a new device id after identity has been cleared.
+     * Override to customize device id generation (e.g. Android-specific device id sources).
+     */
+    protected open fun regenerateDeviceId() {
+        identityCoordinator.setDeviceId(UUID.randomUUID().toString() + "R")
     }
 
     /**
