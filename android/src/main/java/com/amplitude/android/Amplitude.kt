@@ -22,6 +22,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import java.io.File
+import java.util.UUID
 import java.util.concurrent.Executors
 import com.amplitude.core.Amplitude as CoreAmplitude
 
@@ -122,16 +123,13 @@ open class Amplitude internal constructor(
     }
 
     override fun reset(): Amplitude {
-        super.reset()
-        return this
-    }
-
-    override fun regenerateDeviceId() {
+        setUserId(null)
         if (::androidContextPlugin.isInitialized) {
-            androidContextPlugin.initializeDeviceId(configuration as Configuration)
+            androidContextPlugin.initializeDeviceId(configuration as Configuration, forceRegenerate = true)
         } else {
-            super.regenerateDeviceId()
+            setDeviceId(UUID.randomUUID().toString() + "R")
         }
+        return this
     }
 
     @GuardedAmplitudeFeature

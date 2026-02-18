@@ -356,17 +356,9 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     open fun reset(): Amplitude {
-        identityCoordinator.resetIdentity()
-        regenerateDeviceId()
+        setUserId(null)
+        setDeviceId(UUID.randomUUID().toString() + "R")
         return this
-    }
-
-    /**
-     * Called during [reset] to assign a new device id after identity has been cleared.
-     * Override to customize device id generation (e.g. Android-specific device id sources).
-     */
-    protected open fun regenerateDeviceId() {
-        identityCoordinator.setDeviceId(UUID.randomUUID().toString() + "R")
     }
 
     /**

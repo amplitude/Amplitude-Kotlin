@@ -39,7 +39,10 @@ open class AndroidContextPlugin : Plugin {
         return event
     }
 
-    fun initializeDeviceId(configuration: Configuration) {
+    fun initializeDeviceId(
+        configuration: Configuration,
+        forceRegenerate: Boolean = false,
+    ) {
         // Check configuration
         var deviceId = configuration.deviceId
         if (deviceId != null) {
@@ -48,9 +51,11 @@ open class AndroidContextPlugin : Plugin {
         }
 
         // Check store
-        deviceId = amplitude.store.deviceId
-        if (deviceId != null && validDeviceId(deviceId) && !deviceId.endsWith("S")) {
-            return
+        if (!forceRegenerate) {
+            deviceId = amplitude.store.deviceId
+            if (deviceId != null && validDeviceId(deviceId) && !deviceId.endsWith("S")) {
+                return
+            }
         }
 
         // Check new device id per install

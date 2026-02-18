@@ -40,26 +40,6 @@ internal class IdentityCoordinator internal constructor(private val state: State
     }
 
     /**
-     * Resets identity: clears userId and sets deviceId to [newDeviceId].
-     */
-    fun resetIdentity(newDeviceId: String? = null) {
-        synchronized(lock) {
-            state.userId = null
-            state.deviceId = newDeviceId
-            identityManager?.editIdentity()
-                ?.setUserId(null)
-                ?.setDeviceId(newDeviceId)
-                ?.commit()
-                ?: run {
-                    hasPendingUserId = true
-                    pendingUserId = null
-                    hasPendingDeviceId = true
-                    pendingDeviceId = newDeviceId
-                }
-        }
-    }
-
-    /**
      * Called during [com.amplitude.core.Amplitude.createIdentityContainer] to reconcile
      * persisted identity with any pre-build changes. User intent wins over persisted values.
      */
