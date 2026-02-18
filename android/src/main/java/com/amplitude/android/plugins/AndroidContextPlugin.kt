@@ -8,6 +8,7 @@ import com.amplitude.core.Amplitude
 import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
+import com.amplitude.core.platform.plugins.ContextPlugin
 import java.util.UUID
 
 @OptIn(RestrictedAmplitudeFeature::class)
@@ -53,7 +54,7 @@ open class AndroidContextPlugin : Plugin {
         // Check store
         if (!forceRegenerate) {
             deviceId = amplitude.store.deviceId
-            if (deviceId != null && validDeviceId(deviceId) && !deviceId.endsWith("S")) {
+            if (deviceId != null && validDeviceId(deviceId) && !deviceId.endsWith(APP_SET_DEVICE_ID_SUFFIX)) {
                 return
             }
         }
@@ -74,15 +75,13 @@ open class AndroidContextPlugin : Plugin {
         if (configuration.useAppSetIdForDeviceId) {
             val appSetId = contextProvider.appSetId
             if (appSetId != null && validDeviceId(appSetId)) {
-                setDeviceId("${appSetId}S")
+                setDeviceId("$appSetId$APP_SET_DEVICE_ID_SUFFIX")
                 return
             }
         }
 
         // Generate random id
-        val generatedUuid = UUID.randomUUID().toString()
-        val randomId = generatedUuid + "R"
-        setDeviceId(randomId)
+        setDeviceId(ContextPlugin.generateRandomDeviceId())
     }
 
     private fun applyContextData(event: BaseEvent) {
@@ -182,6 +181,7 @@ open class AndroidContextPlugin : Plugin {
 
     companion object {
         const val PLATFORM = "Android"
+        private const val APP_SET_DEVICE_ID_SUFFIX = "S"
         const val SDK_LIBRARY = "amplitude-analytics-android"
         const val SDK_VERSION = BuildConfig.AMPLITUDE_VERSION
         private val INVALID_DEVICE_IDS =

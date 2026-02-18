@@ -43,7 +43,6 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import java.io.File
-import java.util.UUID
 import java.util.concurrent.Executors
 
 /**
@@ -357,7 +356,7 @@ open class Amplitude(
      */
     open fun reset(): Amplitude {
         setUserId(null)
-        setDeviceId(UUID.randomUUID().toString() + "R")
+        setDeviceId(ContextPlugin.generateRandomDeviceId())
         return this
     }
 

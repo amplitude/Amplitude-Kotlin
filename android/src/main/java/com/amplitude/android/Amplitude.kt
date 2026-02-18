@@ -14,6 +14,7 @@ import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.core.State
 import com.amplitude.core.diagnostics.DiagnosticsContextProvider
 import com.amplitude.core.platform.plugins.AmplitudeDestination
+import com.amplitude.core.platform.plugins.ContextPlugin
 import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
 import com.amplitude.id.IdentityConfiguration
 import kotlinx.coroutines.CoroutineDispatcher
@@ -22,7 +23,6 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import java.io.File
-import java.util.UUID
 import java.util.concurrent.Executors
 import com.amplitude.core.Amplitude as CoreAmplitude
 
@@ -127,7 +127,7 @@ open class Amplitude internal constructor(
         if (::androidContextPlugin.isInitialized) {
             androidContextPlugin.initializeDeviceId(configuration as Configuration, forceRegenerate = true)
         } else {
-            setDeviceId(UUID.randomUUID().toString() + "R")
+            setDeviceId(ContextPlugin.generateRandomDeviceId())
         }
         return this
     }
