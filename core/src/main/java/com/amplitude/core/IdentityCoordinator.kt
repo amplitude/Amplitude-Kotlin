@@ -12,19 +12,19 @@ import com.amplitude.id.IdentityManager
 internal class IdentityCoordinator internal constructor(private val state: State) {
     private val lock = Any()
     private var identityManager: IdentityManager? = null
-    private var hasPendingUserId = false
-    private var pendingUserId: String? = null
-    private var hasPendingDeviceId = false
-    private var pendingDeviceId: String? = null
+    private var pendingUserId: Pending<String?>? = null
+    private var pendingDeviceId: Pending<String>? = null
+
+    @JvmInline
+    private value class Pending<T>(val value: T)
+
+    private fun <T> Pending<T>?.getOrElse(default: T?) = if (this != null) value else default
 
     fun setUserId(userId: String?) {
         synchronized(lock) {
             state.userId = userId
             identityManager?.editIdentity()?.setUserId(userId)?.commit()
-                ?: run {
-                    hasPendingUserId = true
-                    pendingUserId = userId
-                }
+                ?: run { pendingUserId = Pending(userId) }
         }
     }
 
@@ -32,10 +32,7 @@ internal class IdentityCoordinator internal constructor(private val state: State
         synchronized(lock) {
             state.deviceId = deviceId
             identityManager?.editIdentity()?.setDeviceId(deviceId)?.commit()
-                ?: run {
-                    hasPendingDeviceId = true
-                    pendingDeviceId = deviceId
-                }
+                ?: run { pendingDeviceId = Pending(deviceId) }
         }
     }
 
@@ -48,8 +45,8 @@ internal class IdentityCoordinator internal constructor(private val state: State
             this.identityManager = identityManager
             val persisted = identityManager.getIdentity()
 
-            val userId = if (hasPendingUserId) pendingUserId else persisted.userId
-            val deviceId = if (hasPendingDeviceId) pendingDeviceId else persisted.deviceId
+            val userId = pendingUserId.getOrElse(persisted.userId)
+            val deviceId = pendingDeviceId.getOrElse(persisted.deviceId)
 
             state.userId = userId
             state.deviceId = deviceId
@@ -59,8 +56,6 @@ internal class IdentityCoordinator internal constructor(private val state: State
                 .setDeviceId(deviceId)
                 .commit()
 
-            hasPendingUserId = false
-            hasPendingDeviceId = false
             pendingUserId = null
             pendingDeviceId = null
         }
