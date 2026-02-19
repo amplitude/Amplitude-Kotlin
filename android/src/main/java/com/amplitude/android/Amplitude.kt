@@ -14,6 +14,7 @@ import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.core.State
 import com.amplitude.core.diagnostics.DiagnosticsContextProvider
 import com.amplitude.core.platform.plugins.AmplitudeDestination
+import com.amplitude.core.platform.plugins.ContextPlugin
 import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
 import com.amplitude.id.IdentityConfiguration
 import kotlinx.coroutines.CoroutineDispatcher
@@ -21,7 +22,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
-import kotlinx.coroutines.launch
 import java.io.File
 import java.util.concurrent.Executors
 import com.amplitude.core.Amplitude as CoreAmplitude
@@ -43,7 +43,7 @@ open class Amplitude internal constructor(
     ) {
     constructor(configuration: Configuration) : this(configuration, State())
 
-    private lateinit var androidContextPlugin: AndroidContextPlugin
+    private val androidContextPlugin by lazy { AndroidContextPlugin() }
 
     val sessionId: Long
         get() {
@@ -95,13 +95,6 @@ open class Amplitude internal constructor(
         if (this.configuration.offline != AndroidNetworkConnectivityCheckerPlugin.Disabled) {
             add(AndroidNetworkConnectivityCheckerPlugin())
         }
-        androidContextPlugin =
-            object : AndroidContextPlugin() {
-                override fun setDeviceId(deviceId: String) {
-                    // call internal method to set deviceId immediately i.e. dont' wait for build() to complete
-                    this@Amplitude.setDeviceIdInternal(deviceId)
-                }
-            }
         add(androidContextPlugin)
         add(GetAmpliExtrasPlugin())
         add(AndroidLifecyclePlugin(activityLifecycleCallbacks))
@@ -122,18 +115,12 @@ open class Amplitude internal constructor(
         return configuration.getStorageDirectory()
     }
 
-    /**
-     * Reset identity:
-     *  - reset userId to "null"
-     *  - reset deviceId via AndroidContextPlugin
-     * @return the Amplitude instance
-     */
     override fun reset(): Amplitude {
-        this.setUserId(null)
-        amplitudeScope.launch(amplitudeDispatcher) {
-            isBuilt.await()
-            idContainer.identityManager.editIdentity().setDeviceId(null).commit()
-            androidContextPlugin.initializeDeviceId(configuration as Configuration)
+        setUserId(null)
+        if (isBuilt.isCompleted) {
+            androidContextPlugin.initializeDeviceId(configuration as Configuration, forceRegenerate = true)
+        } else {
+            setDeviceId(ContextPlugin.generateRandomDeviceId())
         }
         return this
     }

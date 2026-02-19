@@ -22,7 +22,6 @@ import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
 import com.amplitude.core.remoteconfig.RemoteConfigClient
 import com.amplitude.core.remoteconfig.RemoteConfigClientImpl
 import com.amplitude.core.utilities.AnalyticsEventReceiver
-import com.amplitude.core.utilities.AnalyticsIdentityListener
 import com.amplitude.core.utilities.Diagnostics
 import com.amplitude.core.utilities.http.HttpClient
 import com.amplitude.eventbridge.EventBridgeContainer
@@ -30,7 +29,6 @@ import com.amplitude.eventbridge.EventChannel
 import com.amplitude.id.IdentityConfiguration
 import com.amplitude.id.IdentityContainer
 import com.amplitude.id.IdentityStorage
-import com.amplitude.id.IdentityUpdateType
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -44,7 +42,6 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import java.io.File
-import java.util.UUID
 import java.util.concurrent.Executors
 
 /**
@@ -75,6 +72,7 @@ open class Amplitude(
         private set
     val isBuilt: Deferred<Boolean>
     val diagnostics = Diagnostics()
+    internal val identityCoordinator = IdentityCoordinator(store)
 
     @RestrictedAmplitudeFeature
     val diagnosticsClient: DiagnosticsClient by lazy {
@@ -153,11 +151,7 @@ open class Amplitude(
 
     protected fun createIdentityContainer(identityConfiguration: IdentityConfiguration) {
         idContainer = IdentityContainer.getInstance(identityConfiguration)
-        val listener = AnalyticsIdentityListener(store)
-        idContainer.identityManager.addIdentityListener(listener)
-        if (idContainer.identityManager.isInitialized()) {
-            listener.onIdentityChanged(idContainer.identityManager.getIdentity(), IdentityUpdateType.Initialized)
-        }
+        identityCoordinator.bootstrap(idContainer.identityManager)
     }
 
     protected open fun build(): Deferred<Boolean> {
@@ -184,14 +178,7 @@ open class Amplitude(
         EventBridgeContainer.getInstance(
             configuration.instanceName,
         ).eventBridge.setEventReceiver(EventChannel.EVENT, AnalyticsEventReceiver(this))
-        add(
-            object : ContextPlugin() {
-                override fun setDeviceId(deviceId: String) {
-                    // set device id immediately, don't wait for isBuilt
-                    setDeviceIdInternal(deviceId)
-                }
-            },
-        )
+        add(ContextPlugin())
         add(GetAmpliExtrasPlugin())
         add(AmplitudeDestination())
     }
@@ -306,11 +293,7 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     fun setUserId(userId: String?): Amplitude {
-        amplitudeScope.launch(amplitudeDispatcher) {
-            if (isBuilt.await()) {
-                idContainer.identityManager.editIdentity().setUserId(userId).commit()
-            }
-        }
+        identityCoordinator.setUserId(userId)
         return this
     }
 
@@ -320,18 +303,7 @@ open class Amplitude(
      * @return User id.
      */
     fun getUserId(): String? {
-        return if (this::idContainer.isInitialized) idContainer.identityManager.getIdentity().userId else null
-    }
-
-    /**
-     * <b>INTERNAL METHOD!</b>
-     *
-     * Sets device id immediately without waiting for build() to complete.
-     *
-     * <b>Note: only do this if you know what you are doing!</b>
-     */
-    protected fun setDeviceIdInternal(deviceId: String) {
-        idContainer.identityManager.editIdentity().setDeviceId(deviceId).commit()
+        return store.userId
     }
 
     /**
@@ -341,10 +313,7 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     fun setDeviceId(deviceId: String): Amplitude {
-        amplitudeScope.launch(amplitudeDispatcher) {
-            isBuilt.await()
-            setDeviceIdInternal(deviceId)
-        }
+        identityCoordinator.setDeviceId(deviceId)
         return this
     }
 
@@ -354,7 +323,7 @@ open class Amplitude(
      * @return Device id.
      */
     fun getDeviceId(): String? {
-        return if (this::idContainer.isInitialized) idContainer.identityManager.getIdentity().deviceId else null
+        return store.deviceId
     }
 
     /**
@@ -364,8 +333,8 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     open fun reset(): Amplitude {
-        this.setUserId(null)
-        this.setDeviceId(UUID.randomUUID().toString() + "R")
+        setUserId(null)
+        setDeviceId(ContextPlugin.generateRandomDeviceId())
         return this
     }
 

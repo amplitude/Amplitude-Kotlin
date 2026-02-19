@@ -11,6 +11,12 @@ open class ContextPlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Before
     override lateinit var amplitude: Amplitude
 
+    companion object {
+        private const val RANDOM_DEVICE_ID_SUFFIX = "R"
+
+        fun generateRandomDeviceId(): String = UUID.randomUUID().toString() + RANDOM_DEVICE_ID_SUFFIX
+    }
+
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
         initializeDeviceId(amplitude.configuration)
