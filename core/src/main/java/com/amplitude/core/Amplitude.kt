@@ -22,7 +22,6 @@ import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
 import com.amplitude.core.remoteconfig.RemoteConfigClient
 import com.amplitude.core.remoteconfig.RemoteConfigClientImpl
 import com.amplitude.core.utilities.AnalyticsEventReceiver
-import com.amplitude.core.utilities.AnalyticsIdentityListener
 import com.amplitude.core.utilities.Diagnostics
 import com.amplitude.core.utilities.http.HttpClient
 import com.amplitude.eventbridge.EventBridgeContainer
@@ -153,9 +152,6 @@ open class Amplitude(
     protected fun createIdentityContainer(identityConfiguration: IdentityConfiguration) {
         idContainer = IdentityContainer.getInstance(identityConfiguration)
         identityCoordinator.bootstrap(idContainer.identityManager)
-        // Kept for backward compatibility — this is a public class that external consumers may reference.
-        @Suppress("DEPRECATION")
-        idContainer.identityManager.addIdentityListener(AnalyticsIdentityListener(store))
     }
 
     protected open fun build(): Deferred<Boolean> {
@@ -186,7 +182,7 @@ open class Amplitude(
             object : ContextPlugin() {
                 override fun setDeviceId(deviceId: String) {
                     // set device id immediately, don't wait for isBuilt
-                    setDeviceIdInternal(deviceId)
+                    this@Amplitude.setDeviceId(deviceId)
                 }
             },
         )
@@ -315,17 +311,6 @@ open class Amplitude(
      */
     fun getUserId(): String? {
         return store.userId
-    }
-
-    /**
-     * <b>INTERNAL METHOD!</b>
-     *
-     * Sets device id immediately without waiting for build() to complete.
-     *
-     * <b>Note: only do this if you know what you are doing!</b>
-     */
-    protected fun setDeviceIdInternal(deviceId: String) {
-        identityCoordinator.setDeviceId(deviceId)
     }
 
     /**

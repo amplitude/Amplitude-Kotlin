@@ -98,8 +98,8 @@ open class Amplitude internal constructor(
         androidContextPlugin =
             object : AndroidContextPlugin() {
                 override fun setDeviceId(deviceId: String) {
-                    // call internal method to set deviceId immediately i.e. dont' wait for build() to complete
-                    this@Amplitude.setDeviceIdInternal(deviceId)
+                    // set deviceId immediately i.e. dont' wait for build() to complete
+                    this@Amplitude.setDeviceId(deviceId)
                 }
             }
         add(androidContextPlugin)
