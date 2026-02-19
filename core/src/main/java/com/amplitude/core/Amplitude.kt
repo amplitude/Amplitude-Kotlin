@@ -178,14 +178,7 @@ open class Amplitude(
         EventBridgeContainer.getInstance(
             configuration.instanceName,
         ).eventBridge.setEventReceiver(EventChannel.EVENT, AnalyticsEventReceiver(this))
-        add(
-            object : ContextPlugin() {
-                override fun setDeviceId(deviceId: String) {
-                    // set device id immediately, don't wait for isBuilt
-                    this@Amplitude.setDeviceId(deviceId)
-                }
-            },
-        )
+        add(ContextPlugin())
         add(GetAmpliExtrasPlugin())
         add(AmplitudeDestination())
     }

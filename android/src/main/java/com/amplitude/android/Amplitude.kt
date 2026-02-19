@@ -43,7 +43,7 @@ open class Amplitude internal constructor(
     ) {
     constructor(configuration: Configuration) : this(configuration, State())
 
-    private lateinit var androidContextPlugin: AndroidContextPlugin
+    private val androidContextPlugin by lazy { AndroidContextPlugin() }
 
     val sessionId: Long
         get() {
@@ -95,13 +95,6 @@ open class Amplitude internal constructor(
         if (this.configuration.offline != AndroidNetworkConnectivityCheckerPlugin.Disabled) {
             add(AndroidNetworkConnectivityCheckerPlugin())
         }
-        androidContextPlugin =
-            object : AndroidContextPlugin() {
-                override fun setDeviceId(deviceId: String) {
-                    // set deviceId immediately i.e. dont' wait for build() to complete
-                    this@Amplitude.setDeviceId(deviceId)
-                }
-            }
         add(androidContextPlugin)
         add(GetAmpliExtrasPlugin())
         add(AndroidLifecyclePlugin(activityLifecycleCallbacks))
@@ -124,7 +117,7 @@ open class Amplitude internal constructor(
 
     override fun reset(): Amplitude {
         setUserId(null)
-        if (::androidContextPlugin.isInitialized) {
+        if (isBuilt.isCompleted) {
             androidContextPlugin.initializeDeviceId(configuration as Configuration, forceRegenerate = true)
         } else {
             setDeviceId(ContextPlugin.generateRandomDeviceId())
