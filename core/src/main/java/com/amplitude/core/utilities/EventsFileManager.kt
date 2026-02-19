@@ -60,32 +60,14 @@ class EventsFileManager(
                 return@withLock
             }
             var file = currentFile()
-            if (!file.exists()) {
-                // create it
-                try {
-                    file.createNewFile()
-                } catch (e: IOException) {
-                    diagnostics.addErrorLog("Failed to create new storage file: ${e.message}")
-                    logger.error("Failed to create new storage file: ${file.path}")
-                    return@withLock
-                }
-            }
+            if (!createFileIfNeeded(file)) return@withLock
 
             // check if file is at capacity
             while (file.length() > MAX_FILE_SIZE) {
                 finish(file)
                 // update index
                 file = currentFile()
-                if (!file.exists()) {
-                    // create it
-                    try {
-                        file.createNewFile()
-                    } catch (e: IOException) {
-                        diagnostics.addErrorLog("Failed to create new storage file: ${e.message}")
-                        logger.error("Failed to create new storage file: ${file.path}")
-                        return@withLock
-                    }
-                }
+                if (!createFileIfNeeded(file)) return@withLock
             }
             val contents = event.replace(DELIMITER, "") + DELIMITER
             writeToFile(contents.toByteArray(), file, true)
@@ -201,13 +183,7 @@ class EventsFileManager(
                         // Delimiter found - parse the buffered event and reset
                         hasDelimiter = true
                         if (buffer.isNotEmpty()) {
-                            val eventString = buffer.toString()
-                            try {
-                                events.put(JSONObject(eventString))
-                            } catch (e: JSONException) {
-                                diagnostics.addMalformedEvent(eventString)
-                                logger.error("Failed to parse event: $eventString")
-                            }
+                            tryParseEvent(buffer.toString(), events)
                             buffer.clear()
                         }
                     } else {
@@ -223,17 +199,24 @@ class EventsFileManager(
                         return@use handleLegacyFormat(remaining, filePath)
                     }
                     // Content after the last delimiter (unexpected but handled gracefully)
-                    try {
-                        events.put(JSONObject(remaining))
-                    } catch (e: JSONException) {
-                        diagnostics.addMalformedEvent(remaining)
-                        logger.error("Failed to parse event: $remaining")
-                    }
+                    tryParseEvent(remaining, events)
                 }
 
                 return@use if (events.length() > 0) events.toString() else ""
             }
         }
+
+    private fun tryParseEvent(
+        eventString: String,
+        events: JSONArray,
+    ) {
+        try {
+            events.put(JSONObject(eventString))
+        } catch (e: JSONException) {
+            diagnostics.addMalformedEvent(eventString)
+            logger.error("Failed to parse event: $eventString. $e")
+        }
+    }
 
     /**
      * Parses a legacy event file that uses the old JSON array format (no null delimiters).
@@ -249,7 +232,7 @@ class EventsFileManager(
             jsonArray.toString()
         } catch (e: JSONException) {
             diagnostics.addMalformedEvent(normalizedContent)
-            logger.error("Failed to parse events: $normalizedContent, dropping file: $filePath")
+            logger.error("Failed to parse events: $normalizedContent, dropping file: $filePath. $e")
             this.remove(filePath)
             normalizedContent
         }
@@ -359,6 +342,18 @@ class EventsFileManager(
         }
     }
 
+    private fun createFileIfNeeded(file: File): Boolean {
+        if (file.exists()) return true
+        return try {
+            file.createNewFile()
+            true
+        } catch (e: IOException) {
+            diagnostics.addErrorLog("Failed to create new storage file: ${e.message}")
+            logger.error("Failed to create new storage file: ${file.path}")
+            false
+        }
+    }
+
     private fun reset() {
         curFile.remove(storageKey)
     }
@@ -391,7 +386,7 @@ class EventsFileManager(
                             }
                         } catch (e: JSONException) {
                             logger.error(
-                                "Failed to parse events: $normalizedContent, dropping file: ${it.path}",
+                                "Failed to parse events: $normalizedContent, dropping file: ${it.path}. $e",
                             )
                             this.remove(it.path)
                         }
