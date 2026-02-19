@@ -175,6 +175,17 @@ class EventsFileManagerTest {
         }
 
     @Test
+    fun `getEventString should handle empty file`() =
+        runBlocking {
+            val file = File(tempDir, "$STORAGE_KEY-0")
+            file.createNewFile()
+            val filePaths = eventsFileManager.read()
+            assertEquals(1, filePaths.size)
+            val eventsString = eventsFileManager.getEventString(filePaths[0])
+            assertEquals("", eventsString)
+        }
+
+    @Test
     fun `verify delimiter handled gracefully`() =
         runBlocking {
             val file0 = File(tempDir, "$STORAGE_KEY-0")

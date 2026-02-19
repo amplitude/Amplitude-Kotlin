@@ -163,41 +163,82 @@ class EventsFileManager(
         this.remove(filePath)
     }
 
+    /**
+     * Reads an event file and returns its contents as a JSON array string.
+     *
+     * Uses streaming (character-by-character) reading instead of loading the entire file into
+     * memory at once. Event files can be up to [MAX_FILE_SIZE] (~975KB), and loading the full
+     * content + split + JSONArray.toString() would require ~4-6MB of peak heap, causing OOM
+     * on memory-constrained devices.
+     *
+     * File format: events are separated by a null character ([DELIMITER]).
+     * Legacy files (pre-delimiter format) are detected and handled via [handleLegacyFormat].
+     */
     suspend fun getEventString(filePath: String): String =
         readMutex.withLock {
-            // Block one time of file reads if another task has read the content of this file
+            // Prevent duplicate reads - if this file was already read, skip it
             if (filePathSet.contains(filePath)) {
                 filePathSet.remove(filePath)
                 return@withLock ""
             }
             filePathSet.add(filePath)
-            File(filePath).bufferedReader().use { reader ->
-                val content = reader.readText()
-                val isCurrentVersion = content.endsWith(DELIMITER)
-                if (isCurrentVersion) {
-                    // handle current version
-                    val events = JSONArray()
-                    content.split(DELIMITER).forEach {
-                        if (it.isNotEmpty()) {
+
+            val file = File(filePath)
+            if (!file.exists()) {
+                return@withLock ""
+            }
+
+            // Stream character-by-character to keep only one event in the buffer at a time
+            file.bufferedReader().use { reader ->
+                val events = JSONArray()
+                val buffer = StringBuilder()
+                var char: Int
+                var hasDelimiter = false
+
+                while (reader.read().also { char = it } != -1) {
+                    val c = char.toChar()
+                    if (c == DELIMITER[0]) {
+                        // Delimiter found - parse the buffered event and reset
+                        hasDelimiter = true
+                        if (buffer.isNotEmpty()) {
+                            val eventString = buffer.toString()
                             try {
-                                events.put(JSONObject(it))
+                                events.put(JSONObject(eventString))
                             } catch (e: JSONException) {
-                                diagnostics.addMalformedEvent(it)
-                                logger.error("Failed to parse event: $it")
+                                diagnostics.addMalformedEvent(eventString)
+                                logger.error("Failed to parse event: $eventString")
                             }
+                            buffer.clear()
                         }
-                    }
-                    return@use if (events.length() > 0) {
-                        events.toString()
                     } else {
-                        ""
+                        buffer.append(c)
                     }
-                } else {
-                    return@use handleLegacyFormat(content, filePath)
                 }
+
+                // After reading the full file, handle any remaining content in the buffer
+                if (buffer.isNotEmpty()) {
+                    val remaining = buffer.toString()
+                    if (!hasDelimiter) {
+                        // No delimiters found anywhere - this is a legacy format file
+                        return@use handleLegacyFormat(remaining, filePath)
+                    }
+                    // Content after the last delimiter (unexpected but handled gracefully)
+                    try {
+                        events.put(JSONObject(remaining))
+                    } catch (e: JSONException) {
+                        diagnostics.addMalformedEvent(remaining)
+                        logger.error("Failed to parse event: $remaining")
+                    }
+                }
+
+                return@use if (events.length() > 0) events.toString() else ""
             }
         }
 
+    /**
+     * Parses a legacy event file that uses the old JSON array format (no null delimiters).
+     * Kept for backward compatibility with files written by older SDK versions.
+     */
     private fun handleLegacyFormat(
         content: String,
         filePath: String,
