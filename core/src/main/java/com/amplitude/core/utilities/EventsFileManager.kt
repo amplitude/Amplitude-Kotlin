@@ -193,22 +193,26 @@ class EventsFileManager(
                         ""
                     }
                 } else {
-                    // handle earlier versions. This is for backward compatibility for safety and would be removed later.
-                    val normalizedContent = "[${content.trimStart('[', ',').trimEnd(']', ',')}]"
-                    try {
-                        val jsonArray = JSONArray(normalizedContent)
-                        return@use jsonArray.toString()
-                    } catch (e: JSONException) {
-                        diagnostics.addMalformedEvent(normalizedContent)
-                        logger.error(
-                            "Failed to parse events: $normalizedContent, dropping file: $filePath",
-                        )
-                        this.remove(filePath)
-                        return@use normalizedContent
-                    }
+                    return@use handleLegacyFormat(content, filePath)
                 }
             }
         }
+
+    private fun handleLegacyFormat(
+        content: String,
+        filePath: String,
+    ): String {
+        val normalizedContent = "[${content.trimStart('[', ',').trimEnd(']', ',')}]"
+        return try {
+            val jsonArray = JSONArray(normalizedContent)
+            jsonArray.toString()
+        } catch (e: JSONException) {
+            diagnostics.addMalformedEvent(normalizedContent)
+            logger.error("Failed to parse events: $normalizedContent, dropping file: $filePath")
+            this.remove(filePath)
+            normalizedContent
+        }
+    }
 
     fun release(filePath: String) {
         filePathSet.remove(filePath)
