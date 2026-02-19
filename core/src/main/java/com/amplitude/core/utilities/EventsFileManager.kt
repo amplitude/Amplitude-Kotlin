@@ -32,7 +32,8 @@ class EventsFileManager(
 
     companion object {
         const val MAX_FILE_SIZE = 975_000 // 975KB
-        const val DELIMITER = "\u0000"
+        private const val DELIMITER_CHAR: Char = '\u0000' // null character as delimiter
+        const val DELIMITER: String = DELIMITER_CHAR.toString()
         val writeMutexMap = ConcurrentHashMap<String, Mutex>()
         val readMutexMap = ConcurrentHashMap<String, Mutex>()
 
@@ -148,10 +149,10 @@ class EventsFileManager(
     /**
      * Reads an event file and returns its contents as a JSON array string.
      *
-     * Uses streaming (character-by-character) reading instead of loading the entire file into
-     * memory at once. Event files can be up to [MAX_FILE_SIZE] (~975KB), and loading the full
-     * content + split + JSONArray.toString() would require ~4-6MB of peak heap, causing OOM
-     * on memory-constrained devices.
+     * Uses chunk-based streaming instead of loading the entire file into memory at once.
+     * Event files can be up to [MAX_FILE_SIZE] (~975KB), and loading the full content +
+     * split + JSONArray.toString() would require ~4-6MB of peak heap, causing OOM on
+     * memory-constrained devices.
      *
      * File format: events are separated by a null character ([DELIMITER]).
      * Legacy files (pre-delimiter format) are detected and handled via [handleLegacyFormat].
@@ -170,24 +171,26 @@ class EventsFileManager(
                 return@withLock ""
             }
 
-            // Stream character-by-character to keep only one event in the buffer at a time
+            // Read in chunks to avoid loading the entire file at once
             file.bufferedReader().use { reader ->
                 val events = JSONArray()
                 val buffer = StringBuilder()
-                var char: Int
+                val chunk = CharArray(8192) // 8 KB chunk size
+                var bytesRead: Int
                 var hasDelimiter = false
 
-                while (reader.read().also { char = it } != -1) {
-                    val c = char.toChar()
-                    if (c == DELIMITER[0]) {
-                        // Delimiter found - parse the buffered event and reset
-                        hasDelimiter = true
-                        if (buffer.isNotEmpty()) {
-                            tryParseEvent(buffer.toString(), events)
-                            buffer.clear()
+                while (reader.read(chunk).also { bytesRead = it } != -1) {
+                    for (i in 0 until bytesRead) {
+                        if (chunk[i] == DELIMITER_CHAR) {
+                            // Delimiter found - parse the buffered event and reset
+                            hasDelimiter = true
+                            if (buffer.isNotEmpty()) {
+                                tryParseEvent(buffer.toString(), events)
+                                buffer.clear()
+                            }
+                        } else {
+                            buffer.append(chunk[i])
                         }
-                    } else {
-                        buffer.append(c)
                     }
                 }
 
@@ -214,7 +217,7 @@ class EventsFileManager(
             events.put(JSONObject(eventString))
         } catch (e: JSONException) {
             diagnostics.addMalformedEvent(eventString)
-            logger.error("Failed to parse event: $eventString. $e")
+            logger.error("Failed to parse event: $eventString, error: $e")
         }
     }
 
@@ -232,7 +235,7 @@ class EventsFileManager(
             jsonArray.toString()
         } catch (e: JSONException) {
             diagnostics.addMalformedEvent(normalizedContent)
-            logger.error("Failed to parse events: $normalizedContent, dropping file: $filePath. $e")
+            logger.error("Failed to parse events: $normalizedContent, dropping file: $filePath, error: $e")
             this.remove(filePath)
             normalizedContent
         }
@@ -386,7 +389,7 @@ class EventsFileManager(
                             }
                         } catch (e: JSONException) {
                             logger.error(
-                                "Failed to parse events: $normalizedContent, dropping file: ${it.path}. $e",
+                                "Failed to parse events: $normalizedContent, dropping file: ${it.path}, error: $e",
                             )
                             this.remove(it.path)
                         }
