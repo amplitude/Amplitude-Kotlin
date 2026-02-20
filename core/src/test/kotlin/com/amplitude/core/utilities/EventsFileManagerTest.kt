@@ -175,6 +175,43 @@ class EventsFileManagerTest {
         }
 
     @Test
+    fun `getEventString should handle empty file`() =
+        runBlocking {
+            val file = File(tempDir, "$STORAGE_KEY-0")
+            file.createNewFile()
+            val filePaths = eventsFileManager.read()
+            assertEquals(1, filePaths.size)
+            val eventsString = eventsFileManager.getEventString(filePaths[0])
+            assertEquals("", eventsString)
+        }
+
+    @Test
+    fun `getEventString should return empty for non-existent file`() =
+        runBlocking {
+            val deletedFilePath = File(tempDir, "$STORAGE_KEY-0").absolutePath
+            // Simulate file deleted between read() and getEventString()
+            val eventsString = eventsFileManager.getEventString(deletedFilePath)
+            assertEquals("", eventsString)
+        }
+
+    @Test
+    fun `getEventString should handle trailing content after last delimiter`() =
+        runBlocking {
+            // Trigger lazy init first so handleV1Files() runs on empty directory
+            eventsFileManager.read()
+            // File where the last event is NOT followed by a delimiter
+            val file = File(tempDir, "$STORAGE_KEY-0")
+            file.writeText("{\"eventType\":\"test1\"}\u0000{\"eventType\":\"test2\"}")
+            val filePaths = eventsFileManager.read()
+            assertEquals(1, filePaths.size)
+            val eventsString = eventsFileManager.getEventString(filePaths[0])
+            val events = JSONArray(eventsString)
+            assertEquals(2, events.length())
+            assertEquals("test1", events.getJSONObject(0).getString("eventType"))
+            assertEquals("test2", events.getJSONObject(1).getString("eventType"))
+        }
+
+    @Test
     fun `verify delimiter handled gracefully`() =
         runBlocking {
             val file0 = File(tempDir, "$STORAGE_KEY-0")
