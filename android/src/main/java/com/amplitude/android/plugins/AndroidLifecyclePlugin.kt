@@ -6,6 +6,7 @@ import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.annotation.VisibleForTesting
+import com.amplitude.android.AutocaptureManager
 import com.amplitude.android.AutocaptureState
 import com.amplitude.android.Configuration
 import com.amplitude.android.FrustrationInteractionsDetector
@@ -13,7 +14,6 @@ import com.amplitude.android.GuardedAmplitudeFeature
 import com.amplitude.android.InteractionType.DeadClick
 import com.amplitude.android.InteractionType.RageClick
 import com.amplitude.android.internal.gestures.WindowCallbackManager
-import com.amplitude.android.stringRepresentation
 import com.amplitude.android.utilities.ActivityCallbackType
 import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.android.utilities.DefaultEventUtils
@@ -23,6 +23,7 @@ import com.amplitude.core.platform.Plugin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import java.lang.ref.WeakReference
 import com.amplitude.android.Amplitude as AndroidAmplitude
 
 @OptIn(GuardedAmplitudeFeature::class, RestrictedAmplitudeFeature::class)
@@ -34,12 +35,15 @@ class AndroidLifecyclePlugin(
     override lateinit var amplitude: Amplitude
     private lateinit var packageInfo: PackageInfo
     private lateinit var androidAmplitude: AndroidAmplitude
-    private lateinit var autocaptureState: AutocaptureState
+    private lateinit var autocaptureManager: AutocaptureManager
+    private val autocaptureState: AutocaptureState
+        get() = autocaptureManager.state
 
     private var frustrationInteractionsDetector: FrustrationInteractionsDetector? = null
     private var windowCallbackManager: WindowCallbackManager? = null
 
-    private val created: MutableSet<Int> = mutableSetOf()
+    private val created: MutableMap<Int, WeakReference<Activity>> = mutableMapOf()
+    private val fragmentTrackingActivities: MutableSet<Int> = mutableSetOf()
     private val started: MutableSet<Int> = mutableSetOf()
     private val processedDeepLinkIntents: MutableMap<Int, Int> = mutableMapOf()
 
@@ -53,61 +57,39 @@ class AndroidLifecyclePlugin(
         androidAmplitude = amplitude as AndroidAmplitude
         val androidConfiguration = amplitude.configuration as Configuration
 
-        // Build autocapture state once from configuration
-        autocaptureState =
-            AutocaptureState.from(
-                androidConfiguration.autocapture,
-                androidConfiguration.interactionsOptions,
-            )
-
-        // Set autocapture state to diagnostics client
-        amplitude.diagnosticsClient.setTag(
-            name = "autocapture.enabled",
-            value = androidConfiguration.autocapture.stringRepresentation(),
-        )
+        autocaptureManager = androidAmplitude.autocaptureManager
 
         val application = androidConfiguration.context as Application
 
-        // Initialize frustration interactions detector if rage or dead click is enabled
-        if (RageClick in autocaptureState.interactions ||
-            DeadClick in autocaptureState.interactions
-        ) {
-            val density = application.resources.displayMetrics.density
-
-            frustrationInteractionsDetector =
-                FrustrationInteractionsDetector(
-                    amplitude = amplitude,
-                    logger = amplitude.logger,
-                    density = density,
-                    autocaptureState = autocaptureState,
-                )
-            frustrationInteractionsDetector?.start()
-        }
-
-        // Initialize window callback manager for tracking element interactions across all windows
-        // This enables tracking interactions in dialogs (including NavGraph dialogs)
-        if (autocaptureState.interactions.isNotEmpty()) {
-            windowCallbackManager =
-                WindowCallbackManager(
-                    track = androidAmplitude::track,
-                    frustrationDetector = frustrationInteractionsDetector,
-                    autocaptureState = autocaptureState,
-                    logger = androidAmplitude.logger,
-                )
-            windowCallbackManager?.start()
-        }
+        // Always initialize packageInfo — remote config may enable appLifecycles later.
+        packageInfo =
+            try {
+                application.packageManager.getPackageInfo(application.packageName, 0)
+            } catch (e: PackageManager.NameNotFoundException) {
+                // This shouldn't happen, but in case it happens, fallback to empty package info.
+                amplitude.logger.error("Cannot find package with application.packageName: " + application.packageName)
+                PackageInfo()
+            }
 
         if (autocaptureState.appLifecycles) {
-            packageInfo =
-                try {
-                    application.packageManager.getPackageInfo(application.packageName, 0)
-                } catch (e: PackageManager.NameNotFoundException) {
-                    // This shouldn't happen, but in case it happens, fallback to empty package info.
-                    amplitude.logger.error("Cannot find package with application.packageName: " + application.packageName)
-                    PackageInfo()
-                }
-
             DefaultEventUtils(androidAmplitude).trackAppUpdatedInstalledEvent(packageInfo)
+        }
+
+        // Handle runtime enabling of features via remote config.
+        // Dispatch to main thread — the callback fires on RemoteConfigClient's thread,
+        // but fragment registration and created-map iteration must happen on main.
+        autocaptureManager.onChange {
+            amplitude.amplitudeScope.launch(Dispatchers.Main) {
+                startInteractionTrackingIfNeeded(application)
+                startFragmentTrackingIfNeeded()
+            }
+        }
+
+        // Run once after callback registration to avoid missing an interaction enablement
+        // update that could occur between an initial check and callback registration.
+        amplitude.amplitudeScope.launch(Dispatchers.Main) {
+            startInteractionTrackingIfNeeded(application)
+            startFragmentTrackingIfNeeded()
         }
 
         eventJob =
@@ -135,15 +117,15 @@ class AndroidLifecyclePlugin(
         activity: Activity,
         bundle: Bundle?,
     ) {
-        created.add(activity.hashCode())
+        created[activity.hashCode()] = WeakReference(activity)
 
         if (autocaptureState.screenViews) {
-            DefaultEventUtils(androidAmplitude).startFragmentViewedEventTracking(activity)
+            registerFragmentTracking(activity)
         }
     }
 
     override fun onActivityStarted(activity: Activity) {
-        if (!created.contains(activity.hashCode())) {
+        if (!created.containsKey(activity.hashCode())) {
             // We check for On Create in case if sdk was initialised in Main Activity
             onActivityCreated(activity, activity.intent.extras)
         }
@@ -206,12 +188,14 @@ class AndroidLifecyclePlugin(
     }
 
     override fun onActivityDestroyed(activity: Activity) {
-        created.remove(activity.hashCode())
-        processedDeepLinkIntents.remove(activity.hashCode())
+        val hash = activity.hashCode()
+        created.remove(hash)
+        fragmentTrackingActivities.remove(hash)
+        processedDeepLinkIntents.remove(hash)
 
-        if (autocaptureState.screenViews) {
-            DefaultEventUtils(androidAmplitude).stopFragmentViewedEventTracking(activity)
-        }
+        // Always unregister — screenViews may have been disabled by remote config since
+        // callbacks were registered, so we cannot gate this on current state.
+        DefaultEventUtils(androidAmplitude).stopFragmentViewedEventTracking(activity)
     }
 
     /**
@@ -230,6 +214,78 @@ class AndroidLifecyclePlugin(
 
         processedDeepLinkIntents[activityHash] = intentIdentity
         DefaultEventUtils(androidAmplitude).trackDeepLinkOpenedEvent(activity)
+    }
+
+    /**
+     * Registers fragment lifecycle callbacks for a single activity, guarded against
+     * double-registration.
+     */
+    private fun registerFragmentTracking(activity: Activity) {
+        val hash = activity.hashCode()
+        if (hash in fragmentTrackingActivities) return
+        fragmentTrackingActivities.add(hash)
+        DefaultEventUtils(androidAmplitude).startFragmentViewedEventTracking(
+            activity,
+            screenViewsEnabled = { autocaptureState.screenViews },
+        )
+    }
+
+    /**
+     * When screen views are enabled at runtime via remote config, registers fragment
+     * lifecycle callbacks for all currently alive activities that don't already have them.
+     */
+    private fun startFragmentTrackingIfNeeded() {
+        if (!autocaptureState.screenViews) return
+        for ((_, ref) in created) {
+            val activity = ref.get() ?: continue
+            registerFragmentTracking(activity)
+        }
+    }
+
+    /**
+     * Lazily creates and starts interaction tracking components when any interaction type
+     * is enabled (either initially or via remote config). Once created, the components
+     * persist for the lifetime of the plugin — they check autocaptureState dynamically
+     * to decide whether to process individual events.
+     */
+    private fun startInteractionTrackingIfNeeded(application: Application) {
+        if (autocaptureState.interactions.isEmpty()) return
+
+        // Create frustration interactions detector if not yet created
+        val hadFrustrationDetector = frustrationInteractionsDetector != null
+        if (!hadFrustrationDetector &&
+            (RageClick in autocaptureState.interactions || DeadClick in autocaptureState.interactions)
+        ) {
+            val density = application.resources.displayMetrics.density
+            frustrationInteractionsDetector =
+                FrustrationInteractionsDetector(
+                    amplitude = amplitude,
+                    logger = amplitude.logger,
+                    density = density,
+                    autocaptureStateProvider = { autocaptureManager.state },
+                )
+            frustrationInteractionsDetector?.start()
+        }
+
+        // If frustration detector was just created but a window callback manager already
+        // exists (created without the detector), recreate it so existing windows get
+        // rewrapped with FrustrationAwareWindowCallback.
+        if (!hadFrustrationDetector && frustrationInteractionsDetector != null && windowCallbackManager != null) {
+            windowCallbackManager?.stop()
+            windowCallbackManager = null
+        }
+
+        // Create window callback manager if not yet created
+        if (windowCallbackManager == null) {
+            windowCallbackManager =
+                WindowCallbackManager(
+                    track = androidAmplitude::track,
+                    frustrationDetector = frustrationInteractionsDetector,
+                    autocaptureStateProvider = { autocaptureManager.state },
+                    logger = androidAmplitude.logger,
+                )
+            windowCallbackManager?.start()
+        }
     }
 
     override fun teardown() {

@@ -158,8 +158,9 @@ class Timeline(
 
     private suspend fun startNewSession(timestamp: Long): List<BaseEvent> {
         val sessionEvents = mutableListOf<BaseEvent>()
-        val configuration = amplitude.configuration as Configuration
-        val trackingSessionEvents = AutocaptureOption.SESSIONS in configuration.autocapture
+        val trackingSessionEvents =
+            (amplitude as? Amplitude)?.autocaptureManager?.state?.sessions
+                ?: (AutocaptureOption.SESSIONS in (amplitude.configuration as Configuration).autocapture)
 
         // end previous session
         if (trackingSessionEvents && inSession()) {

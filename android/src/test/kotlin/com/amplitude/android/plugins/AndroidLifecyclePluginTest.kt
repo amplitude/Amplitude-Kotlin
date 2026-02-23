@@ -7,8 +7,10 @@ import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.net.Uri
 import com.amplitude.android.Amplitude
+import com.amplitude.android.AutocaptureManager
 import com.amplitude.android.AutocaptureOption
 import com.amplitude.android.Configuration
+import com.amplitude.android.InteractionsOptions
 import com.amplitude.android.internal.fragments.FragmentActivityHandler
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.registerFragmentLifecycleCallbacks
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.unregisterFragmentLifecycleCallbacks
@@ -69,6 +71,9 @@ class AndroidLifecyclePluginTest {
         every { mockedAmplitude.storage } returns spiedStorage
         every { mockedAmplitude.storageIODispatcher } returns testDispatcher
 
+        // Default autocapture: empty (matching relaxed mock default)
+        mockAutocapture(emptySet())
+
         observer = ActivityLifecycleObserver()
         plugin = AndroidLifecyclePlugin(observer)
 
@@ -78,7 +83,7 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test eventJob is created even if APP_LIFECYCLES is not enabled`() =
         runTest {
-            every { mockedConfig.autocapture } returns emptySet()
+            mockAutocapture(emptySet())
             every { mockedAmplitude.amplitudeScope } returns this
 
             plugin.setup(mockedAmplitude)
@@ -95,7 +100,7 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test application installed event is tracked`() =
         runTest {
-            every { mockedConfig.autocapture } returns setOf(AutocaptureOption.APP_LIFECYCLES)
+            mockAutocapture(setOf(AutocaptureOption.APP_LIFECYCLES))
             every { mockedAmplitude.amplitudeScope } returns this
 
             plugin.setup(mockedAmplitude)
@@ -142,7 +147,7 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test application updated event is tracked`() =
         runTest {
-            every { mockedConfig.autocapture } returns setOf(AutocaptureOption.APP_LIFECYCLES)
+            mockAutocapture(setOf(AutocaptureOption.APP_LIFECYCLES))
             every { mockedAmplitude.amplitudeScope } returns this
 
             // Stored previous version/build
@@ -196,11 +201,12 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test fragment activity is tracked if enabled`() =
         runTest {
-            every { mockedConfig.autocapture } returns
+            mockAutocapture(
                 setOf(
                     AutocaptureOption.APP_LIFECYCLES,
                     AutocaptureOption.SCREEN_VIEWS,
-                )
+                ),
+            )
             every { mockedAmplitude.amplitudeScope } returns this
 
             val activity = mockk<Activity>()
@@ -208,7 +214,7 @@ class AndroidLifecyclePluginTest {
 
             plugin.setup(mockedAmplitude)
 
-            every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+            every { activity.registerFragmentLifecycleCallbacks(any(), any(), any()) } returns Unit
             every { activity.unregisterFragmentLifecycleCallbacks(any()) } returns Unit
 
             observer.onActivityCreated(activity, mockk())
@@ -217,7 +223,7 @@ class AndroidLifecyclePluginTest {
             advanceUntilIdle()
 
             verify(exactly = 1) {
-                activity.registerFragmentLifecycleCallbacks(any(), any())
+                activity.registerFragmentLifecycleCallbacks(any(), any(), any())
             }
 
             verify(exactly = 1) {
@@ -230,10 +236,11 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test fragment activity is not tracked if disabled`() =
         runTest {
-            every { mockedConfig.autocapture } returns
+            mockAutocapture(
                 setOf(
                     AutocaptureOption.APP_LIFECYCLES,
-                )
+                ),
+            )
             every { mockedAmplitude.amplitudeScope } returns this
 
             val activity = mockk<Activity>()
@@ -241,7 +248,7 @@ class AndroidLifecyclePluginTest {
 
             plugin.setup(mockedAmplitude)
 
-            every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+            every { activity.registerFragmentLifecycleCallbacks(any(), any(), any()) } returns Unit
             every { activity.unregisterFragmentLifecycleCallbacks(any()) } returns Unit
 
             observer.onActivityCreated(activity, mockk())
@@ -250,9 +257,11 @@ class AndroidLifecyclePluginTest {
             advanceUntilIdle()
 
             verify(exactly = 0) {
-                activity.registerFragmentLifecycleCallbacks(any(), any())
+                activity.registerFragmentLifecycleCallbacks(any(), any(), any())
             }
-            verify(exactly = 0) {
+            // unregister is always called in onActivityDestroyed for safe cleanup,
+            // even when screen views are disabled (it's a no-op with no registered callbacks).
+            verify(exactly = 1) {
                 activity.unregisterFragmentLifecycleCallbacks(any())
             }
 
@@ -262,7 +271,7 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test fragment activity is tracked with screen views only`() =
         runTest {
-            every { mockedConfig.autocapture } returns setOf(AutocaptureOption.SCREEN_VIEWS)
+            mockAutocapture(setOf(AutocaptureOption.SCREEN_VIEWS))
             every { mockedAmplitude.amplitudeScope } returns this
 
             val activity = mockk<Activity>()
@@ -270,7 +279,7 @@ class AndroidLifecyclePluginTest {
 
             plugin.setup(mockedAmplitude)
 
-            every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+            every { activity.registerFragmentLifecycleCallbacks(any(), any(), any()) } returns Unit
             every { activity.unregisterFragmentLifecycleCallbacks(any()) } returns Unit
 
             observer.onActivityCreated(activity, mockk())
@@ -280,7 +289,7 @@ class AndroidLifecyclePluginTest {
 
             // Fragment callbacks should be registered when SCREEN_VIEWS is enabled
             verify(exactly = 1) {
-                activity.registerFragmentLifecycleCallbacks(any(), any())
+                activity.registerFragmentLifecycleCallbacks(any(), any(), any())
             }
 
             verify(exactly = 1) {
@@ -293,13 +302,13 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test application opened event is tracked not from background`() =
         runTest {
-            every { mockedConfig.autocapture } returns setOf(AutocaptureOption.APP_LIFECYCLES)
+            mockAutocapture(setOf(AutocaptureOption.APP_LIFECYCLES))
             every { mockedAmplitude.amplitudeScope } returns this
 
             val activity = mockk<Activity>(relaxed = true)
             plugin.setup(mockedAmplitude)
 
-            every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+            every { activity.registerFragmentLifecycleCallbacks(any(), any(), any()) } returns Unit
             observer.onActivityCreated(activity, mockk())
             observer.onActivityStarted(activity)
 
@@ -318,7 +327,7 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test application opened event is tracked from background`() =
         runTest {
-            every { mockedConfig.autocapture } returns setOf(AutocaptureOption.APP_LIFECYCLES)
+            mockAutocapture(setOf(AutocaptureOption.APP_LIFECYCLES))
             every { mockedAmplitude.amplitudeScope } returns this
 
             val activity = mockk<Activity>(relaxed = true)
@@ -366,7 +375,7 @@ class AndroidLifecyclePluginTest {
             val activity = mockk<Activity>(relaxed = true)
             plugin.setup(mockedAmplitude)
 
-            every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+            every { activity.registerFragmentLifecycleCallbacks(any(), any(), any()) } returns Unit
             observer.onActivityCreated(activity, mockk())
 
             observer.onActivityStarted(activity)
@@ -394,17 +403,18 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test screen viewed event is tracked`() =
         runTest {
-            every { mockedConfig.autocapture } returns
+            mockAutocapture(
                 setOf(
                     AutocaptureOption.APP_LIFECYCLES,
                     AutocaptureOption.SCREEN_VIEWS,
-                )
+                ),
+            )
             every { mockedAmplitude.amplitudeScope } returns this
 
             val activity = mockk<Activity>(relaxed = true)
             plugin.setup(mockedAmplitude)
 
-            every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+            every { activity.registerFragmentLifecycleCallbacks(any(), any(), any()) } returns Unit
             observer.onActivityCreated(activity, mockk())
             observer.onActivityStarted(activity)
 
@@ -423,16 +433,17 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test screen viewed event is not tracked when disabled`() =
         runTest {
-            every { mockedConfig.autocapture } returns
+            mockAutocapture(
                 setOf(
                     AutocaptureOption.APP_LIFECYCLES,
-                )
+                ),
+            )
             every { mockedAmplitude.amplitudeScope } returns this
 
             val activity = mockk<Activity>(relaxed = true)
             plugin.setup(mockedAmplitude)
 
-            every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+            every { activity.registerFragmentLifecycleCallbacks(any(), any(), any()) } returns Unit
             observer.onActivityCreated(activity, mockk())
             observer.onActivityStarted(activity)
 
@@ -451,17 +462,18 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test deep link opened event is tracked`() =
         runTest {
-            every { mockedConfig.autocapture } returns
+            mockAutocapture(
                 setOf(
                     AutocaptureOption.APP_LIFECYCLES,
                     AutocaptureOption.DEEP_LINKS,
-                )
+                ),
+            )
             every { mockedAmplitude.amplitudeScope } returns this
 
             val activity = mockk<Activity>(relaxed = true)
             plugin.setup(mockedAmplitude)
 
-            every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+            every { activity.registerFragmentLifecycleCallbacks(any(), any(), any()) } returns Unit
             observer.onActivityCreated(activity, mockk())
 
             every { activity.intent } returns
@@ -485,16 +497,17 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test deep link opened event is not tracked when disabled`() =
         runTest {
-            every { mockedConfig.autocapture } returns
+            mockAutocapture(
                 setOf(
                     AutocaptureOption.APP_LIFECYCLES,
-                )
+                ),
+            )
             every { mockedAmplitude.amplitudeScope } returns this
 
             val activity = mockk<Activity>(relaxed = true)
             plugin.setup(mockedAmplitude)
 
-            every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+            every { activity.registerFragmentLifecycleCallbacks(any(), any(), any()) } returns Unit
             observer.onActivityCreated(activity, mockk())
 
             every { activity.intent } returns
@@ -518,10 +531,11 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test deep link opened event is not duplicated when resuming from background`() =
         runTest {
-            every { mockedConfig.autocapture } returns
+            mockAutocapture(
                 setOf(
                     AutocaptureOption.DEEP_LINKS,
-                )
+                ),
+            )
             every { mockedAmplitude.amplitudeScope } returns this
 
             val activity = mockk<Activity>(relaxed = true)
@@ -532,7 +546,7 @@ class AndroidLifecyclePluginTest {
 
             plugin.setup(mockedAmplitude)
 
-            every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+            every { activity.registerFragmentLifecycleCallbacks(any(), any(), any()) } returns Unit
             every { activity.intent } returns deepLinkIntent
 
             // First launch with deeplink
@@ -562,10 +576,11 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test deep link opened event is tracked for new intent on same activity`() =
         runTest {
-            every { mockedConfig.autocapture } returns
+            mockAutocapture(
                 setOf(
                     AutocaptureOption.DEEP_LINKS,
-                )
+                ),
+            )
             every { mockedAmplitude.amplitudeScope } returns this
 
             val activity = mockk<Activity>(relaxed = true)
@@ -580,7 +595,7 @@ class AndroidLifecyclePluginTest {
 
             plugin.setup(mockedAmplitude)
 
-            every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+            every { activity.registerFragmentLifecycleCallbacks(any(), any(), any()) } returns Unit
 
             // First launch with first deeplink
             every { activity.intent } returns firstDeepLinkIntent
@@ -611,10 +626,11 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test deep link opened event is tracked via onResume after setIntent (onNewIntent scenario)`() =
         runTest {
-            every { mockedConfig.autocapture } returns
+            mockAutocapture(
                 setOf(
                     AutocaptureOption.DEEP_LINKS,
-                )
+                ),
+            )
             every { mockedAmplitude.amplitudeScope } returns this
 
             val activity = mockk<Activity>(relaxed = true)
@@ -629,7 +645,7 @@ class AndroidLifecyclePluginTest {
 
             plugin.setup(mockedAmplitude)
 
-            every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+            every { activity.registerFragmentLifecycleCallbacks(any(), any(), any()) } returns Unit
 
             // First launch with first deeplink
             every { activity.intent } returns firstDeepLinkIntent
@@ -671,10 +687,11 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test deep link is not duplicated when resuming without new intent`() =
         runTest {
-            every { mockedConfig.autocapture } returns
+            mockAutocapture(
                 setOf(
                     AutocaptureOption.DEEP_LINKS,
-                )
+                ),
+            )
             every { mockedAmplitude.amplitudeScope } returns this
 
             val activity = mockk<Activity>(relaxed = true)
@@ -685,7 +702,7 @@ class AndroidLifecyclePluginTest {
 
             plugin.setup(mockedAmplitude)
 
-            every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+            every { activity.registerFragmentLifecycleCallbacks(any(), any(), any()) } returns Unit
             every { activity.intent } returns deepLinkIntent
 
             // Full lifecycle: create -> start -> resume
@@ -713,13 +730,13 @@ class AndroidLifecyclePluginTest {
     @Test
     fun `test complete screen views functionality works independently`() =
         runTest {
-            every { mockedConfig.autocapture } returns setOf(AutocaptureOption.SCREEN_VIEWS)
+            mockAutocapture(setOf(AutocaptureOption.SCREEN_VIEWS))
             every { mockedAmplitude.amplitudeScope } returns this
 
             val activity = mockk<Activity>(relaxed = true)
             plugin.setup(mockedAmplitude)
 
-            every { activity.registerFragmentLifecycleCallbacks(any(), any()) } returns Unit
+            every { activity.registerFragmentLifecycleCallbacks(any(), any(), any()) } returns Unit
             every { activity.unregisterFragmentLifecycleCallbacks(any()) } returns Unit
 
             // Simulate activity lifecycle
@@ -738,11 +755,23 @@ class AndroidLifecyclePluginTest {
 
             // 2. Fragment lifecycle callbacks should be registered
             verify(exactly = 1) {
-                activity.registerFragmentLifecycleCallbacks(any(), any())
+                activity.registerFragmentLifecycleCallbacks(any(), any(), any())
             }
 
             close()
         }
+
+    private fun mockAutocapture(options: Set<AutocaptureOption>) {
+        every { mockedConfig.autocapture } returns options
+        val manager =
+            AutocaptureManager(
+                initialAutocapture = options,
+                initialInteractionsOptions = InteractionsOptions(),
+                remoteConfigClient = null,
+                logger = mockk(relaxed = true),
+            )
+        every { mockedAmplitude.autocaptureManager } returns manager
+    }
 
     // TODO Replace with Turbine
     private suspend fun close() {

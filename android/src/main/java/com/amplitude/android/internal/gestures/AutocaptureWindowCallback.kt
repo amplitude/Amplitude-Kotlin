@@ -18,10 +18,10 @@ internal open class AutocaptureWindowCallback(
     track: TrackFunction,
     protected val viewTargetLocators: List<ViewTargetLocator>,
     protected val logger: Logger,
-    autocaptureState: AutocaptureState,
+    autocaptureStateProvider: () -> AutocaptureState,
     private val motionEventObtainer: MotionEventObtainer = object : MotionEventObtainer {},
     protected val gestureListener: AutocaptureGestureListener =
-        AutocaptureGestureListener(decorView, activityName, track, logger, viewTargetLocators, autocaptureState),
+        AutocaptureGestureListener(decorView, activityName, track, logger, viewTargetLocators, autocaptureStateProvider),
     private val gestureDetector: GestureDetector = GestureDetector(decorView.context, gestureListener),
 ) : WindowCallbackAdapter(delegate) {
     protected val decorViewRef: WeakReference<View> = WeakReference(decorView)

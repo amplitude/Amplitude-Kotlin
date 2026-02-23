@@ -113,9 +113,12 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         LoadClass.isClassAvailable(FRAGMENT_ACTIVITY_CLASS_NAME, amplitude.logger)
     }
 
-    fun startFragmentViewedEventTracking(activity: Activity) {
+    fun startFragmentViewedEventTracking(
+        activity: Activity,
+        screenViewsEnabled: () -> Boolean = { true },
+    ) {
         if (isFragmentActivityAvailable) {
-            activity.registerFragmentLifecycleCallbacks(amplitude::track, amplitude.logger)
+            activity.registerFragmentLifecycleCallbacks(amplitude::track, amplitude.logger, screenViewsEnabled)
         }
     }
 

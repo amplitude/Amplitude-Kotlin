@@ -52,6 +52,7 @@ open class Configuration(
     var interactionsOptions: InteractionsOptions = InteractionsOptions(),
     override var enableDiagnostics: Boolean = true,
     override var enableRequestBodyCompression: Boolean = false,
+    var enableAutocaptureRemoteConfig: Boolean = true,
 ) : Configuration(
         apiKey,
         flushQueueSize,
@@ -124,6 +125,7 @@ open class Configuration(
         interactionsOptions: InteractionsOptions = InteractionsOptions(),
         enableDiagnostics: Boolean = true,
         enableRequestBodyCompression: Boolean = false,
+        enableAutocaptureRemoteConfig: Boolean = true,
     ) : this(
         apiKey,
         context,
@@ -162,6 +164,7 @@ open class Configuration(
         interactionsOptions,
         enableDiagnostics,
         enableRequestBodyCompression,
+        enableAutocaptureRemoteConfig,
     ) {
         if (!trackingSessionEvents) {
             defaultTracking.sessions = false

@@ -5,6 +5,8 @@ import android.view.View
 import android.view.Window
 import com.amplitude.android.AutocaptureState
 import com.amplitude.android.FrustrationInteractionsDetector
+import com.amplitude.android.InteractionType.DeadClick
+import com.amplitude.android.InteractionType.RageClick
 import com.amplitude.android.internal.TrackFunction
 import com.amplitude.android.internal.ViewHierarchyScanner.findTarget
 import com.amplitude.android.internal.ViewTarget
@@ -21,9 +23,9 @@ internal class FrustrationAwareWindowCallback(
     track: TrackFunction,
     viewTargetLocators: List<ViewTargetLocator>,
     logger: Logger,
-    autocaptureState: AutocaptureState,
+    private val autocaptureStateProvider: () -> AutocaptureState,
     private val frustrationDetector: FrustrationInteractionsDetector?,
-) : AutocaptureWindowCallback(delegate, decorView, activityName, track, viewTargetLocators, logger, autocaptureState) {
+) : AutocaptureWindowCallback(delegate, decorView, activityName, track, viewTargetLocators, logger, autocaptureStateProvider) {
     override fun dispatchTouchEvent(event: MotionEvent?): Boolean {
         // First handle the standard autocapture behavior
         val result = super.dispatchTouchEvent(event)
@@ -39,6 +41,15 @@ internal class FrustrationAwareWindowCallback(
     }
 
     private fun handleFrustrationInteraction(event: MotionEvent) {
+        // Short-circuit if no frustration interactions are enabled.
+        val state = autocaptureStateProvider()
+        if (RageClick !in state.interactions && DeadClick !in state.interactions) {
+            // Clear any cached target from element interactions so it is not reused
+            // if frustration tracking is enabled again later.
+            lastFoundViewTarget = null
+            return
+        }
+
         val decorView = decorViewRef.get()
         if (decorView == null) {
             logger.error("DecorView is null in handleFrustrationInteraction()")
