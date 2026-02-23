@@ -1,3 +1,11 @@
+## [1.25.3](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.25.2...v1.25.3) (2026-02-23)
+
+
+### Bug Fixes
+
+* synchronize identity updates with event processing ([#356](https://github.com/amplitude/Amplitude-Kotlin/issues/356)) ([f7cfb53](https://github.com/amplitude/Amplitude-Kotlin/commit/f7cfb531999bd3596943abecd9d085181beaf6c4))
+* use streaming read in getEventString to prevent OOM ([#358](https://github.com/amplitude/Amplitude-Kotlin/issues/358)) ([46c1d37](https://github.com/amplitude/Amplitude-Kotlin/commit/46c1d37c3b28dec7446ae0fd8cef794b6806b08e))
+
 ## [1.25.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.25.1...v1.25.2) (2026-02-17)
 
 
