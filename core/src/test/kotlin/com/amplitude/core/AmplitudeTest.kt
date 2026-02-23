@@ -400,4 +400,51 @@ internal class AmplitudeTest {
             }
         }
     }
+
+    @Nested
+    inner class TestIdentityOrdering {
+        @Test
+        fun `setUserId then track - event has new userId`() {
+            val mockPlugin = spyk(StubPlugin())
+            amplitude.add(mockPlugin)
+
+            amplitude.setUserId("new-user")
+            amplitude.track("test_event")
+
+            val track = slot<BaseEvent>()
+            verify { mockPlugin.track(capture(track)) }
+            assertEquals("new-user", track.captured.userId)
+        }
+
+        @Test
+        fun `setDeviceId then track - event has new deviceId`() {
+            val mockPlugin = spyk(StubPlugin())
+            amplitude.add(mockPlugin)
+
+            amplitude.setDeviceId("custom-device")
+            amplitude.track("test_event")
+
+            val track = slot<BaseEvent>()
+            verify { mockPlugin.track(capture(track)) }
+            assertEquals("custom-device", track.captured.deviceId)
+        }
+
+        @Test
+        fun `reset then track - event has null userId and new deviceId`() {
+            val mockPlugin = spyk(StubPlugin())
+            amplitude.add(mockPlugin)
+
+            amplitude.setUserId("old-user")
+            amplitude.setDeviceId("old-device")
+            amplitude.reset()
+            amplitude.track("test_event")
+
+            val track = slot<BaseEvent>()
+            verify { mockPlugin.track(capture(track)) }
+            track.captured.let {
+                assertEquals(null, it.userId)
+                assertNotEquals("old-device", it.deviceId)
+            }
+        }
+    }
 }

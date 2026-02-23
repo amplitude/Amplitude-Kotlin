@@ -42,6 +42,11 @@ internal class FakeEventPlugin : EventPlugin {
         trackedEvents += payload
         return super.track(payload)
     }
+
+    override fun identify(payload: com.amplitude.core.events.IdentifyEvent): com.amplitude.core.events.IdentifyEvent? {
+        trackedEvents += payload
+        return super.identify(payload)
+    }
 }
 
 @ExperimentalCoroutinesApi
@@ -312,6 +317,106 @@ class AmplitudeTest {
 
             // test_event should have created a new session and not extended an existing session
             assertEquals(1100, amplitude.sessionId)
+        }
+
+    @Test
+    fun setUserId_then_track_event_has_new_userId() =
+        runTest {
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = createConfiguration(),
+                )
+            val fakeEventPlugin = FakeEventPlugin()
+            amplitude.add(fakeEventPlugin)
+            amplitude.isBuilt.await()
+            advanceUntilIdle()
+
+            amplitude.setUserId("new-user")
+            amplitude.track("test_event")
+            advanceUntilIdle()
+
+            val event = fakeEventPlugin.trackedEvents.first { it.eventType == "test_event" }
+            assertEquals("new-user", event.userId)
+        }
+
+    @Test
+    fun setDeviceId_then_track_event_has_new_deviceId() =
+        runTest {
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = createConfiguration(),
+                )
+            val fakeEventPlugin = FakeEventPlugin()
+            amplitude.add(fakeEventPlugin)
+            amplitude.isBuilt.await()
+            advanceUntilIdle()
+
+            amplitude.setDeviceId("custom-device")
+            amplitude.track("test_event")
+            advanceUntilIdle()
+
+            val event = fakeEventPlugin.trackedEvents.first { it.eventType == "test_event" }
+            assertEquals("custom-device", event.deviceId)
+        }
+
+    @Test
+    fun identify_with_userId_option_then_track_both_have_new_userId() =
+        runTest {
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = createConfiguration(),
+                )
+            val fakeEventPlugin = FakeEventPlugin()
+            amplitude.add(fakeEventPlugin)
+            amplitude.isBuilt.await()
+            advanceUntilIdle()
+
+            val identify = com.amplitude.core.events.Identify().set("key", "value")
+            amplitude.identify(
+                identify,
+                com.amplitude.core.events.EventOptions().apply { userId = "identify-user" },
+            )
+            amplitude.track("test_event")
+            advanceUntilIdle()
+
+            val identifyEvent =
+                fakeEventPlugin.trackedEvents.first { it.eventType == "\$identify" }
+            assertEquals("identify-user", identifyEvent.userId)
+
+            val trackEvent = fakeEventPlugin.trackedEvents.first { it.eventType == "test_event" }
+            assertEquals("identify-user", trackEvent.userId)
+        }
+
+    @Test
+    fun reset_then_track_event_has_null_userId_and_new_deviceId() =
+        runTest {
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = createConfiguration(),
+                )
+            val fakeEventPlugin = FakeEventPlugin()
+            amplitude.add(fakeEventPlugin)
+            amplitude.isBuilt.await()
+            advanceUntilIdle()
+
+            amplitude.setUserId("old-user")
+            amplitude.setDeviceId("old-device")
+            advanceUntilIdle()
+            assertEquals("old-user", amplitude.getUserId())
+            assertEquals("old-device", amplitude.getDeviceId())
+
+            amplitude.reset()
+            amplitude.track("test_event")
+            advanceUntilIdle()
+
+            val event = fakeEventPlugin.trackedEvents.first { it.eventType == "test_event" }
+            assertNull(event.userId)
+            assertNotEquals("old-device", event.deviceId)
+            assertNotNull(event.deviceId)
         }
 
     companion object {

@@ -5,23 +5,24 @@ import com.amplitude.id.Identity
 import com.amplitude.id.IdentityListener
 import com.amplitude.id.IdentityUpdateType
 
+@Deprecated(
+    message =
+        "Identity state is now managed by IdentityCoordinator. " +
+            "This listener is no longer functional and will be removed in a future major version.",
+)
 class AnalyticsIdentityListener(private val state: State) : IdentityListener {
     override fun onUserIdChange(userId: String?) {
-        state.userId = userId
+        // No-op: State is written directly by Amplitude.setUserId()
     }
 
     override fun onDeviceIdChange(deviceId: String?) {
-        state.deviceId = deviceId
+        // No-op: State is written directly by Amplitude.setDeviceId()
     }
 
     override fun onIdentityChanged(
         identity: Identity,
         updateType: IdentityUpdateType,
     ) {
-        if (updateType == IdentityUpdateType.Initialized) {
-            state.userId = identity.userId
-            state.deviceId = identity.deviceId
-            // TODO("update device id based on configuration")
-        }
+        // No-op: Identity bootstrap is handled directly in Amplitude.createIdentityContainer()
     }
 }

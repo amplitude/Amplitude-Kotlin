@@ -32,7 +32,8 @@ class EventsFileManager(
 
     companion object {
         const val MAX_FILE_SIZE = 975_000 // 975KB
-        const val DELIMITER = "\u0000"
+        private const val DELIMITER_CHAR: Char = '\u0000' // null character as delimiter
+        const val DELIMITER: String = DELIMITER_CHAR.toString()
         val writeMutexMap = ConcurrentHashMap<String, Mutex>()
         val readMutexMap = ConcurrentHashMap<String, Mutex>()
 
@@ -60,32 +61,14 @@ class EventsFileManager(
                 return@withLock
             }
             var file = currentFile()
-            if (!file.exists()) {
-                // create it
-                try {
-                    file.createNewFile()
-                } catch (e: IOException) {
-                    diagnostics.addErrorLog("Failed to create new storage file: ${e.message}")
-                    logger.error("Failed to create new storage file: ${file.path}")
-                    return@withLock
-                }
-            }
+            if (!createFileIfNeeded(file)) return@withLock
 
             // check if file is at capacity
             while (file.length() > MAX_FILE_SIZE) {
                 finish(file)
                 // update index
                 file = currentFile()
-                if (!file.exists()) {
-                    // create it
-                    try {
-                        file.createNewFile()
-                    } catch (e: IOException) {
-                        diagnostics.addErrorLog("Failed to create new storage file: ${e.message}")
-                        logger.error("Failed to create new storage file: ${file.path}")
-                        return@withLock
-                    }
-                }
+                if (!createFileIfNeeded(file)) return@withLock
             }
             val contents = event.replace(DELIMITER, "") + DELIMITER
             writeToFile(contents.toByteArray(), file, true)
@@ -163,52 +146,100 @@ class EventsFileManager(
         this.remove(filePath)
     }
 
+    /**
+     * Reads an event file and returns its contents as a JSON array string.
+     *
+     * Uses chunk-based streaming instead of loading the entire file into memory at once.
+     * Event files can be up to [MAX_FILE_SIZE] (~975KB), and loading the full content +
+     * split + JSONArray.toString() would require ~4-6MB of peak heap, causing OOM on
+     * memory-constrained devices.
+     *
+     * File format: events are separated by a null character ([DELIMITER]).
+     * Legacy files (pre-delimiter format) are detected and handled via [handleLegacyFormat].
+     */
     suspend fun getEventString(filePath: String): String =
         readMutex.withLock {
-            // Block one time of file reads if another task has read the content of this file
+            // Prevent duplicate reads - if this file was already read, skip it
             if (filePathSet.contains(filePath)) {
                 filePathSet.remove(filePath)
                 return@withLock ""
             }
             filePathSet.add(filePath)
-            File(filePath).bufferedReader().use { reader ->
-                val content = reader.readText()
-                val isCurrentVersion = content.endsWith(DELIMITER)
-                if (isCurrentVersion) {
-                    // handle current version
-                    val events = JSONArray()
-                    content.split(DELIMITER).forEach {
-                        if (it.isNotEmpty()) {
-                            try {
-                                events.put(JSONObject(it))
-                            } catch (e: JSONException) {
-                                diagnostics.addMalformedEvent(it)
-                                logger.error("Failed to parse event: $it")
+
+            val file = File(filePath)
+            if (!file.exists()) {
+                return@withLock ""
+            }
+
+            // Read in chunks to avoid loading the entire file at once
+            file.bufferedReader().use { reader ->
+                val events = JSONArray()
+                val buffer = StringBuilder()
+                val chunk = CharArray(8192) // 8 KB chunk size
+                var bytesRead: Int
+                var hasDelimiter = false
+
+                while (reader.read(chunk).also { bytesRead = it } != -1) {
+                    for (i in 0 until bytesRead) {
+                        if (chunk[i] == DELIMITER_CHAR) {
+                            // Delimiter found - parse the buffered event and reset
+                            hasDelimiter = true
+                            if (buffer.isNotEmpty()) {
+                                tryParseEvent(buffer.toString(), events)
+                                buffer.clear()
                             }
+                        } else {
+                            buffer.append(chunk[i])
                         }
                     }
-                    return@use if (events.length() > 0) {
-                        events.toString()
-                    } else {
-                        ""
-                    }
-                } else {
-                    // handle earlier versions. This is for backward compatibility for safety and would be removed later.
-                    val normalizedContent = "[${content.trimStart('[', ',').trimEnd(']', ',')}]"
-                    try {
-                        val jsonArray = JSONArray(normalizedContent)
-                        return@use jsonArray.toString()
-                    } catch (e: JSONException) {
-                        diagnostics.addMalformedEvent(normalizedContent)
-                        logger.error(
-                            "Failed to parse events: $normalizedContent, dropping file: $filePath",
-                        )
-                        this.remove(filePath)
-                        return@use normalizedContent
-                    }
                 }
+
+                // After reading the full file, handle any remaining content in the buffer
+                if (buffer.isNotEmpty()) {
+                    val remaining = buffer.toString()
+                    if (!hasDelimiter) {
+                        // No delimiters found anywhere - this is a legacy format file
+                        return@use handleLegacyFormat(remaining, filePath)
+                    }
+                    // Content after the last delimiter (unexpected but handled gracefully)
+                    tryParseEvent(remaining, events)
+                }
+
+                return@use if (events.length() > 0) events.toString() else ""
             }
         }
+
+    private fun tryParseEvent(
+        eventString: String,
+        events: JSONArray,
+    ) {
+        try {
+            events.put(JSONObject(eventString))
+        } catch (e: JSONException) {
+            diagnostics.addMalformedEvent(eventString)
+            logger.error("Failed to parse event: $eventString, error: $e")
+        }
+    }
+
+    /**
+     * Parses a legacy event file that uses the old JSON array format (no null delimiters).
+     * Kept for backward compatibility with files written by older SDK versions.
+     */
+    private fun handleLegacyFormat(
+        content: String,
+        filePath: String,
+    ): String {
+        val normalizedContent = "[${content.trimStart('[', ',').trimEnd(']', ',')}]"
+        return try {
+            val jsonArray = JSONArray(normalizedContent)
+            jsonArray.toString()
+        } catch (e: JSONException) {
+            diagnostics.addMalformedEvent(normalizedContent)
+            logger.error("Failed to parse events: $normalizedContent, dropping file: $filePath, error: $e")
+            this.remove(filePath)
+            normalizedContent
+        }
+    }
 
     fun release(filePath: String) {
         filePathSet.remove(filePath)
@@ -314,6 +345,18 @@ class EventsFileManager(
         }
     }
 
+    private fun createFileIfNeeded(file: File): Boolean {
+        if (file.exists()) return true
+        return try {
+            file.createNewFile()
+            true
+        } catch (e: IOException) {
+            diagnostics.addErrorLog("Failed to create new storage file: ${e.message}")
+            logger.error("Failed to create new storage file: ${file.path}")
+            false
+        }
+    }
+
     private fun reset() {
         curFile.remove(storageKey)
     }
@@ -346,7 +389,7 @@ class EventsFileManager(
                             }
                         } catch (e: JSONException) {
                             logger.error(
-                                "Failed to parse events: $normalizedContent, dropping file: ${it.path}",
+                                "Failed to parse events: $normalizedContent, dropping file: ${it.path}, error: $e",
                             )
                             this.remove(it.path)
                         }

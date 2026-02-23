@@ -1,3 +1,10 @@
+## [1.25.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.25.1...v1.25.2) (2026-02-17)
+
+
+### Bug Fixes
+
+* always register activity lifecycle callbacks for accurate session tracking ([#355](https://github.com/amplitude/Amplitude-Kotlin/issues/355)) ([3624d45](https://github.com/amplitude/Amplitude-Kotlin/commit/3624d4549e1c27216cc312e6885c51cd06fee177))
+
 ## [1.25.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.25.0...v1.25.1) (2026-02-10)
 
 
