@@ -85,16 +85,24 @@ internal class AutocaptureManager(
                 // frustrationInteractions
                 val frustrationConfig = config["frustrationInteractions"] as? Map<String, Any>
                 if (frustrationConfig != null) {
-                    val frustrationEnabled = frustrationConfig["enabled"] as? Boolean ?: false
+                    val rageClickEnabled = InteractionType.RageClick in currentState.interactions
+                    val deadClickEnabled = InteractionType.DeadClick in currentState.interactions
+                    val frustrationEnabled =
+                        frustrationConfig["enabled"] as? Boolean
+                            ?: (rageClickEnabled || deadClickEnabled)
                     if (frustrationEnabled) {
                         val rageClickConfig = frustrationConfig["rageClick"] as? Map<String, Any>
-                        val rageClickEnabled = rageClickConfig?.get("enabled") as? Boolean ?: true
+                        // Fall back to current state when rageClick key is absent
+                        val rageClickEnabled =
+                            rageClickConfig?.get("enabled") as? Boolean ?: rageClickEnabled
                         if (rageClickEnabled) {
                             add(InteractionType.RageClick)
                         }
 
                         val deadClickConfig = frustrationConfig["deadClick"] as? Map<String, Any>
-                        val deadClickEnabled = deadClickConfig?.get("enabled") as? Boolean ?: true
+                        // Fall back to current state when deadClick key is absent
+                        val deadClickEnabled =
+                            deadClickConfig?.get("enabled") as? Boolean ?: deadClickEnabled
                         if (deadClickEnabled) {
                             add(InteractionType.DeadClick)
                         }

@@ -45,7 +45,7 @@ open class Amplitude internal constructor(
     ) {
     constructor(configuration: Configuration) : this(configuration, State())
 
-    internal lateinit var autocaptureManager: AutocaptureManager
+    internal var autocaptureManager: AutocaptureManager? = null
         private set
 
     private val androidContextPlugin by lazy { AndroidContextPlugin() }

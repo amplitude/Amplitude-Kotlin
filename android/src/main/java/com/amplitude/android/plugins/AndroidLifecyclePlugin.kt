@@ -35,9 +35,9 @@ class AndroidLifecyclePlugin(
     override lateinit var amplitude: Amplitude
     private lateinit var packageInfo: PackageInfo
     private lateinit var androidAmplitude: AndroidAmplitude
-    private lateinit var autocaptureManager: AutocaptureManager
+    private var autocaptureManager: AutocaptureManager? = null
     private val autocaptureState: AutocaptureState
-        get() = autocaptureManager.state
+        get() = autocaptureManager?.state ?: AutocaptureState()
 
     private var frustrationInteractionsDetector: FrustrationInteractionsDetector? = null
     private var windowCallbackManager: WindowCallbackManager? = null
@@ -48,6 +48,7 @@ class AndroidLifecyclePlugin(
     private val processedDeepLinkIntents: MutableMap<Int, Int> = mutableMapOf()
 
     private var appInBackground = false
+    private var trackedAppLifecycleEvent = false
 
     @VisibleForTesting
     internal var eventJob: Job? = null
@@ -71,23 +72,23 @@ class AndroidLifecyclePlugin(
                 PackageInfo()
             }
 
-        if (autocaptureState.appLifecycles) {
-            DefaultEventUtils(androidAmplitude).trackAppUpdatedInstalledEvent(packageInfo)
-        }
+        trackAppLifecycleEventIfNeeded()
 
         // Handle runtime enabling of features via remote config.
         // Dispatch to main thread — the callback fires on RemoteConfigClient's thread,
         // but fragment registration and created-map iteration must happen on main.
-        autocaptureManager.onChange {
+        autocaptureManager?.onChange {
             amplitude.amplitudeScope.launch(Dispatchers.Main) {
+                trackAppLifecycleEventIfNeeded()
                 startInteractionTrackingIfNeeded(application)
                 startFragmentTrackingIfNeeded()
             }
         }
 
-        // Run once after callback registration to avoid missing an interaction enablement
+        // Run once after callback registration to avoid missing an enablement
         // update that could occur between an initial check and callback registration.
         amplitude.amplitudeScope.launch(Dispatchers.Main) {
+            trackAppLifecycleEventIfNeeded()
             startInteractionTrackingIfNeeded(application)
             startFragmentTrackingIfNeeded()
         }
@@ -231,6 +232,16 @@ class AndroidLifecyclePlugin(
     }
 
     /**
+     * Fires the one-time app installed/updated event when appLifecycles becomes enabled,
+     * either initially or via remote config. Guarded to fire at most once per SDK lifetime.
+     */
+    private fun trackAppLifecycleEventIfNeeded() {
+        if (trackedAppLifecycleEvent || !autocaptureState.appLifecycles) return
+        trackedAppLifecycleEvent = true
+        DefaultEventUtils(androidAmplitude).trackAppUpdatedInstalledEvent(packageInfo)
+    }
+
+    /**
      * When screen views are enabled at runtime via remote config, registers fragment
      * lifecycle callbacks for all currently alive activities that don't already have them.
      */
@@ -262,7 +273,7 @@ class AndroidLifecyclePlugin(
                     amplitude = amplitude,
                     logger = amplitude.logger,
                     density = density,
-                    autocaptureStateProvider = { autocaptureManager.state },
+                    autocaptureStateProvider = { autocaptureState },
                 )
             frustrationInteractionsDetector?.start()
         }
@@ -281,7 +292,7 @@ class AndroidLifecyclePlugin(
                 WindowCallbackManager(
                     track = androidAmplitude::track,
                     frustrationDetector = frustrationInteractionsDetector,
-                    autocaptureStateProvider = { autocaptureManager.state },
+                    autocaptureStateProvider = { autocaptureState },
                     logger = androidAmplitude.logger,
                 )
             windowCallbackManager?.start()
