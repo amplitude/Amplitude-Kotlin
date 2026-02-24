@@ -1,3 +1,10 @@
+## [1.25.4](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.25.3...v1.25.4) (2026-02-24)
+
+
+### Bug Fixes
+
+* async disk persistence in IdentityManagerImpl to avoid StrictMode violations ([#361](https://github.com/amplitude/Amplitude-Kotlin/issues/361)) ([7fc3476](https://github.com/amplitude/Amplitude-Kotlin/commit/7fc3476272ddc49c9d2a86e581f39fa252503fd6))
+
 ## [1.25.3](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.25.2...v1.25.3) (2026-02-23)
 
 
