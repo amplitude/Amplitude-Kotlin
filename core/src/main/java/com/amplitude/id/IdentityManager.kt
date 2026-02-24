@@ -1,5 +1,10 @@
 package com.amplitude.id
 
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
@@ -54,7 +59,11 @@ interface IdentityManager {
     fun isInitialized(): Boolean
 }
 
-internal class IdentityManagerImpl(private val identityStorage: IdentityStorage) : IdentityManager {
+internal class IdentityManagerImpl(
+    private val identityStorage: IdentityStorage,
+    persistDispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1),
+) : IdentityManager {
+    private val identityStorageScope = CoroutineScope(SupervisorJob() + persistDispatcher)
     private val identityLock = ReentrantReadWriteLock(true)
     private var identity = Identity()
 
@@ -107,13 +116,9 @@ internal class IdentityManagerImpl(private val identityStorage: IdentityStorage)
                 }
 
             if (updateType != IdentityUpdateType.Initialized) {
-                if (identity.userId != originalIdentity.userId) {
-                    identityStorage.saveUserId(identity.userId)
-                }
-
-                if (identity.deviceId != originalIdentity.deviceId) {
-                    identityStorage.saveDeviceId(identity.deviceId)
-                }
+                val userIdChanged = identity.userId != originalIdentity.userId
+                val deviceIdChanged = identity.deviceId != originalIdentity.deviceId
+                persistIdentity(identity, userIdChanged, deviceIdChanged)
             }
 
             for (listener in safeListeners) {
@@ -125,6 +130,19 @@ internal class IdentityManagerImpl(private val identityStorage: IdentityStorage)
                 }
                 listener.onIdentityChanged(identity, updateType)
             }
+        }
+    }
+
+    private fun persistIdentity(
+        identity: Identity,
+        userIdChanged: Boolean,
+        deviceIdChanged: Boolean,
+    ) {
+        if (!userIdChanged && !deviceIdChanged) return
+
+        identityStorageScope.launch {
+            if (userIdChanged) identityStorage.saveUserId(identity.userId)
+            if (deviceIdChanged) identityStorage.saveDeviceId(identity.deviceId)
         }
     }
 
