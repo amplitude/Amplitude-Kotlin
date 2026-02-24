@@ -1,11 +1,17 @@
 package com.amplitude.id
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class IdentityManagerTest {
     @Test
@@ -118,4 +124,31 @@ class IdentityManagerTest {
         identityManager.setIdentity(expectedIdentity)
         assertFalse(listenerCalled)
     }
+
+    @Test
+    fun `setIdentity persists to disk asynchronously`() =
+        runTest {
+            val testDispatcher = StandardTestDispatcher(testScheduler)
+            val identityStorage = IMIdentityStorage()
+            val identityManager = IdentityManagerImpl(identityStorage, testDispatcher)
+
+            identityManager.editIdentity()
+                .setUserId("user_id")
+                .setDeviceId("device_id")
+                .commit()
+
+            // In-memory identity is updated immediately
+            assertEquals(Identity("user_id", "device_id"), identityManager.getIdentity())
+
+            // Storage has NOT been written yet (async dispatch pending)
+            assertNull(identityStorage.userId)
+            assertNull(identityStorage.deviceId)
+
+            // Advance the dispatcher to execute the async persistence
+            advanceUntilIdle()
+
+            // Now storage reflects the persisted values
+            assertEquals("user_id", identityStorage.userId)
+            assertEquals("device_id", identityStorage.deviceId)
+        }
 }
