@@ -6,13 +6,17 @@ import com.amplitude.core.diagnostics.DiagnosticsClient
 import com.amplitude.core.remoteconfig.ConfigMap
 import com.amplitude.core.remoteconfig.RemoteConfigClient
 import com.amplitude.core.remoteconfig.RemoteConfigClient.Key
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Manages dynamic autocapture state, optionally subscribing to remote config
  * updates to override local configuration.
  *
- * Thread-safe: [state] is a volatile reference to an immutable [AutocaptureState].
- * All readers see a consistent snapshot. Updates replace the entire reference atomically.
+ * Thread-safe: [state] is backed by a [StateFlow] whose value is an immutable
+ * [AutocaptureState]. All readers see a consistent snapshot. Updates replace
+ * the entire value atomically. Consumers can collect from [state] to observe changes.
  */
 @OptIn(RestrictedAmplitudeFeature::class)
 internal class AutocaptureManager(
@@ -22,17 +26,14 @@ internal class AutocaptureManager(
     private val logger: Logger,
     private val diagnosticsClient: DiagnosticsClient? = null,
 ) {
-    @Volatile
-    var state: AutocaptureState = AutocaptureState.from(initialAutocapture, initialInteractionsOptions)
-        private set
+    private val _state = MutableStateFlow(AutocaptureState.from(initialAutocapture, initialInteractionsOptions))
+    val state: StateFlow<AutocaptureState> = _state.asStateFlow()
 
     // Strong reference to prevent GC since RemoteConfigClient uses WeakReference
     private val remoteConfigCallback: RemoteConfigClient.RemoteConfigCallback?
 
-    private val changeCallbacks = mutableListOf<(AutocaptureState) -> Unit>()
-
     init {
-        updateDiagnosticsTag(state)
+        updateDiagnosticsTag(_state.value)
 
         if (remoteConfigClient != null) {
             remoteConfigCallback =
@@ -45,24 +46,9 @@ internal class AutocaptureManager(
         }
     }
 
-    /**
-     * Register a callback to be notified when the autocapture state changes
-     * due to a remote config update.
-     *
-     * The callback parameter is the snapshot for the update that triggered
-     * the callback and should be treated as the source of truth for that
-     * invocation. Since updates are asynchronous, reading [state] inside
-     * the callback may observe a newer snapshot from a later update.
-     */
-    fun onChange(callback: (AutocaptureState) -> Unit) {
-        synchronized(changeCallbacks) {
-            changeCallbacks.add(callback)
-        }
-    }
-
     @Suppress("UNCHECKED_CAST")
     private fun handleRemoteConfig(config: ConfigMap) {
-        val currentState = state
+        val currentState = _state.value
 
         val sessions = (config["sessions"] as? Boolean) ?: currentState.sessions
         val appLifecycles = (config["appLifecycles"] as? Boolean) ?: currentState.appLifecycles
@@ -123,20 +109,15 @@ internal class AutocaptureManager(
                 interactions = interactions,
             )
 
-        state = newState
+        if (newState == currentState) {
+            logger.debug("AutocaptureManager: Remote config unchanged, skipping update")
+            return
+        }
+
+        _state.value = newState
         updateDiagnosticsTag(newState)
 
         logger.debug("AutocaptureManager: Updated state from remote config: $newState")
-
-        // Invoke callbacks with the state snapshot for this update.
-        val callbacks = synchronized(changeCallbacks) { changeCallbacks.toList() }
-        for (callback in callbacks) {
-            try {
-                callback(newState)
-            } catch (e: Exception) {
-                logger.error("AutocaptureManager: Error in change callback: ${e.message}")
-            }
-        }
     }
 
     private fun updateDiagnosticsTag(state: AutocaptureState) {

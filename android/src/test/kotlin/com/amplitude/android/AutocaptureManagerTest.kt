@@ -1,6 +1,7 @@
 package com.amplitude.android
 
 import com.amplitude.common.Logger
+import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.remoteconfig.ConfigMap
 import com.amplitude.core.remoteconfig.RemoteConfigClient
 import io.mockk.mockk
@@ -24,7 +25,7 @@ class AutocaptureManagerTest {
                     ),
             )
 
-        val state = manager.state
+        val state = manager.state.value
         assertTrue(state.sessions)
         assertTrue(state.appLifecycles)
         assertTrue(state.screenViews)
@@ -44,7 +45,7 @@ class AutocaptureManagerTest {
                     ),
             )
 
-        val state = manager.state
+        val state = manager.state.value
         assertTrue(state.sessions)
         assertTrue(state.appLifecycles)
         assertTrue(state.screenViews)
@@ -63,13 +64,13 @@ class AutocaptureManagerTest {
                 remoteConfigClient = remoteConfig,
             )
 
-        assertTrue(manager.state.sessions)
+        assertTrue(manager.state.value.sessions)
 
         remoteConfig.emit(mapOf("sessions" to false))
-        assertFalse(manager.state.sessions)
+        assertFalse(manager.state.value.sessions)
 
         remoteConfig.emit(mapOf("sessions" to true))
-        assertTrue(manager.state.sessions)
+        assertTrue(manager.state.value.sessions)
     }
 
     @Test
@@ -81,10 +82,10 @@ class AutocaptureManagerTest {
                 remoteConfigClient = remoteConfig,
             )
 
-        assertTrue(manager.state.appLifecycles)
+        assertTrue(manager.state.value.appLifecycles)
 
         remoteConfig.emit(mapOf("appLifecycles" to false))
-        assertFalse(manager.state.appLifecycles)
+        assertFalse(manager.state.value.appLifecycles)
     }
 
     @Test
@@ -96,10 +97,10 @@ class AutocaptureManagerTest {
                 remoteConfigClient = remoteConfig,
             )
 
-        assertFalse(manager.state.screenViews)
+        assertFalse(manager.state.value.screenViews)
 
         remoteConfig.emit(mapOf("pageViews" to true))
-        assertTrue(manager.state.screenViews)
+        assertTrue(manager.state.value.screenViews)
     }
 
     @Test
@@ -111,13 +112,13 @@ class AutocaptureManagerTest {
                 remoteConfigClient = remoteConfig,
             )
 
-        assertTrue(manager.state.interactions.isEmpty())
+        assertTrue(manager.state.value.interactions.isEmpty())
 
         remoteConfig.emit(mapOf("elementInteractions" to true))
-        assertTrue(InteractionType.ElementInteraction in manager.state.interactions)
+        assertTrue(InteractionType.ElementInteraction in manager.state.value.interactions)
 
         remoteConfig.emit(mapOf("elementInteractions" to false))
-        assertFalse(InteractionType.ElementInteraction in manager.state.interactions)
+        assertFalse(InteractionType.ElementInteraction in manager.state.value.interactions)
     }
 
     @Test
@@ -140,8 +141,8 @@ class AutocaptureManagerTest {
             ),
         )
 
-        assertTrue(InteractionType.RageClick in manager.state.interactions)
-        assertFalse(InteractionType.DeadClick in manager.state.interactions)
+        assertTrue(InteractionType.RageClick in manager.state.value.interactions)
+        assertFalse(InteractionType.DeadClick in manager.state.value.interactions)
     }
 
     @Test
@@ -154,8 +155,8 @@ class AutocaptureManagerTest {
                 remoteConfigClient = remoteConfig,
             )
 
-        assertTrue(InteractionType.RageClick in manager.state.interactions)
-        assertTrue(InteractionType.DeadClick in manager.state.interactions)
+        assertTrue(InteractionType.RageClick in manager.state.value.interactions)
+        assertTrue(InteractionType.DeadClick in manager.state.value.interactions)
 
         remoteConfig.emit(
             mapOf(
@@ -163,8 +164,8 @@ class AutocaptureManagerTest {
             ),
         )
 
-        assertFalse(InteractionType.RageClick in manager.state.interactions)
-        assertFalse(InteractionType.DeadClick in manager.state.interactions)
+        assertFalse(InteractionType.RageClick in manager.state.value.interactions)
+        assertFalse(InteractionType.DeadClick in manager.state.value.interactions)
     }
 
     @Test
@@ -185,10 +186,10 @@ class AutocaptureManagerTest {
         // Only update sessions, everything else should be preserved
         remoteConfig.emit(mapOf("sessions" to false))
 
-        assertFalse(manager.state.sessions)
-        assertTrue(manager.state.appLifecycles)
-        assertTrue(manager.state.screenViews)
-        assertTrue(manager.state.deepLinks)
+        assertFalse(manager.state.value.sessions)
+        assertTrue(manager.state.value.appLifecycles)
+        assertTrue(manager.state.value.screenViews)
+        assertTrue(manager.state.value.deepLinks)
     }
 
     @Test
@@ -200,13 +201,13 @@ class AutocaptureManagerTest {
                 remoteConfigClient = remoteConfig,
             )
 
-        assertTrue(manager.state.deepLinks)
+        assertTrue(manager.state.value.deepLinks)
 
         remoteConfig.emit(mapOf("deepLinks" to false))
-        assertFalse(manager.state.deepLinks)
+        assertFalse(manager.state.value.deepLinks)
 
         remoteConfig.emit(mapOf("deepLinks" to true))
-        assertTrue(manager.state.deepLinks)
+        assertTrue(manager.state.value.deepLinks)
     }
 
     @Test
@@ -217,11 +218,11 @@ class AutocaptureManagerTest {
                 remoteConfigClient = null,
             )
 
-        assertTrue(manager.state.sessions)
+        assertTrue(manager.state.value.sessions)
     }
 
     @Test
-    fun `onChange callbacks are invoked on remote config update`() {
+    fun `state flow emits updates on remote config change`() {
         val remoteConfig = TestRemoteConfigClient()
         val manager =
             createManager(
@@ -229,35 +230,11 @@ class AutocaptureManagerTest {
                 remoteConfigClient = remoteConfig,
             )
 
-        var callbackInvoked = false
-        var receivedState: AutocaptureState? = null
-        manager.onChange { newState ->
-            callbackInvoked = true
-            receivedState = newState
-        }
+        assertTrue(manager.state.value.sessions)
 
         remoteConfig.emit(mapOf("sessions" to false))
 
-        assertTrue(callbackInvoked)
-        assertFalse(receivedState!!.sessions)
-    }
-
-    @Test
-    fun `multiple onChange callbacks are all invoked`() {
-        val remoteConfig = TestRemoteConfigClient()
-        val manager =
-            createManager(
-                autocapture = emptySet(),
-                remoteConfigClient = remoteConfig,
-            )
-
-        var count = 0
-        manager.onChange { count++ }
-        manager.onChange { count++ }
-
-        remoteConfig.emit(mapOf("sessions" to true))
-
-        assertEquals(2, count)
+        assertFalse(manager.state.value.sessions)
     }
 
     @Test
@@ -290,6 +267,7 @@ class AutocaptureManagerTest {
         assertEquals("frustrationInteractions", state.toString())
     }
 
+    @OptIn(RestrictedAmplitudeFeature::class)
     private fun createManager(
         autocapture: Set<AutocaptureOption> = setOf(AutocaptureOption.SESSIONS),
         interactionsOptions: InteractionsOptions = InteractionsOptions(),

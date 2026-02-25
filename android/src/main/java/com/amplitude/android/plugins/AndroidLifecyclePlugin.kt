@@ -37,7 +37,7 @@ class AndroidLifecyclePlugin(
     private lateinit var androidAmplitude: AndroidAmplitude
     private var autocaptureManager: AutocaptureManager? = null
     private val autocaptureState: AutocaptureState
-        get() = autocaptureManager?.state ?: AutocaptureState()
+        get() = autocaptureManager?.state?.value ?: AutocaptureState()
 
     private var frustrationInteractionsDetector: FrustrationInteractionsDetector? = null
     private var windowCallbackManager: WindowCallbackManager? = null
@@ -49,6 +49,8 @@ class AndroidLifecyclePlugin(
 
     private var appInBackground = false
     private var trackedAppLifecycleEvent = false
+
+    private var stateObserverJob: Job? = null
 
     @VisibleForTesting
     internal var eventJob: Job? = null
@@ -72,25 +74,18 @@ class AndroidLifecyclePlugin(
                 PackageInfo()
             }
 
-        trackAppLifecycleEventIfNeeded()
-
-        // Handle runtime enabling of features via remote config.
-        // Dispatch to main thread — the callback fires on RemoteConfigClient's thread,
-        // but fragment registration and created-map iteration must happen on main.
-        autocaptureManager?.onChange {
-            amplitude.amplitudeScope.launch(Dispatchers.Main) {
-                trackAppLifecycleEventIfNeeded()
-                startInteractionTrackingIfNeeded(application)
-                startFragmentTrackingIfNeeded()
-            }
-        }
-
-        // Run once after callback registration to avoid missing an enablement
-        // update that could occur between an initial check and callback registration.
-        amplitude.amplitudeScope.launch(Dispatchers.Main) {
-            trackAppLifecycleEventIfNeeded()
-            startInteractionTrackingIfNeeded(application)
-            startFragmentTrackingIfNeeded()
+        // Observe autocapture state changes (including the initial value) to
+        // enable features at runtime via remote config. Collected on main thread
+        // because fragment registration and created-map iteration require it.
+        autocaptureManager?.state?.let { stateFlow ->
+            stateObserverJob =
+                amplitude.amplitudeScope.launch(Dispatchers.Main) {
+                    stateFlow.collect {
+                        trackAppLifecycleEventIfNeeded()
+                        startInteractionTrackingIfNeeded(application)
+                        startFragmentTrackingIfNeeded()
+                    }
+                }
         }
 
         eventJob =
@@ -142,6 +137,8 @@ class AndroidLifecyclePlugin(
                 packageInfo = packageInfo,
                 isFromBackground = appInBackground,
             )
+        }
+        if (started.size == 1) {
             appInBackground = false
         }
 
@@ -169,10 +166,10 @@ class AndroidLifecyclePlugin(
 
         if (autocaptureState.appLifecycles && started.isEmpty()) {
             DefaultEventUtils(androidAmplitude).trackAppBackgroundedEvent()
-            appInBackground = true
         }
 
         if (started.isEmpty()) {
+            appInBackground = true
             with(androidAmplitude) {
                 onExitForeground(System.currentTimeMillis())
                 if ((configuration as Configuration).flushEventsOnClose) {
@@ -301,6 +298,7 @@ class AndroidLifecyclePlugin(
 
     override fun teardown() {
         super.teardown()
+        stateObserverJob?.cancel()
         eventJob?.cancel()
         windowCallbackManager?.stop()
         frustrationInteractionsDetector?.stop()

@@ -775,6 +775,7 @@ class AndroidLifecyclePluginTest {
 
     // TODO Replace with Turbine
     private suspend fun close() {
+        plugin.teardown()
         observer.eventChannel.close()
         plugin.eventJob?.join()
     }
