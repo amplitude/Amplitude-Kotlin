@@ -112,29 +112,3 @@ class AutocaptureOptionsBuilder {
  * @return Set of autocapture options.
  */
 fun autocaptureOptions(init: AutocaptureOptionsBuilder.() -> Unit): Set<AutocaptureOption> = AutocaptureOptionsBuilder().apply(init).build()
-
-fun Set<AutocaptureOption>.stringRepresentation(): String {
-    if (isEmpty()) return "none"
-
-    val options = mutableListOf<String>()
-    if (contains(AutocaptureOption.SESSIONS)) {
-        options.add("sessions")
-    }
-    if (contains(AutocaptureOption.APP_LIFECYCLES)) {
-        options.add("appLifecycles")
-    }
-    if (contains(AutocaptureOption.DEEP_LINKS)) {
-        options.add("deepLinks")
-    }
-    if (contains(AutocaptureOption.SCREEN_VIEWS)) {
-        options.add("screenViews")
-    }
-    if (contains(AutocaptureOption.ELEMENT_INTERACTIONS)) {
-        options.add("elementInteractions")
-    }
-    if (contains(AutocaptureOption.FRUSTRATION_INTERACTIONS)) {
-        options.add("frustrationInteractions")
-    }
-
-    return options.joinToString(separator = ",")
-}

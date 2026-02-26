@@ -11,6 +11,7 @@ import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.android.plugins.AndroidNetworkConnectivityCheckerPlugin
 import com.amplitude.android.storage.AndroidStorageContextV3
 import com.amplitude.android.utilities.ActivityLifecycleObserver
+import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.State
 import com.amplitude.core.diagnostics.DiagnosticsContextProvider
 import com.amplitude.core.platform.plugins.AmplitudeDestination
@@ -26,6 +27,7 @@ import java.io.File
 import java.util.concurrent.Executors
 import com.amplitude.core.Amplitude as CoreAmplitude
 
+@OptIn(RestrictedAmplitudeFeature::class)
 open class Amplitude internal constructor(
     configuration: Configuration,
     state: State,
@@ -42,6 +44,17 @@ open class Amplitude internal constructor(
         storageIODispatcher = storageIODispatcher,
     ) {
     constructor(configuration: Configuration) : this(configuration, State())
+
+    internal val autocaptureManager: AutocaptureManager by lazy {
+        val androidConfig = configuration as Configuration
+        AutocaptureManager(
+            initialAutocapture = androidConfig.autocapture,
+            initialInteractionsOptions = androidConfig.interactionsOptions,
+            remoteConfigClient = if (androidConfig.enableAutocaptureRemoteConfig) remoteConfigClient else null,
+            logger = logger,
+            diagnosticsClient = diagnosticsClient,
+        )
+    }
 
     private val androidContextPlugin by lazy { AndroidContextPlugin() }
 
