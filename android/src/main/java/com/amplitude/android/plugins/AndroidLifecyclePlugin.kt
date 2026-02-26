@@ -6,7 +6,6 @@ import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.annotation.VisibleForTesting
-import com.amplitude.android.AutocaptureManager
 import com.amplitude.android.AutocaptureState
 import com.amplitude.android.Configuration
 import com.amplitude.android.FrustrationInteractionsDetector
@@ -35,9 +34,8 @@ class AndroidLifecyclePlugin(
     override lateinit var amplitude: Amplitude
     private lateinit var packageInfo: PackageInfo
     private lateinit var androidAmplitude: AndroidAmplitude
-    private var autocaptureManager: AutocaptureManager? = null
     private val autocaptureState: AutocaptureState
-        get() = autocaptureManager?.state?.value ?: AutocaptureState()
+        get() = androidAmplitude.autocaptureManager.state.value
 
     private var frustrationInteractionsDetector: FrustrationInteractionsDetector? = null
     private var windowCallbackManager: WindowCallbackManager? = null
@@ -60,8 +58,6 @@ class AndroidLifecyclePlugin(
         androidAmplitude = amplitude as AndroidAmplitude
         val androidConfiguration = amplitude.configuration as Configuration
 
-        autocaptureManager = androidAmplitude.autocaptureManager
-
         val application = androidConfiguration.context as Application
 
         // Always initialize packageInfo — remote config may enable appLifecycles later.
@@ -77,16 +73,14 @@ class AndroidLifecyclePlugin(
         // Observe autocapture state changes (including the initial value) to
         // enable features at runtime via remote config. Collected on main thread
         // because fragment registration and created-map iteration require it.
-        autocaptureManager?.state?.let { stateFlow ->
-            stateObserverJob =
-                amplitude.amplitudeScope.launch(Dispatchers.Main) {
-                    stateFlow.collect {
-                        trackAppLifecycleEventIfNeeded()
-                        startInteractionTrackingIfNeeded(application)
-                        startFragmentTrackingIfNeeded()
-                    }
+        stateObserverJob =
+            amplitude.amplitudeScope.launch(Dispatchers.Main) {
+                androidAmplitude.autocaptureManager.state.collect {
+                    trackAppLifecycleEventIfNeeded()
+                    startInteractionTrackingIfNeeded(application)
+                    startFragmentTrackingIfNeeded()
                 }
-        }
+            }
 
         eventJob =
             amplitude.amplitudeScope.launch(Dispatchers.Main) {

@@ -45,8 +45,16 @@ open class Amplitude internal constructor(
     ) {
     constructor(configuration: Configuration) : this(configuration, State())
 
-    internal var autocaptureManager: AutocaptureManager? = null
-        private set
+    internal val autocaptureManager: AutocaptureManager by lazy {
+        val androidConfig = configuration as Configuration
+        AutocaptureManager(
+            initialAutocapture = androidConfig.autocapture,
+            initialInteractionsOptions = androidConfig.interactionsOptions,
+            remoteConfigClient = if (androidConfig.enableAutocaptureRemoteConfig) remoteConfigClient else null,
+            logger = logger,
+            diagnosticsClient = diagnosticsClient,
+        )
+    }
 
     private val androidContextPlugin by lazy { AndroidContextPlugin() }
 
@@ -96,16 +104,6 @@ open class Amplitude internal constructor(
         migrationManager.migrateOldStorage()
 
         this.createIdentityContainer(identityConfiguration)
-
-        val androidConfig = configuration as Configuration
-        autocaptureManager =
-            AutocaptureManager(
-                initialAutocapture = androidConfig.autocapture,
-                initialInteractionsOptions = androidConfig.interactionsOptions,
-                remoteConfigClient = if (androidConfig.enableAutocaptureRemoteConfig) remoteConfigClient else null,
-                logger = logger,
-                diagnosticsClient = diagnosticsClient,
-            )
 
         if (this.configuration.offline != AndroidNetworkConnectivityCheckerPlugin.Disabled) {
             add(AndroidNetworkConnectivityCheckerPlugin())
