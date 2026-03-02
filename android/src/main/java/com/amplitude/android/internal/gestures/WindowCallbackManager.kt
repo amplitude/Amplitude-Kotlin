@@ -29,7 +29,7 @@ import curtains.phoneWindow
 internal class WindowCallbackManager(
     private val track: TrackFunction,
     private val frustrationDetector: FrustrationInteractionsDetector?,
-    private val autocaptureState: AutocaptureState,
+    private val autocaptureStateProvider: () -> AutocaptureState,
     private val logger: Logger,
 ) {
     private val wrappedWindows = mutableMapOf<Window, Window.Callback?>()
@@ -119,7 +119,7 @@ internal class WindowCallbackManager(
                     track = track,
                     viewTargetLocators = ALL(logger),
                     logger = logger,
-                    autocaptureState = autocaptureState,
+                    autocaptureStateProvider = autocaptureStateProvider,
                     frustrationDetector = frustrationDetector,
                 )
             } else {
@@ -130,7 +130,7 @@ internal class WindowCallbackManager(
                     track = track,
                     viewTargetLocators = ALL(logger),
                     logger = logger,
-                    autocaptureState = autocaptureState,
+                    autocaptureStateProvider = autocaptureStateProvider,
                 )
             }
 

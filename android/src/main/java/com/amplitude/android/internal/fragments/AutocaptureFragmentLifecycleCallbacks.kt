@@ -11,12 +11,16 @@ import com.amplitude.core.Constants.EventTypes
 internal class AutocaptureFragmentLifecycleCallbacks(
     private val track: TrackFunction,
     private val logger: Logger,
+    private val screenViewsEnabled: () -> Boolean = { true },
 ) : FragmentManager.FragmentLifecycleCallbacks() {
     override fun onFragmentResumed(
         fm: FragmentManager,
         f: Fragment,
     ) {
         super.onFragmentResumed(fm, f)
+
+        // Check current state — remote config may have disabled screen views since registration.
+        if (!screenViewsEnabled()) return
 
         val className = f.javaClass.canonicalName ?: f.javaClass.simpleName ?: null
         val fragmentIdentifier =

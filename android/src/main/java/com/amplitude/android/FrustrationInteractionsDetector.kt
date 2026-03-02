@@ -34,8 +34,11 @@ class FrustrationInteractionsDetector(
     private val amplitude: Amplitude,
     private val logger: Logger,
     density: Float,
-    private val autocaptureState: AutocaptureState,
+    private val autocaptureStateProvider: () -> AutocaptureState,
 ) {
+    private val autocaptureState: AutocaptureState
+        get() = autocaptureStateProvider()
+
     companion object {
         /**
          * multiplier for density-independent pixels (dp)

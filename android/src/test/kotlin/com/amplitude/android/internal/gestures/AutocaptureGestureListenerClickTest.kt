@@ -100,7 +100,7 @@ class AutocaptureGestureListenerClickTest {
                 track,
                 logger,
                 listOf(AndroidViewTargetLocator()),
-                AutocaptureState(interactions = listOf(InteractionType.ElementInteraction)),
+                { AutocaptureState(interactions = listOf(InteractionType.ElementInteraction)) },
             )
         }
     }
@@ -291,7 +291,7 @@ class AutocaptureGestureListenerClickTest {
                 fixture.track,
                 fixture.logger,
                 listOf(AndroidViewTargetLocator()),
-                AutocaptureState(interactions = emptyList()),
+                { AutocaptureState(interactions = emptyList()) },
             )
 
         sut.onSingleTapUp(event)

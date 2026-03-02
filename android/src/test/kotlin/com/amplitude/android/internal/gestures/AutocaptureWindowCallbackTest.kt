@@ -33,9 +33,11 @@ class AutocaptureWindowCallbackTest {
                 track,
                 listOf(AndroidViewTargetLocator()),
                 logger,
-                AutocaptureState(
-                    interactions = listOf(ElementInteraction),
-                ),
+                {
+                    AutocaptureState(
+                        interactions = listOf(ElementInteraction),
+                    )
+                },
                 motionEventObtainer =
                     object : AutocaptureWindowCallback.MotionEventObtainer {
                         override fun obtain(origin: MotionEvent): MotionEvent {

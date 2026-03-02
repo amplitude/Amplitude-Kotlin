@@ -21,6 +21,19 @@ data class AutocaptureState(
     val deepLinks: Boolean = false,
     val interactions: List<InteractionType> = emptyList(),
 ) {
+    override fun toString(): String {
+        val options =
+            buildList {
+                if (sessions) add("sessions")
+                if (appLifecycles) add("appLifecycles")
+                if (deepLinks) add("deepLinks")
+                if (screenViews) add("screenViews")
+                if (interactions.any { it is InteractionType.ElementInteraction }) add("elementInteractions")
+                if (interactions.any { it is InteractionType.RageClick || it is InteractionType.DeadClick }) add("frustrationInteractions")
+            }
+        return if (options.isEmpty()) "none" else options.joinToString(",")
+    }
+
     companion object {
         /**
          * Builds [AutocaptureState] from autocapture options and interactions configuration.

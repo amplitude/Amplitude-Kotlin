@@ -42,7 +42,7 @@ class WindowCallbackManagerTest {
             WindowCallbackManager(
                 track = track,
                 frustrationDetector = null,
-                autocaptureState = autocaptureState,
+                autocaptureStateProvider = { autocaptureState },
                 logger = logger,
             )
 
@@ -65,7 +65,7 @@ class WindowCallbackManagerTest {
             WindowCallbackManager(
                 track = track,
                 frustrationDetector = null,
-                autocaptureState = autocaptureState,
+                autocaptureStateProvider = { autocaptureState },
                 logger = logger,
             )
 
@@ -95,7 +95,7 @@ class WindowCallbackManagerTest {
             WindowCallbackManager(
                 track = track,
                 frustrationDetector = null,
-                autocaptureState = autocaptureState,
+                autocaptureStateProvider = { autocaptureState },
                 logger = logger,
             )
 
@@ -121,7 +121,7 @@ class WindowCallbackManagerTest {
             WindowCallbackManager(
                 track = track,
                 frustrationDetector = null,
-                autocaptureState = autocaptureState,
+                autocaptureStateProvider = { autocaptureState },
                 logger = logger,
             )
 
@@ -148,7 +148,7 @@ class WindowCallbackManagerTest {
             WindowCallbackManager(
                 track = track,
                 frustrationDetector = null,
-                autocaptureState = autocaptureState,
+                autocaptureStateProvider = { autocaptureState },
                 logger = logger,
             )
 

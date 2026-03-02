@@ -22,9 +22,11 @@ class AutocaptureGestureListener(
     private val track: TrackFunction,
     private val logger: Logger,
     private val viewTargetLocators: List<ViewTargetLocator>,
-    private val autocaptureState: AutocaptureState,
+    private val autocaptureStateProvider: () -> AutocaptureState,
     private var onViewTargetFound: ((ViewTarget) -> Unit)? = null,
 ) : GestureDetector.OnGestureListener {
+    private val autocaptureState: AutocaptureState
+        get() = autocaptureStateProvider()
     private val decorViewRef: WeakReference<View> = WeakReference(decorView)
 
     internal fun setViewTargetFoundCallback(callback: (ViewTarget) -> Unit) {
@@ -38,6 +40,9 @@ class AutocaptureGestureListener(
     override fun onShowPress(e: MotionEvent) {}
 
     override fun onSingleTapUp(e: MotionEvent): Boolean {
+        // Short-circuit if no interactions are enabled — avoids expensive view hierarchy scan.
+        if (autocaptureState.interactions.isEmpty()) return false
+
         val decorView = decorViewRef.get() ?: logger.error("DecorView is null in onSingleTapUp()").let { return false }
 
         val target: ViewTarget =

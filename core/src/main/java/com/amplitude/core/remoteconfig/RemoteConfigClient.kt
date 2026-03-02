@@ -38,6 +38,7 @@ interface RemoteConfigClient {
     }
 
     enum class Key(val value: String) {
+        ANALYTICS_SDK("analyticsSDK.androidSDK"),
         DIAGNOSTICS("diagnostics.androidSDK"),
         SESSION_REPLAY_PRIVACY_CONFIG("sessionReplay.sr_android_privacy_config"),
         SESSION_REPLAY_SAMPLING_CONFIG("sessionReplay.sr_android_sampling_config"),
