@@ -6,6 +6,7 @@ import com.amplitude.core.diagnostics.DiagnosticsClient
 import com.amplitude.core.remoteconfig.ConfigMap
 import com.amplitude.core.remoteconfig.RemoteConfigClient
 import com.amplitude.core.remoteconfig.RemoteConfigClient.Key
+import com.amplitude.core.remoteconfig.getBoolean
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,46 +51,54 @@ internal class AutocaptureManager(
     private fun handleRemoteConfig(config: ConfigMap) {
         val currentState = _state.value
 
-        val sessions = (config["sessions"] as? Boolean) ?: currentState.sessions
-        val appLifecycles = (config["appLifecycles"] as? Boolean) ?: currentState.appLifecycles
+        val autocaptureConfig = config["autocapture"] as? ConfigMap
+        if (autocaptureConfig == null) {
+            logger.debug("AutocaptureManager: Missing 'autocapture' root in analytics remote config")
+            return
+        }
+
+        val sessions = autocaptureConfig.getBoolean("sessions", currentState.sessions)
+        val appLifecycles = autocaptureConfig.getBoolean("appLifecycles", currentState.appLifecycles)
         // Remote config uses "pageViews" which maps to screenViews
-        val screenViews = (config["pageViews"] as? Boolean) ?: currentState.screenViews
-        val deepLinks = (config["deepLinks"] as? Boolean) ?: currentState.deepLinks
+        val screenViews = autocaptureConfig.getBoolean("pageViews", currentState.screenViews)
+        val deepLinks = autocaptureConfig.getBoolean("deepLinks", currentState.deepLinks)
 
         val interactions =
             buildList {
                 // elementInteractions
-                val elementInteractionsEnabled = config["elementInteractions"] as? Boolean
-                if (elementInteractionsEnabled == true) {
-                    add(InteractionType.ElementInteraction)
-                } else if (elementInteractionsEnabled == null &&
-                    InteractionType.ElementInteraction in currentState.interactions
-                ) {
+                val elementInteractionsEnabled =
+                    autocaptureConfig.getBoolean(
+                        "elementInteractions",
+                        InteractionType.ElementInteraction in currentState.interactions,
+                    )
+                if (elementInteractionsEnabled) {
                     add(InteractionType.ElementInteraction)
                 }
 
                 // frustrationInteractions
-                val frustrationConfig = config["frustrationInteractions"] as? Map<String, Any>
+                val frustrationConfig = autocaptureConfig["frustrationInteractions"] as? ConfigMap
                 if (frustrationConfig != null) {
-                    val rageClickEnabled = InteractionType.RageClick in currentState.interactions
-                    val deadClickEnabled = InteractionType.DeadClick in currentState.interactions
+                    val wasRageClickEnabled = InteractionType.RageClick in currentState.interactions
+                    val wasDeadClickEnabled = InteractionType.DeadClick in currentState.interactions
                     val frustrationEnabled =
-                        frustrationConfig["enabled"] as? Boolean
-                            ?: (rageClickEnabled || deadClickEnabled)
+                        frustrationConfig.getBoolean(
+                            "enabled",
+                            wasRageClickEnabled || wasDeadClickEnabled,
+                        )
                     if (frustrationEnabled) {
-                        val rageClickConfig = frustrationConfig["rageClick"] as? Map<String, Any>
+                        val rageClickConfig = frustrationConfig["rageClick"] as? ConfigMap
                         // Fall back to current state when rageClick key is absent
-                        val rageClickEnabled =
-                            rageClickConfig?.get("enabled") as? Boolean ?: rageClickEnabled
-                        if (rageClickEnabled) {
+                        val isRageClickEnabled =
+                            rageClickConfig?.getBoolean("enabled", wasRageClickEnabled) ?: wasRageClickEnabled
+                        if (isRageClickEnabled) {
                             add(InteractionType.RageClick)
                         }
 
-                        val deadClickConfig = frustrationConfig["deadClick"] as? Map<String, Any>
+                        val deadClickConfig = frustrationConfig["deadClick"] as? ConfigMap
                         // Fall back to current state when deadClick key is absent
-                        val deadClickEnabled =
-                            deadClickConfig?.get("enabled") as? Boolean ?: deadClickEnabled
-                        if (deadClickEnabled) {
+                        val isDeadClickEnabled =
+                            deadClickConfig?.getBoolean("enabled", wasDeadClickEnabled) ?: wasDeadClickEnabled
+                        if (isDeadClickEnabled) {
                             add(InteractionType.DeadClick)
                         }
                     }
