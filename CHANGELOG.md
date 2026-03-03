@@ -1,3 +1,10 @@
+# [1.26.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.25.4...v1.26.0) (2026-03-03)
+
+
+### Features
+
+* integrate remote config into autocapture ([#359](https://github.com/amplitude/Amplitude-Kotlin/issues/359)) ([91b18f5](https://github.com/amplitude/Amplitude-Kotlin/commit/91b18f5822ab9eb005fc553b0e27ce4c7268b72d))
+
 ## [1.25.4](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.25.3...v1.25.4) (2026-02-24)
 
 
