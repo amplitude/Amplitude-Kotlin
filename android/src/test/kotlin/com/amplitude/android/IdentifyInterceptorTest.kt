@@ -285,7 +285,7 @@ class IdentifyInterceptorTest {
             amplitude.identify(Identify().set("key3", "key3-value1").set("key1", "key1-value2"))
             amplitude.identify(Identify().set("key4", "key4-value1").set("key2", "key2-value2"))
             amplitude.identify(Identify().set("key3", "key3-value2").set("key4", "key4-value2"))
-            amplitude.amplitudeScope.launch(amplitude.amplitudeDispatcher) {
+            amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
                 sleep(400)
                 val options =
                     EventOptions().apply {

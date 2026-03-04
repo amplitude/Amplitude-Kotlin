@@ -32,14 +32,12 @@ class FakeAndroidAmplitude(
     configuration: Configuration,
     val androidTestDispatcher: TestDispatcher = StandardTestDispatcher(),
     amplitudeScope: CoroutineScope = TestScope(androidTestDispatcher),
-    amplitudeDispatcher: CoroutineDispatcher = androidTestDispatcher,
     networkIODispatcher: CoroutineDispatcher = androidTestDispatcher,
     storageIODispatcher: CoroutineDispatcher = androidTestDispatcher,
 ) : AndroidAmplitude(
         configuration = configuration,
         state = State(),
         amplitudeScope = amplitudeScope,
-        amplitudeDispatcher = amplitudeDispatcher,
         networkIODispatcher = networkIODispatcher,
         storageIODispatcher = storageIODispatcher,
     )
