@@ -9,25 +9,29 @@ import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
 import com.amplitude.core.platform.plugins.ContextPlugin
-import java.util.UUID
+import java.util.*
 
 @OptIn(RestrictedAmplitudeFeature::class)
 open class AndroidContextPlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Before
     override lateinit var amplitude: Amplitude
+
     private lateinit var contextProvider: AndroidContextProvider
+
+    private fun ensureContextProvider(configuration: Configuration) {
+        if (!::contextProvider.isInitialized) with(configuration) {
+            contextProvider = AndroidContextProvider(
+                context,
+                locationListening,
+                trackingOptions.shouldTrackAdid(),
+                trackingOptions.shouldTrackAppSetId(),
+            )
+        }
+    }
 
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
-        val configuration = amplitude.configuration as Configuration
-        contextProvider =
-            AndroidContextProvider(
-                configuration.context,
-                configuration.locationListening,
-                configuration.trackingOptions.shouldTrackAdid(),
-                configuration.trackingOptions.shouldTrackAppSetId(),
-            )
-        initializeDeviceId(configuration)
+        initializeDeviceId(amplitude.configuration as Configuration)
 
         amplitude.diagnosticsClient.setTag(
             name = "sdk.${SDK_LIBRARY}.version",
@@ -44,6 +48,8 @@ open class AndroidContextPlugin : Plugin {
         configuration: Configuration,
         forceRegenerate: Boolean = false,
     ) {
+        ensureContextProvider(configuration)
+
         // Check configuration
         var deviceId = configuration.deviceId
         if (deviceId != null) {
@@ -159,17 +165,17 @@ open class AndroidContextPlugin : Plugin {
             }
         }
         event.partnerId ?: let {
-            amplitude.configuration.partnerId ?. let {
+            amplitude.configuration.partnerId?.let {
                 event.partnerId = it
             }
         }
         event.plan ?: let {
-            amplitude.configuration.plan ?. let {
+            amplitude.configuration.plan?.let {
                 event.plan = it.clone()
             }
         }
         event.ingestionMetadata ?: let {
-            amplitude.configuration.ingestionMetadata ?. let {
+            amplitude.configuration.ingestionMetadata?.let {
                 event.ingestionMetadata = it.clone()
             }
         }
@@ -185,7 +191,15 @@ open class AndroidContextPlugin : Plugin {
         const val SDK_LIBRARY = "amplitude-analytics-android"
         const val SDK_VERSION = BuildConfig.AMPLITUDE_VERSION
         private val INVALID_DEVICE_IDS =
-            setOf("", "9774d56d682e549c", "unknown", "000000000000000", "Android", "DEFACE", "00000000-0000-0000-0000-000000000000")
+            setOf(
+                "",
+                "9774d56d682e549c",
+                "unknown",
+                "000000000000000",
+                "Android",
+                "DEFACE",
+                "00000000-0000-0000-0000-000000000000"
+            )
 
         fun validDeviceId(deviceId: String): Boolean {
             return !(deviceId.isEmpty() || INVALID_DEVICE_IDS.contains(deviceId))

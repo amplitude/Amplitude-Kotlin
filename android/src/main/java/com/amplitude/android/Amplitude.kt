@@ -128,11 +128,7 @@ open class Amplitude internal constructor(
 
     override fun reset(): Amplitude {
         setUserId(null)
-        if (isBuilt.isCompleted) {
-            androidContextPlugin.initializeDeviceId(configuration as Configuration, forceRegenerate = true)
-        } else {
-            setDeviceId(ContextPlugin.generateRandomDeviceId())
-        }
+        androidContextPlugin.initializeDeviceId(configuration as Configuration, forceRegenerate = true)
         return this
     }
 
