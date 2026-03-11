@@ -113,8 +113,10 @@ class Timeline(
             }
 
             else -> {
-                val stopAndStartSessionEvents = startNewSessionIfNeeded(eventTimestamp)
-                processAndPersistEvents(stopAndStartSessionEvents)
+                if (event.sessionId != DEFAULT_SESSION_ID) {
+                    val stopAndStartSessionEvents = startNewSessionIfNeeded(eventTimestamp)
+                    processAndPersistEvents(stopAndStartSessionEvents)
+                }
             }
         }
 
