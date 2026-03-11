@@ -217,6 +217,88 @@ public class com/amplitude/android/Configuration : com/amplitude/core/Configurat
 public final class com/amplitude/android/Configuration$Companion {
 }
 
+public final class com/amplitude/android/ConfigurationBuilder {
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;)V
+	public final fun build ()Lcom/amplitude/android/Configuration;
+	public final fun getAutocapture ()Ljava/util/Set;
+	public final fun getCallback ()Lkotlin/jvm/functions/Function3;
+	public final fun getDeviceId ()Ljava/lang/String;
+	public final fun getEnableAutocaptureRemoteConfig ()Z
+	public final fun getEnableCoppaControl ()Z
+	public final fun getEnableDiagnostics ()Z
+	public final fun getEnableRequestBodyCompression ()Z
+	public final fun getFlushEventsOnClose ()Z
+	public final fun getFlushIntervalMillis ()I
+	public final fun getFlushMaxRetries ()I
+	public final fun getFlushQueueSize ()I
+	public final fun getHttpClient ()Lcom/amplitude/core/utilities/http/HttpClientInterface;
+	public final fun getIdentifyBatchIntervalMillis ()J
+	public final fun getIdentifyInterceptStorageProvider ()Lcom/amplitude/core/StorageProvider;
+	public final fun getIdentityStorageProvider ()Lcom/amplitude/id/IdentityStorageProvider;
+	public final fun getIngestionMetadata ()Lcom/amplitude/core/events/IngestionMetadata;
+	public final fun getInstanceName ()Ljava/lang/String;
+	public final fun getInteractionsOptions ()Lcom/amplitude/android/InteractionsOptions;
+	public final fun getLocationListening ()Z
+	public final fun getLoggerProvider ()Lcom/amplitude/core/LoggerProvider;
+	public final fun getMigrateLegacyData ()Z
+	public final fun getMinIdLength ()Ljava/lang/Integer;
+	public final fun getMinTimeBetweenSessionsMillis ()J
+	public final fun getNewDeviceIdPerInstall ()Z
+	public final fun getOffline ()Ljava/lang/Boolean;
+	public final fun getOptOut ()Z
+	public final fun getPartnerId ()Ljava/lang/String;
+	public final fun getPlan ()Lcom/amplitude/core/events/Plan;
+	public final fun getServerUrl ()Ljava/lang/String;
+	public final fun getServerZone ()Lcom/amplitude/core/ServerZone;
+	public final fun getSessionId ()Ljava/lang/Long;
+	public final fun getStorageProvider ()Lcom/amplitude/core/StorageProvider;
+	public final fun getTrackingOptions ()Lcom/amplitude/android/TrackingOptions;
+	public final fun getUseAdvertisingIdForDeviceId ()Z
+	public final fun getUseAppSetIdForDeviceId ()Z
+	public final fun getUseBatch ()Z
+	public final fun setAutocapture (Ljava/util/Set;)V
+	public final fun setCallback (Lkotlin/jvm/functions/Function3;)V
+	public final fun setDeviceId (Ljava/lang/String;)V
+	public final fun setEnableAutocaptureRemoteConfig (Z)V
+	public final fun setEnableCoppaControl (Z)V
+	public final fun setEnableDiagnostics (Z)V
+	public final fun setEnableRequestBodyCompression (Z)V
+	public final fun setFlushEventsOnClose (Z)V
+	public final fun setFlushIntervalMillis (I)V
+	public final fun setFlushMaxRetries (I)V
+	public final fun setFlushQueueSize (I)V
+	public final fun setHttpClient (Lcom/amplitude/core/utilities/http/HttpClientInterface;)V
+	public final fun setIdentifyBatchIntervalMillis (J)V
+	public final fun setIdentifyInterceptStorageProvider (Lcom/amplitude/core/StorageProvider;)V
+	public final fun setIdentityStorageProvider (Lcom/amplitude/id/IdentityStorageProvider;)V
+	public final fun setIngestionMetadata (Lcom/amplitude/core/events/IngestionMetadata;)V
+	public final fun setInstanceName (Ljava/lang/String;)V
+	public final fun setInteractionsOptions (Lcom/amplitude/android/InteractionsOptions;)V
+	public final fun setLocationListening (Z)V
+	public final fun setLoggerProvider (Lcom/amplitude/core/LoggerProvider;)V
+	public final fun setMigrateLegacyData (Z)V
+	public final fun setMinIdLength (Ljava/lang/Integer;)V
+	public final fun setMinTimeBetweenSessionsMillis (J)V
+	public final fun setNewDeviceIdPerInstall (Z)V
+	public final fun setOffline (Ljava/lang/Boolean;)V
+	public final fun setOptOut (Z)V
+	public final fun setPartnerId (Ljava/lang/String;)V
+	public final fun setPlan (Lcom/amplitude/core/events/Plan;)V
+	public final fun setServerUrl (Ljava/lang/String;)V
+	public final fun setServerZone (Lcom/amplitude/core/ServerZone;)V
+	public final fun setSessionId (Ljava/lang/Long;)V
+	public final fun setStorageProvider (Lcom/amplitude/core/StorageProvider;)V
+	public final fun setTrackingOptions (Lcom/amplitude/android/TrackingOptions;)V
+	public final fun setUseAdvertisingIdForDeviceId (Z)V
+	public final fun setUseAppSetIdForDeviceId (Z)V
+	public final fun setUseBatch (Z)V
+}
+
+public final class com/amplitude/android/ConfigurationBuilderKt {
+	public static final fun configuration (Ljava/lang/String;Landroid/content/Context;Lkotlin/jvm/functions/Function1;)Lcom/amplitude/android/Configuration;
+	public static synthetic fun configuration$default (Ljava/lang/String;Landroid/content/Context;Lkotlin/jvm/functions/Function1;ILjava/lang/Object;)Lcom/amplitude/android/Configuration;
+}
+
 public final class com/amplitude/android/DeadClickOptions {
 	public fun <init> ()V
 	public fun <init> (Z)V
