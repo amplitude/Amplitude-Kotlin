@@ -5,12 +5,16 @@ import com.amplitude.core.events.Plan
 import com.amplitude.core.utilities.ConsoleLoggerProvider
 import com.amplitude.core.utilities.InMemoryStorageProvider
 import com.amplitude.id.IMIdentityStorageProvider
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import java.io.ByteArrayOutputStream
+import java.io.PrintStream
 
 internal class ConfigurationBuilderTest {
     @Nested
@@ -237,6 +241,86 @@ internal class ConfigurationBuilderTest {
                     flushQueueSize = 0
                 }
             assertFalse(config.isValid())
+        }
+    }
+
+    @Nested
+    inner class ReadOnlyBehavior {
+        private val originalOut = System.out
+        private lateinit var outputCapture: ByteArrayOutputStream
+
+        @BeforeEach
+        fun setUp() {
+            outputCapture = ByteArrayOutputStream()
+            System.setOut(PrintStream(outputCapture))
+        }
+
+        @AfterEach
+        fun tearDown() {
+            System.setOut(originalOut)
+        }
+
+        @Test
+        fun `mutating read-only property logs warning but applies value`() {
+            val config = configuration("test-key") { flushQueueSize = 10 }
+
+            config.flushQueueSize = 99
+
+            assertEquals(99, config.flushQueueSize)
+            val output = outputCapture.toString()
+            assertTrue(output.contains("flushQueueSize"))
+            assertTrue(output.contains("should not be modified"))
+        }
+
+        @Test
+        fun `mutating offline does not log warning`() {
+            val config = configuration("test-key")
+
+            config.offline = true
+
+            assertEquals(true, config.offline)
+            val output = outputCapture.toString()
+            assertFalse(output.contains("offline"))
+        }
+
+        @Test
+        fun `mutating optOut does not log warning`() {
+            val config = configuration("test-key")
+
+            config.optOut = true
+
+            assertTrue(config.optOut)
+            val output = outputCapture.toString()
+            assertFalse(output.contains("optOut"))
+        }
+
+        @Test
+        fun `constructor-created config does not log warning on mutation`() {
+            val config = Configuration("test-key")
+
+            config.flushQueueSize = 99
+
+            assertEquals(99, config.flushQueueSize)
+            val output = outputCapture.toString()
+            assertFalse(output.contains("should not be modified"))
+        }
+
+        @Test
+        fun `multiple read-only properties warn independently`() {
+            val config = configuration("test-key")
+
+            config.serverZone = ServerZone.EU
+            config.useBatch = true
+            config.instanceName = "changed"
+
+            assertEquals(ServerZone.EU, config.serverZone)
+            assertTrue(config.useBatch)
+            assertEquals("changed", config.instanceName)
+
+            val output = outputCapture.toString()
+            assertTrue(output.contains("serverZone"))
+            assertTrue(output.contains("useBatch"))
+            assertTrue(output.contains("instanceName"))
         }
     }
 }
