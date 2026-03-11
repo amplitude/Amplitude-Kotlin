@@ -1,3 +1,10 @@
+## [1.26.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.26.0...v1.26.1) (2026-03-11)
+
+
+### Bug Fixes
+
+* out-of-session event should not extend or trigger a session ([#365](https://github.com/amplitude/Amplitude-Kotlin/issues/365)) ([94df3ad](https://github.com/amplitude/Amplitude-Kotlin/commit/94df3ad1d8e7917c6896be96fe23d259e31572fb))
+
 # [1.26.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.25.4...v1.26.0) (2026-03-03)
 
 
