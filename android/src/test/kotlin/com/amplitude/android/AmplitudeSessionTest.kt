@@ -554,7 +554,10 @@ class AmplitudeSessionTest {
 
             tracks.sortBy { event -> event.eventId }
 
-            assertEquals(4, tracks.count())
+            // Out-of-session event (sessionId=-1) should NOT extend the session.
+            // So test event 3 at t=1100 sees lastEventTime=1000, and 1100-1000=100 >= 100ms timeout,
+            // which triggers a new session.
+            assertEquals(6, tracks.count())
 
             var event = tracks[0]
             assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
@@ -571,10 +574,69 @@ class AmplitudeSessionTest {
             assertEquals(-1L, event.sessionId)
             assertEquals(1050L, event.timestamp)
 
+            // Session timed out: session_end for old session, session_start for new
             event = tracks[3]
-            assertEquals("test event 3", event.eventType)
+            assertEquals(Amplitude.END_SESSION_EVENT, event.eventType)
             assertEquals(1000L, event.sessionId)
+            assertEquals(1000L, event.timestamp)
+
+            event = tracks[4]
+            assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
+            assertEquals(1100L, event.sessionId)
             assertEquals(1100L, event.timestamp)
+
+            event = tracks[5]
+            assertEquals("test event 3", event.eventType)
+            assertEquals(1100L, event.sessionId)
+            assertEquals(1100L, event.timestamp)
+        }
+
+    @Test
+    fun amplitude_backgroundOutOfSessionEventShouldNotCreateSessionEvents() =
+        runTest {
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = createConfiguration(),
+                )
+
+            val mockedPlugin = spyk(FakeEventPlugin())
+            amplitude.add(mockedPlugin)
+
+            amplitude.isBuilt.await()
+
+            amplitude.track(createEvent(800, "setup event"))
+            amplitude.track(createEvent(1000, "out of session event", -1))
+
+            advanceUntilIdle()
+            Thread.sleep(100)
+
+            val tracks = mutableListOf<BaseEvent>()
+
+            verify {
+                mockedPlugin.track(capture(tracks))
+            }
+
+            tracks.sortBy { event -> event.eventId }
+
+            // 3 events (not 5 as in amplitude_distantBackgroundEventsShouldStartNewSession):
+            // out-of-session event should not trigger session_end + session_start
+            assertEquals(3, tracks.count())
+
+            var event = tracks[0]
+            assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
+            assertEquals(800L, event.sessionId)
+            assertEquals(800L, event.timestamp)
+
+            event = tracks[1]
+            assertEquals("setup event", event.eventType)
+            assertEquals(800L, event.sessionId)
+            assertEquals(800L, event.timestamp)
+
+            event = tracks[2]
+            assertEquals("out of session event", event.eventType)
+            assertEquals(-1L, event.sessionId)
+            assertEquals(1000L, event.timestamp)
         }
 
     @Test
