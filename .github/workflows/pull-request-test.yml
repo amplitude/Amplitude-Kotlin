@@ -55,6 +55,9 @@ jobs:
       - name: Lint
         run: ./gradlew ktlintCheck
 
+      - name: API Compatibility Check
+        run: ./gradlew apiCheck
+
       - name: Upload test and lint results
         if: always()
         uses: actions/upload-artifact@v4
