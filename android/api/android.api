@@ -141,11 +141,11 @@ public class com/amplitude/android/Configuration : com/amplitude/core/Configurat
 	public final fun getContext ()Landroid/content/Context;
 	public final fun getDefaultTracking ()Lcom/amplitude/android/DefaultTrackingOptions;
 	public fun getDeviceId ()Ljava/lang/String;
-	public final fun getEnableAutocaptureRemoteConfig ()Z
-	public final fun getEnableCoppaControl ()Z
+	public fun getEnableAutocaptureRemoteConfig ()Z
+	public fun getEnableCoppaControl ()Z
 	public fun getEnableDiagnostics ()Z
 	public fun getEnableRequestBodyCompression ()Z
-	public final fun getFlushEventsOnClose ()Z
+	public fun getFlushEventsOnClose ()Z
 	public fun getFlushIntervalMillis ()I
 	public fun getFlushMaxRetries ()I
 	public fun getFlushQueueSize ()I
@@ -155,13 +155,13 @@ public class com/amplitude/android/Configuration : com/amplitude/core/Configurat
 	public fun getIdentityStorageProvider ()Lcom/amplitude/id/IdentityStorageProvider;
 	public fun getIngestionMetadata ()Lcom/amplitude/core/events/IngestionMetadata;
 	public fun getInstanceName ()Ljava/lang/String;
-	public final fun getInteractionsOptions ()Lcom/amplitude/android/InteractionsOptions;
-	public final fun getLocationListening ()Z
+	public fun getInteractionsOptions ()Lcom/amplitude/android/InteractionsOptions;
+	public fun getLocationListening ()Z
 	public fun getLoggerProvider ()Lcom/amplitude/core/LoggerProvider;
-	public final fun getMigrateLegacyData ()Z
+	public fun getMigrateLegacyData ()Z
 	public fun getMinIdLength ()Ljava/lang/Integer;
-	public final fun getMinTimeBetweenSessionsMillis ()J
-	public final fun getNewDeviceIdPerInstall ()Z
+	public fun getMinTimeBetweenSessionsMillis ()J
+	public fun getNewDeviceIdPerInstall ()Z
 	public fun getOffline ()Ljava/lang/Boolean;
 	public fun getOptOut ()Z
 	public fun getPartnerId ()Ljava/lang/String;
@@ -170,19 +170,19 @@ public class com/amplitude/android/Configuration : com/amplitude/core/Configurat
 	public fun getServerZone ()Lcom/amplitude/core/ServerZone;
 	public fun getSessionId ()Ljava/lang/Long;
 	public fun getStorageProvider ()Lcom/amplitude/core/StorageProvider;
-	public final fun getTrackingOptions ()Lcom/amplitude/android/TrackingOptions;
+	public fun getTrackingOptions ()Lcom/amplitude/android/TrackingOptions;
 	public final fun getTrackingSessionEvents ()Z
-	public final fun getUseAdvertisingIdForDeviceId ()Z
-	public final fun getUseAppSetIdForDeviceId ()Z
+	public fun getUseAdvertisingIdForDeviceId ()Z
+	public fun getUseAppSetIdForDeviceId ()Z
 	public fun getUseBatch ()Z
 	public fun setCallback (Lkotlin/jvm/functions/Function3;)V
 	public final fun setDefaultTracking (Lcom/amplitude/android/DefaultTrackingOptions;)V
 	public fun setDeviceId (Ljava/lang/String;)V
-	public final fun setEnableAutocaptureRemoteConfig (Z)V
-	public final fun setEnableCoppaControl (Z)V
+	public fun setEnableAutocaptureRemoteConfig (Z)V
+	public fun setEnableCoppaControl (Z)V
 	public fun setEnableDiagnostics (Z)V
 	public fun setEnableRequestBodyCompression (Z)V
-	public final fun setFlushEventsOnClose (Z)V
+	public fun setFlushEventsOnClose (Z)V
 	public fun setFlushIntervalMillis (I)V
 	public fun setFlushMaxRetries (I)V
 	public fun setFlushQueueSize (I)V
@@ -192,13 +192,13 @@ public class com/amplitude/android/Configuration : com/amplitude/core/Configurat
 	public fun setIdentityStorageProvider (Lcom/amplitude/id/IdentityStorageProvider;)V
 	public fun setIngestionMetadata (Lcom/amplitude/core/events/IngestionMetadata;)V
 	public fun setInstanceName (Ljava/lang/String;)V
-	public final fun setInteractionsOptions (Lcom/amplitude/android/InteractionsOptions;)V
-	public final fun setLocationListening (Z)V
+	public fun setInteractionsOptions (Lcom/amplitude/android/InteractionsOptions;)V
+	public fun setLocationListening (Z)V
 	public fun setLoggerProvider (Lcom/amplitude/core/LoggerProvider;)V
-	public final fun setMigrateLegacyData (Z)V
+	public fun setMigrateLegacyData (Z)V
 	public fun setMinIdLength (Ljava/lang/Integer;)V
-	public final fun setMinTimeBetweenSessionsMillis (J)V
-	public final fun setNewDeviceIdPerInstall (Z)V
+	public fun setMinTimeBetweenSessionsMillis (J)V
+	public fun setNewDeviceIdPerInstall (Z)V
 	public fun setOffline (Ljava/lang/Boolean;)V
 	public fun setOptOut (Z)V
 	public fun setPartnerId (Ljava/lang/String;)V
@@ -207,10 +207,10 @@ public class com/amplitude/android/Configuration : com/amplitude/core/Configurat
 	public fun setServerZone (Lcom/amplitude/core/ServerZone;)V
 	public fun setSessionId (Ljava/lang/Long;)V
 	public fun setStorageProvider (Lcom/amplitude/core/StorageProvider;)V
-	public final fun setTrackingOptions (Lcom/amplitude/android/TrackingOptions;)V
+	public fun setTrackingOptions (Lcom/amplitude/android/TrackingOptions;)V
 	public final fun setTrackingSessionEvents (Z)V
-	public final fun setUseAdvertisingIdForDeviceId (Z)V
-	public final fun setUseAppSetIdForDeviceId (Z)V
+	public fun setUseAdvertisingIdForDeviceId (Z)V
+	public fun setUseAppSetIdForDeviceId (Z)V
 	public fun setUseBatch (Z)V
 }
 
