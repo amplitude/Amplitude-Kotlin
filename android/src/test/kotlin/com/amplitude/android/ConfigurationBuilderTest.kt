@@ -376,7 +376,7 @@ class ConfigurationBuilderTest {
     }
 
     @Nested
-    inner class ReadOnlyBehavior {
+    inner class FrozenBehavior {
         private val originalOut = System.out
         private lateinit var outputCapture: ByteArrayOutputStream
 
@@ -392,27 +392,27 @@ class ConfigurationBuilderTest {
         }
 
         @Test
-        fun `mutating read-only core property logs warning but applies value`() {
+        fun `mutating frozen core property logs warning and ignores new value`() {
             val config = configuration("test-key", context) { flushQueueSize = 10 }
 
             config.flushQueueSize = 99
 
-            assertEquals(99, config.flushQueueSize)
+            assertEquals(10, config.flushQueueSize)
             val output = outputCapture.toString()
             assertTrue(output.contains("flushQueueSize"))
-            assertTrue(output.contains("should not be modified"))
+            assertTrue(output.contains("frozen"))
         }
 
         @Test
-        fun `mutating read-only android property logs warning but applies value`() {
+        fun `mutating frozen android property logs warning and ignores new value`() {
             val config = configuration("test-key", context)
 
             config.minTimeBetweenSessionsMillis = 99999
 
-            assertEquals(99999, config.minTimeBetweenSessionsMillis)
+            assertEquals(Configuration.MIN_TIME_BETWEEN_SESSIONS_MILLIS, config.minTimeBetweenSessionsMillis)
             val output = outputCapture.toString()
             assertTrue(output.contains("minTimeBetweenSessionsMillis"))
-            assertTrue(output.contains("should not be modified"))
+            assertTrue(output.contains("frozen"))
         }
 
         @Test
@@ -447,20 +447,21 @@ class ConfigurationBuilderTest {
             assertEquals(99, config.flushQueueSize)
             assertEquals(99999, config.minTimeBetweenSessionsMillis)
             val output = outputCapture.toString()
-            assertFalse(output.contains("should not be modified"))
+            assertFalse(output.contains("frozen"))
         }
 
         @Test
-        fun `multiple read-only properties warn independently`() {
+        fun `multiple frozen properties warn independently`() {
             val config = configuration("test-key", context)
 
             config.serverZone = ServerZone.EU
             config.enableCoppaControl = true
             config.flushEventsOnClose = false
 
-            assertEquals(ServerZone.EU, config.serverZone)
-            assertTrue(config.enableCoppaControl)
-            assertFalse(config.flushEventsOnClose)
+            // Values should remain unchanged
+            assertEquals(ServerZone.US, config.serverZone)
+            assertFalse(config.enableCoppaControl)
+            assertTrue(config.flushEventsOnClose)
 
             val output = outputCapture.toString()
             assertTrue(output.contains("serverZone"))

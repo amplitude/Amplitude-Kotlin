@@ -245,7 +245,7 @@ internal class ConfigurationBuilderTest {
     }
 
     @Nested
-    inner class ReadOnlyBehavior {
+    inner class FrozenBehavior {
         private val originalOut = System.out
         private lateinit var outputCapture: ByteArrayOutputStream
 
@@ -261,15 +261,15 @@ internal class ConfigurationBuilderTest {
         }
 
         @Test
-        fun `mutating read-only property logs warning but applies value`() {
+        fun `mutating frozen property logs warning and ignores new value`() {
             val config = configuration("test-key") { flushQueueSize = 10 }
 
             config.flushQueueSize = 99
 
-            assertEquals(99, config.flushQueueSize)
+            assertEquals(10, config.flushQueueSize)
             val output = outputCapture.toString()
             assertTrue(output.contains("flushQueueSize"))
-            assertTrue(output.contains("should not be modified"))
+            assertTrue(output.contains("frozen"))
         }
 
         @Test
@@ -302,20 +302,21 @@ internal class ConfigurationBuilderTest {
 
             assertEquals(99, config.flushQueueSize)
             val output = outputCapture.toString()
-            assertFalse(output.contains("should not be modified"))
+            assertFalse(output.contains("frozen"))
         }
 
         @Test
-        fun `multiple read-only properties warn independently`() {
+        fun `multiple frozen properties warn independently`() {
             val config = configuration("test-key")
 
             config.serverZone = ServerZone.EU
             config.useBatch = true
             config.instanceName = "changed"
 
-            assertEquals(ServerZone.EU, config.serverZone)
-            assertTrue(config.useBatch)
-            assertEquals("changed", config.instanceName)
+            // Values should remain unchanged
+            assertEquals(ServerZone.US, config.serverZone)
+            assertFalse(config.useBatch)
+            assertEquals(Configuration.DEFAULT_INSTANCE, config.instanceName)
 
             val output = outputCapture.toString()
             assertTrue(output.contains("serverZone"))

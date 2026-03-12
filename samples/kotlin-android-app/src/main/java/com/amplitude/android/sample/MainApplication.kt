@@ -38,6 +38,7 @@ class MainApplication : Application() {
                         DeadClickOptions(enabled = false),
                     )
             }
+        configuration.migrateLegacyData = false
         okHttpClient.initialize(configuration)
 
         // init instance

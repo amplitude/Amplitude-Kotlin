@@ -5,11 +5,10 @@ import com.amplitude.core.events.IngestionMetadata
 import com.amplitude.core.events.Plan
 import com.amplitude.core.utilities.ConsoleLoggerProvider
 import com.amplitude.core.utilities.InMemoryStorageProvider
+import com.amplitude.core.utilities.frozen
 import com.amplitude.core.utilities.http.HttpClientInterface
 import com.amplitude.id.IMIdentityStorageProvider
 import com.amplitude.id.IdentityStorageProvider
-import kotlin.properties.ReadWriteProperty
-import kotlin.reflect.KProperty
 
 /**
  * Builder for creating [Configuration] instances without depending on the constructor signature.
@@ -17,9 +16,9 @@ import kotlin.reflect.KProperty
  * Adding new properties with defaults does not change any method signature, preserving binary
  * compatibility for compiled dependents.
  *
- * The resulting [Configuration] is read-only: mutating properties that were set at construction
- * time will log a warning. Properties that are intended to be mutable at runtime (`offline`,
- * `optOut`) remain freely settable.
+ * The resulting [Configuration] is frozen: mutating properties that were set at construction
+ * time will log a warning and ignore the new value. Properties that are intended to be mutable
+ * at runtime (`offline`, `optOut`) remain freely settable.
  *
  * Kotlin usage:
  * ```
@@ -62,7 +61,7 @@ class ConfigurationBuilder(internal val apiKey: String) {
     var enableDiagnostics: Boolean = true
     var enableRequestBodyCompression: Boolean = false
 
-    fun build(): Configuration = ReadOnlyConfiguration(this)
+    fun build(): Configuration = FrozenConfiguration(this)
 }
 
 /**
@@ -83,16 +82,15 @@ fun configuration(
 }
 
 /**
- * A [Configuration] whose properties are read-only after construction.
+ * A [Configuration] whose properties are frozen after construction.
  *
- * Mutating a read-only property logs a warning but still applies the value, so existing code
- * continues to work while surfacing that the mutation is unintended.
+ * Mutating a frozen property logs a warning and ignores the new value.
  *
  * Properties that are **mutable at runtime** (not overridden here) and remain freely settable:
  * - [offline] — toggled by network connectivity checks
  * - [optOut] — toggled by customers at runtime
  */
-internal class ReadOnlyConfiguration(
+internal class FrozenConfiguration(
     builder: ConfigurationBuilder,
 ) : Configuration(
         apiKey = builder.apiKey,
@@ -123,53 +121,27 @@ internal class ReadOnlyConfiguration(
     ) {
     private val logger = ConsoleLogger()
 
-    private fun warnReadOnly(name: String) {
-        logger.warn(
-            "Property '$name' should not be modified after construction. " +
-                "Use ConfigurationBuilder to set this value.",
-        )
-    }
-
-    private fun <T> readOnly(initial: T): ReadWriteProperty<Any, T> =
-        object : ReadWriteProperty<Any, T> {
-            private var value = initial
-
-            override fun getValue(
-                thisRef: Any,
-                property: KProperty<*>,
-            ) = value
-
-            override fun setValue(
-                thisRef: Any,
-                property: KProperty<*>,
-                value: T,
-            ) {
-                warnReadOnly(property.name)
-                this.value = value
-            }
-        }
-
-    // ── Read-only after construction ────────────────────────────────────────────
-    override var flushQueueSize: Int by readOnly(builder.flushQueueSize)
-    override var flushIntervalMillis: Int by readOnly(builder.flushIntervalMillis)
-    override var instanceName: String by readOnly(builder.instanceName)
-    override var minIdLength: Int? by readOnly(builder.minIdLength)
-    override var partnerId: String? by readOnly(builder.partnerId)
-    override var callback: EventCallBack? by readOnly(builder.callback)
-    override var flushMaxRetries: Int by readOnly(builder.flushMaxRetries)
-    override var useBatch: Boolean by readOnly(builder.useBatch)
-    override var serverZone: ServerZone by readOnly(builder.serverZone)
-    override var serverUrl: String? by readOnly(builder.serverUrl)
-    override var plan: Plan? by readOnly(builder.plan)
-    override var ingestionMetadata: IngestionMetadata? by readOnly(builder.ingestionMetadata)
-    override var identifyBatchIntervalMillis: Long by readOnly(builder.identifyBatchIntervalMillis)
-    override var identifyInterceptStorageProvider: StorageProvider by readOnly(builder.identifyInterceptStorageProvider)
-    override var identityStorageProvider: IdentityStorageProvider by readOnly(builder.identityStorageProvider)
-    override var deviceId: String? by readOnly(builder.deviceId)
-    override var sessionId: Long? by readOnly(builder.sessionId)
-    override var httpClient: HttpClientInterface? by readOnly(builder.httpClient)
-    override var enableDiagnostics: Boolean by readOnly(builder.enableDiagnostics)
-    override var enableRequestBodyCompression: Boolean by readOnly(builder.enableRequestBodyCompression)
+    // ── Frozen after construction ───────────────────────────────────────────────
+    override var flushQueueSize: Int by frozen(builder.flushQueueSize, logger)
+    override var flushIntervalMillis: Int by frozen(builder.flushIntervalMillis, logger)
+    override var instanceName: String by frozen(builder.instanceName, logger)
+    override var minIdLength: Int? by frozen(builder.minIdLength, logger)
+    override var partnerId: String? by frozen(builder.partnerId, logger)
+    override var callback: EventCallBack? by frozen(builder.callback, logger)
+    override var flushMaxRetries: Int by frozen(builder.flushMaxRetries, logger)
+    override var useBatch: Boolean by frozen(builder.useBatch, logger)
+    override var serverZone: ServerZone by frozen(builder.serverZone, logger)
+    override var serverUrl: String? by frozen(builder.serverUrl, logger)
+    override var plan: Plan? by frozen(builder.plan, logger)
+    override var ingestionMetadata: IngestionMetadata? by frozen(builder.ingestionMetadata, logger)
+    override var identifyBatchIntervalMillis: Long by frozen(builder.identifyBatchIntervalMillis, logger)
+    override var identifyInterceptStorageProvider: StorageProvider by frozen(builder.identifyInterceptStorageProvider, logger)
+    override var identityStorageProvider: IdentityStorageProvider by frozen(builder.identityStorageProvider, logger)
+    override var deviceId: String? by frozen(builder.deviceId, logger)
+    override var sessionId: Long? by frozen(builder.sessionId, logger)
+    override var httpClient: HttpClientInterface? by frozen(builder.httpClient, logger)
+    override var enableDiagnostics: Boolean by frozen(builder.enableDiagnostics, logger)
+    override var enableRequestBodyCompression: Boolean by frozen(builder.enableRequestBodyCompression, logger)
 
     // ── Mutable at runtime ──────────────────────────────────────────────────────
     // offline — toggled by network connectivity checks
