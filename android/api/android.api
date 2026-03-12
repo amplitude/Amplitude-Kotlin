@@ -1,0 +1,959 @@
+public class com/amplitude/android/Amplitude : com/amplitude/core/Amplitude {
+	public static final field Companion Lcom/amplitude/android/Amplitude$Companion;
+	public static final field END_SESSION_EVENT Ljava/lang/String;
+	public static final field START_SESSION_EVENT Ljava/lang/String;
+	public fun <init> (Lcom/amplitude/android/Configuration;)V
+	protected fun build ()Lkotlinx/coroutines/Deferred;
+	protected fun buildInternal (Lcom/amplitude/id/IdentityConfiguration;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	protected fun createIdentityConfiguration ()Lcom/amplitude/id/IdentityConfiguration;
+	public fun createTimeline ()Lcom/amplitude/android/Timeline;
+	public synthetic fun createTimeline ()Lcom/amplitude/core/platform/Timeline;
+	protected fun diagnosticsContextProvider ()Lcom/amplitude/core/diagnostics/DiagnosticsContextProvider;
+	protected fun diagnosticsStorageDirectory ()Ljava/io/File;
+	public final fun getSessionId ()J
+	public final fun onEnterForeground (J)V
+	public final fun onExitForeground (J)V
+	public fun reset ()Lcom/amplitude/android/Amplitude;
+	public synthetic fun reset ()Lcom/amplitude/core/Amplitude;
+}
+
+public final class com/amplitude/android/Amplitude$Companion {
+}
+
+public final class com/amplitude/android/AmplitudeKt {
+	public static final fun Amplitude (Ljava/lang/String;Landroid/content/Context;Lkotlin/jvm/functions/Function1;)Lcom/amplitude/android/Amplitude;
+}
+
+public final class com/amplitude/android/AutocaptureOption : java/lang/Enum {
+	public static final field APP_LIFECYCLES Lcom/amplitude/android/AutocaptureOption;
+	public static final field Companion Lcom/amplitude/android/AutocaptureOption$Companion;
+	public static final field DEEP_LINKS Lcom/amplitude/android/AutocaptureOption;
+	public static final field ELEMENT_INTERACTIONS Lcom/amplitude/android/AutocaptureOption;
+	public static final field FRUSTRATION_INTERACTIONS Lcom/amplitude/android/AutocaptureOption;
+	public static final field SCREEN_VIEWS Lcom/amplitude/android/AutocaptureOption;
+	public static final field SESSIONS Lcom/amplitude/android/AutocaptureOption;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/amplitude/android/AutocaptureOption;
+	public static fun values ()[Lcom/amplitude/android/AutocaptureOption;
+}
+
+public final class com/amplitude/android/AutocaptureOption$Companion {
+	public final fun getALL ()Ljava/util/Set;
+}
+
+public final class com/amplitude/android/AutocaptureOptionsBuilder {
+	public fun <init> ()V
+	public final fun addAll ()V
+	public final fun build ()Ljava/util/Set;
+	public final fun getAppLifecycles ()Lcom/amplitude/android/AutocaptureOption;
+	public final fun getDeepLinks ()Lcom/amplitude/android/AutocaptureOption;
+	public final fun getElementInteractions ()Lcom/amplitude/android/AutocaptureOption;
+	public final fun getFrustrationInteractions ()Lcom/amplitude/android/AutocaptureOption;
+	public final fun getScreenViews ()Lcom/amplitude/android/AutocaptureOption;
+	public final fun getSessions ()Lcom/amplitude/android/AutocaptureOption;
+	public final fun unaryPlus (Lcom/amplitude/android/AutocaptureOption;)V
+}
+
+public final class com/amplitude/android/AutocaptureOptionsKt {
+	public static final fun autocaptureOptions (Lkotlin/jvm/functions/Function1;)Ljava/util/Set;
+}
+
+public final class com/amplitude/android/AutocaptureState {
+	public static final field Companion Lcom/amplitude/android/AutocaptureState$Companion;
+	public fun <init> ()V
+	public fun <init> (ZZZZLjava/util/List;)V
+	public synthetic fun <init> (ZZZZLjava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Z
+	public final fun component2 ()Z
+	public final fun component3 ()Z
+	public final fun component4 ()Z
+	public final fun component5 ()Ljava/util/List;
+	public final fun copy (ZZZZLjava/util/List;)Lcom/amplitude/android/AutocaptureState;
+	public static synthetic fun copy$default (Lcom/amplitude/android/AutocaptureState;ZZZZLjava/util/List;ILjava/lang/Object;)Lcom/amplitude/android/AutocaptureState;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAppLifecycles ()Z
+	public final fun getDeepLinks ()Z
+	public final fun getInteractions ()Ljava/util/List;
+	public final fun getScreenViews ()Z
+	public final fun getSessions ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/amplitude/android/AutocaptureState$Companion {
+	public final fun from (Ljava/util/Set;Lcom/amplitude/android/InteractionsOptions;)Lcom/amplitude/android/AutocaptureState;
+}
+
+public final class com/amplitude/android/BuildConfig {
+	public static final field AMPLITUDE_VERSION Ljava/lang/String;
+	public static final field BUILD_TYPE Ljava/lang/String;
+	public static final field DEBUG Z
+	public static final field LIBRARY_PACKAGE_NAME Ljava/lang/String;
+	public fun <init> ()V
+}
+
+public class com/amplitude/android/Configuration : com/amplitude/core/Configuration {
+	public static final field Companion Lcom/amplitude/android/Configuration$Companion;
+	public static final field MIN_TIME_BETWEEN_SESSIONS_MILLIS J
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;I)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;II)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;Z)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;I)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZ)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;Z)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;ZZ)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;ZZZ)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;ZZZLcom/amplitude/android/TrackingOptions;)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;ZZZLcom/amplitude/android/TrackingOptions;Z)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;ZZZLcom/amplitude/android/TrackingOptions;ZZ)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;ZZZLcom/amplitude/android/TrackingOptions;ZZZ)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;ZZZLcom/amplitude/android/TrackingOptions;ZZZJ)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;ZZZLcom/amplitude/android/TrackingOptions;ZZZJLjava/util/Set;JLcom/amplitude/core/StorageProvider;Lcom/amplitude/id/IdentityStorageProvider;ZLjava/lang/Boolean;Ljava/lang/String;Ljava/lang/Long;Lcom/amplitude/core/utilities/http/HttpClientInterface;Lcom/amplitude/android/InteractionsOptions;ZZZ)V
+	public synthetic fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;ZZZLcom/amplitude/android/TrackingOptions;ZZZJLjava/util/Set;JLcom/amplitude/core/StorageProvider;Lcom/amplitude/id/IdentityStorageProvider;ZLjava/lang/Boolean;Ljava/lang/String;Ljava/lang/Long;Lcom/amplitude/core/utilities/http/HttpClientInterface;Lcom/amplitude/android/InteractionsOptions;ZZZIILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;ZZZLcom/amplitude/android/TrackingOptions;ZZZJZ)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;ZZZLcom/amplitude/android/TrackingOptions;ZZZJZLcom/amplitude/android/DefaultTrackingOptions;)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;ZZZLcom/amplitude/android/TrackingOptions;ZZZJZLcom/amplitude/android/DefaultTrackingOptions;J)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;ZZZLcom/amplitude/android/TrackingOptions;ZZZJZLcom/amplitude/android/DefaultTrackingOptions;JLcom/amplitude/core/StorageProvider;)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;ZZZLcom/amplitude/android/TrackingOptions;ZZZJZLcom/amplitude/android/DefaultTrackingOptions;JLcom/amplitude/core/StorageProvider;Lcom/amplitude/id/IdentityStorageProvider;)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;ZZZLcom/amplitude/android/TrackingOptions;ZZZJZLcom/amplitude/android/DefaultTrackingOptions;JLcom/amplitude/core/StorageProvider;Lcom/amplitude/id/IdentityStorageProvider;Z)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;ZZZLcom/amplitude/android/TrackingOptions;ZZZJZLcom/amplitude/android/DefaultTrackingOptions;JLcom/amplitude/core/StorageProvider;Lcom/amplitude/id/IdentityStorageProvider;ZLjava/lang/Boolean;)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;ZZZLcom/amplitude/android/TrackingOptions;ZZZJZLcom/amplitude/android/DefaultTrackingOptions;JLcom/amplitude/core/StorageProvider;Lcom/amplitude/id/IdentityStorageProvider;ZLjava/lang/Boolean;Ljava/lang/String;)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;ZZZLcom/amplitude/android/TrackingOptions;ZZZJZLcom/amplitude/android/DefaultTrackingOptions;JLcom/amplitude/core/StorageProvider;Lcom/amplitude/id/IdentityStorageProvider;ZLjava/lang/Boolean;Ljava/lang/String;Ljava/lang/Long;)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;ZZZLcom/amplitude/android/TrackingOptions;ZZZJZLcom/amplitude/android/DefaultTrackingOptions;JLcom/amplitude/core/StorageProvider;Lcom/amplitude/id/IdentityStorageProvider;ZLjava/lang/Boolean;Ljava/lang/String;Ljava/lang/Long;Lcom/amplitude/core/utilities/http/HttpClientInterface;)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;ZZZLcom/amplitude/android/TrackingOptions;ZZZJZLcom/amplitude/android/DefaultTrackingOptions;JLcom/amplitude/core/StorageProvider;Lcom/amplitude/id/IdentityStorageProvider;ZLjava/lang/Boolean;Ljava/lang/String;Ljava/lang/Long;Lcom/amplitude/core/utilities/http/HttpClientInterface;Lcom/amplitude/android/InteractionsOptions;)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;ZZZLcom/amplitude/android/TrackingOptions;ZZZJZLcom/amplitude/android/DefaultTrackingOptions;JLcom/amplitude/core/StorageProvider;Lcom/amplitude/id/IdentityStorageProvider;ZLjava/lang/Boolean;Ljava/lang/String;Ljava/lang/Long;Lcom/amplitude/core/utilities/http/HttpClientInterface;Lcom/amplitude/android/InteractionsOptions;Z)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;ZZZLcom/amplitude/android/TrackingOptions;ZZZJZLcom/amplitude/android/DefaultTrackingOptions;JLcom/amplitude/core/StorageProvider;Lcom/amplitude/id/IdentityStorageProvider;ZLjava/lang/Boolean;Ljava/lang/String;Ljava/lang/Long;Lcom/amplitude/core/utilities/http/HttpClientInterface;Lcom/amplitude/android/InteractionsOptions;ZZ)V
+	public fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;ZZZLcom/amplitude/android/TrackingOptions;ZZZJZLcom/amplitude/android/DefaultTrackingOptions;JLcom/amplitude/core/StorageProvider;Lcom/amplitude/id/IdentityStorageProvider;ZLjava/lang/Boolean;Ljava/lang/String;Ljava/lang/Long;Lcom/amplitude/core/utilities/http/HttpClientInterface;Lcom/amplitude/android/InteractionsOptions;ZZZ)V
+	public synthetic fun <init> (Ljava/lang/String;Landroid/content/Context;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;ZZZLcom/amplitude/android/TrackingOptions;ZZZJZLcom/amplitude/android/DefaultTrackingOptions;JLcom/amplitude/core/StorageProvider;Lcom/amplitude/id/IdentityStorageProvider;ZLjava/lang/Boolean;Ljava/lang/String;Ljava/lang/Long;Lcom/amplitude/core/utilities/http/HttpClientInterface;Lcom/amplitude/android/InteractionsOptions;ZZZIILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getAutocapture ()Ljava/util/Set;
+	public fun getCallback ()Lkotlin/jvm/functions/Function3;
+	public final fun getContext ()Landroid/content/Context;
+	public final fun getDefaultTracking ()Lcom/amplitude/android/DefaultTrackingOptions;
+	public fun getDeviceId ()Ljava/lang/String;
+	public final fun getEnableAutocaptureRemoteConfig ()Z
+	public final fun getEnableCoppaControl ()Z
+	public fun getEnableDiagnostics ()Z
+	public fun getEnableRequestBodyCompression ()Z
+	public final fun getFlushEventsOnClose ()Z
+	public fun getFlushIntervalMillis ()I
+	public fun getFlushMaxRetries ()I
+	public fun getFlushQueueSize ()I
+	public fun getHttpClient ()Lcom/amplitude/core/utilities/http/HttpClientInterface;
+	public fun getIdentifyBatchIntervalMillis ()J
+	public fun getIdentifyInterceptStorageProvider ()Lcom/amplitude/core/StorageProvider;
+	public fun getIdentityStorageProvider ()Lcom/amplitude/id/IdentityStorageProvider;
+	public fun getIngestionMetadata ()Lcom/amplitude/core/events/IngestionMetadata;
+	public fun getInstanceName ()Ljava/lang/String;
+	public final fun getInteractionsOptions ()Lcom/amplitude/android/InteractionsOptions;
+	public final fun getLocationListening ()Z
+	public fun getLoggerProvider ()Lcom/amplitude/core/LoggerProvider;
+	public final fun getMigrateLegacyData ()Z
+	public fun getMinIdLength ()Ljava/lang/Integer;
+	public final fun getMinTimeBetweenSessionsMillis ()J
+	public final fun getNewDeviceIdPerInstall ()Z
+	public fun getOffline ()Ljava/lang/Boolean;
+	public fun getOptOut ()Z
+	public fun getPartnerId ()Ljava/lang/String;
+	public fun getPlan ()Lcom/amplitude/core/events/Plan;
+	public fun getServerUrl ()Ljava/lang/String;
+	public fun getServerZone ()Lcom/amplitude/core/ServerZone;
+	public fun getSessionId ()Ljava/lang/Long;
+	public fun getStorageProvider ()Lcom/amplitude/core/StorageProvider;
+	public final fun getTrackingOptions ()Lcom/amplitude/android/TrackingOptions;
+	public final fun getTrackingSessionEvents ()Z
+	public final fun getUseAdvertisingIdForDeviceId ()Z
+	public final fun getUseAppSetIdForDeviceId ()Z
+	public fun getUseBatch ()Z
+	public fun setCallback (Lkotlin/jvm/functions/Function3;)V
+	public final fun setDefaultTracking (Lcom/amplitude/android/DefaultTrackingOptions;)V
+	public fun setDeviceId (Ljava/lang/String;)V
+	public final fun setEnableAutocaptureRemoteConfig (Z)V
+	public final fun setEnableCoppaControl (Z)V
+	public fun setEnableDiagnostics (Z)V
+	public fun setEnableRequestBodyCompression (Z)V
+	public final fun setFlushEventsOnClose (Z)V
+	public fun setFlushIntervalMillis (I)V
+	public fun setFlushMaxRetries (I)V
+	public fun setFlushQueueSize (I)V
+	public fun setHttpClient (Lcom/amplitude/core/utilities/http/HttpClientInterface;)V
+	public fun setIdentifyBatchIntervalMillis (J)V
+	public fun setIdentifyInterceptStorageProvider (Lcom/amplitude/core/StorageProvider;)V
+	public fun setIdentityStorageProvider (Lcom/amplitude/id/IdentityStorageProvider;)V
+	public fun setIngestionMetadata (Lcom/amplitude/core/events/IngestionMetadata;)V
+	public fun setInstanceName (Ljava/lang/String;)V
+	public final fun setInteractionsOptions (Lcom/amplitude/android/InteractionsOptions;)V
+	public final fun setLocationListening (Z)V
+	public fun setLoggerProvider (Lcom/amplitude/core/LoggerProvider;)V
+	public final fun setMigrateLegacyData (Z)V
+	public fun setMinIdLength (Ljava/lang/Integer;)V
+	public final fun setMinTimeBetweenSessionsMillis (J)V
+	public final fun setNewDeviceIdPerInstall (Z)V
+	public fun setOffline (Ljava/lang/Boolean;)V
+	public fun setOptOut (Z)V
+	public fun setPartnerId (Ljava/lang/String;)V
+	public fun setPlan (Lcom/amplitude/core/events/Plan;)V
+	public fun setServerUrl (Ljava/lang/String;)V
+	public fun setServerZone (Lcom/amplitude/core/ServerZone;)V
+	public fun setSessionId (Ljava/lang/Long;)V
+	public fun setStorageProvider (Lcom/amplitude/core/StorageProvider;)V
+	public final fun setTrackingOptions (Lcom/amplitude/android/TrackingOptions;)V
+	public final fun setTrackingSessionEvents (Z)V
+	public final fun setUseAdvertisingIdForDeviceId (Z)V
+	public final fun setUseAppSetIdForDeviceId (Z)V
+	public fun setUseBatch (Z)V
+}
+
+public final class com/amplitude/android/Configuration$Companion {
+}
+
+public final class com/amplitude/android/DeadClickOptions {
+	public fun <init> ()V
+	public fun <init> (Z)V
+	public synthetic fun <init> (ZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Z
+	public final fun copy (Z)Lcom/amplitude/android/DeadClickOptions;
+	public static synthetic fun copy$default (Lcom/amplitude/android/DeadClickOptions;ZILjava/lang/Object;)Lcom/amplitude/android/DeadClickOptions;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getEnabled ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public class com/amplitude/android/DefaultTrackingOptions {
+	public static final field ALL Lcom/amplitude/android/DefaultTrackingOptions;
+	public static final field Companion Lcom/amplitude/android/DefaultTrackingOptions$Companion;
+	public static final field NONE Lcom/amplitude/android/DefaultTrackingOptions;
+	public fun <init> ()V
+	public fun <init> (Z)V
+	public fun <init> (ZZ)V
+	public fun <init> (ZZZ)V
+	public fun <init> (ZZZZ)V
+	public synthetic fun <init> (ZZZZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getAppLifecycles ()Z
+	public final fun getDeepLinks ()Z
+	public final fun getScreenViews ()Z
+	public final fun getSessions ()Z
+	public final fun setAppLifecycles (Z)V
+	public final fun setDeepLinks (Z)V
+	public final fun setScreenViews (Z)V
+	public final fun setSessions (Z)V
+}
+
+public final class com/amplitude/android/DefaultTrackingOptions$Companion {
+}
+
+public abstract class com/amplitude/android/EventQueueMessage {
+}
+
+public final class com/amplitude/android/EventQueueMessage$EnterForeground : com/amplitude/android/EventQueueMessage {
+	public fun <init> (J)V
+	public final fun component1 ()J
+	public final fun copy (J)Lcom/amplitude/android/EventQueueMessage$EnterForeground;
+	public static synthetic fun copy$default (Lcom/amplitude/android/EventQueueMessage$EnterForeground;JILjava/lang/Object;)Lcom/amplitude/android/EventQueueMessage$EnterForeground;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getTimestamp ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/amplitude/android/EventQueueMessage$Event : com/amplitude/android/EventQueueMessage {
+	public fun <init> (Lcom/amplitude/core/events/BaseEvent;)V
+	public final fun component1 ()Lcom/amplitude/core/events/BaseEvent;
+	public final fun copy (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/android/EventQueueMessage$Event;
+	public static synthetic fun copy$default (Lcom/amplitude/android/EventQueueMessage$Event;Lcom/amplitude/core/events/BaseEvent;ILjava/lang/Object;)Lcom/amplitude/android/EventQueueMessage$Event;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getEvent ()Lcom/amplitude/core/events/BaseEvent;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/amplitude/android/EventQueueMessage$ExitForeground : com/amplitude/android/EventQueueMessage {
+	public fun <init> (J)V
+	public final fun component1 ()J
+	public final fun copy (J)Lcom/amplitude/android/EventQueueMessage$ExitForeground;
+	public static synthetic fun copy$default (Lcom/amplitude/android/EventQueueMessage$ExitForeground;JILjava/lang/Object;)Lcom/amplitude/android/EventQueueMessage$ExitForeground;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getTimestamp ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/amplitude/android/FrustrationAnalyticsUtils {
+	public static final field INSTANCE Lcom/amplitude/android/FrustrationAnalyticsUtils;
+	public final fun ignoreFrustrationAnalytics (Landroid/view/View;ZZ)Landroid/view/View;
+	public static synthetic fun ignoreFrustrationAnalytics$default (Lcom/amplitude/android/FrustrationAnalyticsUtils;Landroid/view/View;ZZILjava/lang/Object;)Landroid/view/View;
+	public final fun isDeadClickIgnored (Landroid/view/View;)Z
+	public final fun isRageClickIgnored (Landroid/view/View;)Z
+	public final fun isViewIgnored (Landroid/view/View;)Z
+	public final fun unignoreView (Landroid/view/View;)Landroid/view/View;
+}
+
+public final class com/amplitude/android/FrustrationAnalyticsUtilsKt {
+	public static final fun ignoreFrustrationAnalytics (Landroidx/compose/ui/Modifier;ZZ)Landroidx/compose/ui/Modifier;
+	public static synthetic fun ignoreFrustrationAnalytics$default (Landroidx/compose/ui/Modifier;ZZILjava/lang/Object;)Landroidx/compose/ui/Modifier;
+}
+
+public final class com/amplitude/android/FrustrationInteractionsDetector {
+	public static final field Companion Lcom/amplitude/android/FrustrationInteractionsDetector$Companion;
+	public fun <init> (Lcom/amplitude/core/Amplitude;Lcom/amplitude/common/Logger;FLkotlin/jvm/functions/Function0;)V
+	public final fun processClick (Lcom/amplitude/android/FrustrationInteractionsDetector$ClickInfo;Lcom/amplitude/android/FrustrationInteractionsDetector$TargetInfo;Lcom/amplitude/android/internal/ViewTarget;Ljava/lang/String;)V
+	public final fun start ()V
+	public final fun stop ()V
+}
+
+public final class com/amplitude/android/FrustrationInteractionsDetector$ClickInfo {
+	public fun <init> (FFJ)V
+	public synthetic fun <init> (FFJILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()F
+	public final fun component2 ()F
+	public final fun component3 ()J
+	public final fun copy (FFJ)Lcom/amplitude/android/FrustrationInteractionsDetector$ClickInfo;
+	public static synthetic fun copy$default (Lcom/amplitude/android/FrustrationInteractionsDetector$ClickInfo;FFJILjava/lang/Object;)Lcom/amplitude/android/FrustrationInteractionsDetector$ClickInfo;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getTimestamp ()J
+	public final fun getX ()F
+	public final fun getY ()F
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/amplitude/android/FrustrationInteractionsDetector$Companion {
+}
+
+public final class com/amplitude/android/FrustrationInteractionsDetector$TargetInfo {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun component6 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lcom/amplitude/android/FrustrationInteractionsDetector$TargetInfo;
+	public static synthetic fun copy$default (Lcom/amplitude/android/FrustrationInteractionsDetector$TargetInfo;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lcom/amplitude/android/FrustrationInteractionsDetector$TargetInfo;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getClassName ()Ljava/lang/String;
+	public final fun getHierarchy ()Ljava/lang/String;
+	public final fun getResourceName ()Ljava/lang/String;
+	public final fun getSource ()Ljava/lang/String;
+	public final fun getTag ()Ljava/lang/String;
+	public final fun getText ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface annotation class com/amplitude/android/GuardedAmplitudeFeature : java/lang/annotation/Annotation {
+}
+
+public abstract class com/amplitude/android/InteractionType {
+}
+
+public final class com/amplitude/android/InteractionType$DeadClick : com/amplitude/android/InteractionType {
+	public static final field INSTANCE Lcom/amplitude/android/InteractionType$DeadClick;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/amplitude/android/InteractionType$ElementInteraction : com/amplitude/android/InteractionType {
+	public static final field INSTANCE Lcom/amplitude/android/InteractionType$ElementInteraction;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/amplitude/android/InteractionType$RageClick : com/amplitude/android/InteractionType {
+	public static final field INSTANCE Lcom/amplitude/android/InteractionType$RageClick;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/amplitude/android/InteractionsOptions {
+	public fun <init> ()V
+	public fun <init> (Lcom/amplitude/android/RageClickOptions;Lcom/amplitude/android/DeadClickOptions;)V
+	public synthetic fun <init> (Lcom/amplitude/android/RageClickOptions;Lcom/amplitude/android/DeadClickOptions;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Lcom/amplitude/android/RageClickOptions;
+	public final fun component2 ()Lcom/amplitude/android/DeadClickOptions;
+	public final fun copy (Lcom/amplitude/android/RageClickOptions;Lcom/amplitude/android/DeadClickOptions;)Lcom/amplitude/android/InteractionsOptions;
+	public static synthetic fun copy$default (Lcom/amplitude/android/InteractionsOptions;Lcom/amplitude/android/RageClickOptions;Lcom/amplitude/android/DeadClickOptions;ILjava/lang/Object;)Lcom/amplitude/android/InteractionsOptions;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getDeadClick ()Lcom/amplitude/android/DeadClickOptions;
+	public final fun getRageClick ()Lcom/amplitude/android/RageClickOptions;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/amplitude/android/RageClickOptions {
+	public fun <init> ()V
+	public fun <init> (Z)V
+	public synthetic fun <init> (ZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Z
+	public final fun copy (Z)Lcom/amplitude/android/RageClickOptions;
+	public static synthetic fun copy$default (Lcom/amplitude/android/RageClickOptions;ZILjava/lang/Object;)Lcom/amplitude/android/RageClickOptions;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getEnabled ()Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/amplitude/android/Timeline : com/amplitude/core/platform/Timeline {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/Long;)V
+	public synthetic fun <init> (Ljava/lang/Long;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getSessionId ()J
+	public fun process (Lcom/amplitude/core/events/BaseEvent;)V
+}
+
+public final class com/amplitude/android/TrackingOptions {
+	public static final field AMP_TRACKING_OPTION_ADID Ljava/lang/String;
+	public static final field AMP_TRACKING_OPTION_API_LEVEL Ljava/lang/String;
+	public static final field AMP_TRACKING_OPTION_APP_SET_ID Ljava/lang/String;
+	public static final field AMP_TRACKING_OPTION_CARRIER Ljava/lang/String;
+	public static final field AMP_TRACKING_OPTION_CITY Ljava/lang/String;
+	public static final field AMP_TRACKING_OPTION_COUNTRY Ljava/lang/String;
+	public static final field AMP_TRACKING_OPTION_DEVICE_BRAND Ljava/lang/String;
+	public static final field AMP_TRACKING_OPTION_DEVICE_MANUFACTURER Ljava/lang/String;
+	public static final field AMP_TRACKING_OPTION_DEVICE_MODEL Ljava/lang/String;
+	public static final field AMP_TRACKING_OPTION_DMA Ljava/lang/String;
+	public static final field AMP_TRACKING_OPTION_IP_ADDRESS Ljava/lang/String;
+	public static final field AMP_TRACKING_OPTION_LANGUAGE Ljava/lang/String;
+	public static final field AMP_TRACKING_OPTION_LAT_LNG Ljava/lang/String;
+	public static final field AMP_TRACKING_OPTION_OS_NAME Ljava/lang/String;
+	public static final field AMP_TRACKING_OPTION_OS_VERSION Ljava/lang/String;
+	public static final field AMP_TRACKING_OPTION_PLATFORM Ljava/lang/String;
+	public static final field AMP_TRACKING_OPTION_REGION Ljava/lang/String;
+	public static final field AMP_TRACKING_OPTION_VERSION_NAME Ljava/lang/String;
+	public static final field Companion Lcom/amplitude/android/TrackingOptions$Companion;
+	public fun <init> ()V
+	public final fun disableAdid ()Lcom/amplitude/android/TrackingOptions;
+	public final fun disableApiLevel ()Lcom/amplitude/android/TrackingOptions;
+	public final fun disableAppSetId ()Lcom/amplitude/android/TrackingOptions;
+	public final fun disableCarrier ()Lcom/amplitude/android/TrackingOptions;
+	public final fun disableCity ()Lcom/amplitude/android/TrackingOptions;
+	public final fun disableCountry ()Lcom/amplitude/android/TrackingOptions;
+	public final fun disableDeviceBrand ()Lcom/amplitude/android/TrackingOptions;
+	public final fun disableDeviceManufacturer ()Lcom/amplitude/android/TrackingOptions;
+	public final fun disableDeviceModel ()Lcom/amplitude/android/TrackingOptions;
+	public final fun disableDma ()Lcom/amplitude/android/TrackingOptions;
+	public final fun disableIpAddress ()Lcom/amplitude/android/TrackingOptions;
+	public final fun disableLanguage ()Lcom/amplitude/android/TrackingOptions;
+	public final fun disableLatLng ()Lcom/amplitude/android/TrackingOptions;
+	public final fun disableOsName ()Lcom/amplitude/android/TrackingOptions;
+	public final fun disableOsVersion ()Lcom/amplitude/android/TrackingOptions;
+	public final fun disablePlatform ()Lcom/amplitude/android/TrackingOptions;
+	public final fun disableRegion ()Lcom/amplitude/android/TrackingOptions;
+	public final fun disableVersionName ()Lcom/amplitude/android/TrackingOptions;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getDisabledFields ()Ljava/util/Set;
+	public final fun mergeIn (Lcom/amplitude/android/TrackingOptions;)Lcom/amplitude/android/TrackingOptions;
+	public final fun setDisabledFields (Ljava/util/Set;)V
+	public final fun shouldTrackAdid ()Z
+	public final fun shouldTrackApiLevel ()Z
+	public final fun shouldTrackAppSetId ()Z
+	public final fun shouldTrackCarrier ()Z
+	public final fun shouldTrackCity ()Z
+	public final fun shouldTrackCountry ()Z
+	public final fun shouldTrackDeviceBrand ()Z
+	public final fun shouldTrackDeviceManufacturer ()Z
+	public final fun shouldTrackDeviceModel ()Z
+	public final fun shouldTrackDma ()Z
+	public final fun shouldTrackIpAddress ()Z
+	public final fun shouldTrackLanguage ()Z
+	public final fun shouldTrackLatLng ()Z
+	public final fun shouldTrackOsName ()Z
+	public final fun shouldTrackOsVersion ()Z
+	public final fun shouldTrackPlatform ()Z
+	public final fun shouldTrackRegion ()Z
+	public final fun shouldTrackVersionName ()Z
+}
+
+public final class com/amplitude/android/TrackingOptions$Companion {
+	public final fun copyOf (Lcom/amplitude/android/TrackingOptions;)Lcom/amplitude/android/TrackingOptions;
+	public final fun forCoppaControl ()Lcom/amplitude/android/TrackingOptions;
+}
+
+public final class com/amplitude/android/diagnostics/AndroidDiagnosticsContextProvider : com/amplitude/core/diagnostics/DiagnosticsContextProvider {
+	public fun <init> (Landroid/content/Context;)V
+	public fun getContextInfo ()Lcom/amplitude/core/diagnostics/DiagnosticsContextInfo;
+}
+
+public class com/amplitude/android/events/BaseEvent : com/amplitude/core/events/BaseEvent {
+	public fun <init> ()V
+}
+
+public class com/amplitude/android/events/EventOptions : com/amplitude/core/events/EventOptions {
+	public fun <init> ()V
+}
+
+public class com/amplitude/android/events/GroupIdentifyEvent : com/amplitude/core/events/GroupIdentifyEvent {
+	public fun <init> ()V
+}
+
+public class com/amplitude/android/events/Identify : com/amplitude/core/events/Identify {
+	public fun <init> ()V
+}
+
+public class com/amplitude/android/events/IdentifyEvent : com/amplitude/core/events/IdentifyEvent {
+	public fun <init> ()V
+}
+
+public class com/amplitude/android/events/IngestionMetadata : com/amplitude/core/events/IngestionMetadata {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+}
+
+public class com/amplitude/android/events/Plan : com/amplitude/core/events/Plan {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+}
+
+public class com/amplitude/android/events/Revenue : com/amplitude/core/events/Revenue {
+	public fun <init> ()V
+}
+
+public class com/amplitude/android/events/RevenueEvent : com/amplitude/core/events/RevenueEvent {
+	public fun <init> ()V
+}
+
+public final class com/amplitude/android/internal/ViewTarget {
+	public fun <init> (Ljava/lang/Object;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZZ)V
+	public synthetic fun <init> (Ljava/lang/Object;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun component6 ()Ljava/lang/String;
+	public final fun component7 ()Ljava/lang/String;
+	public final fun component8 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/Object;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZZ)Lcom/amplitude/android/internal/ViewTarget;
+	public static synthetic fun copy$default (Lcom/amplitude/android/internal/ViewTarget;Ljava/lang/Object;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ZZILjava/lang/Object;)Lcom/amplitude/android/internal/ViewTarget;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAccessibilityLabel ()Ljava/lang/String;
+	public final fun getClassName ()Ljava/lang/String;
+	public final fun getHierarchy ()Ljava/lang/String;
+	public final fun getResourceName ()Ljava/lang/String;
+	public final fun getSource ()Ljava/lang/String;
+	public final fun getTag ()Ljava/lang/String;
+	public final fun getText ()Ljava/lang/String;
+	public final fun getView ()Ljava/lang/Object;
+	public fun hashCode ()I
+	public final fun isIgnoredForFrustration ()Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/amplitude/android/internal/ViewTarget$Type : java/lang/Enum {
+	public static final field Clickable Lcom/amplitude/android/internal/ViewTarget$Type;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/amplitude/android/internal/ViewTarget$Type;
+	public static fun values ()[Lcom/amplitude/android/internal/ViewTarget$Type;
+}
+
+public final class com/amplitude/android/internal/ViewTargetKt {
+	public static final fun buildElementInteractedProperties (Lcom/amplitude/android/internal/ViewTarget;Ljava/lang/String;)Ljava/util/Map;
+}
+
+public final class com/amplitude/android/internal/gestures/AutocaptureGestureListener : android/view/GestureDetector$OnGestureListener {
+	public fun <init> (Landroid/view/View;Ljava/lang/String;Lkotlin/jvm/functions/Function2;Lcom/amplitude/common/Logger;Ljava/util/List;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function1;)V
+	public synthetic fun <init> (Landroid/view/View;Ljava/lang/String;Lkotlin/jvm/functions/Function2;Lcom/amplitude/common/Logger;Ljava/util/List;Lkotlin/jvm/functions/Function0;Lkotlin/jvm/functions/Function1;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun onDown (Landroid/view/MotionEvent;)Z
+	public fun onFling (Landroid/view/MotionEvent;Landroid/view/MotionEvent;FF)Z
+	public fun onLongPress (Landroid/view/MotionEvent;)V
+	public fun onScroll (Landroid/view/MotionEvent;Landroid/view/MotionEvent;FF)Z
+	public fun onShowPress (Landroid/view/MotionEvent;)V
+	public fun onSingleTapUp (Landroid/view/MotionEvent;)Z
+}
+
+public abstract interface class com/amplitude/android/internal/locators/ViewTargetLocator {
+	public abstract fun locate (Ljava/lang/Object;Lkotlin/Pair;Lcom/amplitude/android/internal/ViewTarget$Type;)Lcom/amplitude/android/internal/ViewTarget;
+}
+
+public final class com/amplitude/android/migration/AndroidStorageMigration {
+	public fun <init> (Lcom/amplitude/android/storage/AndroidStorageV2;Lcom/amplitude/android/storage/AndroidStorageV2;Lcom/amplitude/common/Logger;)V
+	public final fun execute (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class com/amplitude/android/migration/CursorWindowAllocationException : java/lang/RuntimeException {
+	public fun <init> (Ljava/lang/String;)V
+}
+
+public final class com/amplitude/android/migration/DatabaseConstants {
+	public static final field DATABASE_NAME Ljava/lang/String;
+	public static final field DATABASE_VERSION I
+	public static final field EVENT_FIELD Ljava/lang/String;
+	public static final field EVENT_TABLE_NAME Ljava/lang/String;
+	public static final field IDENTIFY_INTERCEPTOR_TABLE_NAME Ljava/lang/String;
+	public static final field IDENTIFY_TABLE_NAME Ljava/lang/String;
+	public static final field ID_FIELD Ljava/lang/String;
+	public static final field INSTANCE Lcom/amplitude/android/migration/DatabaseConstants;
+	public static final field KEY_FIELD Ljava/lang/String;
+	public static final field LONG_STORE_TABLE_NAME Ljava/lang/String;
+	public static final field ROW_ID_FIELD Ljava/lang/String;
+	public static final field STORE_TABLE_NAME Ljava/lang/String;
+	public static final field VALUE_FIELD Ljava/lang/String;
+}
+
+public final class com/amplitude/android/migration/DatabaseStorage : android/database/sqlite/SQLiteOpenHelper {
+	public fun <init> (Landroid/content/Context;Ljava/lang/String;Lcom/amplitude/common/Logger;)V
+	public final fun getCurrentDbVersion ()I
+	public final fun getLongValue (Ljava/lang/String;)Ljava/lang/Long;
+	public final fun getValue (Ljava/lang/String;)Ljava/lang/String;
+	public fun onCreate (Landroid/database/sqlite/SQLiteDatabase;)V
+	public fun onUpgrade (Landroid/database/sqlite/SQLiteDatabase;II)V
+	public final fun readEventsContent ()Ljava/util/List;
+	public final fun readIdentifiesContent ()Ljava/util/List;
+	public final fun readInterceptedIdentifiesContent ()Ljava/util/List;
+	public final fun removeEvent (J)V
+	public final fun removeIdentify (J)V
+	public final fun removeInterceptedIdentify (J)V
+	public final fun removeLongValue (Ljava/lang/String;)V
+	public final fun removeValue (Ljava/lang/String;)V
+}
+
+public final class com/amplitude/android/migration/DatabaseStorageProvider {
+	public static final field INSTANCE Lcom/amplitude/android/migration/DatabaseStorageProvider;
+	public final fun getStorage (Lcom/amplitude/core/Amplitude;)Lcom/amplitude/android/migration/DatabaseStorage;
+}
+
+public final class com/amplitude/android/migration/IdentityStorageMigration {
+	public fun <init> (Lcom/amplitude/id/IdentityStorage;Lcom/amplitude/id/IdentityStorage;Lcom/amplitude/common/Logger;)V
+	public final fun execute ()V
+}
+
+public final class com/amplitude/android/migration/RemnantDataMigration {
+	public static final field Companion Lcom/amplitude/android/migration/RemnantDataMigration$Companion;
+	public static final field DEVICE_ID_KEY Ljava/lang/String;
+	public static final field LAST_EVENT_ID_KEY Ljava/lang/String;
+	public static final field LAST_EVENT_TIME_KEY Ljava/lang/String;
+	public static final field PREVIOUS_SESSION_ID_KEY Ljava/lang/String;
+	public static final field USER_ID_KEY Ljava/lang/String;
+	public fun <init> (Lcom/amplitude/core/Amplitude;Lcom/amplitude/android/migration/DatabaseStorage;)V
+	public final fun execute (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun getAmplitude ()Lcom/amplitude/core/Amplitude;
+}
+
+public final class com/amplitude/android/migration/RemnantDataMigration$Companion {
+}
+
+public class com/amplitude/android/plugins/AndroidContextPlugin : com/amplitude/core/platform/Plugin {
+	public static final field Companion Lcom/amplitude/android/plugins/AndroidContextPlugin$Companion;
+	public static final field PLATFORM Ljava/lang/String;
+	public static final field SDK_LIBRARY Ljava/lang/String;
+	public static final field SDK_VERSION Ljava/lang/String;
+	public field amplitude Lcom/amplitude/core/Amplitude;
+	public fun <init> ()V
+	public fun execute (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
+	public fun getAmplitude ()Lcom/amplitude/core/Amplitude;
+	public fun getType ()Lcom/amplitude/core/platform/Plugin$Type;
+	public final fun initializeDeviceId (Lcom/amplitude/android/Configuration;Z)V
+	public static synthetic fun initializeDeviceId$default (Lcom/amplitude/android/plugins/AndroidContextPlugin;Lcom/amplitude/android/Configuration;ZILjava/lang/Object;)V
+	public fun setAmplitude (Lcom/amplitude/core/Amplitude;)V
+	protected fun setDeviceId (Ljava/lang/String;)V
+	public fun setup (Lcom/amplitude/core/Amplitude;)V
+}
+
+public final class com/amplitude/android/plugins/AndroidContextPlugin$Companion {
+	public final fun validDeviceId (Ljava/lang/String;)Z
+}
+
+public final class com/amplitude/android/plugins/AndroidLifecyclePlugin : android/app/Application$ActivityLifecycleCallbacks, com/amplitude/core/platform/Plugin {
+	public field amplitude Lcom/amplitude/core/Amplitude;
+	public fun <init> (Lcom/amplitude/android/utilities/ActivityLifecycleObserver;)V
+	public fun getAmplitude ()Lcom/amplitude/core/Amplitude;
+	public fun getType ()Lcom/amplitude/core/platform/Plugin$Type;
+	public fun onActivityCreated (Landroid/app/Activity;Landroid/os/Bundle;)V
+	public fun onActivityDestroyed (Landroid/app/Activity;)V
+	public fun onActivityPaused (Landroid/app/Activity;)V
+	public fun onActivityResumed (Landroid/app/Activity;)V
+	public fun onActivitySaveInstanceState (Landroid/app/Activity;Landroid/os/Bundle;)V
+	public fun onActivityStarted (Landroid/app/Activity;)V
+	public fun onActivityStopped (Landroid/app/Activity;)V
+	public fun setAmplitude (Lcom/amplitude/core/Amplitude;)V
+	public fun setup (Lcom/amplitude/core/Amplitude;)V
+	public fun teardown ()V
+}
+
+public final class com/amplitude/android/plugins/AndroidNetworkConnectivityCheckerPlugin : com/amplitude/core/platform/Plugin {
+	public static final field Companion Lcom/amplitude/android/plugins/AndroidNetworkConnectivityCheckerPlugin$Companion;
+	public field amplitude Lcom/amplitude/core/Amplitude;
+	public fun <init> ()V
+	public fun getAmplitude ()Lcom/amplitude/core/Amplitude;
+	public fun getType ()Lcom/amplitude/core/platform/Plugin$Type;
+	public fun setAmplitude (Lcom/amplitude/core/Amplitude;)V
+	public fun setup (Lcom/amplitude/core/Amplitude;)V
+	public fun teardown ()V
+}
+
+public final class com/amplitude/android/plugins/AndroidNetworkConnectivityCheckerPlugin$Companion {
+	public final fun getDisabled ()Ljava/lang/Void;
+}
+
+public final class com/amplitude/android/signals/UiChangeSignal : com/amplitude/core/platform/Signal {
+	public fun <init> (Ljava/util/Date;)V
+	public final fun component1 ()Ljava/util/Date;
+	public final fun copy (Ljava/util/Date;)Lcom/amplitude/android/signals/UiChangeSignal;
+	public static synthetic fun copy$default (Lcom/amplitude/android/signals/UiChangeSignal;Ljava/util/Date;ILjava/lang/Object;)Lcom/amplitude/android/signals/UiChangeSignal;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getTimestamp ()Ljava/util/Date;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/amplitude/android/storage/AndroidEventsStorageProviderV2 : com/amplitude/core/StorageProvider {
+	public fun <init> ()V
+	public fun getStorage (Lcom/amplitude/core/Amplitude;Ljava/lang/String;)Lcom/amplitude/core/Storage;
+}
+
+public final class com/amplitude/android/storage/AndroidIdentifyInterceptStorageProviderV2 : com/amplitude/core/StorageProvider {
+	public fun <init> ()V
+	public fun getStorage (Lcom/amplitude/core/Amplitude;Ljava/lang/String;)Lcom/amplitude/core/Storage;
+}
+
+public final class com/amplitude/android/storage/AndroidStorageV2 : com/amplitude/core/Storage, com/amplitude/core/utilities/EventsFileStorage {
+	public fun <init> (Ljava/lang/String;Lcom/amplitude/common/Logger;Landroid/content/SharedPreferences;Ljava/io/File;Lcom/amplitude/core/utilities/Diagnostics;)V
+	public final fun cleanupMetadata ()V
+	public fun getEventCallback (Ljava/lang/String;)Lkotlin/jvm/functions/Function3;
+	public fun getEventsString (Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun getResponseHandler (Lcom/amplitude/core/platform/EventPipeline;Lcom/amplitude/core/Configuration;Lkotlinx/coroutines/CoroutineScope;Lkotlinx/coroutines/CoroutineDispatcher;)Lcom/amplitude/core/utilities/http/ResponseHandler;
+	public final fun getSharedPreferences ()Landroid/content/SharedPreferences;
+	public fun read (Lcom/amplitude/core/Storage$Constants;)Ljava/lang/String;
+	public fun readEventsContent ()Ljava/util/List;
+	public fun releaseFile (Ljava/lang/String;)V
+	public fun remove (Lcom/amplitude/core/Storage$Constants;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun removeEventCallback (Ljava/lang/String;)V
+	public fun removeFile (Ljava/lang/String;)Z
+	public fun rollover (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun splitEventFile (Ljava/lang/String;Lorg/json/JSONArray;)V
+	public fun write (Lcom/amplitude/core/Storage$Constants;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun writeEvent (Lcom/amplitude/core/events/BaseEvent;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class com/amplitude/android/storage/StorageVersion : java/lang/Enum {
+	public static final field V3 Lcom/amplitude/android/storage/StorageVersion;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getRawValue ()I
+	public static fun valueOf (Ljava/lang/String;)Lcom/amplitude/android/storage/StorageVersion;
+	public static fun values ()[Lcom/amplitude/android/storage/StorageVersion;
+}
+
+public final class com/amplitude/android/utilities/ActivityCallbackEvent {
+	public fun <init> (Ljava/lang/ref/WeakReference;Lcom/amplitude/android/utilities/ActivityCallbackType;)V
+	public final fun component1 ()Ljava/lang/ref/WeakReference;
+	public final fun component2 ()Lcom/amplitude/android/utilities/ActivityCallbackType;
+	public final fun copy (Ljava/lang/ref/WeakReference;Lcom/amplitude/android/utilities/ActivityCallbackType;)Lcom/amplitude/android/utilities/ActivityCallbackEvent;
+	public static synthetic fun copy$default (Lcom/amplitude/android/utilities/ActivityCallbackEvent;Ljava/lang/ref/WeakReference;Lcom/amplitude/android/utilities/ActivityCallbackType;ILjava/lang/Object;)Lcom/amplitude/android/utilities/ActivityCallbackEvent;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getActivity ()Ljava/lang/ref/WeakReference;
+	public final fun getType ()Lcom/amplitude/android/utilities/ActivityCallbackType;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/amplitude/android/utilities/ActivityCallbackType : java/lang/Enum {
+	public static final field Created Lcom/amplitude/android/utilities/ActivityCallbackType;
+	public static final field Destroyed Lcom/amplitude/android/utilities/ActivityCallbackType;
+	public static final field Paused Lcom/amplitude/android/utilities/ActivityCallbackType;
+	public static final field Resumed Lcom/amplitude/android/utilities/ActivityCallbackType;
+	public static final field Started Lcom/amplitude/android/utilities/ActivityCallbackType;
+	public static final field Stopped Lcom/amplitude/android/utilities/ActivityCallbackType;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/amplitude/android/utilities/ActivityCallbackType;
+	public static fun values ()[Lcom/amplitude/android/utilities/ActivityCallbackType;
+}
+
+public final class com/amplitude/android/utilities/ActivityLifecycleObserver : android/app/Application$ActivityLifecycleCallbacks {
+	public fun <init> ()V
+	public fun onActivityCreated (Landroid/app/Activity;Landroid/os/Bundle;)V
+	public fun onActivityDestroyed (Landroid/app/Activity;)V
+	public fun onActivityPaused (Landroid/app/Activity;)V
+	public fun onActivityResumed (Landroid/app/Activity;)V
+	public fun onActivitySaveInstanceState (Landroid/app/Activity;Landroid/os/Bundle;)V
+	public fun onActivityStarted (Landroid/app/Activity;)V
+	public fun onActivityStopped (Landroid/app/Activity;)V
+}
+
+public final class com/amplitude/android/utilities/AndroidKVS : com/amplitude/id/utilities/KeyValueStore {
+	public fun <init> (Landroid/content/SharedPreferences;)V
+	public fun deleteKey (Ljava/lang/String;)V
+	public fun getLong (Ljava/lang/String;J)J
+	public fun putLong (Ljava/lang/String;J)Z
+}
+
+public final class com/amplitude/android/utilities/AndroidLoggerProvider : com/amplitude/core/LoggerProvider {
+	public fun <init> ()V
+	public fun getLogger (Lcom/amplitude/core/Amplitude;)Lcom/amplitude/common/Logger;
+}
+
+public final class com/amplitude/android/utilities/AndroidNetworkConnectivityChecker {
+	public static final field Companion Lcom/amplitude/android/utilities/AndroidNetworkConnectivityChecker$Companion;
+	public fun <init> (Landroid/content/Context;Lcom/amplitude/common/Logger;)V
+	public final fun isConnected ()Z
+}
+
+public final class com/amplitude/android/utilities/AndroidNetworkConnectivityChecker$Companion {
+}
+
+public final class com/amplitude/android/utilities/AndroidNetworkListener {
+	public fun <init> (Landroid/content/Context;Lcom/amplitude/common/Logger;Lcom/amplitude/android/utilities/AndroidNetworkListener$NetworkChangeCallback;)V
+	public final fun startListening ()V
+	public final fun stopListening ()V
+}
+
+public abstract interface class com/amplitude/android/utilities/AndroidNetworkListener$NetworkChangeCallback {
+	public abstract fun onNetworkAvailable ()V
+	public abstract fun onNetworkUnavailable ()V
+}
+
+public final class com/amplitude/android/utilities/AndroidStorage : com/amplitude/core/Storage, com/amplitude/core/utilities/EventsFileStorage {
+	public static final field Companion Lcom/amplitude/android/utilities/AndroidStorage$Companion;
+	public static final field STORAGE_PREFIX Ljava/lang/String;
+	public fun <init> (Landroid/content/Context;Ljava/lang/String;Lcom/amplitude/common/Logger;Ljava/lang/String;Lcom/amplitude/core/utilities/Diagnostics;)V
+	public fun getEventCallback (Ljava/lang/String;)Lkotlin/jvm/functions/Function3;
+	public fun getEventsString (Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun getResponseHandler (Lcom/amplitude/core/platform/EventPipeline;Lcom/amplitude/core/Configuration;Lkotlinx/coroutines/CoroutineScope;Lkotlinx/coroutines/CoroutineDispatcher;)Lcom/amplitude/core/utilities/http/ResponseHandler;
+	public final fun getSharedPreferences ()Landroid/content/SharedPreferences;
+	public final fun getStorageKey ()Ljava/lang/String;
+	public fun read (Lcom/amplitude/core/Storage$Constants;)Ljava/lang/String;
+	public fun readEventsContent ()Ljava/util/List;
+	public fun releaseFile (Ljava/lang/String;)V
+	public fun remove (Lcom/amplitude/core/Storage$Constants;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun removeEventCallback (Ljava/lang/String;)V
+	public fun removeFile (Ljava/lang/String;)Z
+	public fun rollover (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun splitEventFile (Ljava/lang/String;Lorg/json/JSONArray;)V
+	public fun write (Lcom/amplitude/core/Storage$Constants;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun writeEvent (Lcom/amplitude/core/events/BaseEvent;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class com/amplitude/android/utilities/AndroidStorage$Companion {
+}
+
+public final class com/amplitude/android/utilities/DefaultEventUtils {
+	public static final field Companion Lcom/amplitude/android/utilities/DefaultEventUtils$Companion;
+	public fun <init> (Lcom/amplitude/android/Amplitude;)V
+	public final fun startFragmentViewedEventTracking (Landroid/app/Activity;Lkotlin/jvm/functions/Function0;)V
+	public static synthetic fun startFragmentViewedEventTracking$default (Lcom/amplitude/android/utilities/DefaultEventUtils;Landroid/app/Activity;Lkotlin/jvm/functions/Function0;ILjava/lang/Object;)V
+	public final fun stopFragmentViewedEventTracking (Landroid/app/Activity;)V
+	public final fun trackAppBackgroundedEvent ()V
+	public final fun trackAppOpenedEvent (Landroid/content/pm/PackageInfo;Z)V
+	public final fun trackAppUpdatedInstalledEvent (Landroid/content/pm/PackageInfo;)V
+	public final fun trackDeepLinkOpenedEvent (Landroid/app/Activity;)V
+	public final fun trackScreenViewedEvent (Landroid/app/Activity;)V
+}
+
+public final class com/amplitude/android/utilities/DefaultEventUtils$Companion {
+}
+
+public final class com/amplitude/android/utilities/DefaultEventUtils$EventProperties {
+	public static final field ACTION Ljava/lang/String;
+	public static final field BUILD Ljava/lang/String;
+	public static final field FRAGMENT_CLASS Ljava/lang/String;
+	public static final field FRAGMENT_IDENTIFIER Ljava/lang/String;
+	public static final field FRAGMENT_TAG Ljava/lang/String;
+	public static final field FROM_BACKGROUND Ljava/lang/String;
+	public static final field HIERARCHY Ljava/lang/String;
+	public static final field INSTANCE Lcom/amplitude/android/utilities/DefaultEventUtils$EventProperties;
+	public static final field LINK_REFERRER Ljava/lang/String;
+	public static final field LINK_URL Ljava/lang/String;
+	public static final field PREVIOUS_BUILD Ljava/lang/String;
+	public static final field PREVIOUS_VERSION Ljava/lang/String;
+	public static final field SCREEN_NAME Ljava/lang/String;
+	public static final field TARGET_CLASS Ljava/lang/String;
+	public static final field TARGET_RESOURCE Ljava/lang/String;
+	public static final field TARGET_SOURCE Ljava/lang/String;
+	public static final field TARGET_TAG Ljava/lang/String;
+	public static final field TARGET_TEXT Ljava/lang/String;
+	public static final field VERSION Ljava/lang/String;
+}
+
+public final class com/amplitude/android/utilities/DefaultEventUtils$EventTypes {
+	public static final field APPLICATION_BACKGROUNDED Ljava/lang/String;
+	public static final field APPLICATION_INSTALLED Ljava/lang/String;
+	public static final field APPLICATION_OPENED Ljava/lang/String;
+	public static final field APPLICATION_UPDATED Ljava/lang/String;
+	public static final field DEEP_LINK_OPENED Ljava/lang/String;
+	public static final field ELEMENT_INTERACTED Ljava/lang/String;
+	public static final field FRAGMENT_VIEWED Ljava/lang/String;
+	public static final field INSTANCE Lcom/amplitude/android/utilities/DefaultEventUtils$EventTypes;
+	public static final field SCREEN_VIEWED Ljava/lang/String;
+}
+
+public final class com/amplitude/android/utilities/LoadClass {
+	public static final field INSTANCE Lcom/amplitude/android/utilities/LoadClass;
+	public final fun isClassAvailable (Ljava/lang/String;Lcom/amplitude/common/Logger;)Z
+}
+
+public final class com/amplitude/common/android/AndroidContextProvider : com/amplitude/common/ContextProvider {
+	public static final field Companion Lcom/amplitude/common/android/AndroidContextProvider$Companion;
+	public static final field OS_NAME Ljava/lang/String;
+	public static final field SETTING_ADVERTISING_ID Ljava/lang/String;
+	public static final field SETTING_LIMIT_AD_TRACKING Ljava/lang/String;
+	public fun <init> (Landroid/content/Context;ZZZ)V
+	public final fun getAdvertisingId ()Ljava/lang/String;
+	public final fun getAppSetId ()Ljava/lang/String;
+	public final fun getBrand ()Ljava/lang/String;
+	public final fun getCarrier ()Ljava/lang/String;
+	public final fun getCountry ()Ljava/lang/String;
+	public final fun getLanguage ()Ljava/lang/String;
+	public final fun getManufacturer ()Ljava/lang/String;
+	public final fun getModel ()Ljava/lang/String;
+	public final fun getMostRecentLocation ()Landroid/location/Location;
+	public final fun getOsName ()Ljava/lang/String;
+	public final fun getOsVersion ()Ljava/lang/String;
+	public final fun getVersionName ()Ljava/lang/String;
+	public final fun isGooglePlayServicesEnabled ()Z
+	public final fun isLimitAdTrackingEnabled ()Z
+}
+
+public final class com/amplitude/common/android/AndroidContextProvider$CachedInfo {
+	public fun <init> (Lcom/amplitude/common/android/AndroidContextProvider;)V
+	public final fun getAdvertisingId ()Ljava/lang/String;
+	public final fun getAppSetId ()Ljava/lang/String;
+	public final fun getBrand ()Ljava/lang/String;
+	public final fun getCarrier ()Ljava/lang/String;
+	public final fun getCountry ()Ljava/lang/String;
+	public final fun getGpsEnabled ()Z
+	public final fun getLanguage ()Ljava/lang/String;
+	public final fun getLimitAdTrackingEnabled ()Z
+	public final fun getManufacturer ()Ljava/lang/String;
+	public final fun getModel ()Ljava/lang/String;
+	public final fun getOsName ()Ljava/lang/String;
+	public final fun getOsVersion ()Ljava/lang/String;
+	public final fun getVersionName ()Ljava/lang/String;
+	public final fun setLimitAdTrackingEnabled (Z)V
+}
+
+public final class com/amplitude/common/android/AndroidContextProvider$Companion {
+}
+
+public final class com/amplitude/common/android/LogcatLogger : com/amplitude/common/Logger {
+	public static final field Companion Lcom/amplitude/common/android/LogcatLogger$Companion;
+	public fun <init> ()V
+	public fun debug (Ljava/lang/String;)V
+	public fun error (Ljava/lang/String;)V
+	public fun getLogMode ()Lcom/amplitude/common/Logger$LogMode;
+	public fun info (Ljava/lang/String;)V
+	public fun setLogMode (Lcom/amplitude/common/Logger$LogMode;)V
+	public fun warn (Ljava/lang/String;)V
+}
+
+public final class com/amplitude/common/android/LogcatLogger$Companion {
+	public final fun getLogger ()Lcom/amplitude/common/android/LogcatLogger;
+}
+

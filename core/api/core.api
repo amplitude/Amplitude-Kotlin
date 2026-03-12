@@ -1,0 +1,1412 @@
+public abstract interface class com/amplitude/common/ContextProvider {
+}
+
+public abstract interface class com/amplitude/common/Logger {
+	public abstract fun debug (Ljava/lang/String;)V
+	public abstract fun error (Ljava/lang/String;)V
+	public abstract fun getLogMode ()Lcom/amplitude/common/Logger$LogMode;
+	public abstract fun info (Ljava/lang/String;)V
+	public abstract fun setLogMode (Lcom/amplitude/common/Logger$LogMode;)V
+	public abstract fun warn (Ljava/lang/String;)V
+}
+
+public final class com/amplitude/common/Logger$LogMode : java/lang/Enum {
+	public static final field DEBUG Lcom/amplitude/common/Logger$LogMode;
+	public static final field ERROR Lcom/amplitude/common/Logger$LogMode;
+	public static final field INFO Lcom/amplitude/common/Logger$LogMode;
+	public static final field OFF Lcom/amplitude/common/Logger$LogMode;
+	public static final field WARN Lcom/amplitude/common/Logger$LogMode;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/amplitude/common/Logger$LogMode;
+	public static fun values ()[Lcom/amplitude/common/Logger$LogMode;
+}
+
+public final class com/amplitude/common/jvm/ConsoleLogger : com/amplitude/common/Logger {
+	public static final field Companion Lcom/amplitude/common/jvm/ConsoleLogger$Companion;
+	public fun <init> ()V
+	public fun debug (Ljava/lang/String;)V
+	public fun error (Ljava/lang/String;)V
+	public fun getLogMode ()Lcom/amplitude/common/Logger$LogMode;
+	public fun info (Ljava/lang/String;)V
+	public fun setLogMode (Lcom/amplitude/common/Logger$LogMode;)V
+	public fun warn (Ljava/lang/String;)V
+}
+
+public final class com/amplitude/common/jvm/ConsoleLogger$Companion {
+	public final fun getLogger ()Lcom/amplitude/common/jvm/ConsoleLogger;
+}
+
+public class com/amplitude/core/Amplitude {
+	public fun <init> (Lcom/amplitude/core/Configuration;)V
+	public fun <init> (Lcom/amplitude/core/Configuration;Lcom/amplitude/core/State;Lkotlinx/coroutines/CoroutineScope;Lkotlinx/coroutines/CoroutineDispatcher;Lkotlinx/coroutines/CoroutineDispatcher;Lkotlinx/coroutines/CoroutineDispatcher;)V
+	public synthetic fun <init> (Lcom/amplitude/core/Configuration;Lcom/amplitude/core/State;Lkotlinx/coroutines/CoroutineScope;Lkotlinx/coroutines/CoroutineDispatcher;Lkotlinx/coroutines/CoroutineDispatcher;Lkotlinx/coroutines/CoroutineDispatcher;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun add (Lcom/amplitude/core/platform/Plugin;)Lcom/amplitude/core/Amplitude;
+	protected fun build ()Lkotlinx/coroutines/Deferred;
+	protected fun buildInternal (Lcom/amplitude/id/IdentityConfiguration;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	protected fun createIdentityConfiguration ()Lcom/amplitude/id/IdentityConfiguration;
+	protected final fun createIdentityContainer (Lcom/amplitude/id/IdentityConfiguration;)V
+	public fun createTimeline ()Lcom/amplitude/core/platform/Timeline;
+	protected fun diagnosticsContextProvider ()Lcom/amplitude/core/diagnostics/DiagnosticsContextProvider;
+	protected fun diagnosticsStorageDirectory ()Ljava/io/File;
+	public final fun flush ()V
+	public final fun getAmplitudeDispatcher ()Lkotlinx/coroutines/CoroutineDispatcher;
+	public final fun getAmplitudeScope ()Lkotlinx/coroutines/CoroutineScope;
+	public final fun getConfiguration ()Lcom/amplitude/core/Configuration;
+	public final fun getDeviceId ()Ljava/lang/String;
+	public final fun getDiagnostics ()Lcom/amplitude/core/utilities/Diagnostics;
+	public final fun getDiagnosticsClient ()Lcom/amplitude/core/diagnostics/DiagnosticsClient;
+	public final fun getIdContainer ()Lcom/amplitude/id/IdentityContainer;
+	public final fun getIdentifyInterceptStorage ()Lcom/amplitude/core/Storage;
+	public final fun getIdentityStorage ()Lcom/amplitude/id/IdentityStorage;
+	public final fun getLogger ()Lcom/amplitude/common/Logger;
+	public final fun getNetworkIODispatcher ()Lkotlinx/coroutines/CoroutineDispatcher;
+	public final fun getRemoteConfigClient ()Lcom/amplitude/core/remoteconfig/RemoteConfigClient;
+	public final fun getSignalFlow ()Lkotlinx/coroutines/flow/SharedFlow;
+	public final fun getStorage ()Lcom/amplitude/core/Storage;
+	public final fun getStorageIODispatcher ()Lkotlinx/coroutines/CoroutineDispatcher;
+	public final fun getStore ()Lcom/amplitude/core/State;
+	public final fun getTimeline ()Lcom/amplitude/core/platform/Timeline;
+	public final fun getUserId ()Ljava/lang/String;
+	public final fun groupIdentify (Ljava/lang/String;Ljava/lang/String;Lcom/amplitude/core/events/Identify;)Lcom/amplitude/core/Amplitude;
+	public final fun groupIdentify (Ljava/lang/String;Ljava/lang/String;Lcom/amplitude/core/events/Identify;Lcom/amplitude/core/events/EventOptions;)Lcom/amplitude/core/Amplitude;
+	public final fun groupIdentify (Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;)Lcom/amplitude/core/Amplitude;
+	public final fun groupIdentify (Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;Lcom/amplitude/core/events/EventOptions;)Lcom/amplitude/core/Amplitude;
+	public static synthetic fun groupIdentify$default (Lcom/amplitude/core/Amplitude;Ljava/lang/String;Ljava/lang/String;Lcom/amplitude/core/events/Identify;Lcom/amplitude/core/events/EventOptions;ILjava/lang/Object;)Lcom/amplitude/core/Amplitude;
+	public static synthetic fun groupIdentify$default (Lcom/amplitude/core/Amplitude;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;Lcom/amplitude/core/events/EventOptions;ILjava/lang/Object;)Lcom/amplitude/core/Amplitude;
+	public final fun identify (Lcom/amplitude/core/events/Identify;)Lcom/amplitude/core/Amplitude;
+	public final fun identify (Lcom/amplitude/core/events/Identify;Lcom/amplitude/core/events/EventOptions;)Lcom/amplitude/core/Amplitude;
+	public final fun identify (Ljava/util/Map;)Lcom/amplitude/core/Amplitude;
+	public final fun identify (Ljava/util/Map;Lcom/amplitude/core/events/EventOptions;)Lcom/amplitude/core/Amplitude;
+	public static synthetic fun identify$default (Lcom/amplitude/core/Amplitude;Lcom/amplitude/core/events/Identify;Lcom/amplitude/core/events/EventOptions;ILjava/lang/Object;)Lcom/amplitude/core/Amplitude;
+	public static synthetic fun identify$default (Lcom/amplitude/core/Amplitude;Ljava/util/Map;Lcom/amplitude/core/events/EventOptions;ILjava/lang/Object;)Lcom/amplitude/core/Amplitude;
+	public final fun isBuilt ()Lkotlinx/coroutines/Deferred;
+	public final fun logEvent (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/Amplitude;
+	public final fun logRevenue (Lcom/amplitude/core/events/Revenue;)Lcom/amplitude/core/Amplitude;
+	public final fun remove (Lcom/amplitude/core/platform/Plugin;)Lcom/amplitude/core/Amplitude;
+	public fun reset ()Lcom/amplitude/core/Amplitude;
+	public final fun revenue (Lcom/amplitude/core/events/Revenue;)Lcom/amplitude/core/Amplitude;
+	public final fun revenue (Lcom/amplitude/core/events/Revenue;Lcom/amplitude/core/events/EventOptions;)Lcom/amplitude/core/Amplitude;
+	public final fun revenue (Lcom/amplitude/core/events/RevenueEvent;)Lcom/amplitude/core/Amplitude;
+	public static synthetic fun revenue$default (Lcom/amplitude/core/Amplitude;Lcom/amplitude/core/events/Revenue;Lcom/amplitude/core/events/EventOptions;ILjava/lang/Object;)Lcom/amplitude/core/Amplitude;
+	public final fun setDeviceId (Ljava/lang/String;)Lcom/amplitude/core/Amplitude;
+	public final fun setGroup (Ljava/lang/String;Ljava/lang/String;)Lcom/amplitude/core/Amplitude;
+	public final fun setGroup (Ljava/lang/String;Ljava/lang/String;Lcom/amplitude/core/events/EventOptions;)Lcom/amplitude/core/Amplitude;
+	public final fun setGroup (Ljava/lang/String;[Ljava/lang/String;)Lcom/amplitude/core/Amplitude;
+	public final fun setGroup (Ljava/lang/String;[Ljava/lang/String;Lcom/amplitude/core/events/EventOptions;)Lcom/amplitude/core/Amplitude;
+	public static synthetic fun setGroup$default (Lcom/amplitude/core/Amplitude;Ljava/lang/String;Ljava/lang/String;Lcom/amplitude/core/events/EventOptions;ILjava/lang/Object;)Lcom/amplitude/core/Amplitude;
+	public static synthetic fun setGroup$default (Lcom/amplitude/core/Amplitude;Ljava/lang/String;[Ljava/lang/String;Lcom/amplitude/core/events/EventOptions;ILjava/lang/Object;)Lcom/amplitude/core/Amplitude;
+	public final fun setUserId (Ljava/lang/String;)Lcom/amplitude/core/Amplitude;
+	public final fun track (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/Amplitude;
+	public final fun track (Lcom/amplitude/core/events/BaseEvent;Lcom/amplitude/core/events/EventOptions;)Lcom/amplitude/core/Amplitude;
+	public final fun track (Lcom/amplitude/core/events/BaseEvent;Lcom/amplitude/core/events/EventOptions;Lkotlin/jvm/functions/Function3;)Lcom/amplitude/core/Amplitude;
+	public final fun track (Ljava/lang/String;)Lcom/amplitude/core/Amplitude;
+	public final fun track (Ljava/lang/String;Ljava/util/Map;)Lcom/amplitude/core/Amplitude;
+	public final fun track (Ljava/lang/String;Ljava/util/Map;Lcom/amplitude/core/events/EventOptions;)Lcom/amplitude/core/Amplitude;
+	public static synthetic fun track$default (Lcom/amplitude/core/Amplitude;Lcom/amplitude/core/events/BaseEvent;Lcom/amplitude/core/events/EventOptions;Lkotlin/jvm/functions/Function3;ILjava/lang/Object;)Lcom/amplitude/core/Amplitude;
+	public static synthetic fun track$default (Lcom/amplitude/core/Amplitude;Ljava/lang/String;Ljava/util/Map;Lcom/amplitude/core/events/EventOptions;ILjava/lang/Object;)Lcom/amplitude/core/Amplitude;
+}
+
+public final class com/amplitude/core/AmplitudeKt {
+	public static final fun Amplitude (Ljava/lang/String;Lkotlin/jvm/functions/Function1;)Lcom/amplitude/core/Amplitude;
+}
+
+public class com/amplitude/core/Configuration {
+	public static final field Companion Lcom/amplitude/core/Configuration$Companion;
+	public static final field DEFAULT_INSTANCE Ljava/lang/String;
+	public static final field FLUSH_INTERVAL_MILLIS I
+	public static final field FLUSH_MAX_RETRIES I
+	public static final field FLUSH_QUEUE_SIZE I
+	public static final field IDENTIFY_BATCH_INTERVAL_MILLIS J
+	public fun <init> (Ljava/lang/String;)V
+	public fun <init> (Ljava/lang/String;I)V
+	public fun <init> (Ljava/lang/String;II)V
+	public fun <init> (Ljava/lang/String;IILjava/lang/String;)V
+	public fun <init> (Ljava/lang/String;IILjava/lang/String;Z)V
+	public fun <init> (Ljava/lang/String;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;)V
+	public fun <init> (Ljava/lang/String;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;)V
+	public fun <init> (Ljava/lang/String;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;)V
+	public fun <init> (Ljava/lang/String;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;)V
+	public fun <init> (Ljava/lang/String;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;)V
+	public fun <init> (Ljava/lang/String;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;I)V
+	public fun <init> (Ljava/lang/String;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZ)V
+	public fun <init> (Ljava/lang/String;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;)V
+	public fun <init> (Ljava/lang/String;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;)V
+	public fun <init> (Ljava/lang/String;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;)V
+	public fun <init> (Ljava/lang/String;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;)V
+	public fun <init> (Ljava/lang/String;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;J)V
+	public fun <init> (Ljava/lang/String;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;JLcom/amplitude/core/StorageProvider;)V
+	public fun <init> (Ljava/lang/String;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;JLcom/amplitude/core/StorageProvider;Lcom/amplitude/id/IdentityStorageProvider;)V
+	public fun <init> (Ljava/lang/String;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;JLcom/amplitude/core/StorageProvider;Lcom/amplitude/id/IdentityStorageProvider;Ljava/lang/Boolean;)V
+	public fun <init> (Ljava/lang/String;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;JLcom/amplitude/core/StorageProvider;Lcom/amplitude/id/IdentityStorageProvider;Ljava/lang/Boolean;Ljava/lang/String;)V
+	public fun <init> (Ljava/lang/String;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;JLcom/amplitude/core/StorageProvider;Lcom/amplitude/id/IdentityStorageProvider;Ljava/lang/Boolean;Ljava/lang/String;Ljava/lang/Long;)V
+	public fun <init> (Ljava/lang/String;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;JLcom/amplitude/core/StorageProvider;Lcom/amplitude/id/IdentityStorageProvider;Ljava/lang/Boolean;Ljava/lang/String;Ljava/lang/Long;Lcom/amplitude/core/utilities/http/HttpClientInterface;)V
+	public fun <init> (Ljava/lang/String;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;JLcom/amplitude/core/StorageProvider;Lcom/amplitude/id/IdentityStorageProvider;Ljava/lang/Boolean;Ljava/lang/String;Ljava/lang/Long;Lcom/amplitude/core/utilities/http/HttpClientInterface;Z)V
+	public fun <init> (Ljava/lang/String;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;JLcom/amplitude/core/StorageProvider;Lcom/amplitude/id/IdentityStorageProvider;Ljava/lang/Boolean;Ljava/lang/String;Ljava/lang/Long;Lcom/amplitude/core/utilities/http/HttpClientInterface;ZZ)V
+	public synthetic fun <init> (Ljava/lang/String;IILjava/lang/String;ZLcom/amplitude/core/StorageProvider;Lcom/amplitude/core/LoggerProvider;Ljava/lang/Integer;Ljava/lang/String;Lkotlin/jvm/functions/Function3;IZLcom/amplitude/core/ServerZone;Ljava/lang/String;Lcom/amplitude/core/events/Plan;Lcom/amplitude/core/events/IngestionMetadata;JLcom/amplitude/core/StorageProvider;Lcom/amplitude/id/IdentityStorageProvider;Ljava/lang/Boolean;Ljava/lang/String;Ljava/lang/Long;Lcom/amplitude/core/utilities/http/HttpClientInterface;ZZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getApiHost ()Ljava/lang/String;
+	public final fun getApiKey ()Ljava/lang/String;
+	public fun getCallback ()Lkotlin/jvm/functions/Function3;
+	public fun getDeviceId ()Ljava/lang/String;
+	public fun getEnableDiagnostics ()Z
+	public fun getEnableRequestBodyCompression ()Z
+	public fun getFlushIntervalMillis ()I
+	public fun getFlushMaxRetries ()I
+	public fun getFlushQueueSize ()I
+	public fun getHttpClient ()Lcom/amplitude/core/utilities/http/HttpClientInterface;
+	public fun getIdentifyBatchIntervalMillis ()J
+	public fun getIdentifyInterceptStorageProvider ()Lcom/amplitude/core/StorageProvider;
+	public fun getIdentityStorageProvider ()Lcom/amplitude/id/IdentityStorageProvider;
+	public fun getIngestionMetadata ()Lcom/amplitude/core/events/IngestionMetadata;
+	public fun getInstanceName ()Ljava/lang/String;
+	public fun getLoggerProvider ()Lcom/amplitude/core/LoggerProvider;
+	public fun getMinIdLength ()Ljava/lang/Integer;
+	public fun getOffline ()Ljava/lang/Boolean;
+	public fun getOptOut ()Z
+	public fun getPartnerId ()Ljava/lang/String;
+	public fun getPlan ()Lcom/amplitude/core/events/Plan;
+	public fun getServerUrl ()Ljava/lang/String;
+	public fun getServerZone ()Lcom/amplitude/core/ServerZone;
+	public fun getSessionId ()Ljava/lang/Long;
+	public fun getStorageProvider ()Lcom/amplitude/core/StorageProvider;
+	public fun getUseBatch ()Z
+	public final fun isValid ()Z
+	public fun setCallback (Lkotlin/jvm/functions/Function3;)V
+	public fun setDeviceId (Ljava/lang/String;)V
+	public fun setEnableDiagnostics (Z)V
+	public fun setEnableRequestBodyCompression (Z)V
+	public fun setFlushIntervalMillis (I)V
+	public fun setFlushMaxRetries (I)V
+	public fun setFlushQueueSize (I)V
+	public fun setHttpClient (Lcom/amplitude/core/utilities/http/HttpClientInterface;)V
+	public fun setIdentifyBatchIntervalMillis (J)V
+	public fun setIdentifyInterceptStorageProvider (Lcom/amplitude/core/StorageProvider;)V
+	public fun setIdentityStorageProvider (Lcom/amplitude/id/IdentityStorageProvider;)V
+	public fun setIngestionMetadata (Lcom/amplitude/core/events/IngestionMetadata;)V
+	public fun setInstanceName (Ljava/lang/String;)V
+	public fun setMinIdLength (Ljava/lang/Integer;)V
+	public fun setOffline (Ljava/lang/Boolean;)V
+	public fun setOptOut (Z)V
+	public fun setPartnerId (Ljava/lang/String;)V
+	public fun setPlan (Lcom/amplitude/core/events/Plan;)V
+	public fun setServerUrl (Ljava/lang/String;)V
+	public fun setServerZone (Lcom/amplitude/core/ServerZone;)V
+	public fun setSessionId (Ljava/lang/Long;)V
+	public fun setUseBatch (Z)V
+	public final fun shouldCompressUploadBody ()Z
+}
+
+public final class com/amplitude/core/Configuration$Companion {
+}
+
+public final class com/amplitude/core/Constants {
+	public static final field AMP_REVENUE_EVENT Ljava/lang/String;
+	public static final field BATCH_API_HOST Ljava/lang/String;
+	public static final field DEFAULT_API_HOST Ljava/lang/String;
+	public static final field EU_BATCH_API_HOST Ljava/lang/String;
+	public static final field EU_DEFAULT_API_HOST Ljava/lang/String;
+	public static final field GROUP_IDENTIFY_EVENT Ljava/lang/String;
+	public static final field IDENTIFY_EVENT Ljava/lang/String;
+	public static final field INSTANCE Lcom/amplitude/core/Constants;
+	public static final field MAX_PROPERTY_KEYS I
+	public static final field MAX_STRING_LENGTH I
+	public static final field SDK_LIBRARY Ljava/lang/String;
+	public static final field SDK_VERSION Ljava/lang/String;
+}
+
+public final class com/amplitude/core/Constants$EventProperties {
+	public static final field ACTION Ljava/lang/String;
+	public static final field BEGIN_TIME Ljava/lang/String;
+	public static final field BUILD Ljava/lang/String;
+	public static final field CLICKS Ljava/lang/String;
+	public static final field CLICK_COUNT Ljava/lang/String;
+	public static final field COORDINATE_X Ljava/lang/String;
+	public static final field COORDINATE_Y Ljava/lang/String;
+	public static final field DURATION Ljava/lang/String;
+	public static final field END_TIME Ljava/lang/String;
+	public static final field FRAGMENT_CLASS Ljava/lang/String;
+	public static final field FRAGMENT_IDENTIFIER Ljava/lang/String;
+	public static final field FRAGMENT_TAG Ljava/lang/String;
+	public static final field FROM_BACKGROUND Ljava/lang/String;
+	public static final field HIERARCHY Ljava/lang/String;
+	public static final field INSTANCE Lcom/amplitude/core/Constants$EventProperties;
+	public static final field LINK_REFERRER Ljava/lang/String;
+	public static final field LINK_URL Ljava/lang/String;
+	public static final field NETWORK_TRACKING_COMPLETION_TIME Ljava/lang/String;
+	public static final field NETWORK_TRACKING_DURATION Ljava/lang/String;
+	public static final field NETWORK_TRACKING_ERROR_MESSAGE Ljava/lang/String;
+	public static final field NETWORK_TRACKING_REQUEST_BODY_SIZE Ljava/lang/String;
+	public static final field NETWORK_TRACKING_REQUEST_METHOD Ljava/lang/String;
+	public static final field NETWORK_TRACKING_RESPONSE_BODY_SIZE Ljava/lang/String;
+	public static final field NETWORK_TRACKING_START_TIME Ljava/lang/String;
+	public static final field NETWORK_TRACKING_STATUS_CODE Ljava/lang/String;
+	public static final field NETWORK_TRACKING_URL Ljava/lang/String;
+	public static final field NETWORK_TRACKING_URL_FRAGMENT Ljava/lang/String;
+	public static final field NETWORK_TRACKING_URL_QUERY Ljava/lang/String;
+	public static final field PREVIOUS_BUILD Ljava/lang/String;
+	public static final field PREVIOUS_VERSION Ljava/lang/String;
+	public static final field SCREEN_NAME Ljava/lang/String;
+	public static final field TARGET_ACCESSIBILITY_LABEL Ljava/lang/String;
+	public static final field TARGET_CLASS Ljava/lang/String;
+	public static final field TARGET_RESOURCE Ljava/lang/String;
+	public static final field TARGET_SOURCE Ljava/lang/String;
+	public static final field TARGET_TAG Ljava/lang/String;
+	public static final field TARGET_TEXT Ljava/lang/String;
+	public static final field VERSION Ljava/lang/String;
+}
+
+public final class com/amplitude/core/Constants$EventTypes {
+	public static final field APPLICATION_BACKGROUNDED Ljava/lang/String;
+	public static final field APPLICATION_INSTALLED Ljava/lang/String;
+	public static final field APPLICATION_OPENED Ljava/lang/String;
+	public static final field APPLICATION_UPDATED Ljava/lang/String;
+	public static final field DEAD_CLICK Ljava/lang/String;
+	public static final field DEEP_LINK_OPENED Ljava/lang/String;
+	public static final field ELEMENT_INTERACTED Ljava/lang/String;
+	public static final field FRAGMENT_VIEWED Ljava/lang/String;
+	public static final field INSTANCE Lcom/amplitude/core/Constants$EventTypes;
+	public static final field NETWORK_TRACKING Ljava/lang/String;
+	public static final field RAGE_CLICK Ljava/lang/String;
+	public static final field SCREEN_VIEWED Ljava/lang/String;
+}
+
+public abstract interface class com/amplitude/core/LoggerProvider {
+	public abstract fun getLogger (Lcom/amplitude/core/Amplitude;)Lcom/amplitude/common/Logger;
+}
+
+public abstract interface annotation class com/amplitude/core/RestrictedAmplitudeFeature : java/lang/annotation/Annotation {
+}
+
+public final class com/amplitude/core/ServerZone : java/lang/Enum {
+	public static final field EU Lcom/amplitude/core/ServerZone;
+	public static final field US Lcom/amplitude/core/ServerZone;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/amplitude/core/ServerZone;
+	public static fun values ()[Lcom/amplitude/core/ServerZone;
+}
+
+public final class com/amplitude/core/State {
+	public fun <init> ()V
+	public final fun add (Lcom/amplitude/core/platform/ObservePlugin;Lcom/amplitude/core/Amplitude;)Z
+	public final fun getDeviceId ()Ljava/lang/String;
+	public final fun getPlugins ()Ljava/util/List;
+	public final fun getUserId ()Ljava/lang/String;
+	public final fun remove (Lcom/amplitude/core/platform/ObservePlugin;)Z
+	public final fun setDeviceId (Ljava/lang/String;)V
+	public final fun setUserId (Ljava/lang/String;)V
+}
+
+public abstract interface class com/amplitude/core/Storage {
+	public abstract fun getEventsString (Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun getResponseHandler (Lcom/amplitude/core/platform/EventPipeline;Lcom/amplitude/core/Configuration;Lkotlinx/coroutines/CoroutineScope;Lkotlinx/coroutines/CoroutineDispatcher;)Lcom/amplitude/core/utilities/http/ResponseHandler;
+	public abstract fun read (Lcom/amplitude/core/Storage$Constants;)Ljava/lang/String;
+	public abstract fun readEventsContent ()Ljava/util/List;
+	public abstract fun remove (Lcom/amplitude/core/Storage$Constants;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun rollover (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun write (Lcom/amplitude/core/Storage$Constants;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun writeEvent (Lcom/amplitude/core/events/BaseEvent;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class com/amplitude/core/Storage$Constants : java/lang/Enum {
+	public static final field APP_BUILD Lcom/amplitude/core/Storage$Constants;
+	public static final field APP_VERSION Lcom/amplitude/core/Storage$Constants;
+	public static final field Events Lcom/amplitude/core/Storage$Constants;
+	public static final field LAST_EVENT_ID Lcom/amplitude/core/Storage$Constants;
+	public static final field LAST_EVENT_TIME Lcom/amplitude/core/Storage$Constants;
+	public static final field OPT_OUT Lcom/amplitude/core/Storage$Constants;
+	public static final field PREVIOUS_SESSION_ID Lcom/amplitude/core/Storage$Constants;
+	public static final field REMOTE_CONFIG Lcom/amplitude/core/Storage$Constants;
+	public static final field REMOTE_CONFIG_TIMESTAMP Lcom/amplitude/core/Storage$Constants;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getRawVal ()Ljava/lang/String;
+	public static fun valueOf (Ljava/lang/String;)Lcom/amplitude/core/Storage$Constants;
+	public static fun values ()[Lcom/amplitude/core/Storage$Constants;
+}
+
+public abstract interface class com/amplitude/core/StorageProvider {
+	public abstract fun getStorage (Lcom/amplitude/core/Amplitude;Ljava/lang/String;)Lcom/amplitude/core/Storage;
+	public static synthetic fun getStorage$default (Lcom/amplitude/core/StorageProvider;Lcom/amplitude/core/Amplitude;Ljava/lang/String;ILjava/lang/Object;)Lcom/amplitude/core/Storage;
+}
+
+public abstract interface class com/amplitude/core/diagnostics/DiagnosticsClient {
+	public abstract fun close ()V
+	public abstract fun flush ()V
+	public abstract fun increment (Ljava/lang/String;J)V
+	public static synthetic fun increment$default (Lcom/amplitude/core/diagnostics/DiagnosticsClient;Ljava/lang/String;JILjava/lang/Object;)V
+	public abstract fun recordEvent (Ljava/lang/String;Ljava/util/Map;)V
+	public static synthetic fun recordEvent$default (Lcom/amplitude/core/diagnostics/DiagnosticsClient;Ljava/lang/String;Ljava/util/Map;ILjava/lang/Object;)V
+	public abstract fun recordHistogram (Ljava/lang/String;D)V
+	public abstract fun setTag (Ljava/lang/String;Ljava/lang/String;)V
+	public abstract fun setTags (Ljava/util/Map;)V
+}
+
+public abstract interface class com/amplitude/core/diagnostics/DiagnosticsClientProvider {
+	public abstract fun get ()Lcom/amplitude/core/diagnostics/DiagnosticsClient;
+}
+
+public final class com/amplitude/core/diagnostics/DiagnosticsContextInfo {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()Ljava/lang/String;
+	public final fun component6 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Lcom/amplitude/core/diagnostics/DiagnosticsContextInfo;
+	public static synthetic fun copy$default (Lcom/amplitude/core/diagnostics/DiagnosticsContextInfo;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lcom/amplitude/core/diagnostics/DiagnosticsContextInfo;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getAppVersion ()Ljava/lang/String;
+	public final fun getManufacturer ()Ljava/lang/String;
+	public final fun getModel ()Ljava/lang/String;
+	public final fun getOsName ()Ljava/lang/String;
+	public final fun getOsVersion ()Ljava/lang/String;
+	public final fun getPlatform ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class com/amplitude/core/diagnostics/DiagnosticsContextProvider {
+	public abstract fun getContextInfo ()Lcom/amplitude/core/diagnostics/DiagnosticsContextInfo;
+}
+
+public class com/amplitude/core/events/BaseEvent : com/amplitude/core/events/EventOptions {
+	public field eventType Ljava/lang/String;
+	public fun <init> ()V
+	public final fun getEventProperties ()Ljava/util/Map;
+	public fun getEventType ()Ljava/lang/String;
+	public final fun getGroupProperties ()Ljava/util/Map;
+	public final fun getGroups ()Ljava/util/Map;
+	public final fun getUserProperties ()Ljava/util/Map;
+	public fun isValid ()Z
+	public final fun mergeEventOptions (Lcom/amplitude/core/events/EventOptions;)V
+	public final fun setEventProperties (Ljava/util/Map;)V
+	public fun setEventType (Ljava/lang/String;)V
+	public final fun setGroupProperties (Ljava/util/Map;)V
+	public final fun setGroups (Ljava/util/Map;)V
+	public final fun setUserProperties (Ljava/util/Map;)V
+}
+
+public class com/amplitude/core/events/EventOptions {
+	public fun <init> ()V
+	public final fun getAdid ()Ljava/lang/String;
+	public final fun getAndroidId ()Ljava/lang/String;
+	public final fun getAppSetId ()Ljava/lang/String;
+	public final fun getAppVersion ()Ljava/lang/String;
+	public final fun getCallback ()Lkotlin/jvm/functions/Function3;
+	public final fun getCarrier ()Ljava/lang/String;
+	public final fun getCity ()Ljava/lang/String;
+	public final fun getCountry ()Ljava/lang/String;
+	public final fun getCurrency ()Ljava/lang/String;
+	public final fun getDeviceBrand ()Ljava/lang/String;
+	public final fun getDeviceId ()Ljava/lang/String;
+	public final fun getDeviceManufacturer ()Ljava/lang/String;
+	public final fun getDeviceModel ()Ljava/lang/String;
+	public final fun getDma ()Ljava/lang/String;
+	public final fun getEventId ()Ljava/lang/Long;
+	public final fun getExtra ()Ljava/util/Map;
+	public final fun getIdfa ()Ljava/lang/String;
+	public final fun getIdfv ()Ljava/lang/String;
+	public final fun getIngestionMetadata ()Lcom/amplitude/core/events/IngestionMetadata;
+	public final fun getInsertId ()Ljava/lang/String;
+	public final fun getIp ()Ljava/lang/String;
+	public final fun getLanguage ()Ljava/lang/String;
+	public final fun getLibrary ()Ljava/lang/String;
+	public final fun getLocationLat ()Ljava/lang/Double;
+	public final fun getLocationLng ()Ljava/lang/Double;
+	public final fun getOsName ()Ljava/lang/String;
+	public final fun getOsVersion ()Ljava/lang/String;
+	public final fun getPartnerId ()Ljava/lang/String;
+	public final fun getPlan ()Lcom/amplitude/core/events/Plan;
+	public final fun getPlatform ()Ljava/lang/String;
+	public final fun getPrice ()Ljava/lang/Double;
+	public final fun getProductId ()Ljava/lang/String;
+	public final fun getQuantity ()Ljava/lang/Integer;
+	public final fun getRegion ()Ljava/lang/String;
+	public final fun getRevenue ()Ljava/lang/Double;
+	public final fun getRevenueType ()Ljava/lang/String;
+	public final fun getSessionId ()Ljava/lang/Long;
+	public final fun getTimestamp ()Ljava/lang/Long;
+	public final fun getUserId ()Ljava/lang/String;
+	public final fun getVersionName ()Ljava/lang/String;
+	public final fun setAdid (Ljava/lang/String;)V
+	public final fun setAndroidId (Ljava/lang/String;)V
+	public final fun setAppSetId (Ljava/lang/String;)V
+	public final fun setAppVersion (Ljava/lang/String;)V
+	public final fun setCallback (Lkotlin/jvm/functions/Function3;)V
+	public final fun setCarrier (Ljava/lang/String;)V
+	public final fun setCity (Ljava/lang/String;)V
+	public final fun setCountry (Ljava/lang/String;)V
+	public final fun setCurrency (Ljava/lang/String;)V
+	public final fun setDeviceBrand (Ljava/lang/String;)V
+	public final fun setDeviceId (Ljava/lang/String;)V
+	public final fun setDeviceManufacturer (Ljava/lang/String;)V
+	public final fun setDeviceModel (Ljava/lang/String;)V
+	public final fun setDma (Ljava/lang/String;)V
+	public final fun setEventId (Ljava/lang/Long;)V
+	public final fun setExtra (Ljava/util/Map;)V
+	public final fun setIdfa (Ljava/lang/String;)V
+	public final fun setIdfv (Ljava/lang/String;)V
+	public final fun setIngestionMetadata (Lcom/amplitude/core/events/IngestionMetadata;)V
+	public final fun setInsertId (Ljava/lang/String;)V
+	public final fun setIp (Ljava/lang/String;)V
+	public final fun setLanguage (Ljava/lang/String;)V
+	public final fun setLibrary (Ljava/lang/String;)V
+	public final fun setLocationLat (Ljava/lang/Double;)V
+	public final fun setLocationLng (Ljava/lang/Double;)V
+	public final fun setOsName (Ljava/lang/String;)V
+	public final fun setOsVersion (Ljava/lang/String;)V
+	public final fun setPartnerId (Ljava/lang/String;)V
+	public final fun setPlan (Lcom/amplitude/core/events/Plan;)V
+	public final fun setPlatform (Ljava/lang/String;)V
+	public final fun setPrice (Ljava/lang/Double;)V
+	public final fun setProductId (Ljava/lang/String;)V
+	public final fun setQuantity (Ljava/lang/Integer;)V
+	public final fun setRegion (Ljava/lang/String;)V
+	public final fun setRevenue (Ljava/lang/Double;)V
+	public final fun setRevenueType (Ljava/lang/String;)V
+	public final fun setSessionId (Ljava/lang/Long;)V
+	public final fun setTimestamp (Ljava/lang/Long;)V
+	public final fun setUserId (Ljava/lang/String;)V
+	public final fun setVersionName (Ljava/lang/String;)V
+}
+
+public class com/amplitude/core/events/GroupIdentifyEvent : com/amplitude/core/events/BaseEvent {
+	public fun <init> ()V
+	public fun getEventType ()Ljava/lang/String;
+	public fun isValid ()Z
+	public fun setEventType (Ljava/lang/String;)V
+}
+
+public class com/amplitude/core/events/Identify {
+	public static final field Companion Lcom/amplitude/core/events/Identify$Companion;
+	public static final field UNSET_VALUE Ljava/lang/String;
+	public fun <init> ()V
+	public final fun add (Ljava/lang/String;D)Lcom/amplitude/core/events/Identify;
+	public final fun add (Ljava/lang/String;F)Lcom/amplitude/core/events/Identify;
+	public final fun add (Ljava/lang/String;I)Lcom/amplitude/core/events/Identify;
+	public final fun add (Ljava/lang/String;J)Lcom/amplitude/core/events/Identify;
+	public final fun append (Ljava/lang/String;D)Lcom/amplitude/core/events/Identify;
+	public final fun append (Ljava/lang/String;F)Lcom/amplitude/core/events/Identify;
+	public final fun append (Ljava/lang/String;I)Lcom/amplitude/core/events/Identify;
+	public final fun append (Ljava/lang/String;J)Lcom/amplitude/core/events/Identify;
+	public final fun append (Ljava/lang/String;Ljava/lang/String;)Lcom/amplitude/core/events/Identify;
+	public final fun append (Ljava/lang/String;Ljava/util/List;)Lcom/amplitude/core/events/Identify;
+	public final fun append (Ljava/lang/String;Ljava/util/Map;)Lcom/amplitude/core/events/Identify;
+	public final fun append (Ljava/lang/String;Z)Lcom/amplitude/core/events/Identify;
+	public final fun append (Ljava/lang/String;[Ljava/lang/Boolean;)Lcom/amplitude/core/events/Identify;
+	public final fun append (Ljava/lang/String;[Ljava/lang/Double;)Lcom/amplitude/core/events/Identify;
+	public final fun append (Ljava/lang/String;[Ljava/lang/Float;)Lcom/amplitude/core/events/Identify;
+	public final fun append (Ljava/lang/String;[Ljava/lang/Integer;)Lcom/amplitude/core/events/Identify;
+	public final fun append (Ljava/lang/String;[Ljava/lang/Long;)Lcom/amplitude/core/events/Identify;
+	public final fun append (Ljava/lang/String;[Ljava/lang/String;)Lcom/amplitude/core/events/Identify;
+	public final fun clearAll ()Lcom/amplitude/core/events/Identify;
+	public final fun getProperties ()Ljava/util/Map;
+	public final fun postInsert (Ljava/lang/String;D)Lcom/amplitude/core/events/Identify;
+	public final fun postInsert (Ljava/lang/String;F)Lcom/amplitude/core/events/Identify;
+	public final fun postInsert (Ljava/lang/String;I)Lcom/amplitude/core/events/Identify;
+	public final fun postInsert (Ljava/lang/String;J)Lcom/amplitude/core/events/Identify;
+	public final fun postInsert (Ljava/lang/String;Ljava/lang/String;)Lcom/amplitude/core/events/Identify;
+	public final fun postInsert (Ljava/lang/String;Ljava/util/List;)Lcom/amplitude/core/events/Identify;
+	public final fun postInsert (Ljava/lang/String;Ljava/util/Map;)Lcom/amplitude/core/events/Identify;
+	public final fun postInsert (Ljava/lang/String;Z)Lcom/amplitude/core/events/Identify;
+	public final fun postInsert (Ljava/lang/String;[Ljava/lang/Boolean;)Lcom/amplitude/core/events/Identify;
+	public final fun postInsert (Ljava/lang/String;[Ljava/lang/Double;)Lcom/amplitude/core/events/Identify;
+	public final fun postInsert (Ljava/lang/String;[Ljava/lang/Float;)Lcom/amplitude/core/events/Identify;
+	public final fun postInsert (Ljava/lang/String;[Ljava/lang/Integer;)Lcom/amplitude/core/events/Identify;
+	public final fun postInsert (Ljava/lang/String;[Ljava/lang/Long;)Lcom/amplitude/core/events/Identify;
+	public final fun postInsert (Ljava/lang/String;[Ljava/lang/String;)Lcom/amplitude/core/events/Identify;
+	public final fun preInsert (Ljava/lang/String;D)Lcom/amplitude/core/events/Identify;
+	public final fun preInsert (Ljava/lang/String;F)Lcom/amplitude/core/events/Identify;
+	public final fun preInsert (Ljava/lang/String;I)Lcom/amplitude/core/events/Identify;
+	public final fun preInsert (Ljava/lang/String;J)Lcom/amplitude/core/events/Identify;
+	public final fun preInsert (Ljava/lang/String;Ljava/lang/String;)Lcom/amplitude/core/events/Identify;
+	public final fun preInsert (Ljava/lang/String;Ljava/util/List;)Lcom/amplitude/core/events/Identify;
+	public final fun preInsert (Ljava/lang/String;Ljava/util/Map;)Lcom/amplitude/core/events/Identify;
+	public final fun preInsert (Ljava/lang/String;Z)Lcom/amplitude/core/events/Identify;
+	public final fun preInsert (Ljava/lang/String;[Ljava/lang/Boolean;)Lcom/amplitude/core/events/Identify;
+	public final fun preInsert (Ljava/lang/String;[Ljava/lang/Double;)Lcom/amplitude/core/events/Identify;
+	public final fun preInsert (Ljava/lang/String;[Ljava/lang/Float;)Lcom/amplitude/core/events/Identify;
+	public final fun preInsert (Ljava/lang/String;[Ljava/lang/Integer;)Lcom/amplitude/core/events/Identify;
+	public final fun preInsert (Ljava/lang/String;[Ljava/lang/Long;)Lcom/amplitude/core/events/Identify;
+	public final fun preInsert (Ljava/lang/String;[Ljava/lang/String;)Lcom/amplitude/core/events/Identify;
+	public final fun prepend (Ljava/lang/String;D)Lcom/amplitude/core/events/Identify;
+	public final fun prepend (Ljava/lang/String;F)Lcom/amplitude/core/events/Identify;
+	public final fun prepend (Ljava/lang/String;I)Lcom/amplitude/core/events/Identify;
+	public final fun prepend (Ljava/lang/String;J)Lcom/amplitude/core/events/Identify;
+	public final fun prepend (Ljava/lang/String;Ljava/lang/String;)Lcom/amplitude/core/events/Identify;
+	public final fun prepend (Ljava/lang/String;Ljava/util/List;)Lcom/amplitude/core/events/Identify;
+	public final fun prepend (Ljava/lang/String;Ljava/util/Map;)Lcom/amplitude/core/events/Identify;
+	public final fun prepend (Ljava/lang/String;Z)Lcom/amplitude/core/events/Identify;
+	public final fun prepend (Ljava/lang/String;[Ljava/lang/Boolean;)Lcom/amplitude/core/events/Identify;
+	public final fun prepend (Ljava/lang/String;[Ljava/lang/Double;)Lcom/amplitude/core/events/Identify;
+	public final fun prepend (Ljava/lang/String;[Ljava/lang/Float;)Lcom/amplitude/core/events/Identify;
+	public final fun prepend (Ljava/lang/String;[Ljava/lang/Integer;)Lcom/amplitude/core/events/Identify;
+	public final fun prepend (Ljava/lang/String;[Ljava/lang/Long;)Lcom/amplitude/core/events/Identify;
+	public final fun prepend (Ljava/lang/String;[Ljava/lang/String;)Lcom/amplitude/core/events/Identify;
+	public final fun remove (Ljava/lang/String;D)Lcom/amplitude/core/events/Identify;
+	public final fun remove (Ljava/lang/String;F)Lcom/amplitude/core/events/Identify;
+	public final fun remove (Ljava/lang/String;I)Lcom/amplitude/core/events/Identify;
+	public final fun remove (Ljava/lang/String;J)Lcom/amplitude/core/events/Identify;
+	public final fun remove (Ljava/lang/String;Ljava/lang/String;)Lcom/amplitude/core/events/Identify;
+	public final fun remove (Ljava/lang/String;Ljava/util/List;)Lcom/amplitude/core/events/Identify;
+	public final fun remove (Ljava/lang/String;Ljava/util/Map;)Lcom/amplitude/core/events/Identify;
+	public final fun remove (Ljava/lang/String;Z)Lcom/amplitude/core/events/Identify;
+	public final fun remove (Ljava/lang/String;[Ljava/lang/Boolean;)Lcom/amplitude/core/events/Identify;
+	public final fun remove (Ljava/lang/String;[Ljava/lang/Double;)Lcom/amplitude/core/events/Identify;
+	public final fun remove (Ljava/lang/String;[Ljava/lang/Float;)Lcom/amplitude/core/events/Identify;
+	public final fun remove (Ljava/lang/String;[Ljava/lang/Integer;)Lcom/amplitude/core/events/Identify;
+	public final fun remove (Ljava/lang/String;[Ljava/lang/Long;)Lcom/amplitude/core/events/Identify;
+	public final fun remove (Ljava/lang/String;[Ljava/lang/String;)Lcom/amplitude/core/events/Identify;
+	public final fun set (Ljava/lang/String;D)Lcom/amplitude/core/events/Identify;
+	public final fun set (Ljava/lang/String;F)Lcom/amplitude/core/events/Identify;
+	public final fun set (Ljava/lang/String;I)Lcom/amplitude/core/events/Identify;
+	public final fun set (Ljava/lang/String;J)Lcom/amplitude/core/events/Identify;
+	public final fun set (Ljava/lang/String;Ljava/lang/Object;)Lcom/amplitude/core/events/Identify;
+	public final fun set (Ljava/lang/String;Ljava/lang/String;)Lcom/amplitude/core/events/Identify;
+	public final fun set (Ljava/lang/String;Ljava/util/List;)Lcom/amplitude/core/events/Identify;
+	public final fun set (Ljava/lang/String;Ljava/util/Map;)Lcom/amplitude/core/events/Identify;
+	public final fun set (Ljava/lang/String;Z)Lcom/amplitude/core/events/Identify;
+	public final fun set (Ljava/lang/String;[Ljava/lang/Boolean;)Lcom/amplitude/core/events/Identify;
+	public final fun set (Ljava/lang/String;[Ljava/lang/Double;)Lcom/amplitude/core/events/Identify;
+	public final fun set (Ljava/lang/String;[Ljava/lang/Float;)Lcom/amplitude/core/events/Identify;
+	public final fun set (Ljava/lang/String;[Ljava/lang/Integer;)Lcom/amplitude/core/events/Identify;
+	public final fun set (Ljava/lang/String;[Ljava/lang/Long;)Lcom/amplitude/core/events/Identify;
+	public final fun set (Ljava/lang/String;[Ljava/lang/String;)Lcom/amplitude/core/events/Identify;
+	public final fun setOnce (Ljava/lang/String;D)Lcom/amplitude/core/events/Identify;
+	public final fun setOnce (Ljava/lang/String;F)Lcom/amplitude/core/events/Identify;
+	public final fun setOnce (Ljava/lang/String;I)Lcom/amplitude/core/events/Identify;
+	public final fun setOnce (Ljava/lang/String;J)Lcom/amplitude/core/events/Identify;
+	public final fun setOnce (Ljava/lang/String;Ljava/lang/Object;)Lcom/amplitude/core/events/Identify;
+	public final fun setOnce (Ljava/lang/String;Ljava/lang/String;)Lcom/amplitude/core/events/Identify;
+	public final fun setOnce (Ljava/lang/String;Ljava/util/List;)Lcom/amplitude/core/events/Identify;
+	public final fun setOnce (Ljava/lang/String;Ljava/util/Map;)Lcom/amplitude/core/events/Identify;
+	public final fun setOnce (Ljava/lang/String;Z)Lcom/amplitude/core/events/Identify;
+	public final fun setOnce (Ljava/lang/String;[Ljava/lang/Boolean;)Lcom/amplitude/core/events/Identify;
+	public final fun setOnce (Ljava/lang/String;[Ljava/lang/Double;)Lcom/amplitude/core/events/Identify;
+	public final fun setOnce (Ljava/lang/String;[Ljava/lang/Float;)Lcom/amplitude/core/events/Identify;
+	public final fun setOnce (Ljava/lang/String;[Ljava/lang/Integer;)Lcom/amplitude/core/events/Identify;
+	public final fun setOnce (Ljava/lang/String;[Ljava/lang/Long;)Lcom/amplitude/core/events/Identify;
+	public final fun setOnce (Ljava/lang/String;[Ljava/lang/String;)Lcom/amplitude/core/events/Identify;
+	public final fun unset (Ljava/lang/String;)Lcom/amplitude/core/events/Identify;
+}
+
+public final class com/amplitude/core/events/Identify$Companion {
+}
+
+public class com/amplitude/core/events/IdentifyEvent : com/amplitude/core/events/BaseEvent {
+	public fun <init> ()V
+	public fun getEventType ()Ljava/lang/String;
+	public fun setEventType (Ljava/lang/String;)V
+}
+
+public final class com/amplitude/core/events/IdentifyOperation : java/lang/Enum {
+	public static final field ADD Lcom/amplitude/core/events/IdentifyOperation;
+	public static final field APPEND Lcom/amplitude/core/events/IdentifyOperation;
+	public static final field CLEAR_ALL Lcom/amplitude/core/events/IdentifyOperation;
+	public static final field POST_INSERT Lcom/amplitude/core/events/IdentifyOperation;
+	public static final field PREPEND Lcom/amplitude/core/events/IdentifyOperation;
+	public static final field PRE_INSERT Lcom/amplitude/core/events/IdentifyOperation;
+	public static final field REMOVE Lcom/amplitude/core/events/IdentifyOperation;
+	public static final field SET Lcom/amplitude/core/events/IdentifyOperation;
+	public static final field SET_ONCE Lcom/amplitude/core/events/IdentifyOperation;
+	public static final field UNSET Lcom/amplitude/core/events/IdentifyOperation;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getOperationType ()Ljava/lang/String;
+	public static fun valueOf (Ljava/lang/String;)Lcom/amplitude/core/events/IdentifyOperation;
+	public static fun values ()[Lcom/amplitude/core/events/IdentifyOperation;
+}
+
+public class com/amplitude/core/events/IngestionMetadata {
+	public static final field AMP_INGESTION_METADATA_SOURCE_NAME Ljava/lang/String;
+	public static final field AMP_INGESTION_METADATA_SOURCE_VERSION Ljava/lang/String;
+	public static final field Companion Lcom/amplitude/core/events/IngestionMetadata$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun clone ()Lcom/amplitude/core/events/IngestionMetadata;
+	public final fun getSourceName ()Ljava/lang/String;
+	public final fun getSourceVersion ()Ljava/lang/String;
+}
+
+public final class com/amplitude/core/events/IngestionMetadata$Companion {
+}
+
+public class com/amplitude/core/events/Plan {
+	public static final field AMP_PLAN_BRANCH Ljava/lang/String;
+	public static final field AMP_PLAN_SOURCE Ljava/lang/String;
+	public static final field AMP_PLAN_VERSION Ljava/lang/String;
+	public static final field AMP_PLAN_VERSION_ID Ljava/lang/String;
+	public static final field Companion Lcom/amplitude/core/events/Plan$Companion;
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun clone ()Lcom/amplitude/core/events/Plan;
+	public final fun getBranch ()Ljava/lang/String;
+	public final fun getSource ()Ljava/lang/String;
+	public final fun getVersion ()Ljava/lang/String;
+	public final fun getVersionId ()Ljava/lang/String;
+}
+
+public final class com/amplitude/core/events/Plan$Companion {
+	public final fun fromJSONObject (Lorg/json/JSONObject;)Lcom/amplitude/core/events/Plan;
+}
+
+public class com/amplitude/core/events/Revenue {
+	public static final field Companion Lcom/amplitude/core/events/Revenue$Companion;
+	public fun <init> ()V
+	public final fun getCurrency ()Ljava/lang/String;
+	public final fun getPrice ()Ljava/lang/Double;
+	public final fun getProductId ()Ljava/lang/String;
+	public final fun getProperties ()Ljava/util/Map;
+	public final fun getQuantity ()I
+	public final fun getReceipt ()Ljava/lang/String;
+	public final fun getReceiptSig ()Ljava/lang/String;
+	public final fun getRevenue ()Ljava/lang/Double;
+	public final fun getRevenueType ()Ljava/lang/String;
+	public final fun isValid ()Z
+	public final fun setCurrency (Ljava/lang/String;)V
+	public final fun setPrice (Ljava/lang/Double;)V
+	public final fun setProductId (Ljava/lang/String;)V
+	public final fun setProperties (Ljava/util/Map;)V
+	public final fun setQuantity (I)V
+	public final fun setReceipt (Ljava/lang/String;)V
+	public final fun setReceipt (Ljava/lang/String;Ljava/lang/String;)Lcom/amplitude/core/events/Revenue;
+	public final fun setReceiptSig (Ljava/lang/String;)V
+	public final fun setRevenue (Ljava/lang/Double;)V
+	public final fun setRevenueType (Ljava/lang/String;)V
+	public final fun toRevenueEvent ()Lcom/amplitude/core/events/RevenueEvent;
+}
+
+public final class com/amplitude/core/events/Revenue$Companion {
+}
+
+public class com/amplitude/core/events/RevenueEvent : com/amplitude/core/events/BaseEvent {
+	public fun <init> ()V
+	public fun getEventType ()Ljava/lang/String;
+	public fun setEventType (Ljava/lang/String;)V
+}
+
+public final class com/amplitude/core/network/NetworkTrackingOptions {
+	public static final field Companion Lcom/amplitude/core/network/NetworkTrackingOptions$Companion;
+	public fun <init> (Ljava/util/List;Ljava/util/List;Z)V
+	public synthetic fun <init> (Ljava/util/List;Ljava/util/List;ZILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun component2 ()Ljava/util/List;
+	public final fun component3 ()Z
+	public final fun copy (Ljava/util/List;Ljava/util/List;Z)Lcom/amplitude/core/network/NetworkTrackingOptions;
+	public static synthetic fun copy$default (Lcom/amplitude/core/network/NetworkTrackingOptions;Ljava/util/List;Ljava/util/List;ZILjava/lang/Object;)Lcom/amplitude/core/network/NetworkTrackingOptions;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getCaptureRules ()Ljava/util/List;
+	public final fun getIgnoreAmplitudeRequests ()Z
+	public final fun getIgnoreHosts ()Ljava/util/List;
+	public fun hashCode ()I
+	public final fun shouldIgnore (Ljava/lang/String;)Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/amplitude/core/network/NetworkTrackingOptions$CaptureRule {
+	public fun <init> (Ljava/util/List;Ljava/util/List;)V
+	public synthetic fun <init> (Ljava/util/List;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/util/List;
+	public final fun component2 ()Ljava/util/List;
+	public final fun copy (Ljava/util/List;Ljava/util/List;)Lcom/amplitude/core/network/NetworkTrackingOptions$CaptureRule;
+	public static synthetic fun copy$default (Lcom/amplitude/core/network/NetworkTrackingOptions$CaptureRule;Ljava/util/List;Ljava/util/List;ILjava/lang/Object;)Lcom/amplitude/core/network/NetworkTrackingOptions$CaptureRule;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getHosts ()Ljava/util/List;
+	public final fun getStatusCodeRange ()Ljava/util/List;
+	public fun hashCode ()I
+	public final fun matches (Ljava/lang/String;)Z
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/amplitude/core/network/NetworkTrackingOptions$Companion {
+	public final fun getDEFAULT ()Lcom/amplitude/core/network/NetworkTrackingOptions;
+}
+
+public final class com/amplitude/core/network/NetworkTrackingOptionsKt {
+	public static final fun matches (Ljava/util/List;Ljava/lang/String;I)Z
+}
+
+public final class com/amplitude/core/network/NetworkTrackingPlugin : com/amplitude/core/platform/Plugin, okhttp3/Interceptor {
+	public field amplitude Lcom/amplitude/core/Amplitude;
+	public fun <init> ()V
+	public fun <init> (Lcom/amplitude/core/network/NetworkTrackingOptions;)V
+	public synthetic fun <init> (Lcom/amplitude/core/network/NetworkTrackingOptions;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getAmplitude ()Lcom/amplitude/core/Amplitude;
+	public fun getType ()Lcom/amplitude/core/platform/Plugin$Type;
+	public fun intercept (Lokhttp3/Interceptor$Chain;)Lokhttp3/Response;
+	public fun setAmplitude (Lcom/amplitude/core/Amplitude;)V
+}
+
+public abstract class com/amplitude/core/platform/DestinationPlugin : com/amplitude/core/platform/EventPlugin {
+	public field amplitude Lcom/amplitude/core/Amplitude;
+	public fun <init> ()V
+	public final fun add (Lcom/amplitude/core/platform/Plugin;)V
+	public final fun execute (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
+	public fun getAmplitude ()Lcom/amplitude/core/Amplitude;
+	public fun getType ()Lcom/amplitude/core/platform/Plugin$Type;
+	public final fun process (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
+	public final fun remove (Lcom/amplitude/core/platform/Plugin;)V
+	public fun setAmplitude (Lcom/amplitude/core/Amplitude;)V
+	public fun setup (Lcom/amplitude/core/Amplitude;)V
+}
+
+public final class com/amplitude/core/platform/EventPipeline {
+	public static final field Companion Lcom/amplitude/core/platform/EventPipeline$Companion;
+	public fun <init> (Lcom/amplitude/core/Amplitude;Ljava/util/concurrent/atomic/AtomicInteger;Lcom/amplitude/core/utilities/http/HttpClientInterface;Lcom/amplitude/core/utilities/ExponentialBackoffRetryHandler;Lcom/amplitude/core/Storage;Lkotlinx/coroutines/CoroutineScope;Lkotlinx/coroutines/channels/Channel;Lkotlinx/coroutines/channels/Channel;Lcom/amplitude/core/utilities/http/ResponseHandler;)V
+	public synthetic fun <init> (Lcom/amplitude/core/Amplitude;Ljava/util/concurrent/atomic/AtomicInteger;Lcom/amplitude/core/utilities/http/HttpClientInterface;Lcom/amplitude/core/utilities/ExponentialBackoffRetryHandler;Lcom/amplitude/core/Storage;Lkotlinx/coroutines/CoroutineScope;Lkotlinx/coroutines/channels/Channel;Lkotlinx/coroutines/channels/Channel;Lcom/amplitude/core/utilities/http/ResponseHandler;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun flush ()V
+	public final fun getFlushSizeDivider ()Ljava/util/concurrent/atomic/AtomicInteger;
+	public final fun put (Lcom/amplitude/core/events/BaseEvent;)V
+	public final fun setFlushSizeDivider (Ljava/util/concurrent/atomic/AtomicInteger;)V
+	public final fun start ()V
+	public final fun stop ()V
+}
+
+public final class com/amplitude/core/platform/EventPipeline$Companion {
+}
+
+public abstract interface class com/amplitude/core/platform/EventPlugin : com/amplitude/core/platform/Plugin {
+	public fun flush ()V
+	public fun groupIdentify (Lcom/amplitude/core/events/GroupIdentifyEvent;)Lcom/amplitude/core/events/GroupIdentifyEvent;
+	public fun identify (Lcom/amplitude/core/events/IdentifyEvent;)Lcom/amplitude/core/events/IdentifyEvent;
+	public fun revenue (Lcom/amplitude/core/events/RevenueEvent;)Lcom/amplitude/core/events/RevenueEvent;
+	public fun track (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
+}
+
+public abstract class com/amplitude/core/platform/ObservePlugin : com/amplitude/core/platform/Plugin {
+	public fun <init> ()V
+	public final fun execute (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
+	public fun getType ()Lcom/amplitude/core/platform/Plugin$Type;
+	public abstract fun onDeviceIdChanged (Ljava/lang/String;)V
+	public abstract fun onUserIdChanged (Ljava/lang/String;)V
+}
+
+public abstract interface class com/amplitude/core/platform/Plugin {
+	public fun execute (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
+	public abstract fun getAmplitude ()Lcom/amplitude/core/Amplitude;
+	public abstract fun getType ()Lcom/amplitude/core/platform/Plugin$Type;
+	public abstract fun setAmplitude (Lcom/amplitude/core/Amplitude;)V
+	public fun setup (Lcom/amplitude/core/Amplitude;)V
+	public fun teardown ()V
+}
+
+public final class com/amplitude/core/platform/Plugin$Type : java/lang/Enum {
+	public static final field Before Lcom/amplitude/core/platform/Plugin$Type;
+	public static final field Destination Lcom/amplitude/core/platform/Plugin$Type;
+	public static final field Enrichment Lcom/amplitude/core/platform/Plugin$Type;
+	public static final field Observe Lcom/amplitude/core/platform/Plugin$Type;
+	public static final field Utility Lcom/amplitude/core/platform/Plugin$Type;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/amplitude/core/platform/Plugin$Type;
+	public static fun values ()[Lcom/amplitude/core/platform/Plugin$Type;
+}
+
+public abstract interface class com/amplitude/core/platform/Signal {
+}
+
+public abstract interface class com/amplitude/core/platform/SignalProvider {
+	public fun activate ()V
+	public fun deactivate ()V
+	public fun emitSignal (Lcom/amplitude/core/platform/Plugin;Lcom/amplitude/core/platform/Signal;)V
+	public abstract fun getActive ()Z
+	public abstract fun setActive (Z)V
+}
+
+public class com/amplitude/core/platform/Timeline {
+	public field amplitude Lcom/amplitude/core/Amplitude;
+	public fun <init> ()V
+	public final fun add (Lcom/amplitude/core/platform/Plugin;)V
+	public final fun applyClosure (Lkotlin/jvm/functions/Function1;)V
+	public final fun applyPlugins (Lcom/amplitude/core/platform/Plugin$Type;Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
+	public final fun getAmplitude ()Lcom/amplitude/core/Amplitude;
+	public fun process (Lcom/amplitude/core/events/BaseEvent;)V
+	public final fun remove (Lcom/amplitude/core/platform/Plugin;)V
+	public final fun setAmplitude (Lcom/amplitude/core/Amplitude;)V
+}
+
+public final class com/amplitude/core/platform/WriteQueueMessage {
+	public fun <init> (Lcom/amplitude/core/platform/WriteQueueMessageType;Lcom/amplitude/core/events/BaseEvent;)V
+	public final fun component1 ()Lcom/amplitude/core/platform/WriteQueueMessageType;
+	public final fun component2 ()Lcom/amplitude/core/events/BaseEvent;
+	public final fun copy (Lcom/amplitude/core/platform/WriteQueueMessageType;Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/platform/WriteQueueMessage;
+	public static synthetic fun copy$default (Lcom/amplitude/core/platform/WriteQueueMessage;Lcom/amplitude/core/platform/WriteQueueMessageType;Lcom/amplitude/core/events/BaseEvent;ILjava/lang/Object;)Lcom/amplitude/core/platform/WriteQueueMessage;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getEvent ()Lcom/amplitude/core/events/BaseEvent;
+	public final fun getType ()Lcom/amplitude/core/platform/WriteQueueMessageType;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/amplitude/core/platform/WriteQueueMessageType : java/lang/Enum {
+	public static final field EVENT Lcom/amplitude/core/platform/WriteQueueMessageType;
+	public static final field FLUSH Lcom/amplitude/core/platform/WriteQueueMessageType;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/amplitude/core/platform/WriteQueueMessageType;
+	public static fun values ()[Lcom/amplitude/core/platform/WriteQueueMessageType;
+}
+
+public final class com/amplitude/core/platform/intercept/IdentifyInterceptFileStorageHandler : com/amplitude/core/platform/intercept/IdentifyInterceptStorageHandler {
+	public fun <init> (Lcom/amplitude/core/utilities/EventsFileStorage;Lcom/amplitude/common/Logger;Lcom/amplitude/core/Amplitude;)V
+	public fun clearIdentifyIntercepts (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun getTransferIdentifyEvent (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class com/amplitude/core/platform/intercept/IdentifyInterceptInMemoryStorageHandler : com/amplitude/core/platform/intercept/IdentifyInterceptStorageHandler {
+	public fun <init> (Lcom/amplitude/core/utilities/InMemoryStorage;)V
+	public fun clearIdentifyIntercepts (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun getTransferIdentifyEvent (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public abstract interface class com/amplitude/core/platform/intercept/IdentifyInterceptStorageHandler {
+	public static final field Companion Lcom/amplitude/core/platform/intercept/IdentifyInterceptStorageHandler$Companion;
+	public abstract fun clearIdentifyIntercepts (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun getTransferIdentifyEvent (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class com/amplitude/core/platform/intercept/IdentifyInterceptStorageHandler$Companion {
+	public final fun getIdentifyInterceptStorageHandler (Lcom/amplitude/core/Storage;Lcom/amplitude/common/Logger;Lcom/amplitude/core/Amplitude;)Lcom/amplitude/core/platform/intercept/IdentifyInterceptStorageHandler;
+}
+
+public final class com/amplitude/core/platform/intercept/IdentifyInterceptor {
+	public fun <init> (Lcom/amplitude/core/Storage;Lcom/amplitude/core/Amplitude;Lcom/amplitude/common/Logger;Lcom/amplitude/core/Configuration;Lcom/amplitude/core/platform/plugins/AmplitudeDestination;)V
+	public final fun intercept (Lcom/amplitude/core/events/BaseEvent;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun transferInterceptedIdentify (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class com/amplitude/core/platform/intercept/IdentifyInterceptorUtil {
+	public static final field INSTANCE Lcom/amplitude/core/platform/intercept/IdentifyInterceptorUtil;
+	public final fun filterNonNullValues (Ljava/util/Map;)Ljava/util/Map;
+	public final fun mergeIdentifyList (Ljava/util/List;)Ljava/util/Map;
+}
+
+public final class com/amplitude/core/platform/plugins/AmplitudeDestination : com/amplitude/core/platform/DestinationPlugin {
+	public fun <init> ()V
+	public final fun enqueuePipeline (Lcom/amplitude/core/events/BaseEvent;)V
+	public fun flush ()V
+	public fun groupIdentify (Lcom/amplitude/core/events/GroupIdentifyEvent;)Lcom/amplitude/core/events/GroupIdentifyEvent;
+	public fun identify (Lcom/amplitude/core/events/IdentifyEvent;)Lcom/amplitude/core/events/IdentifyEvent;
+	public fun revenue (Lcom/amplitude/core/events/RevenueEvent;)Lcom/amplitude/core/events/RevenueEvent;
+	public fun setup (Lcom/amplitude/core/Amplitude;)V
+	public fun track (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
+}
+
+public class com/amplitude/core/platform/plugins/ContextPlugin : com/amplitude/core/platform/Plugin {
+	public static final field Companion Lcom/amplitude/core/platform/plugins/ContextPlugin$Companion;
+	public field amplitude Lcom/amplitude/core/Amplitude;
+	public fun <init> ()V
+	public fun execute (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
+	public fun getAmplitude ()Lcom/amplitude/core/Amplitude;
+	public fun getType ()Lcom/amplitude/core/platform/Plugin$Type;
+	public fun setAmplitude (Lcom/amplitude/core/Amplitude;)V
+	protected fun setDeviceId (Ljava/lang/String;)V
+	public fun setup (Lcom/amplitude/core/Amplitude;)V
+}
+
+public final class com/amplitude/core/platform/plugins/ContextPlugin$Companion {
+	public final fun generateRandomDeviceId ()Ljava/lang/String;
+}
+
+public final class com/amplitude/core/platform/plugins/GetAmpliExtrasPlugin : com/amplitude/core/platform/Plugin {
+	public static final field AMP_AMPLI Ljava/lang/String;
+	public static final field Companion Lcom/amplitude/core/platform/plugins/GetAmpliExtrasPlugin$Companion;
+	public field amplitude Lcom/amplitude/core/Amplitude;
+	public fun <init> ()V
+	public fun execute (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
+	public fun getAmplitude ()Lcom/amplitude/core/Amplitude;
+	public fun getType ()Lcom/amplitude/core/platform/Plugin$Type;
+	public fun setAmplitude (Lcom/amplitude/core/Amplitude;)V
+	public fun setup (Lcom/amplitude/core/Amplitude;)V
+}
+
+public final class com/amplitude/core/platform/plugins/GetAmpliExtrasPlugin$Companion {
+}
+
+public abstract interface class com/amplitude/core/remoteconfig/RemoteConfigClient {
+	public abstract fun subscribe (Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;Lcom/amplitude/core/remoteconfig/RemoteConfigClient$RemoteConfigCallback;)V
+	public abstract fun updateConfigs ()V
+}
+
+public final class com/amplitude/core/remoteconfig/RemoteConfigClient$Key : java/lang/Enum {
+	public static final field ANALYTICS_SDK Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;
+	public static final field DIAGNOSTICS Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;
+	public static final field SESSION_REPLAY_PRIVACY_CONFIG Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;
+	public static final field SESSION_REPLAY_SAMPLING_CONFIG Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getValue ()Ljava/lang/String;
+	public static fun valueOf (Ljava/lang/String;)Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;
+	public static fun values ()[Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;
+}
+
+public abstract interface class com/amplitude/core/remoteconfig/RemoteConfigClient$RemoteConfigCallback {
+	public abstract fun onUpdate (Ljava/util/Map;Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Source;J)V
+}
+
+public final class com/amplitude/core/remoteconfig/RemoteConfigClient$Source : java/lang/Enum {
+	public static final field CACHE Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Source;
+	public static final field REMOTE Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Source;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Source;
+	public static fun values ()[Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Source;
+}
+
+public final class com/amplitude/core/remoteconfig/RemoteConfigClientKt {
+	public static final fun getBoolean (Ljava/util/Map;Ljava/lang/String;Z)Z
+	public static synthetic fun getBoolean$default (Ljava/util/Map;Ljava/lang/String;ZILjava/lang/Object;)Z
+	public static final fun getDouble (Ljava/util/Map;Ljava/lang/String;D)D
+	public static synthetic fun getDouble$default (Ljava/util/Map;Ljava/lang/String;DILjava/lang/Object;)D
+	public static final fun getInt (Ljava/util/Map;Ljava/lang/String;I)I
+	public static synthetic fun getInt$default (Ljava/util/Map;Ljava/lang/String;IILjava/lang/Object;)I
+	public static final fun getString (Ljava/util/Map;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+	public static synthetic fun getString$default (Ljava/util/Map;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Ljava/lang/String;
+	public static final fun getStringList (Ljava/util/Map;Ljava/lang/String;Ljava/util/List;)Ljava/util/List;
+	public static synthetic fun getStringList$default (Ljava/util/Map;Ljava/lang/String;Ljava/util/List;ILjava/lang/Object;)Ljava/util/List;
+}
+
+public final class com/amplitude/core/utilities/AnalyticsIdentityListener : com/amplitude/id/IdentityListener {
+	public fun <init> (Lcom/amplitude/core/State;)V
+	public fun onDeviceIdChange (Ljava/lang/String;)V
+	public fun onIdentityChanged (Lcom/amplitude/id/Identity;Lcom/amplitude/id/IdentityUpdateType;)V
+	public fun onUserIdChange (Ljava/lang/String;)V
+}
+
+public final class com/amplitude/core/utilities/ConsoleLoggerProvider : com/amplitude/core/LoggerProvider {
+	public fun <init> ()V
+	public fun getLogger (Lcom/amplitude/core/Amplitude;)Lcom/amplitude/common/Logger;
+}
+
+public final class com/amplitude/core/utilities/Diagnostics {
+	public static final field Companion Lcom/amplitude/core/utilities/Diagnostics$Companion;
+	public fun <init> ()V
+	public final fun addErrorLog (Ljava/lang/String;)V
+	public final fun addMalformedEvent (Ljava/lang/String;)V
+	public final fun extractDiagnostics ()Ljava/lang/String;
+	public final fun hasDiagnostics ()Z
+}
+
+public final class com/amplitude/core/utilities/Diagnostics$Companion {
+}
+
+public final class com/amplitude/core/utilities/EventsFileManager {
+	public static final field Companion Lcom/amplitude/core/utilities/EventsFileManager$Companion;
+	public static final field DELIMITER Ljava/lang/String;
+	public static final field MAX_FILE_SIZE I
+	public fun <init> (Ljava/io/File;Ljava/lang/String;Lcom/amplitude/id/utilities/KeyValueStore;Lcom/amplitude/common/Logger;Lcom/amplitude/core/utilities/Diagnostics;)V
+	public final fun cleanupMetadata ()V
+	public final fun getEventString (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun read ()Ljava/util/List;
+	public final fun release (Ljava/lang/String;)V
+	public final fun remove (Ljava/lang/String;)Z
+	public final fun rollover (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun splitFile (Ljava/lang/String;Lorg/json/JSONArray;)V
+	public final fun storeEvent (Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class com/amplitude/core/utilities/EventsFileManager$Companion {
+	public final fun getReadMutexMap ()Ljava/util/concurrent/ConcurrentHashMap;
+	public final fun getWriteMutexMap ()Ljava/util/concurrent/ConcurrentHashMap;
+}
+
+public abstract interface class com/amplitude/core/utilities/EventsFileStorage {
+	public abstract fun getEventCallback (Ljava/lang/String;)Lkotlin/jvm/functions/Function3;
+	public abstract fun getEventsString (Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun readEventsContent ()Ljava/util/List;
+	public abstract fun releaseFile (Ljava/lang/String;)V
+	public abstract fun removeEventCallback (Ljava/lang/String;)V
+	public abstract fun removeFile (Ljava/lang/String;)Z
+	public abstract fun rollover (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public abstract fun splitEventFile (Ljava/lang/String;Lorg/json/JSONArray;)V
+}
+
+public final class com/amplitude/core/utilities/ExponentialBackoffRetryHandler {
+	public static final field Companion Lcom/amplitude/core/utilities/ExponentialBackoffRetryHandler$Companion;
+	public fun <init> ()V
+	public fun <init> (IID)V
+	public synthetic fun <init> (IIDILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun attemptRetry (Lkotlin/jvm/functions/Function1;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun getMaxDelayInMs ()J
+	public final fun getMaxRetryAttempt ()I
+	public final fun reset ()V
+}
+
+public final class com/amplitude/core/utilities/ExponentialBackoffRetryHandler$Companion {
+}
+
+public final class com/amplitude/core/utilities/FileResponseHandler : com/amplitude/core/utilities/http/ResponseHandler {
+	public fun <init> (Lcom/amplitude/core/utilities/EventsFileStorage;Lcom/amplitude/core/platform/EventPipeline;Lcom/amplitude/core/Configuration;Lkotlinx/coroutines/CoroutineScope;Lkotlinx/coroutines/CoroutineDispatcher;Lcom/amplitude/common/Logger;)V
+	public fun <init> (Lcom/amplitude/core/utilities/EventsFileStorage;Lcom/amplitude/core/platform/EventPipeline;Lcom/amplitude/core/Configuration;Lkotlinx/coroutines/CoroutineScope;Lkotlinx/coroutines/CoroutineDispatcher;Lcom/amplitude/common/Logger;Lcom/amplitude/core/diagnostics/DiagnosticsClient;)V
+	public fun handleBadRequestResponse (Lcom/amplitude/core/utilities/http/BadRequestResponse;Ljava/lang/Object;Ljava/lang/String;)Z
+	public fun handleFailedResponse (Lcom/amplitude/core/utilities/http/FailedResponse;Ljava/lang/Object;Ljava/lang/String;)V
+	public fun handlePayloadTooLargeResponse (Lcom/amplitude/core/utilities/http/PayloadTooLargeResponse;Ljava/lang/Object;Ljava/lang/String;)V
+	public fun handleSuccessResponse (Lcom/amplitude/core/utilities/http/SuccessResponse;Ljava/lang/Object;Ljava/lang/String;)V
+	public fun handleTimeoutResponse (Lcom/amplitude/core/utilities/http/TimeoutResponse;Ljava/lang/Object;Ljava/lang/String;)V
+	public fun handleTooManyRequestsResponse (Lcom/amplitude/core/utilities/http/TooManyRequestsResponse;Ljava/lang/Object;Ljava/lang/String;)V
+}
+
+public final class com/amplitude/core/utilities/FileStorage : com/amplitude/core/Storage, com/amplitude/core/utilities/EventsFileStorage {
+	public static final field Companion Lcom/amplitude/core/utilities/FileStorage$Companion;
+	public static final field STORAGE_PREFIX Ljava/lang/String;
+	public fun <init> (Ljava/lang/String;Lcom/amplitude/common/Logger;Ljava/lang/String;Lcom/amplitude/core/utilities/Diagnostics;)V
+	public fun getEventCallback (Ljava/lang/String;)Lkotlin/jvm/functions/Function3;
+	public fun getEventsString (Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun getResponseHandler (Lcom/amplitude/core/platform/EventPipeline;Lcom/amplitude/core/Configuration;Lkotlinx/coroutines/CoroutineScope;Lkotlinx/coroutines/CoroutineDispatcher;)Lcom/amplitude/core/utilities/http/ResponseHandler;
+	public fun read (Lcom/amplitude/core/Storage$Constants;)Ljava/lang/String;
+	public fun readEventsContent ()Ljava/util/List;
+	public fun releaseFile (Ljava/lang/String;)V
+	public fun remove (Lcom/amplitude/core/Storage$Constants;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun removeEventCallback (Ljava/lang/String;)V
+	public fun removeFile (Ljava/lang/String;)Z
+	public fun rollover (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun splitEventFile (Ljava/lang/String;Lorg/json/JSONArray;)V
+	public fun write (Lcom/amplitude/core/Storage$Constants;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun writeEvent (Lcom/amplitude/core/events/BaseEvent;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class com/amplitude/core/utilities/FileStorage$Companion {
+}
+
+public final class com/amplitude/core/utilities/FileStorageProvider : com/amplitude/core/StorageProvider {
+	public fun <init> ()V
+	public fun getStorage (Lcom/amplitude/core/Amplitude;Ljava/lang/String;)Lcom/amplitude/core/Storage;
+}
+
+public final class com/amplitude/core/utilities/InMemoryStorage : com/amplitude/core/Storage {
+	public fun <init> ()V
+	public fun getEventsString (Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun getResponseHandler (Lcom/amplitude/core/platform/EventPipeline;Lcom/amplitude/core/Configuration;Lkotlinx/coroutines/CoroutineScope;Lkotlinx/coroutines/CoroutineDispatcher;)Lcom/amplitude/core/utilities/http/ResponseHandler;
+	public fun read (Lcom/amplitude/core/Storage$Constants;)Ljava/lang/String;
+	public fun readEventsContent ()Ljava/util/List;
+	public fun remove (Lcom/amplitude/core/Storage$Constants;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public final fun removeEvents ()V
+	public fun rollover (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun write (Lcom/amplitude/core/Storage$Constants;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun writeEvent (Lcom/amplitude/core/events/BaseEvent;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+}
+
+public final class com/amplitude/core/utilities/InMemoryStorageProvider : com/amplitude/core/StorageProvider {
+	public fun <init> ()V
+	public fun getStorage (Lcom/amplitude/core/Amplitude;Ljava/lang/String;)Lcom/amplitude/core/Storage;
+}
+
+public final class com/amplitude/core/utilities/JSONUtil {
+	public static final field INSTANCE Lcom/amplitude/core/utilities/JSONUtil;
+	public final fun eventToJsonObject (Lcom/amplitude/core/events/BaseEvent;)Lorg/json/JSONObject;
+	public final fun eventToString (Lcom/amplitude/core/events/BaseEvent;)Ljava/lang/String;
+	public final fun eventsToString (Ljava/util/List;)Ljava/lang/String;
+	public final fun truncate (Lorg/json/JSONArray;)Lorg/json/JSONArray;
+}
+
+public final class com/amplitude/core/utilities/JSONUtilKt {
+	public static final fun optionalJSONObject (Lorg/json/JSONObject;Ljava/lang/String;Lorg/json/JSONObject;)Lorg/json/JSONObject;
+	public static final fun optionalString (Lorg/json/JSONObject;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+	public static final fun toBaseEvent (Lorg/json/JSONObject;)Lcom/amplitude/core/events/BaseEvent;
+	public static final fun toEvents (Lorg/json/JSONArray;)Ljava/util/List;
+}
+
+public final class com/amplitude/core/utilities/Sample {
+	public static final field INSTANCE Lcom/amplitude/core/utilities/Sample;
+	public final fun isInSample (Ljava/lang/String;D)Z
+}
+
+public final class com/amplitude/core/utilities/http/AnalyticsRequest {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;Ljava/lang/String;J)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;Ljava/lang/String;JILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/Integer;
+	public final fun component4 ()Ljava/lang/String;
+	public final fun component5 ()J
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;Ljava/lang/String;J)Lcom/amplitude/core/utilities/http/AnalyticsRequest;
+	public static synthetic fun copy$default (Lcom/amplitude/core/utilities/http/AnalyticsRequest;Ljava/lang/String;Ljava/lang/String;Ljava/lang/Integer;Ljava/lang/String;JILjava/lang/Object;)Lcom/amplitude/core/utilities/http/AnalyticsRequest;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getApiKey ()Ljava/lang/String;
+	public final fun getBodyStr ()Ljava/lang/String;
+	public final fun getClientUploadTime ()J
+	public final fun getDiagnostics ()Ljava/lang/String;
+	public final fun getEvents ()Ljava/lang/String;
+	public final fun getMinIdLength ()Ljava/lang/Integer;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract class com/amplitude/core/utilities/http/AnalyticsResponse {
+	public static final field Companion Lcom/amplitude/core/utilities/http/AnalyticsResponse$Companion;
+	public synthetic fun <init> (Lcom/amplitude/core/utilities/http/HttpStatus;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun getStatus ()Lcom/amplitude/core/utilities/http/HttpStatus;
+}
+
+public final class com/amplitude/core/utilities/http/AnalyticsResponse$Companion {
+	public final fun create (ILjava/lang/String;)Lcom/amplitude/core/utilities/http/AnalyticsResponse;
+}
+
+public final class com/amplitude/core/utilities/http/BadRequestResponse : com/amplitude/core/utilities/http/AnalyticsResponse {
+	public fun <init> (Lorg/json/JSONObject;)V
+	public final fun getError ()Ljava/lang/String;
+	public final fun getEventIndicesToDrop ()Ljava/util/Set;
+	public final fun isEventSilenced (Lcom/amplitude/core/events/BaseEvent;)Z
+	public final fun isInvalidApiKeyResponse ()Z
+}
+
+public final class com/amplitude/core/utilities/http/FailedResponse : com/amplitude/core/utilities/http/AnalyticsResponse {
+	public fun <init> (Lorg/json/JSONObject;)V
+	public final fun getError ()Ljava/lang/String;
+}
+
+public abstract interface class com/amplitude/core/utilities/http/HttpClientInterface {
+	public abstract fun upload (Ljava/lang/String;Ljava/lang/String;)Lcom/amplitude/core/utilities/http/AnalyticsResponse;
+	public static synthetic fun upload$default (Lcom/amplitude/core/utilities/http/HttpClientInterface;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lcom/amplitude/core/utilities/http/AnalyticsResponse;
+}
+
+public final class com/amplitude/core/utilities/http/HttpStatus : java/lang/Enum {
+	public static final field BAD_REQUEST Lcom/amplitude/core/utilities/http/HttpStatus;
+	public static final field FAILED Lcom/amplitude/core/utilities/http/HttpStatus;
+	public static final field PAYLOAD_TOO_LARGE Lcom/amplitude/core/utilities/http/HttpStatus;
+	public static final field SUCCESS Lcom/amplitude/core/utilities/http/HttpStatus;
+	public static final field TIMEOUT Lcom/amplitude/core/utilities/http/HttpStatus;
+	public static final field TOO_MANY_REQUESTS Lcom/amplitude/core/utilities/http/HttpStatus;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public final fun getRange ()Lkotlin/ranges/IntRange;
+	public final fun getStatusCode ()I
+	public static fun valueOf (Ljava/lang/String;)Lcom/amplitude/core/utilities/http/HttpStatus;
+	public static fun values ()[Lcom/amplitude/core/utilities/http/HttpStatus;
+}
+
+public final class com/amplitude/core/utilities/http/PayloadTooLargeResponse : com/amplitude/core/utilities/http/AnalyticsResponse {
+	public fun <init> (Lorg/json/JSONObject;)V
+	public final fun getError ()Ljava/lang/String;
+}
+
+public abstract interface class com/amplitude/core/utilities/http/ResponseHandler {
+	public fun handle (Lcom/amplitude/core/utilities/http/AnalyticsResponse;Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Boolean;
+	public abstract fun handleBadRequestResponse (Lcom/amplitude/core/utilities/http/BadRequestResponse;Ljava/lang/Object;Ljava/lang/String;)Z
+	public abstract fun handleFailedResponse (Lcom/amplitude/core/utilities/http/FailedResponse;Ljava/lang/Object;Ljava/lang/String;)V
+	public abstract fun handlePayloadTooLargeResponse (Lcom/amplitude/core/utilities/http/PayloadTooLargeResponse;Ljava/lang/Object;Ljava/lang/String;)V
+	public abstract fun handleSuccessResponse (Lcom/amplitude/core/utilities/http/SuccessResponse;Ljava/lang/Object;Ljava/lang/String;)V
+	public abstract fun handleTimeoutResponse (Lcom/amplitude/core/utilities/http/TimeoutResponse;Ljava/lang/Object;Ljava/lang/String;)V
+	public abstract fun handleTooManyRequestsResponse (Lcom/amplitude/core/utilities/http/TooManyRequestsResponse;Ljava/lang/Object;Ljava/lang/String;)V
+}
+
+public final class com/amplitude/core/utilities/http/SuccessResponse : com/amplitude/core/utilities/http/AnalyticsResponse {
+	public fun <init> ()V
+}
+
+public final class com/amplitude/core/utilities/http/TimeoutResponse : com/amplitude/core/utilities/http/AnalyticsResponse {
+	public fun <init> ()V
+}
+
+public final class com/amplitude/core/utilities/http/TooManyRequestsResponse : com/amplitude/core/utilities/http/AnalyticsResponse {
+	public fun <init> (Lorg/json/JSONObject;)V
+	public final fun getError ()Ljava/lang/String;
+	public final fun getThrottledEvents ()Ljava/util/Set;
+	public final fun isEventExceedDailyQuota (Lcom/amplitude/core/events/BaseEvent;)Z
+	public final fun setThrottledEvents (Ljava/util/Set;)V
+}
+
+public final class com/amplitude/eventbridge/Event {
+	public fun <init> (Ljava/lang/String;Ljava/util/Map;Ljava/util/Map;Ljava/util/Map;Ljava/util/Map;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/util/Map;Ljava/util/Map;Ljava/util/Map;Ljava/util/Map;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/util/Map;
+	public final fun component3 ()Ljava/util/Map;
+	public final fun component4 ()Ljava/util/Map;
+	public final fun component5 ()Ljava/util/Map;
+	public final fun copy (Ljava/lang/String;Ljava/util/Map;Ljava/util/Map;Ljava/util/Map;Ljava/util/Map;)Lcom/amplitude/eventbridge/Event;
+	public static synthetic fun copy$default (Lcom/amplitude/eventbridge/Event;Ljava/lang/String;Ljava/util/Map;Ljava/util/Map;Ljava/util/Map;Ljava/util/Map;ILjava/lang/Object;)Lcom/amplitude/eventbridge/Event;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getEventProperties ()Ljava/util/Map;
+	public final fun getEventType ()Ljava/lang/String;
+	public final fun getGroupProperties ()Ljava/util/Map;
+	public final fun getGroups ()Ljava/util/Map;
+	public final fun getUserProperties ()Ljava/util/Map;
+	public fun hashCode ()I
+	public final fun setGroupProperties (Ljava/util/Map;)V
+	public fun toString ()Ljava/lang/String;
+}
+
+public abstract interface class com/amplitude/eventbridge/EventBridge {
+	public abstract fun sendEvent (Lcom/amplitude/eventbridge/EventChannel;Lcom/amplitude/eventbridge/Event;)V
+	public abstract fun setEventReceiver (Lcom/amplitude/eventbridge/EventChannel;Lcom/amplitude/eventbridge/EventReceiver;)V
+}
+
+public final class com/amplitude/eventbridge/EventBridgeContainer {
+	public static final field Companion Lcom/amplitude/eventbridge/EventBridgeContainer$Companion;
+	public fun <init> ()V
+	public final fun getEventBridge ()Lcom/amplitude/eventbridge/EventBridge;
+	public static final fun getInstance (Ljava/lang/String;)Lcom/amplitude/eventbridge/EventBridgeContainer;
+}
+
+public final class com/amplitude/eventbridge/EventBridgeContainer$Companion {
+	public final fun getInstance (Ljava/lang/String;)Lcom/amplitude/eventbridge/EventBridgeContainer;
+}
+
+public final class com/amplitude/eventbridge/EventChannel : java/lang/Enum {
+	public static final field EVENT Lcom/amplitude/eventbridge/EventChannel;
+	public static final field IDENTIFY Lcom/amplitude/eventbridge/EventChannel;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/amplitude/eventbridge/EventChannel;
+	public static fun values ()[Lcom/amplitude/eventbridge/EventChannel;
+}
+
+public abstract interface class com/amplitude/eventbridge/EventReceiver {
+	public abstract fun receive (Lcom/amplitude/eventbridge/EventChannel;Lcom/amplitude/eventbridge/Event;)V
+}
+
+public final class com/amplitude/id/FileIdentityStorage : com/amplitude/id/IdentityStorage {
+	public static final field API_KEY Ljava/lang/String;
+	public static final field Companion Lcom/amplitude/id/FileIdentityStorage$Companion;
+	public static final field DEVICE_ID_KEY Ljava/lang/String;
+	public static final field EXPERIMENT_API_KEY Ljava/lang/String;
+	public static final field USER_ID_KEY Ljava/lang/String;
+	public fun <init> (Lcom/amplitude/id/IdentityConfiguration;)V
+	public fun delete ()V
+	public final fun getConfiguration ()Lcom/amplitude/id/IdentityConfiguration;
+	public fun load ()Lcom/amplitude/id/Identity;
+	public fun saveDeviceId (Ljava/lang/String;)V
+	public fun saveUserId (Ljava/lang/String;)V
+}
+
+public final class com/amplitude/id/FileIdentityStorage$Companion {
+}
+
+public final class com/amplitude/id/FileIdentityStorageProvider : com/amplitude/id/IdentityStorageProvider {
+	public fun <init> ()V
+	public fun getIdentityStorage (Lcom/amplitude/id/IdentityConfiguration;)Lcom/amplitude/id/IdentityStorage;
+}
+
+public final class com/amplitude/id/IMIdentityStorage : com/amplitude/id/IdentityStorage {
+	public fun <init> ()V
+	public fun delete ()V
+	public final fun getDeviceId ()Ljava/lang/String;
+	public final fun getUserId ()Ljava/lang/String;
+	public fun load ()Lcom/amplitude/id/Identity;
+	public fun saveDeviceId (Ljava/lang/String;)V
+	public fun saveUserId (Ljava/lang/String;)V
+	public final fun setDeviceId (Ljava/lang/String;)V
+	public final fun setUserId (Ljava/lang/String;)V
+}
+
+public final class com/amplitude/id/IMIdentityStorageProvider : com/amplitude/id/IdentityStorageProvider {
+	public fun <init> ()V
+	public fun getIdentityStorage (Lcom/amplitude/id/IdentityConfiguration;)Lcom/amplitude/id/IdentityStorage;
+}
+
+public final class com/amplitude/id/Identity {
+	public fun <init> ()V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;)Lcom/amplitude/id/Identity;
+	public static synthetic fun copy$default (Lcom/amplitude/id/Identity;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lcom/amplitude/id/Identity;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getDeviceId ()Ljava/lang/String;
+	public final fun getUserId ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/amplitude/id/IdentityConfiguration {
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lcom/amplitude/id/IdentityStorageProvider;Ljava/io/File;Ljava/lang/String;Lcom/amplitude/common/Logger;)V
+	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lcom/amplitude/id/IdentityStorageProvider;Ljava/io/File;Ljava/lang/String;Lcom/amplitude/common/Logger;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun component1 ()Ljava/lang/String;
+	public final fun component2 ()Ljava/lang/String;
+	public final fun component3 ()Ljava/lang/String;
+	public final fun component4 ()Lcom/amplitude/id/IdentityStorageProvider;
+	public final fun component5 ()Ljava/io/File;
+	public final fun component6 ()Ljava/lang/String;
+	public final fun component7 ()Lcom/amplitude/common/Logger;
+	public final fun copy (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lcom/amplitude/id/IdentityStorageProvider;Ljava/io/File;Ljava/lang/String;Lcom/amplitude/common/Logger;)Lcom/amplitude/id/IdentityConfiguration;
+	public static synthetic fun copy$default (Lcom/amplitude/id/IdentityConfiguration;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lcom/amplitude/id/IdentityStorageProvider;Ljava/io/File;Ljava/lang/String;Lcom/amplitude/common/Logger;ILjava/lang/Object;)Lcom/amplitude/id/IdentityConfiguration;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getApiKey ()Ljava/lang/String;
+	public final fun getExperimentApiKey ()Ljava/lang/String;
+	public final fun getFileName ()Ljava/lang/String;
+	public final fun getIdentityStorageProvider ()Lcom/amplitude/id/IdentityStorageProvider;
+	public final fun getInstanceName ()Ljava/lang/String;
+	public final fun getLogger ()Lcom/amplitude/common/Logger;
+	public final fun getStorageDirectory ()Ljava/io/File;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/amplitude/id/IdentityContainer {
+	public static final field Companion Lcom/amplitude/id/IdentityContainer$Companion;
+	public synthetic fun <init> (Lcom/amplitude/id/IdentityConfiguration;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public static final fun clearInstanceCache ()V
+	public final fun getConfiguration ()Lcom/amplitude/id/IdentityConfiguration;
+	public final fun getIdentityManager ()Lcom/amplitude/id/IdentityManager;
+	public static final fun getInstance (Lcom/amplitude/id/IdentityConfiguration;)Lcom/amplitude/id/IdentityContainer;
+}
+
+public final class com/amplitude/id/IdentityContainer$Companion {
+	public final fun clearInstanceCache ()V
+	public final fun getInstance (Lcom/amplitude/id/IdentityConfiguration;)Lcom/amplitude/id/IdentityContainer;
+}
+
+public abstract interface class com/amplitude/id/IdentityListener {
+	public abstract fun onDeviceIdChange (Ljava/lang/String;)V
+	public abstract fun onIdentityChanged (Lcom/amplitude/id/Identity;Lcom/amplitude/id/IdentityUpdateType;)V
+	public abstract fun onUserIdChange (Ljava/lang/String;)V
+}
+
+public abstract interface class com/amplitude/id/IdentityManager {
+	public abstract fun addIdentityListener (Lcom/amplitude/id/IdentityListener;)V
+	public abstract fun editIdentity ()Lcom/amplitude/id/IdentityManager$Editor;
+	public abstract fun getIdentity ()Lcom/amplitude/id/Identity;
+	public abstract fun isInitialized ()Z
+	public abstract fun removeIdentityListener (Lcom/amplitude/id/IdentityListener;)V
+	public abstract fun setIdentity (Lcom/amplitude/id/Identity;Lcom/amplitude/id/IdentityUpdateType;)V
+	public static synthetic fun setIdentity$default (Lcom/amplitude/id/IdentityManager;Lcom/amplitude/id/Identity;Lcom/amplitude/id/IdentityUpdateType;ILjava/lang/Object;)V
+}
+
+public abstract interface class com/amplitude/id/IdentityManager$Editor {
+	public abstract fun commit ()V
+	public abstract fun setDeviceId (Ljava/lang/String;)Lcom/amplitude/id/IdentityManager$Editor;
+	public abstract fun setUserId (Ljava/lang/String;)Lcom/amplitude/id/IdentityManager$Editor;
+}
+
+public abstract interface class com/amplitude/id/IdentityStorage {
+	public abstract fun delete ()V
+	public abstract fun load ()Lcom/amplitude/id/Identity;
+	public abstract fun saveDeviceId (Ljava/lang/String;)V
+	public abstract fun saveUserId (Ljava/lang/String;)V
+}
+
+public abstract interface class com/amplitude/id/IdentityStorageProvider {
+	public abstract fun getIdentityStorage (Lcom/amplitude/id/IdentityConfiguration;)Lcom/amplitude/id/IdentityStorage;
+}
+
+public final class com/amplitude/id/IdentityUpdateType : java/lang/Enum {
+	public static final field Initialized Lcom/amplitude/id/IdentityUpdateType;
+	public static final field Updated Lcom/amplitude/id/IdentityUpdateType;
+	public static fun getEntries ()Lkotlin/enums/EnumEntries;
+	public static fun valueOf (Ljava/lang/String;)Lcom/amplitude/id/IdentityUpdateType;
+	public static fun values ()[Lcom/amplitude/id/IdentityUpdateType;
+}
+
+public final class com/amplitude/id/utilities/FileUtilsKt {
+	public static final fun createDirectory (Ljava/io/File;)V
+}
+
+public abstract interface class com/amplitude/id/utilities/KeyValueStore {
+	public abstract fun deleteKey (Ljava/lang/String;)V
+	public abstract fun getLong (Ljava/lang/String;J)J
+	public abstract fun putLong (Ljava/lang/String;J)Z
+}
+
+public final class com/amplitude/id/utilities/PropertiesFile : com/amplitude/id/utilities/KeyValueStore {
+	public fun <init> (Ljava/io/File;Ljava/lang/String;Lcom/amplitude/common/Logger;)V
+	public fun deleteKey (Ljava/lang/String;)V
+	public final fun deletePropertiesFile ()V
+	public fun getLong (Ljava/lang/String;J)J
+	public final fun getString (Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+	public final fun load ()V
+	public fun putLong (Ljava/lang/String;J)Z
+	public final fun putString (Ljava/lang/String;Ljava/lang/String;)Z
+	public final fun remove (Ljava/lang/String;)Z
+	public final fun remove (Ljava/util/List;)Z
+}
+
