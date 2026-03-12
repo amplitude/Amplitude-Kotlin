@@ -53,6 +53,7 @@ open class Amplitude(
     val configuration: Configuration,
     val store: State,
     val amplitudeScope: CoroutineScope = CoroutineScope(SupervisorJob()),
+    @Deprecated("amplitudeDispatcher is no longer used internally. It will be removed in a future major version.")
     val amplitudeDispatcher: CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher(),
     val networkIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
     val storageIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
@@ -158,7 +159,7 @@ open class Amplitude(
         val amplitude = this
 
         val built =
-            amplitudeScope.async(amplitudeDispatcher, CoroutineStart.LAZY) {
+            amplitudeScope.async(storageIODispatcher, CoroutineStart.LAZY) {
                 identifyInterceptStorage =
                     configuration.identifyInterceptStorageProvider.getStorage(
                         amplitude,
@@ -522,9 +523,7 @@ open class Amplitude(
     }
 
     fun flush() {
-        amplitudeScope.launch(amplitudeDispatcher) {
-            isBuilt.await()
-
+        amplitudeScope.launch(storageIODispatcher) {
             timeline.applyClosure {
                 (it as? EventPlugin)?.flush()
             }

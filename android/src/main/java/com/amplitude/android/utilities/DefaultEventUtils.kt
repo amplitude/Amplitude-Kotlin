@@ -50,9 +50,6 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
 
         // Write the current version/build into persistent storage
         amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
-            // wait until it is built before writing to storage
-            amplitude.isBuilt.await()
-
             storage.write(Storage.Constants.APP_VERSION, currentVersion)
             storage.write(Storage.Constants.APP_BUILD, currentBuild)
         }

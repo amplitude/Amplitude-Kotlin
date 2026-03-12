@@ -37,9 +37,6 @@ class Timeline(
     internal fun start() {
         with(amplitude) {
             amplitudeScope.launch(storageIODispatcher) {
-                // Wait until build (including possible legacy data migration) is finished.
-                isBuilt.await()
-
                 if (initialSessionId == null) {
                     _sessionId.set(storage.readLong(PREVIOUS_SESSION_ID, DEFAULT_SESSION_ID))
                 }
