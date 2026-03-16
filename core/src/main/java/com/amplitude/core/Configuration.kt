@@ -49,15 +49,7 @@ open class Configuration
         }
 
         fun isValid(): Boolean {
-            return apiKey.isNotBlank() && flushQueueSize > 0 && flushIntervalMillis > 0 && isMinIdLengthValid()
-        }
-
-        private fun isMinIdLengthValid(): Boolean {
-            return minIdLength ?. let {
-                it > 0
-            } ?: let {
-                true
-            }
+            return ConfigurationUtils.isValid(apiKey, flushQueueSize, flushIntervalMillis, minIdLength)
         }
 
         /**
@@ -66,18 +58,11 @@ open class Configuration
          * for custom URLs when [enableRequestBodyCompression] is explicitly set to true.
          */
         fun shouldCompressUploadBody(): Boolean {
-            return if (!serverUrl.isNullOrBlank()) enableRequestBodyCompression else true
+            return ConfigurationUtils.shouldCompressUploadBody(serverUrl, enableRequestBodyCompression)
         }
 
         fun getApiHost(): String {
-            return this.serverUrl?.takeIf { it.isNotBlank() } ?: with(this) {
-                when {
-                    serverZone == ServerZone.EU && useBatch -> Constants.EU_BATCH_API_HOST
-                    serverZone == ServerZone.EU -> Constants.EU_DEFAULT_API_HOST
-                    useBatch -> Constants.BATCH_API_HOST
-                    else -> Constants.DEFAULT_API_HOST
-                }
-            }
+            return ConfigurationUtils.getApiHost(serverUrl, serverZone, useBatch)
         }
     }
 
