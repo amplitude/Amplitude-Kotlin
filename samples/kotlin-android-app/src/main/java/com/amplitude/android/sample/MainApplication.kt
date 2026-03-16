@@ -24,7 +24,7 @@ class MainApplication : Application() {
         super.onCreate()
 
         val okHttpClient = CustomOkHttpClient()
-        val configuration =
+        val immutableConfiguration =
             configuration(
                 apiKey = AMPLITUDE_API_KEY,
                 context = applicationContext,
@@ -38,10 +38,11 @@ class MainApplication : Application() {
                         DeadClickOptions(enabled = false),
                     )
             }
-        okHttpClient.initialize(configuration.toConfiguration())
+        val mutableConfiguration = immutableConfiguration.toConfiguration()
+        okHttpClient.initialize(mutableConfiguration)
 
         // init instance
-        amplitude = Amplitude(configuration)
+        amplitude = Amplitude(mutableConfiguration)
 
         // Sample for Experiment Integration
         val experimentConfig =

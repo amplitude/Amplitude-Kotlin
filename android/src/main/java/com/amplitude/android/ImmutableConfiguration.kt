@@ -75,20 +75,13 @@ class ImmutableConfiguration internal constructor(
     val enableAutocaptureRemoteConfig: Boolean = true,
 ) {
     fun isValid(): Boolean =
-        apiKey.isNotBlank() &&
-            flushQueueSize > 0 &&
-            flushIntervalMillis > 0 &&
-            (minIdLength == null || minIdLength > 0)
+        com.amplitude.core.ConfigurationUtils.isValid(apiKey, flushQueueSize, flushIntervalMillis, minIdLength)
 
-    fun shouldCompressUploadBody(): Boolean = if (!serverUrl.isNullOrBlank()) enableRequestBodyCompression else true
+    fun shouldCompressUploadBody(): Boolean =
+        com.amplitude.core.ConfigurationUtils.shouldCompressUploadBody(serverUrl, enableRequestBodyCompression)
 
     fun getApiHost(): String =
-        serverUrl?.takeIf { it.isNotBlank() } ?: when {
-            serverZone == ServerZone.EU && useBatch -> EU_BATCH_API_HOST
-            serverZone == ServerZone.EU -> EU_DEFAULT_API_HOST
-            useBatch -> BATCH_API_HOST
-            else -> DEFAULT_API_HOST
-        }
+        com.amplitude.core.ConfigurationUtils.getApiHost(serverUrl, serverZone, useBatch)
 
     fun toConfiguration(): Configuration =
         Configuration(

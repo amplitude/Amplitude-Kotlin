@@ -50,20 +50,13 @@ class ImmutableConfiguration internal constructor(
     val enableRequestBodyCompression: Boolean = false,
 ) {
     fun isValid(): Boolean =
-        apiKey.isNotBlank() &&
-            flushQueueSize > 0 &&
-            flushIntervalMillis > 0 &&
-            (minIdLength == null || minIdLength > 0)
+        ConfigurationUtils.isValid(apiKey, flushQueueSize, flushIntervalMillis, minIdLength)
 
-    fun shouldCompressUploadBody(): Boolean = if (!serverUrl.isNullOrBlank()) enableRequestBodyCompression else true
+    fun shouldCompressUploadBody(): Boolean =
+        ConfigurationUtils.shouldCompressUploadBody(serverUrl, enableRequestBodyCompression)
 
     fun getApiHost(): String =
-        serverUrl?.takeIf { it.isNotBlank() } ?: when {
-            serverZone == ServerZone.EU && useBatch -> Constants.EU_BATCH_API_HOST
-            serverZone == ServerZone.EU -> Constants.EU_DEFAULT_API_HOST
-            useBatch -> Constants.BATCH_API_HOST
-            else -> Constants.DEFAULT_API_HOST
-        }
+        ConfigurationUtils.getApiHost(serverUrl, serverZone, useBatch)
 
     fun toConfiguration(): Configuration =
         Configuration(
