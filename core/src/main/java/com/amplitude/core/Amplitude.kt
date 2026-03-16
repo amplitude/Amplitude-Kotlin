@@ -122,12 +122,35 @@ open class Amplitude(
         _signalFlow.tryEmit(signal)
     }
 
+    /**
+     * Whether events should be suppressed. Set this at runtime to opt the user in or out.
+     * Delegates to [Configuration.optOut] — mutating either is equivalent.
+     */
+    open var optOut: Boolean
+        get() = configuration.optOut
+        set(value) {
+            configuration.optOut = value
+        }
+
+    /**
+     * Whether the SDK is currently offline. When true, event uploads are paused.
+     * Delegates to [Configuration.offline].
+     */
+    val offline: Boolean?
+        get() = configuration.offline
+
     init {
         require(configuration.isValid()) { "invalid configuration" }
         timeline = this.createTimeline()
         isBuilt = this.build()
         isBuilt.start()
     }
+
+    /**
+     * Constructor accepting an [ImmutableConfiguration] produced by [ConfigurationBuilder].
+     * Prefer this over the [Configuration]-based constructor.
+     */
+    constructor(config: ImmutableConfiguration) : this(config.toConfiguration(), State())
 
     /**
      * Public Constructor.
@@ -476,7 +499,7 @@ open class Amplitude(
     }
 
     private fun process(event: BaseEvent) {
-        if (configuration.optOut) {
+        if (optOut) {
             logger.info("Skip event for opt out config.")
             return
         }

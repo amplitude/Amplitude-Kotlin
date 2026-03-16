@@ -8,7 +8,6 @@ import com.amplitude.core.events.IngestionMetadata
 import com.amplitude.core.events.Plan
 import io.mockk.mockk
 import io.mockk.mockkStatic
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -16,8 +15,6 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import java.io.ByteArrayOutputStream
-import java.io.PrintStream
 
 class ConfigurationBuilderTest {
     private lateinit var context: Context
@@ -368,105 +365,44 @@ class ConfigurationBuilderTest {
         }
 
         @Test
-        fun `builder result is an Android Configuration`() {
+        fun `builder result is an ImmutableConfiguration`() {
             val config = configuration("test-key", context)
-            // The returned type should be the Android Configuration, not just core
-            assertTrue(config is com.amplitude.android.Configuration)
+            assertTrue(config is ImmutableConfiguration)
         }
     }
 
     @Nested
-    inner class FrozenBehavior {
-        private val originalOut = System.out
-        private lateinit var outputCapture: ByteArrayOutputStream
-
-        @BeforeEach
-        fun setUpCapture() {
-            outputCapture = ByteArrayOutputStream()
-            System.setOut(PrintStream(outputCapture))
-        }
-
-        @AfterEach
-        fun tearDownCapture() {
-            System.setOut(originalOut)
-        }
-
+    inner class ImmutableBehavior {
         @Test
-        fun `mutating frozen core property logs warning and ignores new value`() {
-            val config = configuration("test-key", context) { flushQueueSize = 10 }
-
-            config.flushQueueSize = 99
-
-            assertEquals(10, config.flushQueueSize)
-            val output = outputCapture.toString()
-            assertTrue(output.contains("flushQueueSize"))
-            assertTrue(output.contains("frozen"))
-        }
-
-        @Test
-        fun `mutating frozen android property logs warning and ignores new value`() {
+        fun `builder returns ImmutableConfiguration`() {
             val config = configuration("test-key", context)
-
-            config.minTimeBetweenSessionsMillis = 99999
-
-            assertEquals(Configuration.MIN_TIME_BETWEEN_SESSIONS_MILLIS, config.minTimeBetweenSessionsMillis)
-            val output = outputCapture.toString()
-            assertTrue(output.contains("minTimeBetweenSessionsMillis"))
-            assertTrue(output.contains("frozen"))
+            assertTrue(config is ImmutableConfiguration)
         }
 
         @Test
-        fun `mutating offline does not log warning`() {
-            val config = configuration("test-key", context)
-
-            config.offline = true
-
-            assertEquals(true, config.offline)
-            val output = outputCapture.toString()
-            assertFalse(output.contains("offline"))
-        }
-
-        @Test
-        fun `mutating optOut does not log warning`() {
-            val config = configuration("test-key", context)
-
-            config.optOut = true
-
+        fun `immutable config seeds optOut correctly`() {
+            val config = configuration("test-key", context) { optOut = true }
             assertTrue(config.optOut)
-            val output = outputCapture.toString()
-            assertFalse(output.contains("optOut"))
         }
 
         @Test
-        fun `constructor-created config does not log warning on mutation`() {
-            val config = Configuration("test-key", context)
-
-            config.flushQueueSize = 99
-            config.minTimeBetweenSessionsMillis = 99999
-
-            assertEquals(99, config.flushQueueSize)
-            assertEquals(99999, config.minTimeBetweenSessionsMillis)
-            val output = outputCapture.toString()
-            assertFalse(output.contains("frozen"))
+        fun `immutable config seeds offline correctly`() {
+            val config = configuration("test-key", context) { offline = null }
+            assertNull(config.offline)
         }
 
         @Test
-        fun `multiple frozen properties warn independently`() {
-            val config = configuration("test-key", context)
-
-            config.serverZone = ServerZone.EU
-            config.enableCoppaControl = true
-            config.flushEventsOnClose = false
-
-            // Values should remain unchanged
-            assertEquals(ServerZone.US, config.serverZone)
-            assertFalse(config.enableCoppaControl)
-            assertTrue(config.flushEventsOnClose)
-
-            val output = outputCapture.toString()
-            assertTrue(output.contains("serverZone"))
-            assertTrue(output.contains("enableCoppaControl"))
-            assertTrue(output.contains("flushEventsOnClose"))
+        fun `toConfiguration maps all fields correctly`() {
+            val config =
+                configuration("test-key", context) {
+                    flushQueueSize = 50
+                    minTimeBetweenSessionsMillis = 10000
+                    enableCoppaControl = true
+                }
+            val mutable = config.toConfiguration()
+            assertEquals(50, mutable.flushQueueSize)
+            assertEquals(10000, mutable.minTimeBetweenSessionsMillis)
+            assertTrue(mutable.enableCoppaControl)
         }
     }
 }

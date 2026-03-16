@@ -18,7 +18,7 @@ open class Timeline {
         // Checking for opt out within the timeline processing since events can be added to the
         // timeline from various sources. For example, the session start and end events are fired
         // from within the timeline.
-        if (amplitude.configuration.optOut) {
+        if (amplitude.optOut) {
             return
         }
 

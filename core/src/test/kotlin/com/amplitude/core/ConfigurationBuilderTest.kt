@@ -5,16 +5,12 @@ import com.amplitude.core.events.Plan
 import com.amplitude.core.utilities.ConsoleLoggerProvider
 import com.amplitude.core.utilities.InMemoryStorageProvider
 import com.amplitude.id.IMIdentityStorageProvider
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import java.io.ByteArrayOutputStream
-import java.io.PrintStream
 
 internal class ConfigurationBuilderTest {
     @Nested
@@ -245,83 +241,23 @@ internal class ConfigurationBuilderTest {
     }
 
     @Nested
-    inner class FrozenBehavior {
-        private val originalOut = System.out
-        private lateinit var outputCapture: ByteArrayOutputStream
-
-        @BeforeEach
-        fun setUp() {
-            outputCapture = ByteArrayOutputStream()
-            System.setOut(PrintStream(outputCapture))
-        }
-
-        @AfterEach
-        fun tearDown() {
-            System.setOut(originalOut)
-        }
-
+    inner class ImmutableBehavior {
         @Test
-        fun `mutating frozen property logs warning and ignores new value`() {
-            val config = configuration("test-key") { flushQueueSize = 10 }
-
-            config.flushQueueSize = 99
-
-            assertEquals(10, config.flushQueueSize)
-            val output = outputCapture.toString()
-            assertTrue(output.contains("flushQueueSize"))
-            assertTrue(output.contains("frozen"))
-        }
-
-        @Test
-        fun `mutating offline does not log warning`() {
+        fun `builder returns ImmutableConfiguration`() {
             val config = configuration("test-key")
-
-            config.offline = true
-
-            assertEquals(true, config.offline)
-            val output = outputCapture.toString()
-            assertFalse(output.contains("offline"))
+            assertTrue(config is ImmutableConfiguration)
         }
 
         @Test
-        fun `mutating optOut does not log warning`() {
-            val config = configuration("test-key")
-
-            config.optOut = true
-
+        fun `immutable config seeds optOut correctly`() {
+            val config = configuration("test-key") { optOut = true }
             assertTrue(config.optOut)
-            val output = outputCapture.toString()
-            assertFalse(output.contains("optOut"))
         }
 
         @Test
-        fun `constructor-created config does not log warning on mutation`() {
-            val config = Configuration("test-key")
-
-            config.flushQueueSize = 99
-
-            assertEquals(99, config.flushQueueSize)
-            val output = outputCapture.toString()
-            assertFalse(output.contains("frozen"))
-        }
-
-        @Test
-        fun `multiple frozen properties warn independently`() {
-            val config = configuration("test-key")
-
-            config.serverZone = ServerZone.EU
-            config.useBatch = true
-            config.instanceName = "changed"
-
-            // Values should remain unchanged
-            assertEquals(ServerZone.US, config.serverZone)
-            assertFalse(config.useBatch)
-            assertEquals(Configuration.DEFAULT_INSTANCE, config.instanceName)
-
-            val output = outputCapture.toString()
-            assertTrue(output.contains("serverZone"))
-            assertTrue(output.contains("useBatch"))
-            assertTrue(output.contains("instanceName"))
+        fun `immutable config seeds offline correctly`() {
+            val config = configuration("test-key") { offline = null }
+            assertNull(config.offline)
         }
     }
 }
