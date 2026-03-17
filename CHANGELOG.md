@@ -1,3 +1,10 @@
+## [1.26.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.26.1...v1.26.2) (2026-03-17)
+
+
+### Bug Fixes
+
+* null safety for activity.intent in AndroidLifecyclePlugin ([#372](https://github.com/amplitude/Amplitude-Kotlin/issues/372)) ([2f784f9](https://github.com/amplitude/Amplitude-Kotlin/commit/2f784f9fda8aa3fb05abbac4499b00442968794b))
+
 ## [1.26.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.26.0...v1.26.1) (2026-03-11)
 
 
