@@ -117,7 +117,7 @@ class AndroidLifecyclePlugin(
     override fun onActivityStarted(activity: Activity) {
         if (!created.containsKey(activity.hashCode())) {
             // We check for On Create in case if sdk was initialised in Main Activity
-            onActivityCreated(activity, activity.intent.extras)
+            onActivityCreated(activity, activity.intent?.extras)
         }
 
         if (started.isEmpty()) {
