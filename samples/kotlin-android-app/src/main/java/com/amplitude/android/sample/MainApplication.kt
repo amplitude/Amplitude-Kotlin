@@ -38,7 +38,7 @@ class MainApplication : Application() {
                         DeadClickOptions(enabled = false),
                     )
             }
-        okHttpClient.initialize(configuration.toConfiguration())
+        okHttpClient.initialize(configuration)
 
         // init instance
         amplitude = Amplitude(configuration)

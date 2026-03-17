@@ -1,6 +1,6 @@
 package com.amplitude.android.sample
 
-import com.amplitude.android.Configuration
+import com.amplitude.android.ImmutableConfiguration
 import com.amplitude.core.utilities.http.AnalyticsRequest
 import com.amplitude.core.utilities.http.AnalyticsResponse
 import com.amplitude.core.utilities.http.HttpClientInterface
@@ -17,9 +17,9 @@ class CustomOkHttpClient(
             .addInterceptor(GzipRequestInterceptor())
             .build(),
 ) : HttpClientInterface {
-    private lateinit var configuration: Configuration
+    private lateinit var configuration: ImmutableConfiguration
 
-    fun initialize(configuration: Configuration) {
+    fun initialize(configuration: ImmutableConfiguration) {
         this.configuration = configuration
     }
 
