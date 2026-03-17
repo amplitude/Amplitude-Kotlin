@@ -29,8 +29,8 @@ import com.amplitude.id.IdentityStorageProvider
  * All properties are `val` — the compiler prevents mutation after construction.
  * Pass this to [Amplitude] via `Amplitude(ImmutableConfiguration)`.
  *
- * Runtime-mutable state ([Amplitude.optOut], [Amplitude.offline]) is seeded from
- * [optOut] and [offline] at construction time, then managed on [Amplitude] directly.
+ * [Amplitude.optOut] delegates to [Configuration.optOut] and remains mutable at runtime.
+ * [Amplitude.offline] is read-only on [Amplitude]; set it via [Amplitude.configuration].
  */
 class ImmutableConfiguration internal constructor(
     val apiKey: String,
