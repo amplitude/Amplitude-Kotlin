@@ -1,3 +1,10 @@
+## [1.26.3](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.26.2...v1.26.3) (2026-03-18)
+
+
+### Bug Fixes
+
+* initialize androidContextPlugin in build() to prevent NPE ([#374](https://github.com/amplitude/Amplitude-Kotlin/issues/374)) ([6cfc247](https://github.com/amplitude/Amplitude-Kotlin/commit/6cfc24734c773a4dc087cee17f32143a0c6951e2))
+
 ## [1.26.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.26.1...v1.26.2) (2026-03-17)
 
 
