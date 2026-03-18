@@ -56,8 +56,6 @@ open class Amplitude internal constructor(
         )
     }
 
-    private val androidContextPlugin by lazy { AndroidContextPlugin() }
-
     val sessionId: Long
         get() {
             return (timeline as Timeline).sessionId
@@ -65,12 +63,18 @@ open class Amplitude internal constructor(
 
     private lateinit var activityLifecycleCallbacks: ActivityLifecycleObserver
 
+    private lateinit var androidContextPlugin: AndroidContextPlugin
+
     /**
-     * This build call is initiated by parent class and happens before this class
-     * init block
+     * The parent constructor calls this before child field initializers run.
+     * Properties used in [buildInternal] must be assigned here — not via
+     * field initializers, `by lazy`, or `init {}`, or they'll be null.
+     *
+     * See #247 and #373 for past incidents.
      */
     override fun build(): Deferred<Boolean> {
         activityLifecycleCallbacks = ActivityLifecycleObserver()
+        androidContextPlugin = AndroidContextPlugin()
         return super.build()
     }
 
