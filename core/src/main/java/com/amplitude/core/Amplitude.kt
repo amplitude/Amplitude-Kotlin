@@ -485,6 +485,14 @@ open class Amplitude(
             event.timestamp = System.currentTimeMillis()
         }
 
+        // Shallow-copy mutable maps so callers can't mutate them after track().
+        // Prevents ConcurrentModificationException when the pipeline serializes
+        // the event on a different thread.
+        event.eventProperties = event.eventProperties?.toMutableMap()
+        event.userProperties = event.userProperties?.toMutableMap()
+        event.groups = event.groups?.toMutableMap()
+        event.groupProperties = event.groupProperties?.toMutableMap()
+
         logger.debug("Logged event with type: ${event.eventType}")
         timeline.process(event)
     }
