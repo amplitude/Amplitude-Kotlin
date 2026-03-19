@@ -10,7 +10,9 @@ import com.amplitude.core.events.IngestionMetadata
 import com.amplitude.core.events.Plan
 import com.amplitude.core.events.Revenue
 import com.amplitude.core.events.RevenueEvent
+import com.amplitude.core.platform.DestinationPlugin
 import com.amplitude.core.platform.Plugin
+import com.amplitude.core.utilities.JSONUtil
 import com.amplitude.core.utils.FakeAmplitude
 import com.amplitude.core.utils.StubPlugin
 import com.amplitude.core.utils.TestRunPlugin
@@ -24,12 +26,17 @@ import okhttp3.mockwebserver.MockWebServer
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertNotSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import java.util.Collections
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlin.concurrent.thread
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 internal class AmplitudeTest {
@@ -398,6 +405,125 @@ internal class AmplitudeTest {
                 assertNotEquals("device_id", it.deviceId)
                 assertEquals("test event", it.eventType)
             }
+        }
+    }
+
+    @Nested
+    inner class TestDefensiveCopy {
+        @Test
+        fun `track with BaseEvent copies event property maps`() {
+            val mockPlugin = spyk(StubPlugin())
+            amplitude.add(mockPlugin)
+            amplitude.setUserId("user_id")
+            amplitude.setDeviceId("device_id")
+
+            val originalEventProps = mutableMapOf<String, Any?>("key1" to "value1")
+            val originalUserProps = mutableMapOf<String, Any?>("ukey" to "uval")
+            val originalGroups = mutableMapOf<String, Any?>("gtype" to "gname")
+            val originalGroupProps = mutableMapOf<String, Any?>("gpkey" to "gpval")
+
+            val event =
+                BaseEvent().apply {
+                    eventType = "test event"
+                    eventProperties = originalEventProps
+                    userProperties = originalUserProps
+                    groups = originalGroups
+                    groupProperties = originalGroupProps
+                }
+
+            amplitude.track(event)
+
+            val track = slot<BaseEvent>()
+            verify { mockPlugin.track(capture(track)) }
+
+            // The event's maps should be different instances from the originals
+            assertNotSame(originalEventProps, track.captured.eventProperties)
+            assertNotSame(originalUserProps, track.captured.userProperties)
+            assertNotSame(originalGroups, track.captured.groups)
+            assertNotSame(originalGroupProps, track.captured.groupProperties)
+        }
+
+        @Test
+        fun `mutations after track do not affect event in pipeline`() {
+            val mockPlugin = spyk(StubPlugin())
+            amplitude.add(mockPlugin)
+            amplitude.setUserId("user_id")
+            amplitude.setDeviceId("device_id")
+
+            val originalProps = mutableMapOf<String, Any?>("key1" to "value1")
+            val event =
+                BaseEvent().apply {
+                    eventType = "test event"
+                    eventProperties = originalProps
+                }
+
+            amplitude.track(event)
+
+            // Mutate the original map after track (simulating user code on Dispatchers.IO)
+            originalProps["key2"] = "value2"
+            originalProps.remove("key1")
+
+            val track = slot<BaseEvent>()
+            verify { mockPlugin.track(capture(track)) }
+
+            // Plugin should see the original snapshot, not the mutations
+            assertEquals(mapOf("key1" to "value1"), track.captured.eventProperties)
+        }
+
+        @Test
+        fun `concurrent serialization on different thread does not crash`() {
+            // Simulates the AmplitudeEngagementPlugin scenario:
+            // The destination plugin dispatches event serialization to the Main thread,
+            // while user code concurrently modifies the original properties map.
+            val errors = Collections.synchronizedList(mutableListOf<Throwable>())
+            val serializationStarted = CountDownLatch(1)
+            val serializationComplete = CountDownLatch(1)
+
+            val asyncPlugin =
+                object : DestinationPlugin() {
+                    override fun track(payload: BaseEvent): BaseEvent? {
+                        // Simulate engagement plugin dispatching to Main thread
+                        thread {
+                            try {
+                                serializationStarted.countDown()
+                                JSONUtil.eventToJsonObject(payload)
+                            } catch (e: Throwable) {
+                                errors.add(e)
+                            } finally {
+                                serializationComplete.countDown()
+                            }
+                        }
+                        return payload
+                    }
+                }
+
+            amplitude.add(asyncPlugin)
+            amplitude.setUserId("user_id")
+            amplitude.setDeviceId("device_id")
+
+            val sharedMap = mutableMapOf<String, Any?>("initial" to "value")
+            val event =
+                BaseEvent().apply {
+                    eventType = "test event"
+                    eventProperties = sharedMap
+                }
+
+            amplitude.track(event)
+
+            // Wait for the serialization thread to start
+            assertTrue(serializationStarted.await(5, TimeUnit.SECONDS))
+
+            // Concurrently modify the original map (simulating user code on Dispatchers.IO)
+            repeat(1000) { i ->
+                sharedMap["key_$i"] = "value_$i"
+            }
+
+            assertTrue(serializationComplete.await(5, TimeUnit.SECONDS))
+
+            assertTrue(
+                errors.isEmpty(),
+                "Expected no errors but got: ${errors.map { "${it.javaClass.simpleName}: ${it.message}" }}",
+            )
         }
     }
 
