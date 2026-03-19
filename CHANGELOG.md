@@ -1,3 +1,10 @@
+## [1.26.4](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.26.3...v1.26.4) (2026-03-19)
+
+
+### Bug Fixes
+
+* add a defensive copy for mutable maps to prevent concurrent mod exception ([#375](https://github.com/amplitude/Amplitude-Kotlin/issues/375)) ([385d91d](https://github.com/amplitude/Amplitude-Kotlin/commit/385d91d4d956e6d5cb1c112fcb1c7458cd95e7d3))
+
 ## [1.26.3](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.26.2...v1.26.3) (2026-03-18)
 
 
