@@ -9,7 +9,7 @@ internal fun Map<*, *>?.toJSONObject(): JSONObject? {
         return null
     }
     val jsonObject = JSONObject()
-    for (entry in entries.safeSnapshot()) {
+    for (entry in entries) {
         val key = entry.key as? String ?: continue
         val value = entry.value.toJSON()
         jsonObject.put(key, value)
@@ -39,7 +39,7 @@ internal fun Collection<*>?.toJSONArray(): JSONArray? {
         return null
     }
     val jsonArray = JSONArray()
-    for (element in this.safeSnapshot()) {
+    for (element in this) {
         jsonArray.put(element.toJSON())
     }
     return jsonArray
@@ -75,19 +75,4 @@ private fun Any?.toJSON(): Any? {
         is Array<*> -> this.toJSONArray()
         else -> this
     }
-}
-
-/**
- * Creates a snapshot of a [Collection] that is safe from [ConcurrentModificationException].
- * Retries up to 3 times if the underlying collection is modified during the snapshot.
- */
-private fun <T> Collection<T>.safeSnapshot(): List<T> {
-    repeat(3) {
-        try {
-            return this.toList()
-        } catch (_: ConcurrentModificationException) {
-            // Retry
-        }
-    }
-    return emptyList()
 }
