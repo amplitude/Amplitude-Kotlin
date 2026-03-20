@@ -23,6 +23,7 @@ import com.amplitude.core.remoteconfig.RemoteConfigClient
 import com.amplitude.core.remoteconfig.RemoteConfigClientImpl
 import com.amplitude.core.utilities.AnalyticsEventReceiver
 import com.amplitude.core.utilities.Diagnostics
+import com.amplitude.core.utilities.deepCopy
 import com.amplitude.core.utilities.http.HttpClient
 import com.amplitude.eventbridge.EventBridgeContainer
 import com.amplitude.eventbridge.EventChannel
@@ -485,13 +486,13 @@ open class Amplitude(
             event.timestamp = System.currentTimeMillis()
         }
 
-        // Shallow-copy mutable maps so callers can't mutate them after track().
-        // Prevents ConcurrentModificationException when the pipeline serializes
-        // the event on a different thread.
-        event.eventProperties = event.eventProperties?.toMutableMap()
-        event.userProperties = event.userProperties?.toMutableMap()
-        event.groups = event.groups?.toMutableMap()
-        event.groupProperties = event.groupProperties?.toMutableMap()
+        // Deep-copy mutable maps to sever all references (including nested maps)
+        // from the caller. Prevents ConcurrentModificationException when the pipeline
+        // processes the event on a background thread while the caller mutates the original.
+        event.eventProperties = event.eventProperties?.deepCopy()
+        event.userProperties = event.userProperties?.deepCopy()
+        event.groups = event.groups?.deepCopy()
+        event.groupProperties = event.groupProperties?.deepCopy()
 
         logger.debug("Logged event with type: ${event.eventType}")
         timeline.process(event)

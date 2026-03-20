@@ -76,3 +76,30 @@ private fun Any?.toJSON(): Any? {
         else -> this
     }
 }
+
+/**
+ * Recursively deep-copies a mutable map so that nested maps and lists
+ * are also independent copies. Severs all references to the caller's data structures,
+ * preventing [ConcurrentModificationException] when the SDK pipeline processes the
+ * event on a background thread while the caller continues to mutate the original.
+ */
+internal fun MutableMap<String, Any?>.deepCopy(): MutableMap<String, Any?> {
+    val copy = LinkedHashMap<String, Any?>(size)
+    for ((key, value) in this) {
+        copy[key] = value.deepCopyValue()
+    }
+    return copy
+}
+
+private fun Any?.deepCopyValue(): Any? {
+    return when (this) {
+        is MutableMap<*, *> -> {
+            @Suppress("UNCHECKED_CAST")
+            (this as MutableMap<String, Any?>).deepCopy()
+        }
+        is Map<*, *> -> LinkedHashMap(this)
+        is MutableList<*> -> this.map { it.deepCopyValue() }.toMutableList()
+        is List<*> -> this.map { it.deepCopyValue() }
+        else -> this // primitives, strings, arrays — immutable or no fail-fast iterator
+    }
+}
