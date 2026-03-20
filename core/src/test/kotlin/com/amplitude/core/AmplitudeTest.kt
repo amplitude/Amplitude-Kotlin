@@ -31,10 +31,12 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
+import org.junit.jupiter.api.RepeatedTest
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import java.util.Collections
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
@@ -520,6 +522,48 @@ internal class AmplitudeTest {
 
             assertTrue(serializationComplete.await(5, TimeUnit.SECONDS))
 
+            assertTrue(
+                errors.isEmpty(),
+                "Expected no errors but got: ${errors.map { "${it.javaClass.simpleName}: ${it.message}" }}",
+            )
+        }
+
+        @RepeatedTest(10)
+        fun `nested mutable map modification during serialization does not crash`() {
+            // Reproduces ConcurrentModificationException when a nested mutable map
+            // inside eventProperties is modified from another thread during serialization.
+            val nestedMap = mutableMapOf<String, Any?>("key1" to "value1", "key2" to "value2")
+            val event =
+                BaseEvent().apply {
+                    eventType = "test"
+                    userId = "user"
+                    deviceId = "device"
+                    eventProperties = mutableMapOf("nested" to nestedMap)
+                }
+
+            val errors = Collections.synchronizedList(mutableListOf<Throwable>())
+            val barrier = CyclicBarrier(2)
+
+            val writer =
+                thread {
+                    barrier.await(5, TimeUnit.SECONDS)
+                    repeat(1_000) { i ->
+                        nestedMap["key_$i"] = i
+                        nestedMap.remove("key1")
+                        nestedMap["key1"] = "modified_$i"
+                    }
+                }
+
+            barrier.await(5, TimeUnit.SECONDS)
+            repeat(100) {
+                try {
+                    JSONUtil.eventToJsonObject(event)
+                } catch (e: Throwable) {
+                    errors.add(e)
+                }
+            }
+
+            writer.join(5_000)
             assertTrue(
                 errors.isEmpty(),
                 "Expected no errors but got: ${errors.map { "${it.javaClass.simpleName}: ${it.message}" }}",
