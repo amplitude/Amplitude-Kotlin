@@ -25,4 +25,9 @@
 # Keep custom Compose modifiers for type-based detection
 -keep class com.amplitude.android.internal.compose.AmpFrustrationIgnoreElement
 
+# Keep ComposeVersion class and its version field for runtime version detection via reflection
+-keep class androidx.compose.runtime.ComposeVersion {
+  public static int version;
+}
+
 #################### END: Compose Proguard Rules ####################

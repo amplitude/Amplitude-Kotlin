@@ -3,6 +3,7 @@ package com.amplitude.android.plugins
 import com.amplitude.android.BuildConfig
 import com.amplitude.android.Configuration
 import com.amplitude.android.TrackingOptions
+import com.amplitude.android.utilities.ComposeUtils
 import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.core.Amplitude
 import com.amplitude.core.RestrictedAmplitudeFeature
@@ -33,6 +34,18 @@ open class AndroidContextPlugin : Plugin {
             name = "sdk.${SDK_LIBRARY}.version",
             value = SDK_VERSION,
         )
+
+        val composeAvailable = ComposeUtils.isComposeAvailable(amplitude.logger)
+        amplitude.diagnosticsClient.setTag("lib.compose.available", composeAvailable.toString())
+        if (composeAvailable) {
+            ComposeUtils.getComposeRuntimeVersion(amplitude.logger)?.let {
+                amplitude.diagnosticsClient.setTag("lib.compose.runtime.version", it)
+            }
+            ComposeUtils.getComposeRuntimeCompatibilityVersionCode(amplitude.logger)?.let {
+                amplitude.diagnosticsClient.setTag("lib.compose.runtime.compatibility.version", it.toString())
+            }
+        }
+        amplitude.diagnosticsClient.setTag("lib.kotlin.version", KotlinVersion.CURRENT.toString())
     }
 
     override fun execute(event: BaseEvent): BaseEvent? {
