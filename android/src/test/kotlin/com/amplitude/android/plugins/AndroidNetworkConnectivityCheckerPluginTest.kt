@@ -39,11 +39,10 @@ class AndroidNetworkConnectivityCheckerPluginTest {
 
     @Test
     fun `should set up correctly by default`() {
-        // amplitude.configuration.offline defaults to false
         plugin.setup(amplitude)
         assertEquals(amplitude, plugin.amplitude)
         // Unit tests are run on JVM so default to online
-        assertEquals(false, amplitude.configuration.offline)
+        assertEquals(false, amplitude.offline)
         assertNotNull(plugin.networkListener)
     }
 

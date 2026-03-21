@@ -45,6 +45,8 @@ open class Amplitude internal constructor(
     ) {
     constructor(configuration: Configuration) : this(configuration, State())
 
+    constructor(config: ImmutableConfiguration) : this(config.toConfiguration())
+
     internal val autocaptureManager: AutocaptureManager by lazy {
         val androidConfig = configuration as Configuration
         AutocaptureManager(
