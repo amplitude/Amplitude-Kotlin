@@ -41,6 +41,9 @@ open class AndroidContextPlugin : Plugin {
             ComposeUtils.getComposeRuntimeVersion(amplitude.logger)?.let {
                 amplitude.diagnosticsClient.setTag("lib.compose.runtime.version", it)
             }
+            ComposeUtils.getComposeUiVersion(amplitude.logger)?.let {
+                amplitude.diagnosticsClient.setTag("lib.compose.ui.version", it)
+            }
             ComposeUtils.getComposeRuntimeCompatibilityVersionCode(amplitude.logger)?.let {
                 amplitude.diagnosticsClient.setTag("lib.compose.runtime.compatibility.version", it.toString())
             }
