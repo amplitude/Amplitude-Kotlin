@@ -27,6 +27,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNotSame
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.BeforeEach
@@ -524,6 +525,37 @@ internal class AmplitudeTest {
                 errors.isEmpty(),
                 "Expected no errors but got: ${errors.map { "${it.javaClass.simpleName}: ${it.message}" }}",
             )
+        }
+
+        @Test
+        fun `nested mutable maps are deep-copied`() {
+            val mockPlugin = spyk(StubPlugin())
+            amplitude.add(mockPlugin)
+            amplitude.setUserId("user_id")
+            amplitude.setDeviceId("device_id")
+
+            val nestedMap = mutableMapOf<String, Any?>("inner" to "original")
+            val originalProps = mutableMapOf<String, Any?>("nested" to nestedMap)
+
+            val event =
+                BaseEvent().apply {
+                    eventType = "test event"
+                    eventProperties = originalProps
+                }
+
+            amplitude.track(event)
+
+            // Mutate the nested map after track
+            nestedMap["inner"] = "mutated"
+            nestedMap["new_key"] = "new_value"
+
+            val track = slot<BaseEvent>()
+            verify { mockPlugin.track(capture(track)) }
+
+            // The nested map in the pipeline should be unaffected
+            val capturedNested = track.captured.eventProperties?.get("nested") as Map<*, *>
+            assertEquals("original", capturedNested["inner"])
+            assertNull(capturedNested["new_key"])
         }
     }
 

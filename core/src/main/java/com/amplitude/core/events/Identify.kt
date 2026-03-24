@@ -1,6 +1,7 @@
 package com.amplitude.core.events
 
 import com.amplitude.common.jvm.ConsoleLogger
+import com.amplitude.core.utilities.deepCopy
 
 enum class IdentifyOperation(val operationType: String) {
     SET("\$set"),
@@ -20,15 +21,7 @@ open class Identify {
 
     private val _properties = mutableMapOf<String, Any?>()
     val properties: MutableMap<String, Any?>
-        @Synchronized get() {
-            val clonedProperties = _properties.toMutableMap()
-            for ((key, value) in clonedProperties) {
-                if (value is Map<*, *>) {
-                    clonedProperties[key] = value.toMutableMap()
-                }
-            }
-            return clonedProperties
-        }
+        @Synchronized get() = _properties.deepCopy()
 
     fun set(
         property: String,
