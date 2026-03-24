@@ -1,3 +1,11 @@
+## [1.26.5](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.26.4...v1.26.5) (2026-03-24)
+
+
+### Bug Fixes
+
+* report Compose and Kotlin version info via diagnostics ([#376](https://github.com/amplitude/Amplitude-Kotlin/issues/376)) ([a99b11e](https://github.com/amplitude/Amplitude-Kotlin/commit/a99b11ebfaf66b6afd4f14ef51112f7c20ed1be3))
+* safeguard JSON serialization against concurrent modificiation of… ([#377](https://github.com/amplitude/Amplitude-Kotlin/issues/377)) ([4f22ccb](https://github.com/amplitude/Amplitude-Kotlin/commit/4f22ccb13f147939b8beb116960092cadc9845e9))
+
 ## [1.26.4](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.26.3...v1.26.4) (2026-03-19)
 
 
