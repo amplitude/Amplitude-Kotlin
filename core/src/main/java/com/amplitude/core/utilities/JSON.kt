@@ -78,7 +78,7 @@ private fun Any?.toJSON(): Any? {
 }
 
 /**
- * Recursively deep-copies a mutable map so that nested maps and lists
+ * Recursively deep-copies a map so that nested maps and collections
  * are also independent copies. Severs all references to the caller's data structures,
  * preventing [ConcurrentModificationException] when the SDK pipeline processes the
  * event on a background thread while the caller continues to mutate the original.
@@ -100,7 +100,7 @@ private fun Any?.deepCopyValue(): Any? {
             }
             copy
         }
-        is List<*> -> mapTo(ArrayList(size)) { it.deepCopyValue() }
+        is Collection<*> -> mapTo(ArrayList(size)) { it.deepCopyValue() }
         else -> this // primitives, strings, arrays — immutable or no fail-fast iterator
     }
 }
