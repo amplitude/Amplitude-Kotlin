@@ -97,9 +97,7 @@ private fun Any?.deepCopyValue(): Any? {
             @Suppress("UNCHECKED_CAST")
             (this as MutableMap<String, Any?>).deepCopy()
         }
-        is Map<*, *> -> LinkedHashMap(this)
         is MutableList<*> -> this.map { it.deepCopyValue() }.toMutableList()
-        is List<*> -> this.map { it.deepCopyValue() }
         else -> this // primitives, strings, arrays — immutable or no fail-fast iterator
     }
 }
