@@ -83,7 +83,7 @@ private fun Any?.toJSON(): Any? {
  * preventing [ConcurrentModificationException] when the SDK pipeline processes the
  * event on a background thread while the caller continues to mutate the original.
  */
-internal fun MutableMap<String, Any?>.deepCopy(): MutableMap<String, Any?> {
+internal fun Map<String, Any?>.deepCopy(): MutableMap<String, Any?> {
     val copy = LinkedHashMap<String, Any?>(size)
     for ((key, value) in this) {
         copy[key] = value.deepCopyValue()
@@ -93,13 +93,14 @@ internal fun MutableMap<String, Any?>.deepCopy(): MutableMap<String, Any?> {
 
 private fun Any?.deepCopyValue(): Any? {
     return when (this) {
-        is MutableMap<*, *> -> {
-            @Suppress("UNCHECKED_CAST")
-            (this as MutableMap<String, Any?>).deepCopy()
+        is Map<*, *> -> {
+            val copy = LinkedHashMap<Any?, Any?>(size)
+            for ((k, v) in this) {
+                copy[k] = v.deepCopyValue()
+            }
+            copy
         }
-        is Map<*, *> -> LinkedHashMap(this)
-        is MutableList<*> -> this.map { it.deepCopyValue() }.toMutableList()
-        is List<*> -> this.map { it.deepCopyValue() }
+        is List<*> -> mapTo(ArrayList(size)) { it.deepCopyValue() }
         else -> this // primitives, strings, arrays — immutable or no fail-fast iterator
     }
 }
