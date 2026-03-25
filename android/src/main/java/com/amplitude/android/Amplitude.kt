@@ -28,29 +28,27 @@ import java.util.concurrent.Executors
 import com.amplitude.core.Amplitude as CoreAmplitude
 
 @OptIn(RestrictedAmplitudeFeature::class)
+@Suppress("DEPRECATION")
 open class Amplitude internal constructor(
     configuration: Configuration,
     state: State,
     amplitudeScope: CoroutineScope = CoroutineScope(SupervisorJob()),
-    amplitudeDispatcher: CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher(),
     networkIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
     storageIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
 ) : CoreAmplitude(
         configuration = configuration,
         store = state,
         amplitudeScope = amplitudeScope,
-        amplitudeDispatcher = amplitudeDispatcher,
         networkIODispatcher = networkIODispatcher,
         storageIODispatcher = storageIODispatcher,
     ) {
     constructor(configuration: Configuration) : this(configuration, State())
 
     internal val autocaptureManager: AutocaptureManager by lazy {
-        val androidConfig = configuration as Configuration
         AutocaptureManager(
-            initialAutocapture = androidConfig.autocapture,
-            initialInteractionsOptions = androidConfig.interactionsOptions,
-            remoteConfigClient = if (androidConfig.enableAutocaptureRemoteConfig) remoteConfigClient else null,
+            initialAutocapture = configuration.autocapture,
+            initialInteractionsOptions = configuration.interactionsOptions,
+            remoteConfigClient = if (configuration.enableAutocaptureRemoteConfig) remoteConfigClient else null,
             logger = logger,
             diagnosticsClient = diagnosticsClient,
         )
