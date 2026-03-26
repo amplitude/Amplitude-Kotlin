@@ -1,11 +1,6 @@
 package com.amplitude.android
 
 import android.content.Context
-import com.amplitude.android.storage.AndroidStorageContextV3
-import com.amplitude.android.utilities.AndroidLoggerProvider
-import com.amplitude.core.LoggerProvider
-import com.amplitude.core.StorageProvider
-import com.amplitude.id.IdentityStorageProvider
 
 /**
  * Builder for creating Android [Configuration] instances without depending on the constructor
@@ -32,12 +27,11 @@ import com.amplitude.id.IdentityStorageProvider
 class ConfigurationBuilder(
     apiKey: String,
     context: Context,
-) : Configuration(apiKey, context) {
-    override var storageProvider: StorageProvider = AndroidStorageContextV3.eventsStorageProvider
-    override var loggerProvider: LoggerProvider = AndroidLoggerProvider()
-    override var identifyInterceptStorageProvider: StorageProvider = AndroidStorageContextV3.identifyInterceptStorageProvider
-    override var identityStorageProvider: IdentityStorageProvider = AndroidStorageContextV3.identityStorageProvider
-
+) : Configuration(
+        apiKey = apiKey,
+        context = context,
+        autocapture = setOf(AutocaptureOption.SESSIONS),
+    ) {
     fun build(): Configuration =
         Configuration(
             apiKey = apiKey,
@@ -57,15 +51,6 @@ class ConfigurationBuilder(
             serverUrl = serverUrl,
             plan = plan,
             ingestionMetadata = ingestionMetadata,
-            identifyBatchIntervalMillis = identifyBatchIntervalMillis,
-            identifyInterceptStorageProvider = identifyInterceptStorageProvider,
-            identityStorageProvider = identityStorageProvider,
-            offline = offline,
-            deviceId = deviceId,
-            sessionId = sessionId,
-            httpClient = httpClient,
-            enableDiagnostics = enableDiagnostics,
-            enableRequestBodyCompression = enableRequestBodyCompression,
             useAdvertisingIdForDeviceId = useAdvertisingIdForDeviceId,
             useAppSetIdForDeviceId = useAppSetIdForDeviceId,
             newDeviceIdPerInstall = newDeviceIdPerInstall,
@@ -75,8 +60,17 @@ class ConfigurationBuilder(
             flushEventsOnClose = flushEventsOnClose,
             minTimeBetweenSessionsMillis = minTimeBetweenSessionsMillis,
             autocapture = autocapture,
+            identifyBatchIntervalMillis = identifyBatchIntervalMillis,
+            identifyInterceptStorageProvider = identifyInterceptStorageProvider,
+            identityStorageProvider = identityStorageProvider,
             migrateLegacyData = migrateLegacyData,
+            offline = offline,
+            deviceId = deviceId,
+            sessionId = sessionId,
+            httpClient = httpClient,
             interactionsOptions = interactionsOptions,
+            enableDiagnostics = enableDiagnostics,
+            enableRequestBodyCompression = enableRequestBodyCompression,
             enableAutocaptureRemoteConfig = enableAutocaptureRemoteConfig,
         )
 }

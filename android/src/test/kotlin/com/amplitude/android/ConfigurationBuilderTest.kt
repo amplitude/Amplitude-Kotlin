@@ -373,6 +373,89 @@ class ConfigurationBuilderTest {
 
     @Nested
     inner class BuilderBehavior {
+        private fun readProperty(
+            obj: Any,
+            field: java.lang.reflect.Field,
+        ): Any? {
+            val getter = "get${field.name.replaceFirstChar { it.uppercase() }}"
+            return try {
+                obj.javaClass.getMethod(getter).invoke(obj)
+            } catch (_: NoSuchMethodException) {
+                field.get(obj)
+            }
+        }
+
+        private fun configurationFields(): List<java.lang.reflect.Field> {
+            val exclude = setOf("defaultTracking")
+            val fields = mutableListOf<java.lang.reflect.Field>()
+            var c: Class<*>? = Configuration::class.java
+            while (c != null && c != Any::class.java) {
+                c.declaredFields
+                    .filter {
+                        !java.lang.reflect.Modifier.isStatic(it.modifiers) &&
+                            !it.isSynthetic &&
+                            it.name !in exclude
+                    }
+                    .forEach {
+                        it.isAccessible = true
+                        fields += it
+                    }
+                c = c.superclass
+            }
+            return fields
+        }
+
+        private fun flipToNonDefault(
+            value: Any?,
+            type: Class<*>,
+        ): Any? =
+            when {
+                value is Boolean -> !value
+                value is Int -> value + 1
+                value is Long -> value + 1L
+                value is String -> "${value}_x"
+                value == null && type == java.lang.Boolean::class.java -> true
+                value == null && type == java.lang.Integer::class.java -> 42
+                value == null && type == java.lang.Long::class.java -> 42L
+                value == null && type == String::class.java -> "non-null"
+                else -> null
+            }
+
+        /**
+         * Auto-detects new Configuration fields via reflection. For every Boolean/Int/Long/String
+         * field, flips it to a non-default value, calls build(), and verifies the value survived.
+         * Zero maintenance — no manual field list or count to update.
+         */
+        @Test
+        fun `build() does not drop any field — reflection guard`() {
+            val builder = ConfigurationBuilder("key", context)
+
+            configurationFields().forEach { field ->
+                val current = readProperty(builder, field)
+                val flipped = flipToNonDefault(current, field.type) ?: return@forEach
+                val setterName = "set${field.name.replaceFirstChar { it.uppercase() }}"
+                val setter =
+                    builder.javaClass.methods
+                        .find { it.name == setterName && it.parameterCount == 1 }
+                        ?: return@forEach
+                try {
+                    setter.invoke(builder, flipped)
+                } catch (_: Exception) {
+                    return@forEach
+                }
+            }
+
+            val built = builder.build()
+
+            configurationFields().forEach { field ->
+                assertEquals(
+                    readProperty(builder, field),
+                    readProperty(built, field),
+                    "Field '${field.name}' not threaded through build()",
+                )
+            }
+        }
+
         @Test
         fun `builder is a Configuration subtype for legacy DSL lambdas`() {
             val legacyDsl: Configuration.() -> Unit = {
