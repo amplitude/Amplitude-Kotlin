@@ -367,16 +367,30 @@ class ConfigurationBuilderTest {
         @Test
         fun `builder result is a Configuration`() {
             val config = ConfigurationBuilder("test-key", context).build()
-            assertTrue(config is Configuration)
+            assertEquals(Configuration::class.java, config::class.java)
         }
     }
 
     @Nested
     inner class BuilderBehavior {
         @Test
+        fun `builder is a Configuration subtype for legacy DSL lambdas`() {
+            val legacyDsl: Configuration.() -> Unit = {
+                minTimeBetweenSessionsMillis = 10000
+                autocapture = setOf(AutocaptureOption.APP_LIFECYCLES)
+            }
+            val builder = ConfigurationBuilder("test-key", context)
+
+            legacyDsl(builder)
+
+            assertEquals(10000, builder.minTimeBetweenSessionsMillis)
+            assertEquals(setOf(AutocaptureOption.APP_LIFECYCLES), builder.autocapture)
+        }
+
+        @Test
         fun `builder returns Configuration`() {
             val config = ConfigurationBuilder("test-key", context).build()
-            assertTrue(config is Configuration)
+            assertEquals(Configuration::class.java, config::class.java)
         }
 
         @Test

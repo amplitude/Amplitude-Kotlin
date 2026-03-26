@@ -3,22 +3,16 @@ package com.amplitude.android
 import android.content.Context
 import com.amplitude.android.storage.AndroidStorageContextV3
 import com.amplitude.android.utilities.AndroidLoggerProvider
-import com.amplitude.core.EventCallBack
 import com.amplitude.core.LoggerProvider
-import com.amplitude.core.ServerZone
 import com.amplitude.core.StorageProvider
-import com.amplitude.core.events.IngestionMetadata
-import com.amplitude.core.events.Plan
-import com.amplitude.core.utilities.http.HttpClientInterface
 import com.amplitude.id.IdentityStorageProvider
-import com.amplitude.core.Configuration as CoreConfiguration
 
 /**
  * Builder for creating Android [Configuration] instances without depending on the constructor
  * signature.
  *
- * Adding new properties with defaults does not change any method signature, preserving binary
- * compatibility for compiled dependents.
+ * This subtype preserves binary compatibility for previously compiled `Configuration` DSL lambdas:
+ * the new builder-backed DSL still passes an object that is-a [Configuration].
  *
  * Kotlin usage:
  * ```
@@ -36,48 +30,13 @@ import com.amplitude.core.Configuration as CoreConfiguration
  * ```
  */
 class ConfigurationBuilder(
-    internal val apiKey: String,
-    internal val context: Context,
-) {
-    // Core properties (with Android-specific defaults)
-    var flushQueueSize: Int = CoreConfiguration.FLUSH_QUEUE_SIZE
-    var flushIntervalMillis: Int = CoreConfiguration.FLUSH_INTERVAL_MILLIS
-    var instanceName: String = CoreConfiguration.DEFAULT_INSTANCE
-    var optOut: Boolean = false
-    var storageProvider: StorageProvider = AndroidStorageContextV3.eventsStorageProvider
-    var loggerProvider: LoggerProvider = AndroidLoggerProvider()
-    var minIdLength: Int? = null
-    var partnerId: String? = null
-    var callback: EventCallBack? = null
-    var flushMaxRetries: Int = CoreConfiguration.FLUSH_MAX_RETRIES
-    var useBatch: Boolean = false
-    var serverZone: ServerZone = ServerZone.US
-    var serverUrl: String? = null
-    var plan: Plan? = null
-    var ingestionMetadata: IngestionMetadata? = null
-    var identifyBatchIntervalMillis: Long = CoreConfiguration.IDENTIFY_BATCH_INTERVAL_MILLIS
-    var identifyInterceptStorageProvider: StorageProvider = AndroidStorageContextV3.identifyInterceptStorageProvider
-    var identityStorageProvider: IdentityStorageProvider = AndroidStorageContextV3.identityStorageProvider
-    var offline: Boolean? = false
-    var deviceId: String? = null
-    var sessionId: Long? = null
-    var httpClient: HttpClientInterface? = null
-    var enableDiagnostics: Boolean = true
-    var enableRequestBodyCompression: Boolean = false
-
-    // Android-specific properties
-    var useAdvertisingIdForDeviceId: Boolean = false
-    var useAppSetIdForDeviceId: Boolean = false
-    var newDeviceIdPerInstall: Boolean = false
-    var trackingOptions: TrackingOptions = TrackingOptions()
-    var enableCoppaControl: Boolean = false
-    var locationListening: Boolean = false
-    var flushEventsOnClose: Boolean = true
-    var minTimeBetweenSessionsMillis: Long = Configuration.MIN_TIME_BETWEEN_SESSIONS_MILLIS
-    var autocapture: Set<AutocaptureOption> = setOf(AutocaptureOption.SESSIONS)
-    var migrateLegacyData: Boolean = true
-    var interactionsOptions: InteractionsOptions = InteractionsOptions()
-    var enableAutocaptureRemoteConfig: Boolean = true
+    apiKey: String,
+    context: Context,
+) : Configuration(apiKey, context) {
+    override var storageProvider: StorageProvider = AndroidStorageContextV3.eventsStorageProvider
+    override var loggerProvider: LoggerProvider = AndroidLoggerProvider()
+    override var identifyInterceptStorageProvider: StorageProvider = AndroidStorageContextV3.identifyInterceptStorageProvider
+    override var identityStorageProvider: IdentityStorageProvider = AndroidStorageContextV3.identityStorageProvider
 
     fun build(): Configuration =
         Configuration(

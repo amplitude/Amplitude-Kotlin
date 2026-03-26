@@ -243,9 +243,23 @@ internal class ConfigurationBuilderTest {
     @Nested
     inner class BuilderBehavior {
         @Test
+        fun `builder is a Configuration subtype for legacy DSL lambdas`() {
+            val legacyDsl: Configuration.() -> Unit = {
+                flushQueueSize = 42
+                optOut = true
+            }
+            val builder = ConfigurationBuilder("test-key")
+
+            legacyDsl(builder)
+
+            assertEquals(42, builder.flushQueueSize)
+            assertTrue(builder.optOut)
+        }
+
+        @Test
         fun `builder returns Configuration`() {
             val config = ConfigurationBuilder("test-key").build()
-            assertTrue(config is Configuration)
+            assertEquals(Configuration::class.java, config::class.java)
         }
 
         @Test
