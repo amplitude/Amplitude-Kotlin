@@ -182,7 +182,7 @@ open class Configuration(
     // A backing property to store the autocapture options. Any changes to `trackingSessionEvents`
     // or the `defaultTracking` options will be reflected in this property.
     private var _autocapture: MutableSet<AutocaptureOption> = autocapture.toMutableSet()
-    open var autocapture: Set<AutocaptureOption>
+    var autocapture: Set<AutocaptureOption>
         get() = _autocapture
         set(value) {
             _autocapture = value.toMutableSet()
