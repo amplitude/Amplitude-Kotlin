@@ -14,6 +14,10 @@ import com.amplitude.core.utilities.http.HttpClientInterface
 import com.amplitude.id.IdentityStorageProvider
 import java.io.File
 
+/**
+ * When adding new constructor parameters, also update [ConfigurationBuilder.build] to pass the
+ * new value through.
+ */
 open class Configuration(
     apiKey: String,
     val context: Context,
