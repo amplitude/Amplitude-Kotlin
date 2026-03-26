@@ -115,7 +115,7 @@ internal class ConfigurationBuilderTest {
         @Test
         fun `builder with defaults matches constructor defaults`() {
             val fromConstructor = Configuration("test-key")
-            val fromBuilder = configuration("test-key")
+            val fromBuilder = ConfigurationBuilder("test-key").build()
 
             assertEquals(fromConstructor.apiKey, fromBuilder.apiKey)
             assertEquals(fromConstructor.flushQueueSize, fromBuilder.flushQueueSize)
@@ -142,13 +142,13 @@ internal class ConfigurationBuilderTest {
         @Test
         fun `builder DSL sets properties correctly`() {
             val config =
-                configuration("test-key") {
+                ConfigurationBuilder("test-key").apply {
                     flushQueueSize = 50
                     serverZone = ServerZone.EU
                     useBatch = true
                     optOut = true
                     deviceId = "device-123"
-                }
+                }.build()
 
             assertTrue(config.isValid())
             assertEquals(50, config.flushQueueSize)
@@ -177,7 +177,7 @@ internal class ConfigurationBuilderTest {
             val plan = Plan(branch = "main", source = "test")
             val ingestion = IngestionMetadata(sourceName = "test-source")
             val config =
-                configuration("test-key") {
+                ConfigurationBuilder("test-key").apply {
                     flushQueueSize = 10
                     flushIntervalMillis = 5000
                     instanceName = "my-instance"
@@ -196,7 +196,7 @@ internal class ConfigurationBuilderTest {
                     sessionId = 12345L
                     enableDiagnostics = false
                     enableRequestBodyCompression = true
-                }
+                }.build()
 
             assertEquals(10, config.flushQueueSize)
             assertEquals(5000, config.flushIntervalMillis)
@@ -220,43 +220,43 @@ internal class ConfigurationBuilderTest {
 
         @Test
         fun `builder produces valid configuration`() {
-            val config = configuration("test-key")
+            val config = ConfigurationBuilder("test-key").build()
             assertTrue(config.isValid())
         }
 
         @Test
         fun `builder with empty apiKey produces invalid configuration`() {
-            val config = configuration("")
+            val config = ConfigurationBuilder("").build()
             assertFalse(config.isValid())
         }
 
         @Test
         fun `builder with zero flushQueueSize produces invalid configuration`() {
             val config =
-                configuration("test-key") {
+                ConfigurationBuilder("test-key").apply {
                     flushQueueSize = 0
-                }
+                }.build()
             assertFalse(config.isValid())
         }
     }
 
     @Nested
-    inner class ImmutableBehavior {
+    inner class BuilderBehavior {
         @Test
-        fun `builder returns ImmutableConfiguration`() {
-            val config = configuration("test-key")
-            assertTrue(config is ImmutableConfiguration)
+        fun `builder returns Configuration`() {
+            val config = ConfigurationBuilder("test-key").build()
+            assertTrue(config is Configuration)
         }
 
         @Test
-        fun `immutable config seeds optOut correctly`() {
-            val config = configuration("test-key") { optOut = true }
+        fun `builder sets optOut correctly`() {
+            val config = ConfigurationBuilder("test-key").apply { optOut = true }.build()
             assertTrue(config.optOut)
         }
 
         @Test
-        fun `immutable config seeds offline correctly`() {
-            val config = configuration("test-key") { offline = null }
+        fun `builder sets offline correctly`() {
+            val config = ConfigurationBuilder("test-key").apply { offline = null }.build()
             assertNull(config.offline)
         }
     }

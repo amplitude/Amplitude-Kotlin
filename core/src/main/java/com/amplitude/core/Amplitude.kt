@@ -132,25 +132,12 @@ open class Amplitude(
             configuration.optOut = value
         }
 
-    /**
-     * Whether the SDK is currently offline. When true, event uploads are paused.
-     * Delegates to [Configuration.offline].
-     */
-    val offline: Boolean?
-        get() = configuration.offline
-
     init {
         require(configuration.isValid()) { "invalid configuration" }
         timeline = this.createTimeline()
         isBuilt = this.build()
         isBuilt.start()
     }
-
-    /**
-     * Constructor accepting an [ImmutableConfiguration] produced by [ConfigurationBuilder].
-     * Prefer this over the [Configuration]-based constructor.
-     */
-    constructor(config: ImmutableConfiguration) : this(config.toConfiguration(), State())
 
     /**
      * Public Constructor.
@@ -564,22 +551,21 @@ open class Amplitude(
 }
 
 /**
- * constructor function to build amplitude in dsl format with config options
- * Usage: Amplitude("123") {
- *            this.flushQueueSize = 10
- *        }
+ * DSL for creating an Amplitude instance with a [ConfigurationBuilder] block.
+ *
+ * Usage:
+ * ```
+ * Amplitude("api-key") {
+ *     flushQueueSize = 10
+ *     serverZone = ServerZone.EU
+ * }
+ * ```
  *
  * NOTE: this method should only be used for JVM application.
- *
- * @param apiKey
- * @param configs
- * @return
  */
 fun Amplitude(
     apiKey: String,
-    configs: Configuration.() -> Unit,
+    configs: ConfigurationBuilder.() -> Unit,
 ): Amplitude {
-    val config = Configuration(apiKey)
-    configs.invoke(config)
-    return Amplitude(config)
+    return Amplitude(ConfigurationBuilder(apiKey).apply(configs).build())
 }

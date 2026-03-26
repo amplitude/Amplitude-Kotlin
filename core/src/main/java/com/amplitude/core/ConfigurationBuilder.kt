@@ -9,19 +9,17 @@ import com.amplitude.id.IMIdentityStorageProvider
 import com.amplitude.id.IdentityStorageProvider
 
 /**
- * Builder for creating [ImmutableConfiguration] instances without depending on the constructor
- * signature.
+ * Builder for creating [Configuration] instances without depending on the constructor signature.
  *
  * Adding new properties with defaults does not change any method signature, preserving binary
  * compatibility for compiled dependents.
  *
  * Kotlin usage:
  * ```
- * val config = configuration("api-key") {
+ * Amplitude("api-key") {
  *     flushQueueSize = 50
  *     serverZone = ServerZone.EU
  * }
- * Amplitude(config)
  * ```
  *
  * Java usage:
@@ -57,8 +55,8 @@ class ConfigurationBuilder(internal val apiKey: String) {
     var enableDiagnostics: Boolean = true
     var enableRequestBodyCompression: Boolean = false
 
-    fun build(): ImmutableConfiguration =
-        ImmutableConfiguration(
+    fun build(): Configuration =
+        Configuration(
             apiKey = apiKey,
             flushQueueSize = flushQueueSize,
             flushIntervalMillis = flushIntervalMillis,
@@ -86,19 +84,3 @@ class ConfigurationBuilder(internal val apiKey: String) {
             enableRequestBodyCompression = enableRequestBodyCompression,
         )
 }
-
-/**
- * Creates an [ImmutableConfiguration] using a builder DSL.
- *
- * ```
- * val config = configuration("api-key") {
- *     flushQueueSize = 50
- *     serverZone = ServerZone.EU
- * }
- * Amplitude(config)
- * ```
- */
-fun configuration(
-    apiKey: String,
-    block: ConfigurationBuilder.() -> Unit = {},
-): ImmutableConfiguration = ConfigurationBuilder(apiKey).apply(block).build()

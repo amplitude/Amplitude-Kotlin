@@ -207,7 +207,7 @@ class ConfigurationBuilderTest {
         @Test
         fun `builder with defaults matches constructor defaults`() {
             val fromConstructor = Configuration("test-key", context)
-            val fromBuilder = configuration("test-key", context)
+            val fromBuilder = ConfigurationBuilder("test-key", context).build()
 
             assertEquals(fromConstructor.apiKey, fromBuilder.apiKey)
             assertEquals(fromConstructor.flushQueueSize, fromBuilder.flushQueueSize)
@@ -246,12 +246,12 @@ class ConfigurationBuilderTest {
         @Test
         fun `builder DSL sets properties correctly`() {
             val config =
-                configuration("test-key", context) {
+                ConfigurationBuilder("test-key", context).apply {
                     flushQueueSize = 50
                     serverZone = ServerZone.EU
                     autocapture = setOf(AutocaptureOption.SESSIONS, AutocaptureOption.APP_LIFECYCLES)
                     minTimeBetweenSessionsMillis = 10000
-                }
+                }.build()
 
             assertTrue(config.isValid())
             assertEquals(50, config.flushQueueSize)
@@ -281,7 +281,7 @@ class ConfigurationBuilderTest {
             val plan = Plan(branch = "main", source = "test")
             val ingestion = IngestionMetadata(sourceName = "test-source")
             val config =
-                configuration("test-key", context) {
+                ConfigurationBuilder("test-key", context).apply {
                     flushQueueSize = 10
                     flushIntervalMillis = 5000
                     instanceName = "custom"
@@ -310,7 +310,7 @@ class ConfigurationBuilderTest {
                     autocapture = setOf(AutocaptureOption.SESSIONS, AutocaptureOption.APP_LIFECYCLES)
                     migrateLegacyData = false
                     enableAutocaptureRemoteConfig = false
-                }
+                }.build()
 
             assertEquals(10, config.flushQueueSize)
             assertEquals(5000, config.flushIntervalMillis)
@@ -345,64 +345,50 @@ class ConfigurationBuilderTest {
 
         @Test
         fun `builder produces valid configuration`() {
-            val config = configuration("test-key", context)
+            val config = ConfigurationBuilder("test-key", context).build()
             assertTrue(config.isValid())
         }
 
         @Test
         fun `builder with empty apiKey produces invalid configuration`() {
-            val config = configuration("", context)
+            val config = ConfigurationBuilder("", context).build()
             assertFalse(config.isValid())
         }
 
         @Test
         fun `builder with empty autocapture`() {
             val config =
-                configuration("test-key", context) {
+                ConfigurationBuilder("test-key", context).apply {
                     autocapture = emptySet()
-                }
+                }.build()
             assertTrue(config.autocapture.isEmpty())
         }
 
         @Test
-        fun `builder result is an ImmutableConfiguration`() {
-            val config = configuration("test-key", context)
-            assertTrue(config is ImmutableConfiguration)
+        fun `builder result is a Configuration`() {
+            val config = ConfigurationBuilder("test-key", context).build()
+            assertTrue(config is Configuration)
         }
     }
 
     @Nested
-    inner class ImmutableBehavior {
+    inner class BuilderBehavior {
         @Test
-        fun `builder returns ImmutableConfiguration`() {
-            val config = configuration("test-key", context)
-            assertTrue(config is ImmutableConfiguration)
+        fun `builder returns Configuration`() {
+            val config = ConfigurationBuilder("test-key", context).build()
+            assertTrue(config is Configuration)
         }
 
         @Test
-        fun `immutable config seeds optOut correctly`() {
-            val config = configuration("test-key", context) { optOut = true }
+        fun `builder sets optOut correctly`() {
+            val config = ConfigurationBuilder("test-key", context).apply { optOut = true }.build()
             assertTrue(config.optOut)
         }
 
         @Test
-        fun `immutable config seeds offline correctly`() {
-            val config = configuration("test-key", context) { offline = null }
+        fun `builder sets offline correctly`() {
+            val config = ConfigurationBuilder("test-key", context).apply { offline = null }.build()
             assertNull(config.offline)
-        }
-
-        @Test
-        fun `toConfiguration maps all fields correctly`() {
-            val config =
-                configuration("test-key", context) {
-                    flushQueueSize = 50
-                    minTimeBetweenSessionsMillis = 10000
-                    enableCoppaControl = true
-                }
-            val mutable = config.toConfiguration()
-            assertEquals(50, mutable.flushQueueSize)
-            assertEquals(10000, mutable.minTimeBetweenSessionsMillis)
-            assertTrue(mutable.enableCoppaControl)
         }
     }
 }

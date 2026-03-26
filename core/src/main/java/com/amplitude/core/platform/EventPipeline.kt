@@ -98,7 +98,7 @@ class EventPipeline(
                 }
 
                 // Skip flush when offline
-                if (amplitude.offline == true) {
+                if (amplitude.configuration.offline == true) {
                     continue
                 }
 

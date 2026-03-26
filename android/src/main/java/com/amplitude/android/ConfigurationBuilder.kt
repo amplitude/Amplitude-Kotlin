@@ -11,21 +11,21 @@ import com.amplitude.core.events.IngestionMetadata
 import com.amplitude.core.events.Plan
 import com.amplitude.core.utilities.http.HttpClientInterface
 import com.amplitude.id.IdentityStorageProvider
+import com.amplitude.core.Configuration as CoreConfiguration
 
 /**
- * Builder for creating Android [ImmutableConfiguration] instances without depending on the
- * constructor signature.
+ * Builder for creating Android [Configuration] instances without depending on the constructor
+ * signature.
  *
  * Adding new properties with defaults does not change any method signature, preserving binary
  * compatibility for compiled dependents.
  *
  * Kotlin usage:
  * ```
- * val config = configuration("api-key", applicationContext) {
+ * Amplitude("api-key", applicationContext) {
  *     autocapture = setOf(AutocaptureOption.SESSIONS)
  *     minTimeBetweenSessionsMillis = 10000
  * }
- * Amplitude(config)
  * ```
  *
  * Java usage:
@@ -40,22 +40,22 @@ class ConfigurationBuilder(
     internal val context: Context,
 ) {
     // Core properties (with Android-specific defaults)
-    var flushQueueSize: Int = com.amplitude.core.Configuration.FLUSH_QUEUE_SIZE
-    var flushIntervalMillis: Int = com.amplitude.core.Configuration.FLUSH_INTERVAL_MILLIS
-    var instanceName: String = com.amplitude.core.Configuration.DEFAULT_INSTANCE
+    var flushQueueSize: Int = CoreConfiguration.FLUSH_QUEUE_SIZE
+    var flushIntervalMillis: Int = CoreConfiguration.FLUSH_INTERVAL_MILLIS
+    var instanceName: String = CoreConfiguration.DEFAULT_INSTANCE
     var optOut: Boolean = false
     var storageProvider: StorageProvider = AndroidStorageContextV3.eventsStorageProvider
     var loggerProvider: LoggerProvider = AndroidLoggerProvider()
     var minIdLength: Int? = null
     var partnerId: String? = null
     var callback: EventCallBack? = null
-    var flushMaxRetries: Int = com.amplitude.core.Configuration.FLUSH_MAX_RETRIES
+    var flushMaxRetries: Int = CoreConfiguration.FLUSH_MAX_RETRIES
     var useBatch: Boolean = false
     var serverZone: ServerZone = ServerZone.US
     var serverUrl: String? = null
     var plan: Plan? = null
     var ingestionMetadata: IngestionMetadata? = null
-    var identifyBatchIntervalMillis: Long = com.amplitude.core.Configuration.IDENTIFY_BATCH_INTERVAL_MILLIS
+    var identifyBatchIntervalMillis: Long = CoreConfiguration.IDENTIFY_BATCH_INTERVAL_MILLIS
     var identifyInterceptStorageProvider: StorageProvider = AndroidStorageContextV3.identifyInterceptStorageProvider
     var identityStorageProvider: IdentityStorageProvider = AndroidStorageContextV3.identityStorageProvider
     var offline: Boolean? = false
@@ -79,8 +79,8 @@ class ConfigurationBuilder(
     var interactionsOptions: InteractionsOptions = InteractionsOptions()
     var enableAutocaptureRemoteConfig: Boolean = true
 
-    fun build(): ImmutableConfiguration =
-        ImmutableConfiguration(
+    fun build(): Configuration =
+        Configuration(
             apiKey = apiKey,
             context = context,
             flushQueueSize = flushQueueSize,
@@ -121,20 +121,3 @@ class ConfigurationBuilder(
             enableAutocaptureRemoteConfig = enableAutocaptureRemoteConfig,
         )
 }
-
-/**
- * Creates an Android [ImmutableConfiguration] using a builder DSL.
- *
- * ```
- * val config = configuration("api-key", applicationContext) {
- *     autocapture = setOf(AutocaptureOption.SESSIONS)
- *     minTimeBetweenSessionsMillis = 10000
- * }
- * Amplitude(config)
- * ```
- */
-fun configuration(
-    apiKey: String,
-    context: Context,
-    block: ConfigurationBuilder.() -> Unit = {},
-): ImmutableConfiguration = ConfigurationBuilder(apiKey, context).apply(block).build()

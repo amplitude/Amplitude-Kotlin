@@ -1,6 +1,5 @@
 package com.amplitude.android.sample
 
-import com.amplitude.android.ImmutableConfiguration
 import com.amplitude.core.utilities.http.AnalyticsRequest
 import com.amplitude.core.utilities.http.AnalyticsResponse
 import com.amplitude.core.utilities.http.HttpClientInterface
@@ -12,17 +11,14 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 
 class CustomOkHttpClient(
+    private val apiKey: String,
+    private val apiHost: String,
+    private val minIdLength: Int? = null,
     private val okHttpClient: OkHttpClient =
         OkHttpClient.Builder()
             .addInterceptor(GzipRequestInterceptor())
             .build(),
 ) : HttpClientInterface {
-    private lateinit var configuration: ImmutableConfiguration
-
-    fun initialize(configuration: ImmutableConfiguration) {
-        this.configuration = configuration
-    }
-
     override fun upload(
         events: String,
         diagnostics: String?,
@@ -30,27 +26,27 @@ class CustomOkHttpClient(
         val mediaType = "application/json; charset=utf-8".toMediaTypeOrNull()
         val ampRequest =
             AnalyticsRequest(
-                configuration.apiKey,
+                apiKey,
                 events,
                 diagnostics = diagnostics,
-                minIdLength = configuration.minIdLength,
+                minIdLength = minIdLength,
             )
         val formBody: RequestBody =
             ampRequest.getBodyStr()
                 .toRequestBody(mediaType)
         val request: Request =
             Request.Builder()
-                .url(configuration.getApiHost())
+                .url(apiHost)
                 .post(formBody)
                 .build()
 
-        try {
-            return okHttpClient.newCall(request).execute().use { response ->
+        return try {
+            okHttpClient.newCall(request).execute().use { response ->
                 AnalyticsResponse.create(response.code, response.body?.string())
             }
         } catch (e: IOException) {
             e.printStackTrace()
-            return AnalyticsResponse.create(500, null)
+            AnalyticsResponse.create(500, null)
         }
     }
 }
