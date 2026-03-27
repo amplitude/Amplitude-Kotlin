@@ -143,7 +143,7 @@ class Timeline(
     }
 
     private suspend fun startNewSessionIfNeeded(timestamp: Long): List<BaseEvent> {
-        if (amplitude.configuration.optOut) {
+        if (amplitude.optOut) {
             return emptyList()
         }
         if (inSession() && (foreground.get() || isWithinMinTimeBetweenSessions(timestamp))) {
