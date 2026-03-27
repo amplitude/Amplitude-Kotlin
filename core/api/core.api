@@ -203,12 +203,8 @@ public final class com/amplitude/core/Configuration$Companion {
 public final class com/amplitude/core/ConfigurationBuilder : com/amplitude/core/Configuration {
 	public fun <init> (Ljava/lang/String;)V
 	public final fun build ()Lcom/amplitude/core/Configuration;
-	public fun getIdentifyInterceptStorageProvider ()Lcom/amplitude/core/StorageProvider;
-	public fun getIdentityStorageProvider ()Lcom/amplitude/id/IdentityStorageProvider;
 	public fun getLoggerProvider ()Lcom/amplitude/core/LoggerProvider;
 	public fun getStorageProvider ()Lcom/amplitude/core/StorageProvider;
-	public fun setIdentifyInterceptStorageProvider (Lcom/amplitude/core/StorageProvider;)V
-	public fun setIdentityStorageProvider (Lcom/amplitude/id/IdentityStorageProvider;)V
 	public fun setLoggerProvider (Lcom/amplitude/core/LoggerProvider;)V
 	public fun setStorageProvider (Lcom/amplitude/core/StorageProvider;)V
 }

@@ -2,8 +2,6 @@ package com.amplitude.core
 
 import com.amplitude.core.utilities.ConsoleLoggerProvider
 import com.amplitude.core.utilities.InMemoryStorageProvider
-import com.amplitude.id.IMIdentityStorageProvider
-import com.amplitude.id.IdentityStorageProvider
 
 /**
  * Builder for creating [Configuration] instances without depending on the constructor signature.
@@ -31,8 +29,6 @@ class ConfigurationBuilder(
 ) : Configuration(apiKey) {
     override var storageProvider: StorageProvider = InMemoryStorageProvider()
     override var loggerProvider: LoggerProvider = ConsoleLoggerProvider()
-    override var identifyInterceptStorageProvider: StorageProvider = InMemoryStorageProvider()
-    override var identityStorageProvider: IdentityStorageProvider = IMIdentityStorageProvider()
 
     fun build(): Configuration =
         Configuration(
