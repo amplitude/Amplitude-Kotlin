@@ -1,3 +1,10 @@
+# [1.27.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.26.5...v1.27.0) (2026-03-30)
+
+
+### Features
+
+* add ConfigurationBuilder for binary-stable configuration ([#367](https://github.com/amplitude/Amplitude-Kotlin/issues/367)) ([40904be](https://github.com/amplitude/Amplitude-Kotlin/commit/40904be71d69e542dc181f3b095285863866c029))
+
 ## [1.26.5](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.26.4...v1.26.5) (2026-03-24)
 
 
