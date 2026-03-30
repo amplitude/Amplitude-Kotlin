@@ -3,11 +3,11 @@ package com.amplitude.android.sample
 import android.app.Application
 import com.amplitude.android.Amplitude
 import com.amplitude.android.AutocaptureOption.Companion.ALL
-import com.amplitude.android.Configuration
 import com.amplitude.android.DeadClickOptions
 import com.amplitude.android.InteractionsOptions
 import com.amplitude.android.RageClickOptions
 import com.amplitude.common.Logger
+import com.amplitude.core.Constants
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
 import com.amplitude.experiment.Experiment
@@ -23,24 +23,21 @@ class MainApplication : Application() {
     override fun onCreate() {
         super.onCreate()
 
-        val httpClient = CustomOkHttpClient()
-        val configuration =
-            Configuration(
-                apiKey = AMPLITUDE_API_KEY,
-                context = applicationContext,
-                autocapture = ALL,
-                httpClient = httpClient,
+        amplitude =
+            Amplitude(AMPLITUDE_API_KEY, applicationContext) {
+                autocapture = ALL
+                httpClient =
+                    CustomOkHttpClient(
+                        apiKey = AMPLITUDE_API_KEY,
+                        apiHost = Constants.DEFAULT_API_HOST,
+                    )
                 interactionsOptions =
                     InteractionsOptions(
                         RageClickOptions(enabled = true),
                         // requires session replay to be enabled
                         DeadClickOptions(enabled = false),
-                    ),
-            )
-        httpClient.initialize(configuration)
-
-        // init instance
-        amplitude = Amplitude(configuration)
+                    )
+            }
 
         // Sample for Experiment Integration
         val experimentConfig =

@@ -14,6 +14,10 @@ import com.amplitude.core.utilities.http.HttpClientInterface
 import com.amplitude.id.IdentityStorageProvider
 import java.io.File
 
+/**
+ * When adding new constructor parameters, also update [ConfigurationBuilder.build] to pass the
+ * new value through.
+ */
 open class Configuration(
     apiKey: String,
     val context: Context,
@@ -121,50 +125,40 @@ open class Configuration(
         offline: Boolean? = false,
         deviceId: String? = null,
         sessionId: Long? = null,
-        httpClient: HttpClientInterface? = null,
-        interactionsOptions: InteractionsOptions = InteractionsOptions(),
-        enableDiagnostics: Boolean = true,
-        enableRequestBodyCompression: Boolean = false,
-        enableAutocaptureRemoteConfig: Boolean = true,
     ) : this(
-        apiKey,
-        context,
-        flushQueueSize,
-        flushIntervalMillis,
-        instanceName,
-        optOut,
-        storageProvider,
-        loggerProvider,
-        minIdLength,
-        partnerId,
-        callback,
-        flushMaxRetries,
-        useBatch,
-        serverZone,
-        serverUrl,
-        plan,
-        ingestionMetadata,
-        useAdvertisingIdForDeviceId,
-        useAppSetIdForDeviceId,
-        newDeviceIdPerInstall,
-        trackingOptions,
-        enableCoppaControl,
-        locationListening,
-        flushEventsOnClose,
-        minTimeBetweenSessionsMillis,
-        defaultTracking.autocaptureOptions,
-        identifyBatchIntervalMillis,
-        identifyInterceptStorageProvider,
-        identityStorageProvider,
-        migrateLegacyData,
-        offline,
-        deviceId,
-        sessionId,
-        httpClient,
-        interactionsOptions,
-        enableDiagnostics,
-        enableRequestBodyCompression,
-        enableAutocaptureRemoteConfig,
+        apiKey = apiKey,
+        context = context,
+        flushQueueSize = flushQueueSize,
+        flushIntervalMillis = flushIntervalMillis,
+        instanceName = instanceName,
+        optOut = optOut,
+        storageProvider = storageProvider,
+        loggerProvider = loggerProvider,
+        minIdLength = minIdLength,
+        partnerId = partnerId,
+        callback = callback,
+        flushMaxRetries = flushMaxRetries,
+        useBatch = useBatch,
+        serverZone = serverZone,
+        serverUrl = serverUrl,
+        plan = plan,
+        ingestionMetadata = ingestionMetadata,
+        useAdvertisingIdForDeviceId = useAdvertisingIdForDeviceId,
+        useAppSetIdForDeviceId = useAppSetIdForDeviceId,
+        newDeviceIdPerInstall = newDeviceIdPerInstall,
+        trackingOptions = trackingOptions,
+        enableCoppaControl = enableCoppaControl,
+        locationListening = locationListening,
+        flushEventsOnClose = flushEventsOnClose,
+        minTimeBetweenSessionsMillis = minTimeBetweenSessionsMillis,
+        autocapture = defaultTracking.autocaptureOptions,
+        identifyBatchIntervalMillis = identifyBatchIntervalMillis,
+        identifyInterceptStorageProvider = identifyInterceptStorageProvider,
+        identityStorageProvider = identityStorageProvider,
+        migrateLegacyData = migrateLegacyData,
+        offline = offline,
+        deviceId = deviceId,
+        sessionId = sessionId,
     ) {
         if (!trackingSessionEvents) {
             defaultTracking.sessions = false
@@ -178,7 +172,11 @@ open class Configuration(
     // A backing property to store the autocapture options. Any changes to `trackingSessionEvents`
     // or the `defaultTracking` options will be reflected in this property.
     private var _autocapture: MutableSet<AutocaptureOption> = autocapture.toMutableSet()
-    val autocapture: Set<AutocaptureOption> get() = _autocapture
+    var autocapture: Set<AutocaptureOption>
+        get() = _autocapture
+        set(value) {
+            _autocapture = value.toMutableSet()
+        }
 
     @Deprecated("Please use 'autocapture' instead and set 'AutocaptureOptions.SESSIONS' to enable the option.")
     var trackingSessionEvents: Boolean

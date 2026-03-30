@@ -11,6 +11,10 @@ import com.amplitude.id.IdentityStorageProvider
 
 typealias EventCallBack = (BaseEvent, status: Int, message: String) -> Unit
 
+/**
+ * When adding new constructor parameters, also update [ConfigurationBuilder.build] to pass the
+ * new value through.
+ */
 open class Configuration
     @JvmOverloads
     constructor(

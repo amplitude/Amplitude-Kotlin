@@ -60,6 +60,7 @@ public class com/amplitude/core/Amplitude {
 	public final fun getIdentityStorage ()Lcom/amplitude/id/IdentityStorage;
 	public final fun getLogger ()Lcom/amplitude/common/Logger;
 	public final fun getNetworkIODispatcher ()Lkotlinx/coroutines/CoroutineDispatcher;
+	public fun getOptOut ()Z
 	public final fun getRemoteConfigClient ()Lcom/amplitude/core/remoteconfig/RemoteConfigClient;
 	public final fun getSignalFlow ()Lkotlinx/coroutines/flow/SharedFlow;
 	public final fun getStorage ()Lcom/amplitude/core/Storage;
@@ -95,6 +96,7 @@ public class com/amplitude/core/Amplitude {
 	public final fun setGroup (Ljava/lang/String;[Ljava/lang/String;Lcom/amplitude/core/events/EventOptions;)Lcom/amplitude/core/Amplitude;
 	public static synthetic fun setGroup$default (Lcom/amplitude/core/Amplitude;Ljava/lang/String;Ljava/lang/String;Lcom/amplitude/core/events/EventOptions;ILjava/lang/Object;)Lcom/amplitude/core/Amplitude;
 	public static synthetic fun setGroup$default (Lcom/amplitude/core/Amplitude;Ljava/lang/String;[Ljava/lang/String;Lcom/amplitude/core/events/EventOptions;ILjava/lang/Object;)Lcom/amplitude/core/Amplitude;
+	public fun setOptOut (Z)V
 	public final fun setUserId (Ljava/lang/String;)Lcom/amplitude/core/Amplitude;
 	public final fun track (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/Amplitude;
 	public final fun track (Lcom/amplitude/core/events/BaseEvent;Lcom/amplitude/core/events/EventOptions;)Lcom/amplitude/core/Amplitude;
@@ -196,6 +198,15 @@ public class com/amplitude/core/Configuration {
 }
 
 public final class com/amplitude/core/Configuration$Companion {
+}
+
+public final class com/amplitude/core/ConfigurationBuilder : com/amplitude/core/Configuration {
+	public fun <init> (Ljava/lang/String;)V
+	public final fun build ()Lcom/amplitude/core/Configuration;
+	public fun getLoggerProvider ()Lcom/amplitude/core/LoggerProvider;
+	public fun getStorageProvider ()Lcom/amplitude/core/StorageProvider;
+	public fun setLoggerProvider (Lcom/amplitude/core/LoggerProvider;)V
+	public fun setStorageProvider (Lcom/amplitude/core/StorageProvider;)V
 }
 
 public final class com/amplitude/core/Constants {

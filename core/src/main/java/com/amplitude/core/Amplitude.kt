@@ -123,6 +123,16 @@ open class Amplitude(
         _signalFlow.tryEmit(signal)
     }
 
+    /**
+     * Whether events should be suppressed. Set this at runtime to opt the user in or out.
+     * Delegates to [Configuration.optOut] — mutating either is equivalent.
+     */
+    open var optOut: Boolean
+        get() = configuration.optOut
+        set(value) {
+            configuration.optOut = value
+        }
+
     init {
         require(configuration.isValid()) { "invalid configuration" }
         timeline = this.createTimeline()
@@ -477,7 +487,7 @@ open class Amplitude(
     }
 
     private fun process(event: BaseEvent) {
-        if (configuration.optOut) {
+        if (optOut) {
             logger.info("Skip event for opt out config.")
             return
         }
@@ -550,22 +560,21 @@ open class Amplitude(
 }
 
 /**
- * constructor function to build amplitude in dsl format with config options
- * Usage: Amplitude("123") {
- *            this.flushQueueSize = 10
- *        }
+ * DSL for creating an Amplitude instance with a [ConfigurationBuilder] block.
+ *
+ * Usage:
+ * ```
+ * Amplitude("api-key") {
+ *     flushQueueSize = 10
+ *     serverZone = ServerZone.EU
+ * }
+ * ```
  *
  * NOTE: this method should only be used for JVM application.
- *
- * @param apiKey
- * @param configs
- * @return
  */
 fun Amplitude(
     apiKey: String,
-    configs: Configuration.() -> Unit,
+    configs: ConfigurationBuilder.() -> Unit,
 ): Amplitude {
-    val config = Configuration(apiKey)
-    configs.invoke(config)
-    return Amplitude(config)
+    return Amplitude(ConfigurationBuilder(apiKey).apply(configs).build())
 }

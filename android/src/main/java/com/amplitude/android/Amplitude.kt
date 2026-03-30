@@ -46,7 +46,7 @@ open class Amplitude internal constructor(
     constructor(configuration: Configuration) : this(configuration, State())
 
     internal val autocaptureManager: AutocaptureManager by lazy {
-        val androidConfig = configuration as Configuration
+        val androidConfig = configuration
         AutocaptureManager(
             initialAutocapture = androidConfig.autocapture,
             initialInteractionsOptions = androidConfig.interactionsOptions,
@@ -183,24 +183,20 @@ open class Amplitude internal constructor(
 }
 
 /**
- * constructor function to build amplitude in dsl format with config options
- * Usage: Amplitude("123", context) {
- *            this.flushQueueSize = 10
- *        }
+ * DSL for creating an Android Amplitude instance with a [ConfigurationBuilder] block.
  *
- * NOTE: this method should only be used for Android application.
- *
- * @param apiKey Api Key
- * @param context Android Context
- * @param configs Configuration
- * @return Amplitude Android Instance
+ * Usage:
+ * ```
+ * Amplitude("api-key", applicationContext) {
+ *     autocapture = setOf(AutocaptureOption.SESSIONS)
+ *     flushQueueSize = 10
+ * }
+ * ```
  */
 fun Amplitude(
     apiKey: String,
     context: Context,
-    configs: Configuration.() -> Unit,
+    configs: ConfigurationBuilder.() -> Unit,
 ): Amplitude {
-    val config = Configuration(apiKey, context)
-    configs.invoke(config)
-    return Amplitude(config)
+    return Amplitude(ConfigurationBuilder(apiKey, context).apply(configs).build())
 }
