@@ -31,10 +31,11 @@ private const val LOCAL_ERROR_STATUS_CODE = 0
 
 @Deprecated(
     message = "Moved to the android module.",
-    replaceWith = ReplaceWith(
-        "NetworkTrackingPlugin",
-        "com.amplitude.android.network.NetworkTrackingPlugin",
-    ),
+    replaceWith =
+        ReplaceWith(
+            "NetworkTrackingPlugin",
+            "com.amplitude.android.network.NetworkTrackingPlugin",
+        ),
 )
 class NetworkTrackingPlugin(
     private val options: NetworkTrackingOptions = NetworkTrackingOptions.DEFAULT,

@@ -7,10 +7,11 @@ private const val STAR_WILDCARD = "*"
 
 @Deprecated(
     message = "Moved to the android module.",
-    replaceWith = ReplaceWith(
-        "NetworkTrackingOptions",
-        "com.amplitude.android.network.NetworkTrackingOptions",
-    ),
+    replaceWith =
+        ReplaceWith(
+            "NetworkTrackingOptions",
+            "com.amplitude.android.network.NetworkTrackingOptions",
+        ),
 )
 data class NetworkTrackingOptions(
     val captureRules: List<CaptureRule>,
