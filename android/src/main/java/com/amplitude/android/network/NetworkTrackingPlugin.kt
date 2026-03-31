@@ -1,4 +1,4 @@
-package com.amplitude.core.network
+package com.amplitude.android.network
 
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Constants.EventProperties.NETWORK_TRACKING_COMPLETION_TIME
@@ -29,14 +29,6 @@ import okio.IOException
 private const val AMPLITUDE_HOST_DOMAIN = "amplitude.com"
 private const val LOCAL_ERROR_STATUS_CODE = 0
 
-@Deprecated(
-    message = "Moved to the android module.",
-    replaceWith =
-        ReplaceWith(
-            "NetworkTrackingPlugin",
-            "com.amplitude.android.network.NetworkTrackingPlugin",
-        ),
-)
 class NetworkTrackingPlugin(
     private val options: NetworkTrackingOptions = NetworkTrackingOptions.DEFAULT,
 ) : Interceptor, Plugin {

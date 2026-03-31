@@ -1,6 +1,6 @@
-package com.amplitude.core.network
+package com.amplitude.android.network
 
-import com.amplitude.core.network.NetworkTrackingOptions.CaptureRule
+import com.amplitude.android.network.NetworkTrackingOptions.CaptureRule
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
