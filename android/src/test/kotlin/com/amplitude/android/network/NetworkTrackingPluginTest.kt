@@ -1,4 +1,4 @@
-package com.amplitude.core.network
+package com.amplitude.android.network
 
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Constants.EventProperties.NETWORK_TRACKING_COMPLETION_TIME
@@ -14,7 +14,7 @@ import com.amplitude.core.Constants.EventProperties.NETWORK_TRACKING_URL_FRAGMEN
 import com.amplitude.core.Constants.EventProperties.NETWORK_TRACKING_URL_QUERY
 import com.amplitude.core.Constants.EventTypes.NETWORK_TRACKING
 import com.amplitude.core.events.BaseEvent
-import com.amplitude.core.network.NetworkTrackingOptions.CaptureRule
+import com.amplitude.android.network.NetworkTrackingOptions.CaptureRule
 import io.mockk.confirmVerified
 import io.mockk.every
 import io.mockk.mockk

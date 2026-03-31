@@ -1,17 +1,10 @@
-package com.amplitude.core.network
+package com.amplitude.android.network
 
-import com.amplitude.core.network.NetworkTrackingOptions.CaptureRule
+import com.amplitude.android.network.NetworkTrackingOptions.CaptureRule
 import kotlin.text.RegexOption.IGNORE_CASE
 
 private const val STAR_WILDCARD = "*"
 
-@Deprecated(
-    message = "Moved to the android module.",
-    replaceWith = ReplaceWith(
-        "NetworkTrackingOptions",
-        "com.amplitude.android.network.NetworkTrackingOptions",
-    ),
-)
 data class NetworkTrackingOptions(
     val captureRules: List<CaptureRule>,
     val ignoreHosts: List<String> = emptyList(),
@@ -36,7 +29,7 @@ data class NetworkTrackingOptions(
     ) {
         private val hostMatcher = HostMatcher(hosts)
 
-        fun matches(host: String): Boolean {
+        internal fun matches(host: String): Boolean {
             return hostMatcher.matches(host)
         }
     }
@@ -52,12 +45,12 @@ data class NetworkTrackingOptions(
 
     private val ignoreHostMatcher = HostMatcher(ignoreHosts)
 
-    fun shouldIgnore(host: String): Boolean {
+    internal fun shouldIgnore(host: String): Boolean {
         return ignoreHostMatcher.matches(host)
     }
 }
 
-private class HostMatcher(hosts: List<String>) {
+internal class HostMatcher(hosts: List<String>) {
     private val hostRegexes: List<Regex> by lazy {
         hosts.filter { it.contains(STAR_WILDCARD) }
             .map { host ->
@@ -93,7 +86,7 @@ private class HostMatcher(hosts: List<String>) {
  * @param host The host of the request URL.
  * @param responseCode The status code of the response, or null if it's an error.
  */
-fun List<CaptureRule>.matches(
+internal fun List<CaptureRule>.matches(
     host: String,
     responseCode: Int,
 ): Boolean {
