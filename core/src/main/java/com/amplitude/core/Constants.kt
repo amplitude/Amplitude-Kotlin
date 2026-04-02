@@ -58,6 +58,10 @@ object Constants {
         const val NETWORK_TRACKING_DURATION = "[Amplitude] Duration"
         const val NETWORK_TRACKING_REQUEST_BODY_SIZE = "[Amplitude] Request Body Size"
         const val NETWORK_TRACKING_RESPONSE_BODY_SIZE = "[Amplitude] Response Body Size"
+        const val NETWORK_TRACKING_REQUEST_HEADERS = "[Amplitude] Request Headers"
+        const val NETWORK_TRACKING_RESPONSE_HEADERS = "[Amplitude] Response Headers"
+        const val NETWORK_TRACKING_REQUEST_BODY = "[Amplitude] Request Body"
+        const val NETWORK_TRACKING_RESPONSE_BODY = "[Amplitude] Response Body"
 
         // Accessibility properties
         const val TARGET_ACCESSIBILITY_LABEL = "[Amplitude] Target Accessibility Label"
