@@ -21,6 +21,9 @@ import com.amplitude.core.Constants.EventTypes.NETWORK_TRACKING
 import com.amplitude.core.platform.Plugin
 import com.amplitude.core.platform.Plugin.Type
 import com.amplitude.core.platform.Plugin.Type.Utility
+import com.amplitude.core.remoteconfig.ConfigMap
+import com.amplitude.core.remoteconfig.RemoteConfigClient
+import com.amplitude.core.remoteconfig.RemoteConfigClient.Key
 import okhttp3.Headers
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
@@ -33,10 +36,64 @@ import okio.ByteString.Companion.toByteString
 import okio.IOException
 
 class NetworkTrackingPlugin(
-    private val options: NetworkTrackingOptions = NetworkTrackingOptions.DEFAULT,
+    options: NetworkTrackingOptions = NetworkTrackingOptions.DEFAULT,
 ) : Interceptor, Plugin {
     override val type: Type = Utility
     override lateinit var amplitude: Amplitude
+
+    private val originalOptions: NetworkTrackingOptions = options
+
+    @Volatile
+    internal var currentOptions: NetworkTrackingOptions = options
+
+    // Strong reference to prevent GC — RemoteConfigClient uses WeakReference
+    private var remoteConfigCallback: RemoteConfigClient.RemoteConfigCallback? = null
+
+    override fun setup(amplitude: Amplitude) {
+        super.setup(amplitude)
+
+        val androidAmplitude = amplitude as? com.amplitude.android.Amplitude ?: return
+        val androidConfig = androidAmplitude.configuration as? com.amplitude.android.Configuration ?: return
+
+        if (androidConfig.enableAutocaptureRemoteConfig && originalOptions.enableRemoteConfig) {
+            remoteConfigCallback = RemoteConfigClient.RemoteConfigCallback { config, _, _ ->
+                handleRemoteConfig(config)
+            }
+            androidAmplitude.remoteConfigClient.subscribe(Key.ANALYTICS_SDK, remoteConfigCallback!!)
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun handleRemoteConfig(config: ConfigMap) {
+        val autocaptureConfig = config["autocapture"] as? ConfigMap
+        val networkConfig = autocaptureConfig?.get("networkTracking") as? ConfigMap
+
+        if (networkConfig == null) {
+            // No networkTracking section — reset to local config
+            currentOptions = originalOptions
+            return
+        }
+
+        // Fresh overlay on local options each time. Start from originalOptions so
+        // fields absent from remote fall back to local, not to a previous remote value.
+        var updated = originalOptions
+        var resolvedEnabled = originalOptions.enabled
+        (networkConfig["enabled"] as? Boolean)?.let { resolvedEnabled = it }
+        (networkConfig["ignoreHosts"] as? List<*>)?.filterIsInstance<String>()?.let {
+            updated = updated.copy(ignoreHosts = it)
+        }
+        (networkConfig["ignoreAmplitudeRequests"] as? Boolean)?.let {
+            updated = updated.copy(ignoreAmplitudeRequests = it)
+        }
+        (networkConfig["captureRules"] as? List<*>)?.let { rawRules ->
+            val maps = rawRules.filterIsInstance<Map<String, Any?>>()
+            val rules = CaptureRule.fromRemoteConfig(maps)
+            if (rules != null) updated = updated.copy(captureRules = rules)
+        }
+
+        // Single atomic write — enabled + options in one snapshot
+        currentOptions = updated.copy(enabled = resolvedEnabled)
+    }
 
     override fun intercept(chain: Chain): Response {
         val request = chain.request()
@@ -64,13 +121,14 @@ class NetworkTrackingPlugin(
         request: Request,
         responseCode: Int,
     ): CaptureRule? {
+        val opts = currentOptions // single read — enabled + options in one atomic snapshot
+        if (!opts.enabled) return null
         val host = request.url.host
-        if (options.shouldIgnore(host)) return null
+        if (opts.shouldIgnore(host)) return null
         // Recursion guard: only scan body for amplitude hosts to avoid consuming one-shot
-        // bodies on normal requests. This prevents the SDK's own network tracking event
-        // uploads from being re-tracked when the same OkHttpClient is shared.
+        // bodies on normal requests.
         if (host.isAmplitudeHost() && request.body?.contains(NETWORK_TRACKING) == true) return null
-        return options.captureRules.findMatchingRule(
+        return opts.captureRules.findMatchingRule(
             host,
             request.url.toString(),
             request.method,

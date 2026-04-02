@@ -19,6 +19,8 @@ import com.amplitude.core.Constants.EventProperties.NETWORK_TRACKING_URL_FRAGMEN
 import com.amplitude.core.Constants.EventProperties.NETWORK_TRACKING_URL_QUERY
 import com.amplitude.core.Constants.EventTypes.NETWORK_TRACKING
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.remoteconfig.ConfigMap
+import com.amplitude.core.remoteconfig.RemoteConfigClient
 import com.amplitude.android.network.NetworkTrackingOptions.CaptureBody
 import com.amplitude.android.network.NetworkTrackingOptions.CaptureHeader
 import io.mockk.confirmVerified
@@ -828,5 +830,238 @@ class NetworkTrackingPluginTest {
                 }
             }
         return mockChain
+    }
+
+    // --- Remote Config Tests ---
+
+    private class TestRemoteConfigClient : RemoteConfigClient {
+        val callbacks = mutableListOf<RemoteConfigClient.RemoteConfigCallback>()
+
+        override fun subscribe(key: RemoteConfigClient.Key, callback: RemoteConfigClient.RemoteConfigCallback) {
+            if (key == RemoteConfigClient.Key.ANALYTICS_SDK) callbacks.add(callback)
+        }
+
+        override fun updateConfigs() {}
+
+        fun emit(config: ConfigMap) {
+            callbacks.forEach { it.onUpdate(config, RemoteConfigClient.Source.REMOTE, System.currentTimeMillis()) }
+        }
+    }
+
+    private fun mockAndroidAmplitude(
+        remoteConfigClient: RemoteConfigClient,
+        enableAutocaptureRemoteConfig: Boolean = true,
+    ): com.amplitude.android.Amplitude {
+        val mockConfig = mockk<com.amplitude.android.Configuration>(relaxed = true)
+        every { mockConfig.enableAutocaptureRemoteConfig } returns enableAutocaptureRemoteConfig
+        val amplitude = mockk<com.amplitude.android.Amplitude>(relaxed = true)
+        every { amplitude.configuration } returns mockConfig
+        every { amplitude.remoteConfigClient } returns remoteConfigClient
+        return amplitude
+    }
+
+    private fun networkTrackingConfig(vararg entries: Pair<String, Any?>): ConfigMap {
+        return mapOf("autocapture" to mapOf("networkTracking" to mapOf(*entries)))
+    }
+
+    @Test
+    fun `setup subscribes to remote config when both flags true`() {
+        val remoteConfig = TestRemoteConfigClient()
+        val plugin = NetworkTrackingPlugin(
+            NetworkTrackingOptions(captureRules = listOf(CaptureRule(hosts = listOf("*"))), enableRemoteConfig = true),
+        )
+        plugin.setup(mockAndroidAmplitude(remoteConfig, enableAutocaptureRemoteConfig = true))
+
+        assertEquals(1, remoteConfig.callbacks.size)
+    }
+
+    @Test
+    fun `setup does NOT subscribe when enableAutocaptureRemoteConfig is false`() {
+        val remoteConfig = TestRemoteConfigClient()
+        val plugin = NetworkTrackingPlugin(
+            NetworkTrackingOptions(captureRules = listOf(CaptureRule(hosts = listOf("*"))), enableRemoteConfig = true),
+        )
+        plugin.setup(mockAndroidAmplitude(remoteConfig, enableAutocaptureRemoteConfig = false))
+
+        assertEquals(0, remoteConfig.callbacks.size)
+    }
+
+    @Test
+    fun `setup does NOT subscribe when enableRemoteConfig option is false`() {
+        val remoteConfig = TestRemoteConfigClient()
+        val plugin = NetworkTrackingPlugin(
+            NetworkTrackingOptions(captureRules = listOf(CaptureRule(hosts = listOf("*"))), enableRemoteConfig = false),
+        )
+        plugin.setup(mockAndroidAmplitude(remoteConfig, enableAutocaptureRemoteConfig = true))
+
+        assertEquals(0, remoteConfig.callbacks.size)
+    }
+
+    @Test
+    fun `setup with core Amplitude skips subscription`() {
+        val coreAmplitude = mockk<Amplitude>(relaxed = true)
+        val plugin = NetworkTrackingPlugin(
+            NetworkTrackingOptions(captureRules = listOf(CaptureRule(hosts = listOf("*"))), enableRemoteConfig = true),
+        )
+        // Should not crash — setup returns early when amplitude is not android.Amplitude
+        plugin.setup(coreAmplitude)
+    }
+
+    @Test
+    fun `remote config disables tracking`() {
+        val remoteConfig = TestRemoteConfigClient()
+        val plugin = NetworkTrackingPlugin(
+            NetworkTrackingOptions(
+                captureRules = listOf(CaptureRule(hosts = listOf("*"), statusCodeRange = (200..299).toList())),
+                enabled = true,
+            ),
+        )
+        val amplitude = mockAndroidAmplitude(remoteConfig)
+        plugin.setup(amplitude)
+        plugin.amplitude = amplitude
+
+        // Disable via remote config
+        remoteConfig.emit(networkTrackingConfig("enabled" to false))
+
+        plugin.intercept(mockInterceptorChain(200))
+
+        verify(exactly = 0) { amplitude.track(any<BaseEvent>(), any()) }
+    }
+
+    @Test
+    fun `remote config re-enables tracking`() {
+        val remoteConfig = TestRemoteConfigClient()
+        val plugin = NetworkTrackingPlugin(
+            NetworkTrackingOptions(
+                captureRules = listOf(CaptureRule(hosts = listOf("*"), statusCodeRange = (200..299).toList())),
+                enabled = false, // initially disabled
+            ),
+        )
+        val amplitude = mockAndroidAmplitude(remoteConfig)
+        plugin.setup(amplitude)
+        plugin.amplitude = amplitude
+
+        // Enable via remote config
+        remoteConfig.emit(networkTrackingConfig("enabled" to true))
+
+        plugin.intercept(mockInterceptorChain(200))
+
+        verify(exactly = 1) { amplitude.track(eq(NETWORK_TRACKING), any()) }
+    }
+
+    @Test
+    fun `remote config updates ignoreHosts`() {
+        val remoteConfig = TestRemoteConfigClient()
+        val plugin = NetworkTrackingPlugin(
+            NetworkTrackingOptions(
+                captureRules = listOf(CaptureRule(hosts = listOf("*"), statusCodeRange = (200..299).toList())),
+                ignoreHosts = emptyList(),
+                ignoreAmplitudeRequests = false,
+            ),
+        )
+        val amplitude = mockAndroidAmplitude(remoteConfig)
+        plugin.setup(amplitude)
+        plugin.amplitude = amplitude
+
+        // Add ignore host via remote config
+        remoteConfig.emit(networkTrackingConfig("ignoreHosts" to listOf("example.com")))
+
+        plugin.intercept(mockInterceptorChain(200, url = "https://example.com/test"))
+
+        verify(exactly = 0) { amplitude.track(any<BaseEvent>(), any()) }
+    }
+
+    @Test
+    fun `remote config updates captureRules`() {
+        val remoteConfig = TestRemoteConfigClient()
+        val plugin = NetworkTrackingPlugin(
+            NetworkTrackingOptions(
+                captureRules = listOf(CaptureRule(hosts = listOf("*"), statusCodeRange = (500..599).toList())),
+                ignoreAmplitudeRequests = false,
+            ),
+        )
+        val amplitude = mockAndroidAmplitude(remoteConfig)
+        plugin.setup(amplitude)
+        plugin.amplitude = amplitude
+
+        // Override rules to capture 200s instead
+        remoteConfig.emit(
+            mapOf(
+                "autocapture" to mapOf(
+                    "networkTracking" to mapOf(
+                        "captureRules" to listOf(
+                            mapOf("hosts" to listOf("*"), "statusCodeRange" to "200-299"),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        plugin.intercept(mockInterceptorChain(200))
+        verify(exactly = 1) { amplitude.track(eq(NETWORK_TRACKING), any()) }
+    }
+
+    @Test
+    fun `missing networkTracking section resets to local config`() {
+        val remoteConfig = TestRemoteConfigClient()
+        val plugin = NetworkTrackingPlugin(
+            NetworkTrackingOptions(
+                captureRules = listOf(CaptureRule(hosts = listOf("*"), statusCodeRange = (200..299).toList())),
+                enabled = true,
+                ignoreAmplitudeRequests = false,
+            ),
+        )
+        val amplitude = mockAndroidAmplitude(remoteConfig)
+        plugin.setup(amplitude)
+        plugin.amplitude = amplitude
+
+        // First: disable via remote config
+        remoteConfig.emit(networkTrackingConfig("enabled" to false))
+        plugin.intercept(mockInterceptorChain(200))
+        verify(exactly = 0) { amplitude.track(any<BaseEvent>(), any()) }
+
+        // Then: emit config without networkTracking section → should reset to local (enabled=true)
+        remoteConfig.emit(mapOf("autocapture" to mapOf("sessions" to true)))
+
+        plugin.intercept(mockInterceptorChain(200))
+        verify(exactly = 1) { amplitude.track(eq(NETWORK_TRACKING), any()) }
+    }
+
+    @Test
+    fun `partial remote config uses fresh overlay on local`() {
+        val remoteConfig = TestRemoteConfigClient()
+        val localRules = listOf(CaptureRule(hosts = listOf("local.com"), statusCodeRange = (200..299).toList()))
+        val plugin = NetworkTrackingPlugin(
+            NetworkTrackingOptions(
+                captureRules = localRules,
+                ignoreHosts = listOf("local-ignore.com"),
+                ignoreAmplitudeRequests = false,
+            ),
+        )
+        val amplitude = mockAndroidAmplitude(remoteConfig)
+        plugin.setup(amplitude)
+        plugin.amplitude = amplitude
+
+        // First remote config: override ignoreHosts and add captureRules
+        remoteConfig.emit(
+            mapOf(
+                "autocapture" to mapOf(
+                    "networkTracking" to mapOf(
+                        "ignoreHosts" to listOf("remote-ignore.com"),
+                        "captureRules" to listOf(
+                            mapOf("hosts" to listOf("*"), "statusCodeRange" to "200-299"),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        // Second remote config: only set ignoreHosts — captureRules should fall back to LOCAL, not previous remote
+        remoteConfig.emit(networkTrackingConfig("ignoreHosts" to listOf("other.com")))
+
+        // local.com should match (local rules restored), not "*" from previous remote
+        val opts = plugin.currentOptions
+        assertEquals(localRules.first().hosts, opts.captureRules.first().hosts)
+        assertEquals(listOf("other.com"), opts.ignoreHosts)
     }
 }
