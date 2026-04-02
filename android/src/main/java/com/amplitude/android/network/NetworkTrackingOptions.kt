@@ -9,62 +9,64 @@ import kotlin.text.RegexOption.IGNORE_CASE
 
 private const val STAR_WILDCARD = "*"
 
-internal val SAFE_HEADERS: Set<String> = setOf(
-    "access-control-allow-origin",
-    "access-control-allow-credentials",
-    "access-control-expose-headers",
-    "access-control-max-age",
-    "access-control-allow-methods",
-    "access-control-allow-headers",
-    "accept-patch",
-    "accept-ranges",
-    "age",
-    "allow",
-    "alt-svc",
-    "cache-control",
-    "connection",
-    "content-disposition",
-    "content-encoding",
-    "content-language",
-    "content-length",
-    "content-location",
-    "content-md5",
-    "content-range",
-    "content-type",
-    "date",
-    "delta-base",
-    "etag",
-    "expires",
-    "im",
-    "last-modified",
-    "link",
-    "location",
-    "permanent",
-    "p3p",
-    "pragma",
-    "proxy-authenticate",
-    "public-key-pins",
-    "retry-after",
-    "server",
-    "status",
-    "strict-transport-security",
-    "trailer",
-    "transfer-encoding",
-    "tk",
-    "upgrade",
-    "vary",
-    "via",
-    "warning",
-    "www-authenticate",
-    "x-b3-traceid",
-    "x-frame-options",
-)
+internal val SAFE_HEADERS: Set<String> =
+    setOf(
+        "access-control-allow-origin",
+        "access-control-allow-credentials",
+        "access-control-expose-headers",
+        "access-control-max-age",
+        "access-control-allow-methods",
+        "access-control-allow-headers",
+        "accept-patch",
+        "accept-ranges",
+        "age",
+        "allow",
+        "alt-svc",
+        "cache-control",
+        "connection",
+        "content-disposition",
+        "content-encoding",
+        "content-language",
+        "content-length",
+        "content-location",
+        "content-md5",
+        "content-range",
+        "content-type",
+        "date",
+        "delta-base",
+        "etag",
+        "expires",
+        "im",
+        "last-modified",
+        "link",
+        "location",
+        "permanent",
+        "p3p",
+        "pragma",
+        "proxy-authenticate",
+        "public-key-pins",
+        "retry-after",
+        "server",
+        "status",
+        "strict-transport-security",
+        "trailer",
+        "transfer-encoding",
+        "tk",
+        "upgrade",
+        "vary",
+        "via",
+        "warning",
+        "www-authenticate",
+        "x-b3-traceid",
+        "x-frame-options",
+    )
 
-internal val BLOCK_HEADERS: Set<String> = setOf(
-    "authorization",
-    "cookie",
-    "proxy-authorization",
-)
+internal val BLOCK_HEADERS: Set<String> =
+    setOf(
+        "authorization",
+        "cookie",
+        "proxy-authorization",
+    )
 
 data class NetworkTrackingOptions(
     val captureRules: List<CaptureRule>,
@@ -91,11 +93,12 @@ data class NetworkTrackingOptions(
         val captureSafeHeaders: Boolean = true,
     ) {
         internal fun filterHeaders(headers: Map<String, String>): Map<String, String>? {
-            val combinedAllowSet = buildSet {
-                addAll(allowlist.map { it.lowercase() })
-                if (captureSafeHeaders) addAll(SAFE_HEADERS)
-                removeAll(BLOCK_HEADERS)
-            }
+            val combinedAllowSet =
+                buildSet {
+                    addAll(allowlist.map { it.lowercase() })
+                    if (captureSafeHeaders) addAll(SAFE_HEADERS)
+                    removeAll(BLOCK_HEADERS)
+                }
             if (combinedAllowSet.isEmpty()) return null
             val result = headers.filter { (key, _) -> combinedAllowSet.contains(key.lowercase()) }
             return result.ifEmpty { null }
@@ -111,11 +114,12 @@ data class NetworkTrackingOptions(
             return try {
                 val bodyString = bodyBytes.toString(Charsets.UTF_8)
                 val parsed = JSONTokener(bodyString).nextValue()
-                val json: Any = when (parsed) {
-                    is JSONObject -> jsonObjectToMap(parsed)
-                    is JSONArray -> jsonArrayToList(parsed)
-                    else -> return null
-                }
+                val json: Any =
+                    when (parsed) {
+                        is JSONObject -> jsonObjectToMap(parsed)
+                        is JSONArray -> jsonArrayToList(parsed)
+                        else -> return null
+                    }
                 val filter = ObjectFilter(allowlist, blocklist)
                 val filtered = filter.filtered(json) ?: return null
                 when (filtered) {
@@ -131,6 +135,7 @@ data class NetworkTrackingOptions(
 
     sealed class URLPattern {
         data class Exact(val url: String) : URLPattern()
+
         data class Regex(val pattern: String) : URLPattern()
     }
 
@@ -153,7 +158,11 @@ data class NetworkTrackingOptions(
                 }
             }
 
-        internal fun matchesRequest(host: String, url: String, method: String?): Boolean {
+        internal fun matchesRequest(
+            host: String,
+            url: String,
+            method: String?,
+        ): Boolean {
             // If URLs are configured, match by URL patterns only
             if (urls.isNotEmpty()) {
                 if (!matchesUrl(url)) return false

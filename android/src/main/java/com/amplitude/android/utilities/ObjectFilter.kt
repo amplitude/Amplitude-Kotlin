@@ -16,7 +16,10 @@ internal class ObjectFilter(
         }
     }
 
-    private fun filterMap(map: Map<String, Any?>, path: List<String>): Map<String, Any?>? {
+    private fun filterMap(
+        map: Map<String, Any?>,
+        path: List<String>,
+    ): Map<String, Any?>? {
         val result = mutableMapOf<String, Any?>()
         for ((key, value) in map) {
             val newPath = path + key
@@ -32,7 +35,10 @@ internal class ObjectFilter(
         return result.ifEmpty { null }
     }
 
-    private fun filterList(list: List<*>, path: List<String>): List<Any?>? {
+    private fun filterList(
+        list: List<*>,
+        path: List<String>,
+    ): List<Any?>? {
         val result = mutableListOf<Any?>()
         for ((index, value) in list.withIndex()) {
             val newPath = path + index.toString()
@@ -48,7 +54,10 @@ internal class ObjectFilter(
         return result.ifEmpty { null }
     }
 
-    private fun processValue(value: Any?, at: List<String>): Any? {
+    private fun processValue(
+        value: Any?,
+        at: List<String>,
+    ): Any? {
         if (value !is Map<*, *> && value !is List<*>) {
             return if (isAllowed(at)) value else null
         }
@@ -75,7 +84,10 @@ internal class ObjectFilter(
         }
     }
 
-    private fun shouldPreserveEmpty(path: List<String>, value: Any?): Boolean {
+    private fun shouldPreserveEmpty(
+        path: List<String>,
+        value: Any?,
+    ): Boolean {
         if (value !is Map<*, *> && value !is List<*>) return false
         return allowKeyPaths.any { pattern ->
             pattern.size == path.size &&
@@ -94,7 +106,10 @@ internal class ObjectFilter(
         }
     }
 
-    private fun canMatchDescendants(path: List<String>, pattern: List<String>): Boolean {
+    private fun canMatchDescendants(
+        path: List<String>,
+        pattern: List<String>,
+    ): Boolean {
         if (pattern.size <= path.size) return pattern.contains("**")
         for (i in path.indices) {
             if (pattern[i] == "**") return true
@@ -111,13 +126,21 @@ internal class ObjectFilter(
         return blockKeyPaths.any { matches(path, it) }
     }
 
-    internal fun matches(path: List<String>, pattern: List<String>): Boolean {
+    internal fun matches(
+        path: List<String>,
+        pattern: List<String>,
+    ): Boolean {
         if (path.isEmpty() && pattern.isEmpty()) return true
         if (pattern == listOf("**")) return true
         return matchImpl(path, pattern, 0, 0)
     }
 
-    private fun matchImpl(path: List<String>, pattern: List<String>, pIdx: Int, patIdx: Int): Boolean {
+    private fun matchImpl(
+        path: List<String>,
+        pattern: List<String>,
+        pIdx: Int,
+        patIdx: Int,
+    ): Boolean {
         if (pIdx == path.size && patIdx == pattern.size) return true
         if (patIdx == pattern.size) return false
 

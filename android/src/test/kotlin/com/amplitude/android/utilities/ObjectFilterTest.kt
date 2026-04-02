@@ -171,10 +171,11 @@ class ObjectFilterTests {
     @Test
     fun `filtered basic dictionary`() {
         val filter = ObjectFilter(allowList = listOf("user/name", "user/email"))
-        val input = mapOf(
-            "user" to mapOf("name" to "John", "email" to "john@example.com", "password" to "secret123"),
-            "product" to mapOf("name" to "product_1"),
-        )
+        val input =
+            mapOf(
+                "user" to mapOf("name" to "John", "email" to "john@example.com", "password" to "secret123"),
+                "product" to mapOf("name" to "product_1"),
+            )
         val result = filter.filtered(input) as? Map<*, *>
         assertNotNull(result)
         val user = result!!["user"] as? Map<*, *>
@@ -187,18 +188,21 @@ class ObjectFilterTests {
 
     @Test
     fun `filtered with block list`() {
-        val filter = ObjectFilter(
-            allowList = listOf("user/**"),
-            blockList = listOf("user/password", "user/metadata/secret"),
-        )
-        val input = mapOf(
-            "user" to mapOf(
-                "name" to "John",
-                "email" to "john@example.com",
-                "password" to "secret123",
-                "metadata" to mapOf("item1" to 1, "secret" to "hidden"),
-            ),
-        )
+        val filter =
+            ObjectFilter(
+                allowList = listOf("user/**"),
+                blockList = listOf("user/password", "user/metadata/secret"),
+            )
+        val input =
+            mapOf(
+                "user" to
+                    mapOf(
+                        "name" to "John",
+                        "email" to "john@example.com",
+                        "password" to "secret123",
+                        "metadata" to mapOf("item1" to 1, "secret" to "hidden"),
+                    ),
+            )
         val result = filter.filtered(input) as? Map<*, *>
         val user = result?.get("user") as? Map<*, *>
         assertEquals("John", user?.get("name"))
@@ -214,15 +218,17 @@ class ObjectFilterTests {
     @Test
     fun `filtered with single wildcard`() {
         val filter = ObjectFilter(allowList = listOf("user/*"))
-        val input = mapOf(
-            "user" to mapOf(
-                "name" to "John",
-                "email" to "john@example.com",
-                "metadata" to mapOf("item1" to 1, "item2" to 2),
-                "tags" to listOf("return", "tier3"),
-            ),
-            "product" to mapOf("name" to "product_1"),
-        )
+        val input =
+            mapOf(
+                "user" to
+                    mapOf(
+                        "name" to "John",
+                        "email" to "john@example.com",
+                        "metadata" to mapOf("item1" to 1, "item2" to 2),
+                        "tags" to listOf("return", "tier3"),
+                    ),
+                "product" to mapOf("name" to "product_1"),
+            )
         val result = filter.filtered(input) as? Map<*, *>
         val user = result?.get("user") as? Map<*, *>
         assertEquals("John", user?.get("name"))
@@ -240,15 +246,17 @@ class ObjectFilterTests {
     @Test
     fun `filtered with double wildcard`() {
         val filter = ObjectFilter(allowList = listOf("user/**"))
-        val input = mapOf(
-            "user" to mapOf(
-                "name" to "John",
-                "email" to "john@example.com",
-                "metadata" to mapOf("item1" to 1, "item2" to 2),
-                "tags" to listOf("return", "tier3"),
-            ),
-            "product" to mapOf("name" to "product_1"),
-        )
+        val input =
+            mapOf(
+                "user" to
+                    mapOf(
+                        "name" to "John",
+                        "email" to "john@example.com",
+                        "metadata" to mapOf("item1" to 1, "item2" to 2),
+                        "tags" to listOf("return", "tier3"),
+                    ),
+                "product" to mapOf("name" to "product_1"),
+            )
         val result = filter.filtered(input) as? Map<*, *>
         val user = result?.get("user") as? Map<*, *>
         assertEquals("John", user?.get("name"))
@@ -270,14 +278,17 @@ class ObjectFilterTests {
     @Test
     fun `filtered with array`() {
         val filter = ObjectFilter(allowList = listOf("users/0", "users/1/name"))
-        val input = mapOf(
-            "users" to listOf(
-                mapOf("name" to "John", "email" to "john@example.com"),
-                mapOf("name" to "Jane", "email" to "jane@example.com"),
-                mapOf("name" to "Bob", "email" to "bob@example.com"),
-            ),
-        )
+        val input =
+            mapOf(
+                "users" to
+                    listOf(
+                        mapOf("name" to "John", "email" to "john@example.com"),
+                        mapOf("name" to "Jane", "email" to "jane@example.com"),
+                        mapOf("name" to "Bob", "email" to "bob@example.com"),
+                    ),
+            )
         val result = filter.filtered(input) as? Map<*, *>
+
         @Suppress("UNCHECKED_CAST")
         val users = result?.get("users") as? List<Map<String, Any?>>
         assertNotNull(users)
@@ -291,11 +302,12 @@ class ObjectFilterTests {
     @Test
     fun `filtered array at root`() {
         val filter = ObjectFilter(allowList = listOf("0/name", "1"))
-        val input = listOf(
-            mapOf("name" to "John", "email" to "john@example.com"),
-            mapOf("name" to "Jane", "email" to "jane@example.com"),
-            mapOf("name" to "Bob", "email" to "bob@example.com"),
-        )
+        val input =
+            listOf(
+                mapOf("name" to "John", "email" to "john@example.com"),
+                mapOf("name" to "Jane", "email" to "jane@example.com"),
+                mapOf("name" to "Bob", "email" to "bob@example.com"),
+            )
         val result = filter.filtered(input) as? List<*>
         assertNotNull(result)
         assertEquals(2, result!!.size)
@@ -310,12 +322,14 @@ class ObjectFilterTests {
     @Test
     fun `filtered wildcard in middle`() {
         val filter = ObjectFilter(allowList = listOf("users/*/metadata/public"))
-        val input = mapOf(
-            "users" to mapOf(
-                "john" to mapOf("metadata" to mapOf("public" to "visible", "private" to "hidden")),
-                "jane" to mapOf("metadata" to mapOf("public" to "also_visible", "private" to "also_hidden")),
-            ),
-        )
+        val input =
+            mapOf(
+                "users" to
+                    mapOf(
+                        "john" to mapOf("metadata" to mapOf("public" to "visible", "private" to "hidden")),
+                        "jane" to mapOf("metadata" to mapOf("public" to "also_visible", "private" to "also_hidden")),
+                    ),
+            )
         val result = filter.filtered(input) as? Map<*, *>
         val users = result?.get("users") as? Map<*, *>
 
@@ -331,14 +345,16 @@ class ObjectFilterTests {
     @Test
     fun `filtered complex wildcards`() {
         val filter = ObjectFilter(allowList = listOf("**/name", "users/*/age"))
-        val input = mapOf(
-            "name" to "Root Name",
-            "users" to mapOf(
-                "john" to mapOf("name" to "John", "age" to 30, "email" to "john@example.com"),
-                "jane" to mapOf("name" to "Jane", "age" to 25, "email" to "jane@example.com"),
-            ),
-            "product" to mapOf("name" to "Product Name", "price" to 100),
-        )
+        val input =
+            mapOf(
+                "name" to "Root Name",
+                "users" to
+                    mapOf(
+                        "john" to mapOf("name" to "John", "age" to 30, "email" to "john@example.com"),
+                        "jane" to mapOf("name" to "Jane", "age" to 25, "email" to "jane@example.com"),
+                    ),
+                "product" to mapOf("name" to "Product Name", "price" to 100),
+            )
         val result = filter.filtered(input) as? Map<*, *>
         assertEquals("Root Name", result?.get("name"))
 
@@ -387,10 +403,11 @@ class ObjectFilterTests {
 
     @Test
     fun `consecutive slashes in allow list`() {
-        val input = mapOf(
-            "user" to mapOf("name" to "John", "age" to 30),
-            "product" to mapOf("title" to "Widget"),
-        )
+        val input =
+            mapOf(
+                "user" to mapOf("name" to "John", "age" to 30),
+                "product" to mapOf("title" to "Widget"),
+            )
         val filter = ObjectFilter(allowList = listOf("*///*"))
         val result = filter.filtered(input) as? Map<*, *>
         val user = result?.get("user") as? Map<*, *>
@@ -409,16 +426,19 @@ class ObjectFilterTests {
 
     @Test
     fun `block list with single wildcard`() {
-        val filter = ObjectFilter(
-            allowList = listOf("user/**"),
-            blockList = listOf("user/*/password"),
-        )
-        val input = mapOf(
-            "user" to mapOf(
-                "john" to mapOf("name" to "John Doe", "email" to "john@example.com", "password" to "secret123"),
-                "jane" to mapOf("name" to "Jane Smith", "email" to "jane@example.com", "password" to "secret456"),
-            ),
-        )
+        val filter =
+            ObjectFilter(
+                allowList = listOf("user/**"),
+                blockList = listOf("user/*/password"),
+            )
+        val input =
+            mapOf(
+                "user" to
+                    mapOf(
+                        "john" to mapOf("name" to "John Doe", "email" to "john@example.com", "password" to "secret123"),
+                        "jane" to mapOf("name" to "Jane Smith", "email" to "jane@example.com", "password" to "secret456"),
+                    ),
+            )
         val result = filter.filtered(input) as? Map<*, *>
         val user = result?.get("user") as? Map<*, *>
         val john = user?.get("john") as? Map<*, *>
@@ -432,20 +452,24 @@ class ObjectFilterTests {
 
     @Test
     fun `block list with double wildcard`() {
-        val filter = ObjectFilter(
-            allowList = listOf("data/**"),
-            blockList = listOf("**/secret"),
-        )
-        val input = mapOf(
-            "data" to mapOf(
-                "user" to mapOf(
-                    "name" to "User",
-                    "secret" to "user_secret",
-                    "nested" to mapOf("info" to "public", "secret" to "nested_secret"),
-                ),
-                "config" to mapOf("setting" to "value", "secret" to "config_secret"),
-            ),
-        )
+        val filter =
+            ObjectFilter(
+                allowList = listOf("data/**"),
+                blockList = listOf("**/secret"),
+            )
+        val input =
+            mapOf(
+                "data" to
+                    mapOf(
+                        "user" to
+                            mapOf(
+                                "name" to "User",
+                                "secret" to "user_secret",
+                                "nested" to mapOf("info" to "public", "secret" to "nested_secret"),
+                            ),
+                        "config" to mapOf("setting" to "value", "secret" to "config_secret"),
+                    ),
+            )
         val result = filter.filtered(input) as? Map<*, *>
         val data = result?.get("data") as? Map<*, *>
         val user = data?.get("user") as? Map<*, *>
@@ -461,19 +485,22 @@ class ObjectFilterTests {
 
     @Test
     fun `block list priority over allow list`() {
-        val filter = ObjectFilter(
-            allowList = listOf("**"),
-            blockList = listOf("**/password", "*/temp/*", "logs/**"),
-        )
-        val input = mapOf(
-            "user" to mapOf("name" to "Alice", "password" to "secret"),
-            "cache" to mapOf(
-                "temp" to mapOf("file1" to "temp_data", "file2" to "temp_data2"),
-                "permanent" to "keep_this",
-            ),
-            "logs" to mapOf("error" to "error_log", "info" to "info_log"),
-            "config" to mapOf("settings" to "value"),
-        )
+        val filter =
+            ObjectFilter(
+                allowList = listOf("**"),
+                blockList = listOf("**/password", "*/temp/*", "logs/**"),
+            )
+        val input =
+            mapOf(
+                "user" to mapOf("name" to "Alice", "password" to "secret"),
+                "cache" to
+                    mapOf(
+                        "temp" to mapOf("file1" to "temp_data", "file2" to "temp_data2"),
+                        "permanent" to "keep_this",
+                    ),
+                "logs" to mapOf("error" to "error_log", "info" to "info_log"),
+                "config" to mapOf("settings" to "value"),
+            )
         val result = filter.filtered(input) as? Map<*, *>
         val user = result?.get("user") as? Map<*, *>
         assertEquals("Alice", user?.get("name"))
@@ -517,6 +544,7 @@ class ObjectFilterTests {
     fun `array compaction with block list`() {
         val filter = ObjectFilter(allowList = listOf("**"), blockList = listOf("1"))
         val input = listOf("one", "two", "three")
+
         @Suppress("UNCHECKED_CAST")
         val result = filter.filtered(input) as? List<String>
         assertNotNull(result)
@@ -528,10 +556,11 @@ class ObjectFilterTests {
     @Test
     fun `block list edge case - block everything`() {
         val filter = ObjectFilter(allowList = listOf("root/**"), blockList = listOf("**"))
-        val input = mapOf(
-            "root" to mapOf("keep" to "this_should_be_blocked", "other" to "also_blocked"),
-            "outside" to "not_in_allowlist",
-        )
+        val input =
+            mapOf(
+                "root" to mapOf("keep" to "this_should_be_blocked", "other" to "also_blocked"),
+                "outside" to "not_in_allowlist",
+            )
         assertNull(filter.filtered(input))
     }
 }

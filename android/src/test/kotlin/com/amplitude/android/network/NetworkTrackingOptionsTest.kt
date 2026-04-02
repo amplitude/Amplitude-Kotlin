@@ -14,8 +14,10 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
 class NetworkTrackingOptionsTest {
-    private fun List<CaptureRule>.matches(host: String, responseCode: Int): Boolean =
-        findMatchingRule(host, "https://$host/test", "GET", responseCode) != null
+    private fun List<CaptureRule>.matches(
+        host: String,
+        responseCode: Int,
+    ): Boolean = findMatchingRule(host, "https://$host/test", "GET", responseCode) != null
 
     @Test
     fun `capture rules must have non-empty host or url list`() {
@@ -51,10 +53,11 @@ class NetworkTrackingOptionsTest {
 
     @Test
     fun `basic wildcard host matching`() {
-        val options = NetworkTrackingOptions(
-            captureRules = listOf(CaptureRule(hosts = listOf("*"), statusCodeRange = (200..299).toList())),
-            ignoreAmplitudeRequests = false,
-        )
+        val options =
+            NetworkTrackingOptions(
+                captureRules = listOf(CaptureRule(hosts = listOf("*"), statusCodeRange = (200..299).toList())),
+                ignoreAmplitudeRequests = false,
+            )
         listOf("https://api.example.com", "https://test.amplitude.com", "https://random-api.com")
             .urlsToHosts()
             .forEach { assertTrue(options.captureRules.matches(it, 200)) { "expected $it to match" } }
@@ -62,10 +65,17 @@ class NetworkTrackingOptionsTest {
 
     @Test
     fun `domain wildcard host matching`() {
-        val options = NetworkTrackingOptions(
-            captureRules = listOf(CaptureRule(hosts = listOf("*.example.com", "*.subdomain.test.com", "exact-match.com"), statusCodeRange = (200..299).toList())),
-            ignoreAmplitudeRequests = false,
-        )
+        val options =
+            NetworkTrackingOptions(
+                captureRules =
+                    listOf(
+                        CaptureRule(
+                            hosts = listOf("*.example.com", "*.subdomain.test.com", "exact-match.com"),
+                            statusCodeRange = (200..299).toList(),
+                        ),
+                    ),
+                ignoreAmplitudeRequests = false,
+            )
         listOf("https://api.example.com/test", "https://another.subdomain.test.com/api", "https://exact-match.com/test")
             .urlsToHosts().forEach { assertTrue(options.captureRules.matches(it, 200)) }
         listOf("https://notexample.com/test", "https://testing.other.com/test")
@@ -74,10 +84,11 @@ class NetworkTrackingOptionsTest {
 
     @Test
     fun `specific host matching`() {
-        val options = NetworkTrackingOptions(
-            captureRules = listOf(CaptureRule(hosts = listOf("api.example.com"), statusCodeRange = (200..299).toList())),
-            ignoreAmplitudeRequests = true,
-        )
+        val options =
+            NetworkTrackingOptions(
+                captureRules = listOf(CaptureRule(hosts = listOf("api.example.com"), statusCodeRange = (200..299).toList())),
+                ignoreAmplitudeRequests = true,
+            )
         listOf("https://api.example.com/test", "https://api.example.com/test/123").urlsToHosts()
             .forEach { assertTrue(options.captureRules.matches(it, 200)) }
         listOf("https://other.example.com", "https://api.different.com").urlsToHosts()
@@ -86,10 +97,11 @@ class NetworkTrackingOptionsTest {
 
     @Test
     fun `should ignore hosts`() {
-        val options = NetworkTrackingOptions(
-            captureRules = listOf(CaptureRule(hosts = listOf("*"))),
-            ignoreHosts = listOf("exact.ignore.com", "*.wildcard.ignore.com"),
-        )
+        val options =
+            NetworkTrackingOptions(
+                captureRules = listOf(CaptureRule(hosts = listOf("*"))),
+                ignoreHosts = listOf("exact.ignore.com", "*.wildcard.ignore.com"),
+            )
         assertTrue(options.shouldIgnore("exact.ignore.com"))
         assertTrue(options.shouldIgnore("test.wildcard.ignore.com"))
         assertFalse(options.shouldIgnore("not.ignored.com"))
@@ -112,17 +124,24 @@ class NetworkTrackingOptionsTest {
 
     @Test
     fun `multiple capture rules with last matching rule precedence`() {
-        val options = NetworkTrackingOptions(captureRules = listOf(
-            CaptureRule(hosts = listOf("*.example.com"), statusCodeRange = (200..299).toList()),
-            CaptureRule(hosts = listOf("api.example.com"), statusCodeRange = (500..599).toList()),
-        ))
+        val options =
+            NetworkTrackingOptions(
+                captureRules =
+                    listOf(
+                        CaptureRule(hosts = listOf("*.example.com"), statusCodeRange = (200..299).toList()),
+                        CaptureRule(hosts = listOf("api.example.com"), statusCodeRange = (500..599).toList()),
+                    ),
+            )
         assertTrue(options.captureRules.matches("api.example.com", 500))
         assertFalse(options.captureRules.matches("api.example.com", 200))
     }
 
     @Test
     fun `non-contiguous status code ranges`() {
-        val options = NetworkTrackingOptions(captureRules = listOf(CaptureRule(hosts = listOf("api.example.com"), statusCodeRange = listOf(404, 200, 500))))
+        val options =
+            NetworkTrackingOptions(
+                captureRules = listOf(CaptureRule(hosts = listOf("api.example.com"), statusCodeRange = listOf(404, 200, 500))),
+            )
         assertTrue(options.captureRules.matches("api.example.com", 200))
         assertTrue(options.captureRules.matches("api.example.com", 404))
         assertFalse(options.captureRules.matches("api.example.com", 300))
@@ -130,9 +149,16 @@ class NetworkTrackingOptionsTest {
 
     @Test
     fun `host matcher edge cases`() {
-        val options = NetworkTrackingOptions(captureRules = listOf(
-            CaptureRule(hosts = listOf("*.sub.*.example.com", "TEST.EXAMPLE.COM", "special-chars.example.com"), statusCodeRange = (200..599).toList()),
-        ))
+        val options =
+            NetworkTrackingOptions(
+                captureRules =
+                    listOf(
+                        CaptureRule(
+                            hosts = listOf("*.sub.*.example.com", "TEST.EXAMPLE.COM", "special-chars.example.com"),
+                            statusCodeRange = (200..599).toList(),
+                        ),
+                    ),
+            )
         assertTrue(options.captureRules.matches("test.sub.domain.example.com", 200))
         assertTrue(options.captureRules.matches("test.example.com", 200))
         assertTrue(options.captureRules.matches("special-chars.example.com", 200))
@@ -145,7 +171,8 @@ class NetworkTrackingOptionsTest {
     }
 
     @Test fun `URL pattern regex matching`() {
-        val rule = CaptureRule(urls = listOf(URLPattern.Regex("https://api\\.example\\.com/v[0-9]+/.*")), statusCodeRange = (200..299).toList())
+        val rule =
+            CaptureRule(urls = listOf(URLPattern.Regex("https://api\\.example\\.com/v[0-9]+/.*")), statusCodeRange = (200..299).toList())
         assertTrue(rule.matchesRequest("api.example.com", "https://api.example.com/v1/users", "GET"))
         assertFalse(rule.matchesRequest("api.example.com", "https://other.com/v1/users", "GET"))
     }
@@ -171,7 +198,8 @@ class NetworkTrackingOptionsTest {
     @Test fun `findMatchingRule returns rule with config`() {
         val ch = CaptureHeader(allowlist = listOf("ct"), captureSafeHeaders = false)
         val cb = CaptureBody(allowlist = listOf("user/name"))
-        val rules = listOf(CaptureRule(hosts = listOf("e.com"), statusCodeRange = (200..299).toList(), requestHeaders = ch, requestBody = cb))
+        val rules =
+            listOf(CaptureRule(hosts = listOf("e.com"), statusCodeRange = (200..299).toList(), requestHeaders = ch, requestBody = cb))
         val m = rules.findMatchingRule("e.com", "https://e.com/t", "GET", 200)
         assertNotNull(m)
         assertEquals(ch, m!!.requestHeaders)

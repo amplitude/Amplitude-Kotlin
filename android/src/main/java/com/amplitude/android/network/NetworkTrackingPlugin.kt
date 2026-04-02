@@ -56,9 +56,10 @@ class NetworkTrackingPlugin(
         val androidConfig = androidAmplitude.configuration as? com.amplitude.android.Configuration ?: return
 
         if (androidConfig.enableAutocaptureRemoteConfig && originalOptions.enableRemoteConfig) {
-            remoteConfigCallback = RemoteConfigClient.RemoteConfigCallback { config, _, _ ->
-                handleRemoteConfig(config)
-            }
+            remoteConfigCallback =
+                RemoteConfigClient.RemoteConfigCallback { config, _, _ ->
+                    handleRemoteConfig(config)
+                }
             androidAmplitude.remoteConfigClient.subscribe(Key.ANALYTICS_SDK, remoteConfigCallback!!)
         }
     }
@@ -158,41 +159,44 @@ class NetworkTrackingPlugin(
 
         // Filter headers
         val requestHeaders = matchedRule.requestHeaders?.filterHeaders(request.headers.toMap())
-        val responseHeaders = matchedRule.responseHeaders?.let { captureHeader ->
-            response?.headers?.let { captureHeader.filterHeaders(it.toMap()) }
-        }
+        val responseHeaders =
+            matchedRule.responseHeaders?.let { captureHeader ->
+                response?.headers?.let { captureHeader.filterHeaders(it.toMap()) }
+            }
 
         // Filter request body — skip one-shot, duplex, and non-JSON bodies
-        val requestBodyString = matchedRule.requestBody?.let { captureBody ->
-            val body = request.body ?: return@let null
-            if (body.isOneShot() || body.isDuplex()) return@let null
+        val requestBodyString =
+            matchedRule.requestBody?.let { captureBody ->
+                val body = request.body ?: return@let null
+                if (body.isOneShot() || body.isDuplex()) return@let null
 
-            val contentType = body.contentType()
-            if (contentType != null && !(contentType.type == "application" && contentType.subtype.contains("json"))) {
-                return@let null
-            }
+                val contentType = body.contentType()
+                if (contentType != null && !(contentType.type == "application" && contentType.subtype.contains("json"))) {
+                    return@let null
+                }
 
-            try {
-                val buffer = Buffer()
-                body.writeTo(buffer)
-                captureBody.filterBodyBytes(buffer.readByteArray())
-            } catch (_: Exception) {
-                null
+                try {
+                    val buffer = Buffer()
+                    body.writeTo(buffer)
+                    captureBody.filterBodyBytes(buffer.readByteArray())
+                } catch (_: Exception) {
+                    null
+                }
             }
-        }
 
         // Filter response body — bounded peek, JSON content type only
-        val responseBodyString = matchedRule.responseBody?.let { captureBody ->
-            val resp = response ?: return@let null
-            if (!resp.isJsonContentType()) return@let null
+        val responseBodyString =
+            matchedRule.responseBody?.let { captureBody ->
+                val resp = response ?: return@let null
+                if (!resp.isJsonContentType()) return@let null
 
-            try {
-                val peekedBody = resp.peekBody(MAX_BODY_PEEK_BYTES)
-                captureBody.filterBodyBytes(peekedBody.bytes())
-            } catch (_: Exception) {
-                null
+                try {
+                    val peekedBody = resp.peekBody(MAX_BODY_PEEK_BYTES)
+                    captureBody.filterBodyBytes(peekedBody.bytes())
+                } catch (_: Exception) {
+                    null
+                }
             }
-        }
 
         amplitude.track(
             NETWORK_TRACKING,
@@ -254,5 +258,4 @@ private fun Response.isJsonContentType(): Boolean {
     return contentType.type == "application" && contentType.subtype.contains("json")
 }
 
-private fun Headers.toMap(): Map<String, String> =
-    (0 until size).associate { name(it) to value(it) }
+private fun Headers.toMap(): Map<String, String> = (0 until size).associate { name(it) to value(it) }
