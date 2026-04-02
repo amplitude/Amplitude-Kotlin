@@ -1,12 +1,17 @@
 package com.amplitude.android.network
 
+import com.amplitude.android.network.NetworkTrackingOptions.CaptureRule
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Constants.EventProperties.NETWORK_TRACKING_COMPLETION_TIME
 import com.amplitude.core.Constants.EventProperties.NETWORK_TRACKING_DURATION
 import com.amplitude.core.Constants.EventProperties.NETWORK_TRACKING_ERROR_MESSAGE
+import com.amplitude.core.Constants.EventProperties.NETWORK_TRACKING_REQUEST_BODY
 import com.amplitude.core.Constants.EventProperties.NETWORK_TRACKING_REQUEST_BODY_SIZE
+import com.amplitude.core.Constants.EventProperties.NETWORK_TRACKING_REQUEST_HEADERS
 import com.amplitude.core.Constants.EventProperties.NETWORK_TRACKING_REQUEST_METHOD
+import com.amplitude.core.Constants.EventProperties.NETWORK_TRACKING_RESPONSE_BODY
 import com.amplitude.core.Constants.EventProperties.NETWORK_TRACKING_RESPONSE_BODY_SIZE
+import com.amplitude.core.Constants.EventProperties.NETWORK_TRACKING_RESPONSE_HEADERS
 import com.amplitude.core.Constants.EventProperties.NETWORK_TRACKING_START_TIME
 import com.amplitude.core.Constants.EventProperties.NETWORK_TRACKING_STATUS_CODE
 import com.amplitude.core.Constants.EventProperties.NETWORK_TRACKING_URL
@@ -16,6 +21,7 @@ import com.amplitude.core.Constants.EventTypes.NETWORK_TRACKING
 import com.amplitude.core.platform.Plugin
 import com.amplitude.core.platform.Plugin.Type
 import com.amplitude.core.platform.Plugin.Type.Utility
+import okhttp3.Headers
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.Interceptor.Chain
@@ -25,9 +31,6 @@ import okhttp3.Response
 import okio.Buffer
 import okio.ByteString.Companion.toByteString
 import okio.IOException
-
-private const val AMPLITUDE_HOST_DOMAIN = "amplitude.com"
-private const val LOCAL_ERROR_STATUS_CODE = 0
 
 class NetworkTrackingPlugin(
     private val options: NetworkTrackingOptions = NetworkTrackingOptions.DEFAULT,
@@ -41,45 +44,38 @@ class NetworkTrackingPlugin(
 
         try {
             val response = chain.proceed(request)
-
-            if (shouldCapture(request, response.code)) {
+            val matchedRule = matchedRule(request, response.code)
+            if (matchedRule != null) {
                 val completionTime = System.currentTimeMillis()
-                trackEvent(request, response, startTime, completionTime)
+                trackEvent(request, response, startTime, completionTime, matchedRule = matchedRule)
             }
-
             return response
         } catch (error: IOException) {
-            if (shouldCapture(request, LOCAL_ERROR_STATUS_CODE)) {
+            val matchedRule = matchedRule(request, LOCAL_ERROR_STATUS_CODE)
+            if (matchedRule != null) {
                 val completionTime = System.currentTimeMillis()
-                trackEvent(request, null, startTime, completionTime, error)
+                trackEvent(request, null, startTime, completionTime, error, matchedRule = matchedRule)
             }
-
             throw error
         }
     }
 
-    private fun shouldCapture(
+    private fun matchedRule(
         request: Request,
         responseCode: Int,
-    ): Boolean =
-        with(options) {
-            val host = request.url.host
-            return when {
-                shouldIgnore(host) -> false
-                ignoreAmplitudeRequests && request.amplitudeApiRequest() -> false
-                captureRules.matches(host, responseCode) || request.amplitudeApiRequest() -> true
-                else -> false
-            }
-        }
-
-    /**
-     * Checks if the request is an Amplitude request, and not a [NETWORK_TRACKING] event as we don't
-     * want to track our own network tracking events to be tracked again for cases where the same
-     * [okhttp3.OkHttpClient] instance is used for both Amplitude and other network requests.
-     */
-    private fun Request.amplitudeApiRequest(): Boolean {
-        return url.host.endsWith(AMPLITUDE_HOST_DOMAIN) &&
-            body?.contains(NETWORK_TRACKING) == false
+    ): CaptureRule? {
+        val host = request.url.host
+        if (options.shouldIgnore(host)) return null
+        // Recursion guard: only scan body for amplitude hosts to avoid consuming one-shot
+        // bodies on normal requests. This prevents the SDK's own network tracking event
+        // uploads from being re-tracked when the same OkHttpClient is shared.
+        if (host.isAmplitudeHost() && request.body?.contains(NETWORK_TRACKING) == true) return null
+        return options.captureRules.findMatchingRule(
+            host,
+            request.url.toString(),
+            request.method,
+            responseCode,
+        )
     }
 
     /**
@@ -98,8 +94,48 @@ class NetworkTrackingPlugin(
         startTime: Long,
         completionTime: Long,
         error: IOException? = null,
+        matchedRule: CaptureRule,
     ) {
         val maskedHttpUrl = request.url.mask()
+
+        // Filter headers
+        val requestHeaders = matchedRule.requestHeaders?.filterHeaders(request.headers.toMap())
+        val responseHeaders = matchedRule.responseHeaders?.let { captureHeader ->
+            response?.headers?.let { captureHeader.filterHeaders(it.toMap()) }
+        }
+
+        // Filter request body — skip one-shot, duplex, and non-JSON bodies
+        val requestBodyString = matchedRule.requestBody?.let { captureBody ->
+            val body = request.body ?: return@let null
+            if (body.isOneShot() || body.isDuplex()) return@let null
+
+            val contentType = body.contentType()
+            if (contentType != null && !(contentType.type == "application" && contentType.subtype.contains("json"))) {
+                return@let null
+            }
+
+            try {
+                val buffer = Buffer()
+                body.writeTo(buffer)
+                captureBody.filterBodyBytes(buffer.readByteArray())
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+        // Filter response body — bounded peek, JSON content type only
+        val responseBodyString = matchedRule.responseBody?.let { captureBody ->
+            val resp = response ?: return@let null
+            if (!resp.isJsonContentType()) return@let null
+
+            try {
+                val peekedBody = resp.peekBody(MAX_BODY_PEEK_BYTES)
+                captureBody.filterBodyBytes(peekedBody.bytes())
+            } catch (_: Exception) {
+                null
+            }
+        }
+
         amplitude.track(
             NETWORK_TRACKING,
             eventProperties =
@@ -115,24 +151,14 @@ class NetworkTrackingPlugin(
                     NETWORK_TRACKING_DURATION to completionTime - startTime,
                     NETWORK_TRACKING_REQUEST_BODY_SIZE to request.body?.contentLength(),
                     NETWORK_TRACKING_RESPONSE_BODY_SIZE to response?.body?.contentLength(),
+                    NETWORK_TRACKING_REQUEST_HEADERS to requestHeaders,
+                    NETWORK_TRACKING_RESPONSE_HEADERS to responseHeaders,
+                    NETWORK_TRACKING_REQUEST_BODY to requestBodyString,
+                    NETWORK_TRACKING_RESPONSE_BODY to responseBodyString,
                 ),
         )
     }
 
-    /**
-     * Masks sensitive information in the URL by replacing values of sensitive query parameters and
-     * credentials with "[mask]". The following are considered sensitive:
-     * - Username and password in URL credentials
-     * - Query parameter values where the parameter name matches: username, password, email, phone
-     *
-     * Example:
-     * Original URL: https://user:pass@example.com/path?email=test@email.com&id=123#password-reset
-     * Masked URL: https://mask:mask@example.com/path?email=[mask]&id=123#password-reset
-     *
-     * Note: The fragment portion of the URL is preserved and not masked.
-     *
-     * @return A new [HttpUrl] with sensitive information masked
-     */
     private fun HttpUrl.mask(): HttpUrl {
         val sensitiveKeys = setOf("username", "password", "email", "phone")
         val query =
@@ -158,4 +184,17 @@ class NetworkTrackingPlugin(
             .build()
             .toString()
     }
+
+    companion object {
+        private const val LOCAL_ERROR_STATUS_CODE = 0
+        private const val MAX_BODY_PEEK_BYTES = 1L * 1024 * 1024 // 1 MB
+    }
 }
+
+private fun Response.isJsonContentType(): Boolean {
+    val contentType = body?.contentType() ?: return true // unknown type — attempt capture
+    return contentType.type == "application" && contentType.subtype.contains("json")
+}
+
+private fun Headers.toMap(): Map<String, String> =
+    (0 until size).associate { name(it) to value(it) }
