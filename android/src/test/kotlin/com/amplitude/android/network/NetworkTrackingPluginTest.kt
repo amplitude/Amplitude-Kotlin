@@ -681,13 +681,13 @@ class NetworkTrackingPluginTest {
                 eq(NETWORK_TRACKING),
                 withArg { eventProperties ->
                     @Suppress("UNCHECKED_CAST")
-                    val reqHeaders = eventProperties[NETWORK_TRACKING_REQUEST_HEADERS] as Map<String, String>
+                    val reqHeaders = eventProperties[NETWORK_TRACKING_REQUEST_HEADERS] as Map<String, Any>
                     assertEquals("req-value", reqHeaders["X-Custom"])
                     assertEquals("application/json", reqHeaders["Content-Type"])
                     assertFalse(reqHeaders.containsKey("Authorization")) // blocked
 
                     @Suppress("UNCHECKED_CAST")
-                    val respHeaders = eventProperties[NETWORK_TRACKING_RESPONSE_HEADERS] as Map<String, String>
+                    val respHeaders = eventProperties[NETWORK_TRACKING_RESPONSE_HEADERS] as Map<String, Any>
                     assertEquals("resp-value", respHeaders["X-Custom"])
                     assertEquals("no-cache", respHeaders["Cache-Control"])
                     assertFalse(respHeaders.containsKey("Cookie")) // blocked

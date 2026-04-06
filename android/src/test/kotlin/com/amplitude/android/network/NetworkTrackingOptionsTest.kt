@@ -4,6 +4,7 @@ import com.amplitude.android.network.NetworkTrackingOptions.CaptureBody
 import com.amplitude.android.network.NetworkTrackingOptions.CaptureHeader
 import com.amplitude.android.network.NetworkTrackingOptions.CaptureRule
 import com.amplitude.android.network.NetworkTrackingOptions.URLPattern
+import okhttp3.Headers.Companion.headersOf
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -226,7 +227,8 @@ class NetworkTrackingOptionsTest {
 
     @Test fun `filter headers with safe headers`() {
         val ch = CaptureHeader(captureSafeHeaders = true)
-        val r = ch.filterHeaders(mapOf("Content-Type" to "json", "Authorization" to "Bearer x", "Cache-Control" to "no-cache"))
+        val headers = headersOf("Content-Type", "json", "Authorization", "Bearer x", "Cache-Control", "no-cache")
+        val r = ch.filterHeaders(headers)
         assertNotNull(r)
         assertEquals("json", r!!["Content-Type"])
         assertEquals("no-cache", r["Cache-Control"])
@@ -235,13 +237,29 @@ class NetworkTrackingOptionsTest {
 
     @Test fun `filter headers blocked even if in allowlist`() {
         val ch = CaptureHeader(allowlist = listOf("authorization", "cookie"), captureSafeHeaders = false)
-        assertNull(ch.filterHeaders(mapOf("Authorization" to "x", "Cookie" to "y")))
+        assertNull(ch.filterHeaders(headersOf("Authorization", "x", "Cookie", "y")))
     }
 
     @Test fun `filter headers case insensitive`() {
         val ch = CaptureHeader(allowlist = listOf("X-CUSTOM"), captureSafeHeaders = false)
-        val r = ch.filterHeaders(mapOf("x-custom" to "v"))
+        val r = ch.filterHeaders(headersOf("x-custom", "v"))
         assertEquals("v", r!!["x-custom"])
+    }
+
+    @Test fun `filter headers preserves multi-valued headers`() {
+        val ch = CaptureHeader(allowlist = listOf("x-multi"), captureSafeHeaders = false)
+        val headers = headersOf("X-Multi", "a", "X-Multi", "b", "X-Multi", "c")
+        val r = ch.filterHeaders(headers)
+        assertNotNull(r)
+        assertEquals(listOf("a", "b", "c"), r!!["X-Multi"])
+    }
+
+    @Test fun `filter headers single-valued header is String not List`() {
+        val ch = CaptureHeader(allowlist = listOf("x-single"), captureSafeHeaders = false)
+        val r = ch.filterHeaders(headersOf("X-Single", "only"))
+        assertNotNull(r)
+        assertTrue(r!!["X-Single"] is String)
+        assertEquals("only", r["X-Single"])
     }
 
     // --- Body filtering ---

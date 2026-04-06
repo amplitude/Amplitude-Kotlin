@@ -2,6 +2,7 @@ package com.amplitude.android.network
 
 import com.amplitude.android.network.NetworkTrackingOptions.CaptureRule
 import com.amplitude.android.utilities.ObjectFilter
+import okhttp3.Headers
 import org.json.JSONArray
 import org.json.JSONObject
 import org.json.JSONTokener
@@ -97,7 +98,8 @@ class NetworkTrackingOptions(
     ) {
         val allowlist: List<String> = allowlist.toList()
 
-        internal fun filterHeaders(headers: Map<String, String>): Map<String, String>? {
+        @Suppress("UNCHECKED_CAST")
+        internal fun filterHeaders(headers: Headers): Map<String, Any>? {
             val combinedAllowSet =
                 buildSet {
                     addAll(allowlist.map { it.lowercase() })
@@ -105,7 +107,17 @@ class NetworkTrackingOptions(
                     removeAll(BLOCK_HEADERS)
                 }
             if (combinedAllowSet.isEmpty()) return null
-            val result = headers.filter { (key, _) -> combinedAllowSet.contains(key.lowercase()) }
+            val result = linkedMapOf<String, Any>()
+            for (i in 0 until headers.size) {
+                val name = headers.name(i)
+                if (!combinedAllowSet.contains(name.lowercase())) continue
+                val value = headers.value(i)
+                when (val existing = result[name]) {
+                    null -> result[name] = value
+                    is String -> result[name] = mutableListOf(existing, value)
+                    is MutableList<*> -> (existing as MutableList<String>).add(value)
+                }
+            }
             return result.ifEmpty { null }
         }
     }

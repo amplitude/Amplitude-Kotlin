@@ -24,7 +24,6 @@ import com.amplitude.core.platform.Plugin.Type.Utility
 import com.amplitude.core.remoteconfig.ConfigMap
 import com.amplitude.core.remoteconfig.RemoteConfigClient
 import com.amplitude.core.remoteconfig.RemoteConfigClient.Key
-import okhttp3.Headers
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.Interceptor.Chain
@@ -170,10 +169,10 @@ class NetworkTrackingPlugin(
         val maskedHttpUrl = request.url.mask()
 
         // Filter headers
-        val requestHeaders = matchedRule.requestHeaders?.filterHeaders(request.headers.toMap())
+        val requestHeaders = matchedRule.requestHeaders?.filterHeaders(request.headers)
         val responseHeaders =
             matchedRule.responseHeaders?.let { captureHeader ->
-                response?.headers?.let { captureHeader.filterHeaders(it.toMap()) }
+                response?.headers?.let { captureHeader.filterHeaders(it) }
             }
 
         // Filter request body — skip one-shot, duplex, and non-JSON bodies
@@ -269,5 +268,3 @@ private fun Response.isJsonContentType(): Boolean {
     val contentType = body?.contentType() ?: return true // unknown type — attempt capture
     return contentType.type == "application" && contentType.subtype.contains("json")
 }
-
-private fun Headers.toMap(): Map<String, String> = (0 until size).associate { name(it) to value(it) }
