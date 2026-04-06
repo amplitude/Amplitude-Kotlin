@@ -302,6 +302,7 @@ public final class com/amplitude/core/State {
 	public final fun getPlugins ()Ljava/util/List;
 	public final fun getUserId ()Ljava/lang/String;
 	public final fun remove (Lcom/amplitude/core/platform/ObservePlugin;)Z
+	public final fun removeByName (Ljava/lang/String;)V
 	public final fun setDeviceId (Ljava/lang/String;)V
 	public final fun setUserId (Ljava/lang/String;)V
 }
@@ -788,6 +789,18 @@ public abstract interface class com/amplitude/core/platform/EventPlugin : com/am
 	public fun track (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
 }
 
+public final class com/amplitude/core/platform/Mediator {
+	public fun <init> ()V
+	public fun <init> (Ljava/util/concurrent/CopyOnWriteArrayList;)V
+	public synthetic fun <init> (Ljava/util/concurrent/CopyOnWriteArrayList;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public final fun add (Lcom/amplitude/core/platform/Plugin;)V
+	public final fun applyClosure (Lkotlin/jvm/functions/Function1;)V
+	public final fun execute (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
+	public final fun getPlugins ()Ljava/util/concurrent/CopyOnWriteArrayList;
+	public final fun remove (Lcom/amplitude/core/platform/Plugin;)Z
+	public final fun removeByName (Ljava/lang/String;)V
+}
+
 public abstract class com/amplitude/core/platform/ObservePlugin : com/amplitude/core/platform/Plugin {
 	public fun <init> ()V
 	public final fun execute (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
@@ -799,7 +812,13 @@ public abstract class com/amplitude/core/platform/ObservePlugin : com/amplitude/
 public abstract interface class com/amplitude/core/platform/Plugin {
 	public fun execute (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
 	public abstract fun getAmplitude ()Lcom/amplitude/core/Amplitude;
+	public fun getName ()Ljava/lang/String;
 	public abstract fun getType ()Lcom/amplitude/core/platform/Plugin$Type;
+	public fun onDeviceIdChanged (Ljava/lang/String;)V
+	public fun onOptOutChanged (Z)V
+	public fun onReset ()V
+	public fun onSessionIdChanged (J)V
+	public fun onUserIdChanged (Ljava/lang/String;)V
 	public abstract fun setAmplitude (Lcom/amplitude/core/Amplitude;)V
 	public fun setup (Lcom/amplitude/core/Amplitude;)V
 	public fun teardown ()V
@@ -833,9 +852,12 @@ public class com/amplitude/core/platform/Timeline {
 	public final fun add (Lcom/amplitude/core/platform/Plugin;)V
 	public final fun applyClosure (Lkotlin/jvm/functions/Function1;)V
 	public final fun applyPlugins (Lcom/amplitude/core/platform/Plugin$Type;Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
+	public final fun findPluginByName (Ljava/lang/String;)Lcom/amplitude/core/platform/Plugin;
 	public final fun getAmplitude ()Lcom/amplitude/core/Amplitude;
+	public final fun getPlugins ()Ljava/util/Map;
 	public fun process (Lcom/amplitude/core/events/BaseEvent;)V
 	public final fun remove (Lcom/amplitude/core/platform/Plugin;)V
+	public final fun removeByName (Ljava/lang/String;)V
 	public final fun setAmplitude (Lcom/amplitude/core/Amplitude;)V
 }
 
@@ -943,7 +965,10 @@ public abstract interface class com/amplitude/core/remoteconfig/RemoteConfigClie
 
 public final class com/amplitude/core/remoteconfig/RemoteConfigClient$Key : java/lang/Enum {
 	public static final field ANALYTICS_SDK Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;
+	public static final field COMMAND Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;
 	public static final field DIAGNOSTICS Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;
+	public static final field EXPERIMENT Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;
+	public static final field GUIDES_AND_SURVEYS Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;
 	public static final field SESSION_REPLAY_PRIVACY_CONFIG Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;
 	public static final field SESSION_REPLAY_SAMPLING_CONFIG Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
