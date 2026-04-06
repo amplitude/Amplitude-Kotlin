@@ -131,11 +131,21 @@ open class Amplitude(
         get() = configuration.optOut
         set(value) {
             configuration.optOut = value
+            notifyPlugins { it.onOptOutChanged(value) }
         }
 
     init {
         require(configuration.isValid()) { "invalid configuration" }
         timeline = this.createTimeline()
+
+        // Wire identity change notifications to all timeline plugins
+        store.onIdentityChanged = { _, _, type ->
+            when (type) {
+                State.IdentityChangeType.USER_ID -> notifyPlugins { it.onUserIdChanged(store.userId) }
+                State.IdentityChangeType.DEVICE_ID -> notifyPlugins { it.onDeviceIdChanged(store.deviceId) }
+            }
+        }
+
         isBuilt = this.build()
         isBuilt.start()
     }
@@ -346,6 +356,7 @@ open class Amplitude(
     open fun reset(): Amplitude {
         setUserId(null)
         setDeviceId(ContextPlugin.generateRandomDeviceId())
+        notifyPlugins { it.onReset() }
         return this
     }
 
@@ -515,6 +526,12 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     fun add(plugin: Plugin): Amplitude {
+        // Dedup: if the plugin has a non-null name, remove any existing plugin with the same name
+        plugin.name?.let { pluginName ->
+            store.removeByName(pluginName)
+            timeline.removeByName(pluginName)
+        }
+
         when (plugin) {
             is ObservePlugin -> {
                 this.store.add(plugin, this)
@@ -540,6 +557,13 @@ open class Amplitude(
         return this
     }
 
+    /**
+     * Find a plugin by its type.
+     *
+     * @return the plugin instance if found, null otherwise
+     */
+    inline fun <reified T : Plugin> findPlugin(): T? = timeline.findPlugin()
+
     fun flush() {
         amplitudeScope.launch(amplitudeDispatcher) {
             isBuilt.await()
@@ -548,6 +572,13 @@ open class Amplitude(
                 (it as? EventPlugin)?.flush()
             }
         }
+    }
+
+    /**
+     * Notify all plugins registered in the timeline of a state change.
+     */
+    private fun notifyPlugins(block: (Plugin) -> Unit) {
+        timeline.applyClosure(block)
     }
 
     private fun convertPropertiesToIdentify(userProperties: Map<String, Any?>?): Identify {
