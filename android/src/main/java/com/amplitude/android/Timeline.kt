@@ -156,6 +156,7 @@ class Timeline(
     private suspend fun setSessionId(timestamp: Long) {
         _sessionId.set(timestamp)
         amplitude.storage.write(PREVIOUS_SESSION_ID, sessionId.toString())
+        applyClosure { it.onSessionIdChanged(timestamp) }
     }
 
     private suspend fun startNewSession(timestamp: Long): List<BaseEvent> {
