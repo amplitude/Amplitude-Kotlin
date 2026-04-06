@@ -5,6 +5,7 @@ import android.view.MotionEvent
 import android.view.View
 import androidx.annotation.VisibleForTesting
 import com.amplitude.android.AutocaptureState
+import com.amplitude.android.Constants.EventTypes.ELEMENT_INTERACTED
 import com.amplitude.android.InteractionType.ElementInteraction
 import com.amplitude.android.internal.TrackFunction
 import com.amplitude.android.internal.ViewHierarchyScanner.findTarget
@@ -12,7 +13,6 @@ import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.buildElementInteractedProperties
 import com.amplitude.android.internal.locators.ViewTargetLocator
 import com.amplitude.common.Logger
-import com.amplitude.core.Constants.EventTypes.ELEMENT_INTERACTED
 import java.lang.ref.WeakReference
 
 @VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)

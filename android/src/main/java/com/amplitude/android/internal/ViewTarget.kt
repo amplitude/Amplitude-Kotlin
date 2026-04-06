@@ -1,14 +1,14 @@
 package com.amplitude.android.internal
 
-import com.amplitude.core.Constants.EventProperties.ACTION
-import com.amplitude.core.Constants.EventProperties.HIERARCHY
-import com.amplitude.core.Constants.EventProperties.SCREEN_NAME
-import com.amplitude.core.Constants.EventProperties.TARGET_ACCESSIBILITY_LABEL
-import com.amplitude.core.Constants.EventProperties.TARGET_CLASS
-import com.amplitude.core.Constants.EventProperties.TARGET_RESOURCE
-import com.amplitude.core.Constants.EventProperties.TARGET_SOURCE
-import com.amplitude.core.Constants.EventProperties.TARGET_TAG
-import com.amplitude.core.Constants.EventProperties.TARGET_TEXT
+import com.amplitude.android.Constants.EventProperties.ACTION
+import com.amplitude.android.Constants.EventProperties.HIERARCHY
+import com.amplitude.android.Constants.EventProperties.SCREEN_NAME
+import com.amplitude.android.Constants.EventProperties.TARGET_ACCESSIBILITY_LABEL
+import com.amplitude.android.Constants.EventProperties.TARGET_CLASS
+import com.amplitude.android.Constants.EventProperties.TARGET_RESOURCE
+import com.amplitude.android.Constants.EventProperties.TARGET_SOURCE
+import com.amplitude.android.Constants.EventProperties.TARGET_TAG
+import com.amplitude.android.Constants.EventProperties.TARGET_TEXT
 import java.lang.ref.WeakReference
 
 /**

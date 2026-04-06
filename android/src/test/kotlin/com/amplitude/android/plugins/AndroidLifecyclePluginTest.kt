@@ -10,12 +10,12 @@ import com.amplitude.android.Amplitude
 import com.amplitude.android.AutocaptureManager
 import com.amplitude.android.AutocaptureOption
 import com.amplitude.android.Configuration
+import com.amplitude.android.Constants.EventTypes
 import com.amplitude.android.InteractionsOptions
 import com.amplitude.android.internal.fragments.FragmentActivityHandler
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.registerFragmentLifecycleCallbacks
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.unregisterFragmentLifecycleCallbacks
 import com.amplitude.android.utilities.ActivityLifecycleObserver
-import com.amplitude.core.Constants.EventTypes
 import com.amplitude.core.Storage
 import com.amplitude.core.utilities.InMemoryStorage
 import io.mockk.coVerify

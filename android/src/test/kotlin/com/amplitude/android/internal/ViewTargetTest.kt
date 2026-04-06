@@ -1,6 +1,6 @@
 package com.amplitude.android.internal
 
-import com.amplitude.core.Constants.EventProperties.TARGET_ACCESSIBILITY_LABEL
+import com.amplitude.android.Constants.EventProperties.TARGET_ACCESSIBILITY_LABEL
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
