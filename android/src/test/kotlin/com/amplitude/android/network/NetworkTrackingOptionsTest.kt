@@ -23,7 +23,7 @@ class NetworkTrackingOptionsTest {
     fun `capture rules must have non-empty host or url list`() {
         assertThrows<IllegalArgumentException> {
             NetworkTrackingOptions(
-                captureRules = listOf(CaptureRule(statusCodeRange = (500..599).toList())),
+                captureRules = listOf(CaptureRule(hosts = emptyList(), statusCodeRange = (500..599).toList())),
                 ignoreAmplitudeRequests = false,
             )
         }
@@ -184,14 +184,23 @@ class NetworkTrackingOptionsTest {
     }
 
     @Test fun `method matching`() {
-        val rule = CaptureRule(hosts = listOf("e.com"), methods = listOf("GET", "POST"), statusCodeRange = (200..299).toList())
+        val rule =
+            CaptureRule(
+                urls = listOf(URLPattern.Exact("https://e.com/t")),
+                methods = listOf("GET", "POST"),
+                statusCodeRange = (200..299).toList(),
+            )
         assertTrue(rule.matchesRequest("e.com", "https://e.com/t", "GET"))
         assertTrue(rule.matchesRequest("e.com", "https://e.com/t", "post"))
         assertFalse(rule.matchesRequest("e.com", "https://e.com/t", "DELETE"))
     }
 
     @Test fun `empty methods matches all`() {
-        val rule = CaptureRule(hosts = listOf("e.com"), statusCodeRange = (200..299).toList())
+        val rule =
+            CaptureRule(
+                urls = listOf(URLPattern.Exact("https://e.com/t")),
+                statusCodeRange = (200..299).toList(),
+            )
         assertTrue(rule.matchesRequest("e.com", "https://e.com/t", "DELETE"))
     }
 
@@ -199,7 +208,14 @@ class NetworkTrackingOptionsTest {
         val ch = CaptureHeader(allowlist = listOf("ct"), captureSafeHeaders = false)
         val cb = CaptureBody(allowlist = listOf("user/name"))
         val rules =
-            listOf(CaptureRule(hosts = listOf("e.com"), statusCodeRange = (200..299).toList(), requestHeaders = ch, requestBody = cb))
+            listOf(
+                CaptureRule(
+                    urls = listOf(URLPattern.Regex(".*e\\.com.*")),
+                    statusCodeRange = (200..299).toList(),
+                    requestHeaders = ch,
+                    requestBody = cb,
+                ),
+            )
         val m = rules.findMatchingRule("e.com", "https://e.com/t", "GET", 200)
         assertNotNull(m)
         assertEquals(ch, m!!.requestHeaders)

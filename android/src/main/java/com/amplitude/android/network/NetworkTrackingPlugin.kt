@@ -77,23 +77,35 @@ class NetworkTrackingPlugin(
 
         // Fresh overlay on local options each time. Start from originalOptions so
         // fields absent from remote fall back to local, not to a previous remote value.
-        var updated = originalOptions
         var resolvedEnabled = originalOptions.enabled
         (networkConfig["enabled"] as? Boolean)?.let { resolvedEnabled = it }
+
+        var ignoreHosts = originalOptions.ignoreHosts
         (networkConfig["ignoreHosts"] as? List<*>)?.filterIsInstance<String>()?.let {
-            updated = updated.copy(ignoreHosts = it)
+            ignoreHosts = it
         }
+
+        var ignoreAmplitudeRequests = originalOptions.ignoreAmplitudeRequests
         (networkConfig["ignoreAmplitudeRequests"] as? Boolean)?.let {
-            updated = updated.copy(ignoreAmplitudeRequests = it)
+            ignoreAmplitudeRequests = it
         }
+
+        var captureRules = originalOptions.captureRules
         (networkConfig["captureRules"] as? List<*>)?.let { rawRules ->
             val maps = rawRules.filterIsInstance<Map<String, Any?>>()
             val rules = CaptureRule.fromRemoteConfig(maps)
-            if (rules != null) updated = updated.copy(captureRules = rules)
+            if (rules != null) captureRules = rules
         }
 
-        // Single atomic write — enabled + options in one snapshot
-        currentOptions = updated.copy(enabled = resolvedEnabled)
+        // Single atomic write — all fields in one snapshot
+        currentOptions =
+            NetworkTrackingOptions(
+                captureRules = captureRules,
+                ignoreHosts = ignoreHosts,
+                ignoreAmplitudeRequests = ignoreAmplitudeRequests,
+                enabled = resolvedEnabled,
+                enableRemoteConfig = originalOptions.enableRemoteConfig,
+            )
     }
 
     override fun intercept(chain: Chain): Response {

@@ -68,13 +68,16 @@ internal val BLOCK_HEADERS: Set<String> =
         "proxy-authorization",
     )
 
-data class NetworkTrackingOptions(
-    val captureRules: List<CaptureRule>,
-    val ignoreHosts: List<String> = emptyList(),
+class NetworkTrackingOptions(
+    captureRules: List<CaptureRule>,
+    ignoreHosts: List<String> = emptyList(),
     val ignoreAmplitudeRequests: Boolean = true,
     val enabled: Boolean = true,
     val enableRemoteConfig: Boolean = true,
 ) {
+    val captureRules: List<CaptureRule> = captureRules.toList()
+    val ignoreHosts: List<String> = ignoreHosts.toList()
+
     companion object {
         val DEFAULT by lazy {
             NetworkTrackingOptions(
@@ -88,10 +91,12 @@ data class NetworkTrackingOptions(
         }
     }
 
-    data class CaptureHeader(
-        val allowlist: List<String> = emptyList(),
+    class CaptureHeader(
+        allowlist: List<String> = emptyList(),
         val captureSafeHeaders: Boolean = true,
     ) {
+        val allowlist: List<String> = allowlist.toList()
+
         internal fun filterHeaders(headers: Map<String, String>): Map<String, String>? {
             val combinedAllowSet =
                 buildSet {
@@ -105,17 +110,19 @@ data class NetworkTrackingOptions(
         }
     }
 
-    data class CaptureBody(
-        val allowlist: List<String>,
-        val blocklist: List<String> = emptyList(),
+    class CaptureBody(
+        allowlist: List<String>,
+        blocklist: List<String> = emptyList(),
     ) {
+        val allowlist: List<String> = allowlist.toList()
+        val blocklist: List<String> = blocklist.toList()
+
         internal fun filterBodyBytes(bodyBytes: ByteArray?): String? {
             if (bodyBytes == null || bodyBytes.isEmpty()) return null
             return try {
                 val bodyString = bodyBytes.toString(Charsets.UTF_8)
-                val parsed = JSONTokener(bodyString).nextValue()
                 val json: Any =
-                    when (parsed) {
+                    when (val parsed = JSONTokener(bodyString).nextValue()) {
                         is JSONObject -> jsonObjectToMap(parsed)
                         is JSONArray -> jsonArrayToList(parsed)
                         else -> return null
@@ -139,16 +146,60 @@ data class NetworkTrackingOptions(
         data class Regex(val pattern: String) : URLPattern()
     }
 
-    data class CaptureRule(
-        val hosts: List<String> = emptyList(),
-        val urls: List<URLPattern> = emptyList(),
-        val methods: List<String> = emptyList(),
-        val statusCodeRange: List<Int> = (500..599).toList(),
-        val requestHeaders: CaptureHeader? = null,
-        val responseHeaders: CaptureHeader? = null,
-        val requestBody: CaptureBody? = null,
-        val responseBody: CaptureBody? = null,
+    class CaptureRule internal constructor(
+        hosts: List<String>,
+        urls: List<URLPattern>,
+        methods: List<String>,
+        statusCodeRange: List<Int>,
+        val requestHeaders: CaptureHeader?,
+        val responseHeaders: CaptureHeader?,
+        val requestBody: CaptureBody?,
+        val responseBody: CaptureBody?,
     ) {
+        val hosts: List<String> = hosts.toList()
+        val urls: List<URLPattern> = urls.toList()
+        val methods: List<String> = methods.toList()
+        val statusCodeRange: List<Int> = statusCodeRange.toList()
+
+        /**
+         * Creates a rule that matches requests by host patterns.
+         */
+        constructor(
+            hosts: List<String>,
+            statusCodeRange: List<Int> = (500..599).toList(),
+        ) : this(
+            hosts = hosts,
+            urls = emptyList(),
+            methods = emptyList(),
+            statusCodeRange = statusCodeRange,
+            requestHeaders = null,
+            responseHeaders = null,
+            requestBody = null,
+            responseBody = null,
+        )
+
+        /**
+         * Creates a rule that matches requests by URL patterns (exact or regex).
+         */
+        constructor(
+            urls: List<URLPattern>,
+            methods: List<String> = emptyList(),
+            statusCodeRange: List<Int> = (500..599).toList(),
+            requestHeaders: CaptureHeader? = null,
+            responseHeaders: CaptureHeader? = null,
+            requestBody: CaptureBody? = null,
+            responseBody: CaptureBody? = null,
+        ) : this(
+            hosts = emptyList(),
+            urls = urls,
+            methods = methods,
+            statusCodeRange = statusCodeRange,
+            requestHeaders = requestHeaders,
+            responseHeaders = responseHeaders,
+            requestBody = requestBody,
+            responseBody = responseBody,
+        )
+
         private val hostMatcher = HostMatcher(hosts)
         private val urlMatchers: List<Pair<URLPattern, Regex?>> =
             urls.map { pattern ->
@@ -163,7 +214,6 @@ data class NetworkTrackingOptions(
             url: String,
             method: String?,
         ): Boolean {
-            // If URLs are configured, match by URL patterns only
             if (urls.isNotEmpty()) {
                 if (!matchesUrl(url)) return false
             } else if (hosts.isNotEmpty()) {
@@ -172,7 +222,6 @@ data class NetworkTrackingOptions(
                 return false
             }
 
-            // Check method matching
             if (methods.isNotEmpty() && !methods.contains("*")) {
                 val upperMethod = method?.uppercase() ?: return false
                 if (methods.none { it.equals(upperMethod, ignoreCase = true) }) return false

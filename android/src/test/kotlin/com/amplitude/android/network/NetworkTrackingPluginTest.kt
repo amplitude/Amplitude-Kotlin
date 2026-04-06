@@ -3,6 +3,7 @@ package com.amplitude.android.network
 import com.amplitude.android.network.NetworkTrackingOptions.CaptureBody
 import com.amplitude.android.network.NetworkTrackingOptions.CaptureHeader
 import com.amplitude.android.network.NetworkTrackingOptions.CaptureRule
+import com.amplitude.android.network.NetworkTrackingOptions.URLPattern
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Constants.EventProperties.NETWORK_TRACKING_COMPLETION_TIME
 import com.amplitude.core.Constants.EventProperties.NETWORK_TRACKING_DURATION
@@ -657,7 +658,7 @@ class NetworkTrackingPluginTest {
                     captureRules =
                         listOf(
                             CaptureRule(
-                                hosts = listOf("example.com"),
+                                urls = listOf(URLPattern.Regex(".*example\\.com.*")),
                                 statusCodeRange = (200..299).toList(),
                                 requestHeaders = captureHeader,
                                 responseHeaders = captureHeader,
@@ -704,7 +705,7 @@ class NetworkTrackingPluginTest {
                     captureRules =
                         listOf(
                             CaptureRule(
-                                hosts = listOf("example.com"),
+                                urls = listOf(URLPattern.Regex(".*example\\.com.*")),
                                 statusCodeRange = (200..299).toList(),
                                 requestBody = captureBody,
                                 responseBody = captureBody,
@@ -771,7 +772,7 @@ class NetworkTrackingPluginTest {
                     captureRules =
                         listOf(
                             CaptureRule(
-                                hosts = listOf("example.com"),
+                                urls = listOf(URLPattern.Regex(".*example\\.com.*")),
                                 statusCodeRange = (200..299).toList(),
                                 requestBody = captureBody,
                                 responseBody = captureBody,
