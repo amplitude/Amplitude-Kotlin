@@ -4,6 +4,7 @@ import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 
 open class Timeline {
+    @PublishedApi
     internal val plugins: Map<Plugin.Type, Mediator> =
         mapOf(
             Plugin.Type.Before to Mediator(),
@@ -63,6 +64,38 @@ open class Timeline {
             }
         }
     }
+
+    /**
+     * Remove any existing plugin whose [Plugin.name] matches the given [name].
+     * Used for plugin deduplication when adding a new plugin with a non-null name.
+     */
+    fun removeByName(name: String) {
+        plugins.forEach { (_, mediator) ->
+            mediator.removeByName(name)
+        }
+    }
+
+    /**
+     * Find a plugin by its type.
+     *
+     * @return the plugin instance if found, null otherwise
+     */
+    inline fun <reified T : Plugin> findPlugin(): T? =
+        plugins.values
+            .flatMap { it.plugins }
+            .filterIsInstance<T>()
+            .firstOrNull()
+
+    /**
+     * Find a plugin by its [Plugin.name].
+     *
+     * @param name the name of the plugin
+     * @return the plugin instance if found, null otherwise
+     */
+    fun findPluginByName(name: String): Plugin? =
+        plugins.values
+            .flatMap { it.plugins }
+            .firstOrNull { it.name == name }
 
     // Applies a closure on all registered plugins
     fun applyClosure(closure: (Plugin) -> Unit) {
