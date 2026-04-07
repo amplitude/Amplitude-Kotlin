@@ -281,7 +281,7 @@ class NetworkTrackingOptionsTest {
     }
 
     @Test fun `filter body bytes with blocklist`() {
-        val cb = CaptureBody(allowlist = listOf("user/**"), blocklist = listOf("user/password"))
+        val cb = CaptureBody(allowlist = listOf("user/**"), excludelist = listOf("user/password"))
         val r = cb.filterBodyBytes("""{"user":{"name":"John","password":"secret","email":"j@e.com"}}""".toByteArray())
         assertNotNull(r)
         assertTrue(r!!.contains("John"))

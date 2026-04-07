@@ -98,7 +98,6 @@ class NetworkTrackingOptions(
     ) {
         val allowlist: List<String> = allowlist.toList()
 
-        @Suppress("UNCHECKED_CAST")
         internal fun filterHeaders(headers: Headers): Map<String, Any>? {
             val combinedAllowSet =
                 buildSet {
@@ -115,7 +114,10 @@ class NetworkTrackingOptions(
                 when (val existing = result[name]) {
                     null -> result[name] = value
                     is String -> result[name] = mutableListOf(existing, value)
-                    is MutableList<*> -> (existing as MutableList<String>).add(value)
+                    is MutableList<*> -> {
+                        @Suppress("UNCHECKED_CAST")
+                        (existing as MutableList<String>).add(value)
+                    }
                 }
             }
             return result.ifEmpty { null }
@@ -124,10 +126,11 @@ class NetworkTrackingOptions(
 
     class CaptureBody(
         allowlist: List<String>,
-        blocklist: List<String> = emptyList(),
+        excludelist: List<String> = emptyList(),
     ) {
         val allowlist: List<String> = allowlist.toList()
-        val blocklist: List<String> = blocklist.toList()
+        val excludelist: List<String> = excludelist.toList()
+        private val objectFilter = ObjectFilter(this.allowlist, this.excludelist)
 
         internal fun filterBodyBytes(bodyBytes: ByteArray?): String? {
             if (bodyBytes == null || bodyBytes.isEmpty()) return null
@@ -139,8 +142,7 @@ class NetworkTrackingOptions(
                         is JSONArray -> jsonArrayToList(parsed)
                         else -> return null
                     }
-                val filter = ObjectFilter(allowlist, blocklist)
-                val filtered = filter.filtered(json) ?: return null
+                val filtered = objectFilter.filtered(json) ?: return null
                 when (filtered) {
                     is Map<*, *> -> JSONObject(filtered).toString()
                     is List<*> -> JSONArray(filtered).toString()
@@ -248,71 +250,6 @@ class NetworkTrackingOptions(
                     is URLPattern.Exact -> pattern.url == url
                     is URLPattern.Regex -> regex?.containsMatchIn(url) == true
                 }
-            }
-        }
-
-        companion object {
-            @Suppress("UNCHECKED_CAST")
-            internal fun fromRemoteConfig(configs: List<Map<String, Any?>>): List<CaptureRule>? {
-                if (configs.isEmpty()) return null
-                return try {
-                    configs.map { map ->
-                        CaptureRule(
-                            hosts = (map["hosts"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
-                            urls = parseUrlPatterns(map),
-                            methods = (map["methods"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
-                            statusCodeRange = parseStatusCodeRange(map["statusCodeRange"] as? String ?: "500-599"),
-                            requestHeaders = parseCaptureHeader(map["requestHeaders"] as? Map<String, Any?>),
-                            responseHeaders = parseCaptureHeader(map["responseHeaders"] as? Map<String, Any?>),
-                            requestBody = parseCaptureBody(map["requestBody"] as? Map<String, Any?>),
-                            responseBody = parseCaptureBody(map["responseBody"] as? Map<String, Any?>),
-                        )
-                    }
-                } catch (_: Exception) {
-                    null
-                }
-            }
-
-            private fun parseUrlPatterns(map: Map<String, Any?>): List<URLPattern> {
-                val patterns = mutableListOf<URLPattern>()
-                (map["urls"] as? List<*>)?.filterIsInstance<String>()?.forEach {
-                    patterns.add(URLPattern.Exact(it))
-                }
-                (map["urlsRegex"] as? List<*>)?.filterIsInstance<String>()?.forEach {
-                    patterns.add(URLPattern.Regex(it))
-                }
-                return patterns
-            }
-
-            private fun parseStatusCodeRange(rangeString: String): List<Int> {
-                val codes = mutableListOf<Int>()
-                for (part in rangeString.split(",")) {
-                    val trimmed = part.trim()
-                    if (trimmed.contains("-")) {
-                        val (lo, hi) = trimmed.split("-", limit = 2).map { it.trim().toInt() }
-                        codes.addAll(lo..hi)
-                    } else {
-                        codes.add(trimmed.toInt())
-                    }
-                }
-                return codes
-            }
-
-            private fun parseCaptureHeader(map: Map<String, Any?>?): CaptureHeader? {
-                if (map == null) return null
-                return CaptureHeader(
-                    allowlist = (map["allowlist"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
-                    captureSafeHeaders = map["captureSafeHeaders"] as? Boolean ?: true,
-                )
-            }
-
-            private fun parseCaptureBody(map: Map<String, Any?>?): CaptureBody? {
-                if (map == null) return null
-                val allowlist = (map["allowlist"] as? List<*>)?.filterIsInstance<String>() ?: return null
-                return CaptureBody(
-                    allowlist = allowlist,
-                    blocklist = (map["excludelist"] as? List<*>)?.filterIsInstance<String>() ?: emptyList(),
-                )
             }
         }
     }

@@ -92,19 +92,25 @@ class NetworkTrackingPlugin(
         var captureRules = originalOptions.captureRules
         (networkConfig["captureRules"] as? List<*>)?.let { rawRules ->
             val maps = rawRules.filterIsInstance<Map<String, Any?>>()
-            val rules = CaptureRule.fromRemoteConfig(maps)
+            val rules = parseCaptureRulesFromRemoteConfig(maps)
             if (rules != null) captureRules = rules
         }
 
-        // Single atomic write — all fields in one snapshot
+        // Single atomic write — all fields in one snapshot.
+        // Wrap in try-catch: malformed remote config (e.g. rules with empty hosts+urls)
+        // would fail the require checks in NetworkTrackingOptions.init.
         currentOptions =
-            NetworkTrackingOptions(
-                captureRules = captureRules,
-                ignoreHosts = ignoreHosts,
-                ignoreAmplitudeRequests = ignoreAmplitudeRequests,
-                enabled = resolvedEnabled,
-                enableRemoteConfig = originalOptions.enableRemoteConfig,
-            )
+            try {
+                NetworkTrackingOptions(
+                    captureRules = captureRules,
+                    ignoreHosts = ignoreHosts,
+                    ignoreAmplitudeRequests = ignoreAmplitudeRequests,
+                    enabled = resolvedEnabled,
+                    enableRemoteConfig = originalOptions.enableRemoteConfig,
+                )
+            } catch (_: IllegalArgumentException) {
+                originalOptions
+            }
     }
 
     override fun intercept(chain: Chain): Response {

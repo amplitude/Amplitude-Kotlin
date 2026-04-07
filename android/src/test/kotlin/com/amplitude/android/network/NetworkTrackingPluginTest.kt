@@ -1094,4 +1094,39 @@ class NetworkTrackingPluginTest {
         assertEquals(localRules.first().hosts, opts.captureRules.first().hosts)
         assertEquals(listOf("other.com"), opts.ignoreHosts)
     }
+
+    @Test
+    fun `malformed remote config falls back to local options`() {
+        val remoteConfig = TestRemoteConfigClient()
+        val plugin =
+            NetworkTrackingPlugin(
+                NetworkTrackingOptions(
+                    captureRules = listOf(CaptureRule(hosts = listOf("*"), statusCodeRange = (200..299).toList())),
+                    ignoreAmplitudeRequests = false,
+                ),
+            )
+        val amplitude = mockAndroidAmplitude(remoteConfig)
+        plugin.setup(amplitude)
+        plugin.amplitude = amplitude
+
+        // Remote config sends a rule with empty hosts and urls — would fail require() check
+        remoteConfig.emit(
+            mapOf(
+                "autocapture" to
+                    mapOf(
+                        "networkTracking" to
+                            mapOf(
+                                "captureRules" to
+                                    listOf(
+                                        mapOf("statusCodeRange" to "200-299"),
+                                    ),
+                            ),
+                    ),
+            ),
+        )
+
+        // Should fall back to local options, not crash
+        plugin.intercept(mockInterceptorChain(200))
+        verify(exactly = 1) { amplitude.track(eq(NETWORK_TRACKING), any()) }
+    }
 }

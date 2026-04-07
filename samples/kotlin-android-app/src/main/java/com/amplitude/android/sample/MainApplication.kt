@@ -58,7 +58,7 @@ class MainApplication : Application() {
                                 urls = listOf(URLPattern.Regex(".*httpbin\\.org/post")),
                                 methods = listOf("POST"),
                                 statusCodeRange = (0..599).toList(),
-                                requestBody = CaptureBody(allowlist = listOf("user/*"), blocklist = listOf("**/password")),
+                                requestBody = CaptureBody(allowlist = listOf("user/*"), excludelist = listOf("**/password")),
                                 responseBody = CaptureBody(allowlist = listOf("**")),
                             ),
                             // Rule 4: Exact URL — capture headers (safe + custom, Authorization blocked)

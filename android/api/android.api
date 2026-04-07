@@ -667,7 +667,7 @@ public final class com/amplitude/android/network/NetworkTrackingOptions$CaptureB
 	public fun <init> (Ljava/util/List;Ljava/util/List;)V
 	public synthetic fun <init> (Ljava/util/List;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun getAllowlist ()Ljava/util/List;
-	public final fun getBlocklist ()Ljava/util/List;
+	public final fun getExcludelist ()Ljava/util/List;
 }
 
 public final class com/amplitude/android/network/NetworkTrackingOptions$CaptureHeader {
@@ -679,7 +679,6 @@ public final class com/amplitude/android/network/NetworkTrackingOptions$CaptureH
 }
 
 public final class com/amplitude/android/network/NetworkTrackingOptions$CaptureRule {
-	public static final field Companion Lcom/amplitude/android/network/NetworkTrackingOptions$CaptureRule$Companion;
 	public fun <init> (Ljava/util/List;Ljava/util/List;)V
 	public synthetic fun <init> (Ljava/util/List;Ljava/util/List;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public fun <init> (Ljava/util/List;Ljava/util/List;Ljava/util/List;Lcom/amplitude/android/network/NetworkTrackingOptions$CaptureHeader;Lcom/amplitude/android/network/NetworkTrackingOptions$CaptureHeader;Lcom/amplitude/android/network/NetworkTrackingOptions$CaptureBody;Lcom/amplitude/android/network/NetworkTrackingOptions$CaptureBody;)V
@@ -692,9 +691,6 @@ public final class com/amplitude/android/network/NetworkTrackingOptions$CaptureR
 	public final fun getResponseHeaders ()Lcom/amplitude/android/network/NetworkTrackingOptions$CaptureHeader;
 	public final fun getStatusCodeRange ()Ljava/util/List;
 	public final fun getUrls ()Ljava/util/List;
-}
-
-public final class com/amplitude/android/network/NetworkTrackingOptions$CaptureRule$Companion {
 }
 
 public final class com/amplitude/android/network/NetworkTrackingOptions$Companion {
