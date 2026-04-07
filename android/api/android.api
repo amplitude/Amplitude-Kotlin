@@ -218,6 +218,66 @@ public final class com/amplitude/android/ConfigurationBuilder : com/amplitude/an
 	public final fun build ()Lcom/amplitude/android/Configuration;
 }
 
+public final class com/amplitude/android/Constants {
+	public static final field INSTANCE Lcom/amplitude/android/Constants;
+}
+
+public final class com/amplitude/android/Constants$EventProperties {
+	public static final field ACTION Ljava/lang/String;
+	public static final field BEGIN_TIME Ljava/lang/String;
+	public static final field BUILD Ljava/lang/String;
+	public static final field CLICKS Ljava/lang/String;
+	public static final field CLICK_COUNT Ljava/lang/String;
+	public static final field COORDINATE_X Ljava/lang/String;
+	public static final field COORDINATE_Y Ljava/lang/String;
+	public static final field DURATION Ljava/lang/String;
+	public static final field END_TIME Ljava/lang/String;
+	public static final field FRAGMENT_CLASS Ljava/lang/String;
+	public static final field FRAGMENT_IDENTIFIER Ljava/lang/String;
+	public static final field FRAGMENT_TAG Ljava/lang/String;
+	public static final field FROM_BACKGROUND Ljava/lang/String;
+	public static final field HIERARCHY Ljava/lang/String;
+	public static final field INSTANCE Lcom/amplitude/android/Constants$EventProperties;
+	public static final field LINK_REFERRER Ljava/lang/String;
+	public static final field LINK_URL Ljava/lang/String;
+	public static final field NETWORK_TRACKING_COMPLETION_TIME Ljava/lang/String;
+	public static final field NETWORK_TRACKING_DURATION Ljava/lang/String;
+	public static final field NETWORK_TRACKING_ERROR_MESSAGE Ljava/lang/String;
+	public static final field NETWORK_TRACKING_REQUEST_BODY_SIZE Ljava/lang/String;
+	public static final field NETWORK_TRACKING_REQUEST_METHOD Ljava/lang/String;
+	public static final field NETWORK_TRACKING_RESPONSE_BODY_SIZE Ljava/lang/String;
+	public static final field NETWORK_TRACKING_START_TIME Ljava/lang/String;
+	public static final field NETWORK_TRACKING_STATUS_CODE Ljava/lang/String;
+	public static final field NETWORK_TRACKING_URL Ljava/lang/String;
+	public static final field NETWORK_TRACKING_URL_FRAGMENT Ljava/lang/String;
+	public static final field NETWORK_TRACKING_URL_QUERY Ljava/lang/String;
+	public static final field PREVIOUS_BUILD Ljava/lang/String;
+	public static final field PREVIOUS_VERSION Ljava/lang/String;
+	public static final field SCREEN_NAME Ljava/lang/String;
+	public static final field TARGET_ACCESSIBILITY_LABEL Ljava/lang/String;
+	public static final field TARGET_CLASS Ljava/lang/String;
+	public static final field TARGET_RESOURCE Ljava/lang/String;
+	public static final field TARGET_SOURCE Ljava/lang/String;
+	public static final field TARGET_TAG Ljava/lang/String;
+	public static final field TARGET_TEXT Ljava/lang/String;
+	public static final field VERSION Ljava/lang/String;
+}
+
+public final class com/amplitude/android/Constants$EventTypes {
+	public static final field APPLICATION_BACKGROUNDED Ljava/lang/String;
+	public static final field APPLICATION_INSTALLED Ljava/lang/String;
+	public static final field APPLICATION_OPENED Ljava/lang/String;
+	public static final field APPLICATION_UPDATED Ljava/lang/String;
+	public static final field DEAD_CLICK Ljava/lang/String;
+	public static final field DEEP_LINK_OPENED Ljava/lang/String;
+	public static final field ELEMENT_INTERACTED Ljava/lang/String;
+	public static final field FRAGMENT_VIEWED Ljava/lang/String;
+	public static final field INSTANCE Lcom/amplitude/android/Constants$EventTypes;
+	public static final field NETWORK_TRACKING Ljava/lang/String;
+	public static final field RAGE_CLICK Ljava/lang/String;
+	public static final field SCREEN_VIEWED Ljava/lang/String;
+}
+
 public final class com/amplitude/android/DeadClickOptions {
 	public fun <init> ()V
 	public fun <init> (Z)V

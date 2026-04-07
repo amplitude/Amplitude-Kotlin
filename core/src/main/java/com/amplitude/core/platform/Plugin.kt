@@ -18,6 +18,13 @@ interface Plugin {
     val type: Type
     var amplitude: Amplitude
 
+    /**
+     * Unique identifier for this plugin, used for deduplication.
+     * When a plugin with a non-null name is added, any existing plugin
+     * with the same name is removed first.
+     */
+    val name: String? get() = null
+
     fun setup(amplitude: Amplitude) {
         this.amplitude = amplitude
     }
@@ -29,6 +36,31 @@ interface Plugin {
     fun teardown() {
         // Clean up any resources from setup if necessary
     }
+
+    /**
+     * Called when the userId changes.
+     */
+    fun onUserIdChanged(userId: String?) {}
+
+    /**
+     * Called when the deviceId changes.
+     */
+    fun onDeviceIdChanged(deviceId: String?) {}
+
+    /**
+     * Called when the sessionId changes.
+     */
+    fun onSessionIdChanged(sessionId: Long) {}
+
+    /**
+     * Called when the optOut setting changes.
+     */
+    fun onOptOutChanged(optOut: Boolean) {}
+
+    /**
+     * Called when the identity is reset.
+     */
+    fun onReset() {}
 }
 
 interface EventPlugin : Plugin {
@@ -108,9 +140,9 @@ abstract class DestinationPlugin : EventPlugin {
 abstract class ObservePlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Observe
 
-    abstract fun onUserIdChanged(userId: String?)
+    abstract override fun onUserIdChanged(userId: String?)
 
-    abstract fun onDeviceIdChanged(deviceId: String?)
+    abstract override fun onDeviceIdChanged(deviceId: String?)
 
     final override fun execute(event: BaseEvent): BaseEvent? {
         return null

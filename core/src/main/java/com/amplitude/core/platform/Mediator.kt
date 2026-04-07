@@ -6,14 +6,30 @@ import com.amplitude.core.events.IdentifyEvent
 import com.amplitude.core.events.RevenueEvent
 import java.util.concurrent.CopyOnWriteArrayList
 
+@PublishedApi
 internal class Mediator(
-    private val plugins: CopyOnWriteArrayList<Plugin> = CopyOnWriteArrayList(),
+    @PublishedApi
+    internal val plugins: CopyOnWriteArrayList<Plugin> = CopyOnWriteArrayList(),
 ) {
     fun add(plugin: Plugin) {
         plugins.add(plugin)
     }
 
     fun remove(plugin: Plugin) = plugins.removeAll { it === plugin }
+
+    /**
+     * Remove any plugin whose [Plugin.name] matches the given [name], calling [Plugin.teardown] on each.
+     */
+    fun removeByName(name: String) {
+        val iterator = plugins.iterator()
+        while (iterator.hasNext()) {
+            val plugin = iterator.next()
+            if (plugin.name == name) {
+                plugins.remove(plugin)
+                plugin.teardown()
+            }
+        }
+    }
 
     fun execute(event: BaseEvent): BaseEvent? {
         var result: BaseEvent? = event
