@@ -1,6 +1,7 @@
 package com.amplitude.android.sample
 
 import android.app.Application
+import android.util.Log
 import com.amplitude.android.Amplitude
 import com.amplitude.android.AutocaptureOption.Companion.ALL
 import com.amplitude.android.DeadClickOptions
@@ -12,12 +13,35 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
 import com.amplitude.experiment.Experiment
 import com.amplitude.experiment.ExperimentConfig
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainApplication : Application() {
     companion object {
         lateinit var amplitude: Amplitude
         const val AMPLITUDE_API_KEY = BuildConfig.AMPLITUDE_API_KEY
         const val EXPERIMENT_API_KEY = BuildConfig.EXPERIMENT_API_KEY
+        private const val TAG = "CME-Repro"
+
+        /**
+         * Fires events rapidly from IO dispatcher to reproduce the CME race condition.
+         * Mirrors the customer's setup: events tracked from Dispatchers.IO,
+         * FakeEngagementPlugin serializes on Main, FakeAdIdPlugin modifies on pipeline thread.
+         */
+        fun fireEventsFromIO(count: Int = 50) {
+            CoroutineScope(Dispatchers.IO).launch {
+                Log.w(TAG, "Firing $count events from IO dispatcher...")
+                repeat(count) { i ->
+                    val props = (1..20).associate { "prop_$it" to "value_$it" }.toMutableMap<String, Any?>()
+                    amplitude.track(
+                        "cme_repro_event_$i",
+                        props,
+                    )
+                }
+                Log.w(TAG, "Done firing events")
+            }
+        }
     }
 
     override fun onCreate() {
@@ -55,6 +79,17 @@ class MainApplication : Application() {
 
         // set app to debug mode
         amplitude.logger.logMode = Logger.LogMode.DEBUG
+
+        // --- AMP-150851 CME reproduction ---
+        // Mirrors the customer's (AJIO) exact plugin order:
+        //   1. Engagement plugin (dispatches serialization to Main)
+        //   2. Custom ad-ID plugin (modifies userProperties on pipeline thread)
+        //
+        // Toggle between FakeEngagementPlugin (buggy) and FakeEngagementPluginFixed (fixed)
+        // to validate the fix. The fixed version serializes on the pipeline thread before
+        // dispatching to Main, so no mutable state crosses the thread boundary.
+        amplitude.add(FakeEngagementPluginFixed()) // swap to FakeEngagementPlugin() to reproduce crash
+        amplitude.add(FakeAdIdPlugin())
 
         // add sample plugin
         amplitude.add(

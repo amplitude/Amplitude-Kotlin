@@ -557,6 +557,86 @@ internal class AmplitudeTest {
             assertEquals("original", capturedNested["inner"])
             assertNull(capturedNested["new_key"])
         }
+
+        @Test
+        fun `enrichment plugin dispatching to another thread races with subsequent enrichment plugin`() {
+            // Reproduces AMP-150851: ConcurrentModificationException with AmplitudeEngagementPlugin.
+            //
+            // The engagement plugin (Enrichment) fire-and-forgets event serialization to Dispatchers.Main
+            // via: CoroutineScope(Dispatchers.Main).launch { amplitudeEngagement.forwardEvent(event) }
+            //
+            // The pipeline continues on its own thread to the NEXT enrichment plugin, which modifies
+            // the same event's maps (e.g., customer's ad-ID plugin adding to userProperties).
+            //
+            // Race: Main thread iterates maps in toJSONObject() while pipeline thread mutates them.
+            //
+            // Customer setup:
+            //   1. AmplitudeEngagementPlugin (Enrichment) — dispatches forwardEvent(event) to Main
+            //   2. Custom ad-ID plugin (Enrichment) — sets userProperties["advertisingId"]
+            //   Both share the same event object. The deep copy in process() doesn't help because
+            //   it's done BEFORE the event enters the pipeline — all plugins still share the same maps.
+
+            val errors = Collections.synchronizedList(mutableListOf<Throwable>())
+            val barrier = java.util.concurrent.CyclicBarrier(2)
+            val writerRunning = java.util.concurrent.atomic.AtomicBoolean(true)
+            val done = CountDownLatch(2)
+
+            // Simulate the deep-copied event that process() creates
+            val event =
+                BaseEvent().apply {
+                    eventType = "test_event"
+                    eventProperties = (1..500).associate { "ep_$it" to "val_$it" }.toMutableMap()
+                    userProperties = (1..500).associate { "up_$it" to "val_$it" }.toMutableMap()
+                }
+
+            // Thread 1: simulates engagement plugin serializing on Dispatchers.Main
+            thread {
+                barrier.await()
+                try {
+                    repeat(500) {
+                        try {
+                            JSONUtil.eventToJsonObject(event)
+                        } catch (e: ConcurrentModificationException) {
+                            errors.add(e)
+                        }
+                    }
+                } finally {
+                    writerRunning.set(false)
+                    done.countDown()
+                }
+            }
+
+            // Thread 2: simulates next enrichment plugin modifying maps on pipeline thread.
+            // Every put() uses a unique key so it's a structural modification (increments modCount),
+            // which is what triggers ConcurrentModificationException on the iterator.
+            thread {
+                barrier.await()
+                try {
+                    var i = 0
+                    while (writerRunning.get()) {
+                        event.userProperties?.put("ad_key_$i", "ad_val_$i")
+                        event.eventProperties?.put("ep_key_$i", "ep_val_$i")
+                        i++
+                    }
+                } finally {
+                    done.countDown()
+                }
+            }
+
+            assertTrue(done.await(10, TimeUnit.SECONDS))
+
+            // CME occurs because the engagement plugin's fire-and-forget serialization on
+            // Main races with subsequent plugin mutations on the pipeline thread.
+            //
+            // The fix belongs in the engagement plugin: serialize BEFORE dispatching to Main.
+            // This way serialization and modification are sequential on the pipeline thread,
+            // and only the independent JSONObject crosses the thread boundary.
+            assertTrue(
+                errors.any { it is ConcurrentModificationException },
+                "Expected ConcurrentModificationException demonstrating the pipeline-internal race, " +
+                    "but got: ${errors.map { "${it.javaClass.simpleName}: ${it.message}" }}",
+            )
+        }
     }
 
     @Nested

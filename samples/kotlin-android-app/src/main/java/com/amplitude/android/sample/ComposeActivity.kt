@@ -122,6 +122,23 @@ class ComposeActivity : ComponentActivity() {
 
                     Button(
                         onClick = {
+                            // AMP-150851: Fire 50 events from IO to trigger engagement plugin CME race
+                            MainApplication.fireEventsFromIO(50)
+                        },
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFFF5722),
+                            ),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 16.dp),
+                    ) {
+                        Text("Reproduce CME (AMP-150851)")
+                    }
+
+                    Button(
+                        onClick = {
                             val intent = Intent(this@ComposeActivity, ComposeAdvancedActivity::class.java)
                             startActivity(intent)
                         },
