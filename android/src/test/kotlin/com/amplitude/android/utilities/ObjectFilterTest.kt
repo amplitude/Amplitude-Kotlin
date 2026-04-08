@@ -277,7 +277,7 @@ class ObjectFilterTests {
 
     @Test
     fun `filtered with array`() {
-        val filter = ObjectFilter(allowList = listOf("users/0", "users/1/name"))
+        val filter = ObjectFilter(allowList = listOf("users/0/**", "users/1/name"))
         val input =
             mapOf(
                 "users" to
@@ -301,7 +301,7 @@ class ObjectFilterTests {
 
     @Test
     fun `filtered array at root`() {
-        val filter = ObjectFilter(allowList = listOf("0/name", "1"))
+        val filter = ObjectFilter(allowList = listOf("0/name", "1/**"))
         val input =
             listOf(
                 mapOf("name" to "John", "email" to "john@example.com"),
@@ -388,6 +388,68 @@ class ObjectFilterTests {
         assertNull(filter.filtered("string value"))
         assertNull(filter.filtered(42))
         assertNull(filter.filtered(true))
+    }
+
+    @Test
+    fun `exact match on primitive value is captured`() {
+        val filter = ObjectFilter(allowList = listOf("name"))
+        val input = mapOf("name" to "John", "age" to 30)
+        val result = filter.filtered(input) as? Map<*, *>
+        assertNotNull(result)
+        assertEquals("John", result!!["name"])
+        assertNull(result["age"])
+    }
+
+    @Test
+    fun `exact match on container is not captured`() {
+        val filter = ObjectFilter(allowList = listOf("user"))
+        val input = mapOf("user" to mapOf("name" to "John", "password" to "secret"))
+        // "user" is a container — exact match without wildcard should not return it
+        assertNull(filter.filtered(input))
+    }
+
+    @Test
+    fun `exact match on container vs wildcard`() {
+        // "user" alone does not capture the object
+        val filter1 = ObjectFilter(allowList = listOf("user"))
+        val input = mapOf("user" to mapOf("name" to "John", "password" to "secret"))
+        assertNull(filter1.filtered(input))
+
+        // "user/**" captures the full object
+        val filter2 = ObjectFilter(allowList = listOf("user/**"))
+        val result2 = filter2.filtered(input) as? Map<*, *>
+        val user2 = result2?.get("user") as? Map<*, *>
+        assertEquals("John", user2?.get("name"))
+        assertEquals("secret", user2?.get("password"))
+
+        // "user/*" captures direct children only
+        val filter3 = ObjectFilter(allowList = listOf("user/*"))
+        val result3 = filter3.filtered(input) as? Map<*, *>
+        val user3 = result3?.get("user") as? Map<*, *>
+        assertEquals("John", user3?.get("name"))
+        assertEquals("secret", user3?.get("password"))
+    }
+
+    @Test
+    fun `exact match with blocklist on descendants now works`() {
+        // With "user/**" + blocklist, password is excluded
+        val filter =
+            ObjectFilter(
+                allowList = listOf("user/**"),
+                blockList = listOf("user/password"),
+            )
+        val input = mapOf("user" to mapOf("name" to "John", "password" to "secret"))
+        val result = filter.filtered(input) as? Map<*, *>
+        val user = result?.get("user") as? Map<*, *>
+        assertEquals("John", user?.get("name"))
+        assertNull(user?.get("password"))
+    }
+
+    @Test
+    fun `exact match on array is not captured`() {
+        val filter = ObjectFilter(allowList = listOf("items"))
+        val input = mapOf("items" to listOf("a", "b", "c"))
+        assertNull(filter.filtered(input))
     }
 
     @Test

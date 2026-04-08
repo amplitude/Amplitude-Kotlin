@@ -62,14 +62,6 @@ internal class ObjectFilter(
             return if (isAllowed(at)) value else null
         }
 
-        // Return entire container for exact non-wildcard matches
-        if (allowKeyPaths.any { pattern ->
-                pattern.none { it == "*" || it == "**" } && matches(at, pattern) && !isBlocked(at)
-            }
-        ) {
-            return value
-        }
-
         // Return empty containers that match patterns
         if (isAllowed(at)) {
             if (value is Map<*, *> && value.isEmpty()) return value
