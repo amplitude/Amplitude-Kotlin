@@ -9,6 +9,26 @@ import org.junit.jupiter.api.Test
 
 class ObjectFilterMatchTests {
     @Test
+    fun `canMatchDescendants requires prefix compatibility when pattern has double wildcard`() {
+        val filter = ObjectFilter()
+        val method =
+            ObjectFilter::class.java.getDeclaredMethod(
+                "canMatchDescendants",
+                List::class.java,
+                List::class.java,
+            )
+        method.isAccessible = true
+
+        val mismatchedPrefix =
+            method.invoke(filter, listOf("a", "b"), listOf("c", "**")) as Boolean
+        val matchedPrefix =
+            method.invoke(filter, listOf("a", "b"), listOf("a", "**")) as Boolean
+
+        assertFalse(mismatchedPrefix)
+        assertTrue(matchedPrefix)
+    }
+
+    @Test
     fun `matches exact path`() {
         val filter = ObjectFilter()
         assertTrue(filter.matches(listOf("user", "name"), listOf("user", "name")))
@@ -613,6 +633,19 @@ class ObjectFilterTests {
         assertEquals(2, result!!.size)
         assertEquals("one", result[0])
         assertEquals("three", result[1])
+    }
+
+    @Test
+    fun `does not descend into mismatched prefix when pattern has double wildcard`() {
+        val filter = ObjectFilter(allowList = listOf("c/**"))
+        val input =
+            mapOf(
+                "a" to
+                    mapOf(
+                        "nested" to mapOf("value" to "ignored"),
+                    ),
+            )
+        assertNull(filter.filtered(input))
     }
 
     @Test

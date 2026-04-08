@@ -102,7 +102,13 @@ internal class ObjectFilter(
         path: List<String>,
         pattern: List<String>,
     ): Boolean {
-        if (pattern.size <= path.size) return pattern.contains("**")
+        if (pattern.size <= path.size) {
+            for (i in pattern.indices) {
+                if (pattern[i] == "**") return true
+                if (pattern[i] != path[i] && pattern[i] != "*") return false
+            }
+            return false
+        }
         for (i in path.indices) {
             if (pattern[i] == "**") return true
             if (pattern[i] != path[i] && pattern[i] != "*") return false
