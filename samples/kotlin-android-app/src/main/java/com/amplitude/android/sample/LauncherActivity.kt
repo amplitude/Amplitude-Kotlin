@@ -103,6 +103,27 @@ class LauncherActivity : ComponentActivity() {
                     modifier = Modifier.padding(8.dp),
                 )
             }
+
+            Button(
+                onClick = {
+                    val intent = Intent(this@LauncherActivity, NetworkTrackingActivity::class.java)
+                    startActivity(intent)
+                },
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF4CAF50),
+                    ),
+            ) {
+                Text(
+                    text = "Network Tracking",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(8.dp),
+                )
+            }
         }
     }
 

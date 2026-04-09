@@ -8,6 +8,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkConstructor
 import io.mockk.spyk
+import io.mockk.unmockkConstructor
 import io.mockk.verify
 import org.json.JSONObject
 import org.junit.jupiter.api.Assertions
@@ -76,6 +77,8 @@ class DatabaseStorageTest {
         Assertions.assertEquals(events.size, 2)
         Assertions.assertEquals((events[0]).get("event_id"), 1)
         Assertions.assertEquals((events[1]).get("event_id"), 2)
+
+        unmockkConstructor(JSONObject::class)
     }
 
     @Test
