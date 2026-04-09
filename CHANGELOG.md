@@ -1,3 +1,15 @@
+# [1.28.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.27.0...v1.28.0) (2026-04-09)
+
+
+### Bug Fixes
+
+* move network tracking plugin to android ([#382](https://github.com/amplitude/Amplitude-Kotlin/issues/382)) ([e5186dc](https://github.com/amplitude/Amplitude-Kotlin/commit/e5186dc1c2ca16658c1cc53472a3113d34df3b4f))
+
+
+### Features
+
+* add header body capture for network tracking ([#386](https://github.com/amplitude/Amplitude-Kotlin/issues/386)) ([121061e](https://github.com/amplitude/Amplitude-Kotlin/commit/121061e4758ac0c2d829a17e4990773eff250aa6))
+
 # [1.27.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.26.5...v1.27.0) (2026-03-30)
 
 
