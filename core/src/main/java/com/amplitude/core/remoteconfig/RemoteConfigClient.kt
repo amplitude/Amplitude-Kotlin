@@ -35,6 +35,25 @@ interface RemoteConfigClient {
         REMOTE,
     }
 
+    /**
+     * Controls when config is delivered to subscribers.
+     */
+    sealed class DeliveryMode {
+        /**
+         * Deliver cached config immediately, then remote when available.
+         * This is the default behavior.
+         */
+        data object All : DeliveryMode()
+
+        /**
+         * Wait for remote config before delivering. Falls back to cache after timeout.
+         * Use this for blades that need config ready before they can act (e.g., Experiment, G&S).
+         *
+         * @param timeoutMs Maximum time to wait for remote config before falling back to cache.
+         */
+        data class WaitForRemote(val timeoutMs: Long = 5000L) : DeliveryMode()
+    }
+
     enum class Key(val value: String) {
         ANALYTICS_SDK("analyticsSDK.androidSDK"),
         DIAGNOSTICS("diagnostics.androidSDK"),
@@ -47,13 +66,27 @@ interface RemoteConfigClient {
 
     /**
      * Subscribe to remote configuration updates for a specific configuration key.
-     * The callback will be invoked whenever the specific configuration is updated.
+     * Delivers cached config immediately, then remote when available.
      *
-     * @param key The configuration key to subscribe to (e.g., "sessionReplay.sr_android_sampling_config")
+     * @param key The configuration key to subscribe to
      * @param callback RemoteConfigCallback that handles config updates
      */
     fun subscribe(
         key: Key,
+        callback: RemoteConfigCallback,
+    )
+
+    /**
+     * Subscribe to remote configuration updates with a specific delivery mode.
+     * Use [DeliveryMode.WaitForRemote] for blades that need config ready before acting.
+     *
+     * @param key The configuration key to subscribe to
+     * @param deliveryMode Controls when config is delivered
+     * @param callback RemoteConfigCallback that handles config updates
+     */
+    fun subscribe(
+        key: Key,
+        deliveryMode: DeliveryMode,
         callback: RemoteConfigCallback,
     )
 
@@ -124,15 +157,16 @@ internal class RemoteConfigClientImpl(
     // Simple in-flight fetch guard; safe because networkIODispatcher is single-threaded
     private var isFetching: Boolean = false
 
-    /**
-     * Subscribe to remote configuration updates for a specific configuration key.
-     * The callback will be invoked whenever the specific configuration is updated.
-     *
-     * @param key The configuration key to subscribe to
-     * @param callback RemoteConfigCallback that handles config updates
-     */
     override fun subscribe(
         key: Key,
+        callback: RemoteConfigClient.RemoteConfigCallback,
+    ) {
+        subscribe(key, RemoteConfigClient.DeliveryMode.All, callback)
+    }
+
+    override fun subscribe(
+        key: Key,
+        deliveryMode: RemoteConfigClient.DeliveryMode,
         callback: RemoteConfigClient.RemoteConfigCallback,
     ) {
         val weakCallback = WeakCallback(callback)
@@ -149,17 +183,111 @@ internal class RemoteConfigClientImpl(
 
         logger.debug("Added subscriber for key: ${key.value}. Total subscribers: $subscriberCount")
 
-        // Immediately provide stored config if available
-        val storedData = getStoredConfigData(key.value)
-        if (storedData != null) {
-            // Notify only the newly added subscriber
-            weakCallback.runSafely {
-                onUpdate(storedData.config, CACHE, storedData.timestamp)
+        when (deliveryMode) {
+            is RemoteConfigClient.DeliveryMode.All -> {
+                // Immediately provide stored config if available
+                val storedData = getStoredConfigData(key.value)
+                if (storedData != null) {
+                    weakCallback.runSafely {
+                        onUpdate(storedData.config, CACHE, storedData.timestamp)
+                    }
+                }
+                // Trigger remote fetch to ensure latest config is available
+                updateConfigs()
+            }
+
+            is RemoteConfigClient.DeliveryMode.WaitForRemote -> {
+                // Don't deliver cache immediately — wait for remote or timeout
+                coroutineScope.launch(networkIODispatcher) {
+                    val remoteDelivered = waitForRemoteFetch(key, weakCallback, deliveryMode.timeoutMs)
+                    if (!remoteDelivered) {
+                        // Timeout: fall back to cache
+                        val storedData = getStoredConfigData(key.value)
+                        val config = storedData?.config ?: emptyMap()
+                        val source = if (storedData != null) CACHE else REMOTE
+                        val timestamp = storedData?.timestamp ?: System.currentTimeMillis()
+                        weakCallback.runSafely {
+                            onUpdate(config, source, timestamp)
+                        }
+                        logger.debug("WaitForRemote timed out for ${key.value}, delivered ${if (storedData != null) "cache" else "empty"}")
+                    }
+                }
             }
         }
+    }
 
-        // Trigger remote fetch to ensure latest config is available
-        updateConfigs()
+    /**
+     * Wait for a remote fetch to complete and deliver config to the callback.
+     * Returns true if remote config was delivered, false if timed out.
+     */
+    private suspend fun waitForRemoteFetch(
+        key: Key,
+        weakCallback: WeakCallback,
+        timeoutMs: Long,
+    ): Boolean {
+        val startTime = System.currentTimeMillis()
+
+        // Trigger fetch if not already in progress
+        if (!isFetching) {
+            try {
+                if (shouldRateLimit()) {
+                    // Rate limited — can't fetch, return false to trigger cache fallback
+                    return false
+                }
+
+                isFetching = true
+                val configs = fetchRemoteConfig()
+                if (configs != null) {
+                    val timestamp = System.currentTimeMillis()
+                    withContext(storageIODispatcher) {
+                        storage.write(REMOTE_CONFIG, configs.toJSONObject().toString())
+                        storage.write(REMOTE_CONFIG_TIMESTAMP, timestamp.toString())
+                    }
+
+                    // Deliver to the waiting subscriber
+                    val config = configs[key.value] ?: emptyMap()
+                    weakCallback.runSafely {
+                        onUpdate(config, REMOTE, timestamp)
+                    }
+
+                    // Also notify other subscribers for all keys
+                    configs.forEach { (configKey, config) ->
+                        val subscriberList =
+                            synchronized(subscriberLock) {
+                                keySpecificSubscribers[configKey]?.toList().orEmpty()
+                            }
+                        subscriberList.forEach { cb ->
+                            if (cb !== weakCallback) {
+                                cb.runSafely {
+                                    onUpdate(config, REMOTE, timestamp)
+                                }
+                            }
+                        }
+                    }
+                    return true
+                }
+            } catch (e: Exception) {
+                logger.error("Error in WaitForRemote fetch: ${e.message}")
+            } finally {
+                isFetching = false
+            }
+            return false
+        }
+
+        // Fetch already in progress — poll until it completes or timeout
+        while (isFetching && (System.currentTimeMillis() - startTime) < timeoutMs) {
+            kotlinx.coroutines.delay(50)
+        }
+
+        // Check if config was delivered by the other fetch
+        val storedData = getStoredConfigData(key.value)
+        val lastTimestamp = storedData?.timestamp ?: 0L
+        if (lastTimestamp >= startTime) {
+            // Config was updated after we started waiting — it was delivered by the other fetch
+            return true
+        }
+
+        return false
     }
 
     /**
