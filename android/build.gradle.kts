@@ -34,8 +34,8 @@ android {
         sourceCompatibility = JavaConfig.JAVA_VERSION
         targetCompatibility = JavaConfig.JAVA_VERSION
     }
-    kotlinOptions {
-        jvmTarget = KotlinConfig.JVM_TARGET
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
     }
     testOptions {
         targetSdk = AndroidVersions.TARGET_SDK

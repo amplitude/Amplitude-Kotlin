@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.dokka)
     alias(libs.plugins.mavenPublish) apply false
     alias(libs.plugins.kotlin.android) apply false
+    alias(libs.plugins.kotlin.compose.compiler) apply false
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.ktlint) apply false
     alias(libs.plugins.bcv)
@@ -23,9 +24,9 @@ allprojects {
     version = project.findProperty("VERSION_NAME") ?: "0.0.1-SNAPSHOT"
 
     tasks.withType<KotlinCompile>().configureEach {
-        kotlinOptions {
-            jvmTarget = KotlinConfig.JVM_TARGET
-            freeCompilerArgs = listOf("-Xjvm-default=all")
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
+            freeCompilerArgs.add("-Xjvm-default=all")
         }
     }
 }

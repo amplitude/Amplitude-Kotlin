@@ -3,6 +3,7 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     kotlin("android")
+    alias(libs.plugins.kotlin.compose.compiler)
 }
 
 // Load properties from local.properties in the root project
@@ -49,8 +50,8 @@ android {
         sourceCompatibility = JavaConfig.JAVA_VERSION
         targetCompatibility = JavaConfig.JAVA_VERSION
     }
-    kotlinOptions {
-        jvmTarget = KotlinConfig.JVM_TARGET
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
     }
     lint {
         abortOnError = false
@@ -58,9 +59,6 @@ android {
     buildFeatures {
         buildConfig = true
         compose = true
-    }
-    composeOptions {
-        kotlinCompilerExtensionVersion = libs.versions.kotlinCompilerExtension.get()
     }
 }
 
