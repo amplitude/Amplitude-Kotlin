@@ -1,3 +1,10 @@
+## [1.28.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.28.0...v1.28.1) (2026-04-16)
+
+
+### Bug Fixes
+
+* possible concurrent modification crash ([#393](https://github.com/amplitude/Amplitude-Kotlin/issues/393)) ([7cedc4b](https://github.com/amplitude/Amplitude-Kotlin/commit/7cedc4bc157271ab1ab47648ca6ad9b11c5038b6))
+
 # [1.28.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.27.0...v1.28.0) (2026-04-09)
 
 
