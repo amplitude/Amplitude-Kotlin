@@ -19,8 +19,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.lang.ref.WeakReference
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * Type alias for remote configuration map data.
@@ -117,8 +115,8 @@ internal class RemoteConfigClientImpl(
     }
 
     // Subscribers for specific config keys using weak references to prevent memory leaks
-    private val keySpecificSubscribers =
-        ConcurrentHashMap<String, CopyOnWriteArrayList<WeakCallback>>()
+    private val subscriberLock = Any()
+    private val keySpecificSubscribers = mutableMapOf<String, MutableList<WeakCallback>>()
 
     // Simple in-flight fetch guard; safe because networkIODispatcher is single-threaded
     private var isFetching: Boolean = false
@@ -134,19 +132,19 @@ internal class RemoteConfigClientImpl(
         key: Key,
         callback: RemoteConfigClient.RemoteConfigCallback,
     ) {
-        // Clean up dead weak references before adding new one
-        cleanupDeadReferences()
-
-        // Add new weak reference callback
-        val subscriberList =
-            keySpecificSubscribers.getOrPut(key.value) {
-                CopyOnWriteArrayList<WeakCallback>()
-            }
         val weakCallback = WeakCallback(callback)
-        subscriberList.add(weakCallback)
-        keySpecificSubscribers[key.value] = subscriberList
+        val subscriberCount =
+            synchronized(subscriberLock) {
+                cleanupDeadReferencesLocked()
+                val subscriberList =
+                    keySpecificSubscribers.getOrPut(key.value) {
+                        mutableListOf()
+                    }
+                subscriberList.add(weakCallback)
+                subscriberList.size
+            }
 
-        logger.debug("Added subscriber for key: ${key.value}. Total subscribers: ${keySpecificSubscribers[key.value]?.size}")
+        logger.debug("Added subscriber for key: ${key.value}. Total subscribers: $subscriberCount")
 
         // Immediately provide stored config if available
         val storedData = getStoredConfigData(key.value)
@@ -189,8 +187,11 @@ internal class RemoteConfigClientImpl(
 
                 configs.forEach { (configKey, config) ->
                     // Notify all subscribers for this config key
-                    val subscriberList = keySpecificSubscribers[configKey]
-                    subscriberList?.forEach { weakCallback ->
+                    val subscriberList =
+                        synchronized(subscriberLock) {
+                            keySpecificSubscribers[configKey]?.toList().orEmpty()
+                        }
+                    subscriberList.forEach { weakCallback ->
                         weakCallback.runSafely {
                             onUpdate(config, REMOTE, timestamp)
                         }
@@ -336,26 +337,32 @@ internal class RemoteConfigClientImpl(
      * Clean up dead weak references to prevent memory accumulation.
      */
     private fun cleanupDeadReferences() {
-        var totalCleaned = 0
-        val keysToRemove = mutableSetOf<String>()
+        synchronized(subscriberLock) {
+            cleanupDeadReferencesLocked()
+        }
+    }
 
-        keySpecificSubscribers.forEach { (keyName, subscriberList) ->
+    private fun cleanupDeadReferencesLocked() {
+        var totalCleaned = 0
+        var emptyListCount = 0
+        val iterator = keySpecificSubscribers.iterator()
+
+        while (iterator.hasNext()) {
+            val (_, subscriberList) = iterator.next()
             val initialSize = subscriberList.size
             subscriberList.removeAll { !it.isAlive() }
             val removedCount = initialSize - subscriberList.size
             totalCleaned += removedCount
 
             if (subscriberList.isEmpty()) {
-                keysToRemove.add(keyName)
+                iterator.remove()
+                emptyListCount++
             }
         }
 
-        // Remove empty subscriber lists
-        keysToRemove.forEach { keySpecificSubscribers.remove(it) }
-
         if (totalCleaned > 0) {
             logger.debug(
-                "Removed $totalCleaned dead references and ${keysToRemove.size} empty lists",
+                "Removed $totalCleaned dead references and $emptyListCount empty lists",
             )
         }
     }
