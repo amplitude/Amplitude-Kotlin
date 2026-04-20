@@ -20,6 +20,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -435,6 +436,7 @@ class RemoteConfigClientTest {
         }
 
         val finished = latch.await(30, TimeUnit.SECONDS)
+        scope.cancel()
         executorService.shutdownNow()
         executorService.awaitTermination(5, TimeUnit.SECONDS)
         networkDispatcher.close()
