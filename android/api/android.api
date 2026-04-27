@@ -243,9 +243,13 @@ public final class com/amplitude/android/Constants$EventProperties {
 	public static final field NETWORK_TRACKING_COMPLETION_TIME Ljava/lang/String;
 	public static final field NETWORK_TRACKING_DURATION Ljava/lang/String;
 	public static final field NETWORK_TRACKING_ERROR_MESSAGE Ljava/lang/String;
+	public static final field NETWORK_TRACKING_REQUEST_BODY Ljava/lang/String;
 	public static final field NETWORK_TRACKING_REQUEST_BODY_SIZE Ljava/lang/String;
+	public static final field NETWORK_TRACKING_REQUEST_HEADERS Ljava/lang/String;
 	public static final field NETWORK_TRACKING_REQUEST_METHOD Ljava/lang/String;
+	public static final field NETWORK_TRACKING_RESPONSE_BODY Ljava/lang/String;
 	public static final field NETWORK_TRACKING_RESPONSE_BODY_SIZE Ljava/lang/String;
+	public static final field NETWORK_TRACKING_RESPONSE_HEADERS Ljava/lang/String;
 	public static final field NETWORK_TRACKING_START_TIME Ljava/lang/String;
 	public static final field NETWORK_TRACKING_STATUS_CODE Ljava/lang/String;
 	public static final field NETWORK_TRACKING_URL Ljava/lang/String;
