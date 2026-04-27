@@ -139,6 +139,7 @@ open class Amplitude internal constructor(
         } else {
             setDeviceId(ContextPlugin.generateRandomDeviceId())
         }
+        timeline.applyClosure { it.onReset() }
         return this
     }
 

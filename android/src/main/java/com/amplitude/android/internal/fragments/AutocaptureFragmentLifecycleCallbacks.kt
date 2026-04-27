@@ -2,11 +2,11 @@ package com.amplitude.android.internal.fragments
 
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
+import com.amplitude.android.Constants.EventProperties
+import com.amplitude.android.Constants.EventTypes
 import com.amplitude.android.internal.TrackFunction
 import com.amplitude.android.utilities.DefaultEventUtils.Companion.screenName
 import com.amplitude.common.Logger
-import com.amplitude.core.Constants.EventProperties
-import com.amplitude.core.Constants.EventTypes
 
 internal class AutocaptureFragmentLifecycleCallbacks(
     private val track: TrackFunction,

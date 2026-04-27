@@ -1,6 +1,15 @@
 package com.amplitude.android
 
 import android.graphics.PointF
+import com.amplitude.android.Constants.EventProperties.BEGIN_TIME
+import com.amplitude.android.Constants.EventProperties.CLICKS
+import com.amplitude.android.Constants.EventProperties.CLICK_COUNT
+import com.amplitude.android.Constants.EventProperties.COORDINATE_X
+import com.amplitude.android.Constants.EventProperties.COORDINATE_Y
+import com.amplitude.android.Constants.EventProperties.DURATION
+import com.amplitude.android.Constants.EventProperties.END_TIME
+import com.amplitude.android.Constants.EventTypes.DEAD_CLICK
+import com.amplitude.android.Constants.EventTypes.RAGE_CLICK
 import com.amplitude.android.InteractionType.DeadClick
 import com.amplitude.android.InteractionType.RageClick
 import com.amplitude.android.internal.ViewTarget
@@ -8,15 +17,6 @@ import com.amplitude.android.internal.buildElementInteractedProperties
 import com.amplitude.android.signals.UiChangeSignal
 import com.amplitude.common.Logger
 import com.amplitude.core.Amplitude
-import com.amplitude.core.Constants.EventProperties.BEGIN_TIME
-import com.amplitude.core.Constants.EventProperties.CLICKS
-import com.amplitude.core.Constants.EventProperties.CLICK_COUNT
-import com.amplitude.core.Constants.EventProperties.COORDINATE_X
-import com.amplitude.core.Constants.EventProperties.COORDINATE_Y
-import com.amplitude.core.Constants.EventProperties.DURATION
-import com.amplitude.core.Constants.EventProperties.END_TIME
-import com.amplitude.core.Constants.EventTypes.DEAD_CLICK
-import com.amplitude.core.Constants.EventTypes.RAGE_CLICK
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
