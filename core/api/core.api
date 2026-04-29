@@ -947,7 +947,10 @@ public abstract interface class com/amplitude/core/remoteconfig/RemoteConfigClie
 
 public final class com/amplitude/core/remoteconfig/RemoteConfigClient$Key : java/lang/Enum {
 	public static final field ANALYTICS_SDK Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;
+	public static final field COMMAND Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;
 	public static final field DIAGNOSTICS Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;
+	public static final field EXPERIMENT Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;
+	public static final field GUIDES_AND_SURVEYS Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;
 	public static final field SESSION_REPLAY_PRIVACY_CONFIG Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;
 	public static final field SESSION_REPLAY_SAMPLING_CONFIG Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;
 	public static fun getEntries ()Lkotlin/enums/EnumEntries;
