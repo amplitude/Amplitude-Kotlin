@@ -294,7 +294,13 @@ internal class RemoteConfigClientImpl(
         // Race: wait for the first delivery to fire (signaled when remote arrives
         // and successfully claims the gate) up to timeoutMs. If the timeout wins,
         // fall back to cache (or empty).
-        coroutineScope.launch(networkIODispatcher) {
+        //
+        // NOTE: this coroutine intentionally does *not* run on networkIODispatcher.
+        // That dispatcher is a single-thread executor; if it's busy serving the
+        // HTTP fetch, a timeout continuation queued behind it cannot fire on time.
+        // We let the caller-supplied [coroutineScope] pick a dispatcher (typically
+        // a multi-thread pool) so the timeout truly races the fetch.
+        coroutineScope.launch {
             val delivered =
                 withTimeoutOrNull(timeoutMs) {
                     firstDeliverySignal.await()
