@@ -10,6 +10,11 @@ open class Timeline {
             Plugin.Type.Enrichment to Mediator(),
             Plugin.Type.Destination to Mediator(),
             Plugin.Type.Utility to Mediator(),
+            // Observe-typed plain Plugins live here so they receive state callbacks
+            // and don't get silently dropped on add(). ObservePlugin instances are
+            // routed to the [com.amplitude.core.State] store by Amplitude.add() and
+            // do not flow through this mediator.
+            Plugin.Type.Observe to Mediator(),
         )
     lateinit var amplitude: Amplitude
 
@@ -62,6 +67,41 @@ open class Timeline {
                 plugin.teardown()
             }
         }
+    }
+
+    /**
+     * Remove every plugin whose [Plugin.name] matches [name] across all plugin
+     * layers, calling [Plugin.teardown] on each removed plugin. Used internally
+     * for plugin deduplication when adding a new plugin with a non-null name.
+     */
+    fun removeByName(name: String) {
+        plugins.forEach { (_, mediator) ->
+            mediator.removeByName(name)
+        }
+    }
+
+    /**
+     * Find the first plugin of type [T] across all plugin layers, or null if
+     * none match.
+     */
+    inline fun <reified T : Plugin> findPlugin(): T? {
+        var match: T? = null
+        applyClosure { plugin ->
+            if (match == null && plugin is T) match = plugin
+        }
+        return match
+    }
+
+    /**
+     * Find the first plugin whose [Plugin.name] matches [name] across all
+     * plugin layers, or null if none match.
+     */
+    fun findPluginByName(name: String): Plugin? {
+        var match: Plugin? = null
+        applyClosure { plugin ->
+            if (match == null && plugin.name == name) match = plugin
+        }
+        return match
     }
 
     // Applies a closure on all registered plugins

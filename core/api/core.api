@@ -48,6 +48,7 @@ public class com/amplitude/core/Amplitude {
 	public fun createTimeline ()Lcom/amplitude/core/platform/Timeline;
 	protected fun diagnosticsContextProvider ()Lcom/amplitude/core/diagnostics/DiagnosticsContextProvider;
 	protected fun diagnosticsStorageDirectory ()Ljava/io/File;
+	public final fun findPluginByName (Ljava/lang/String;)Lcom/amplitude/core/platform/Plugin;
 	public final fun flush ()V
 	public final fun getAmplitudeDispatcher ()Lkotlinx/coroutines/CoroutineDispatcher;
 	public final fun getAmplitudeScope ()Lkotlinx/coroutines/CoroutineScope;
@@ -83,8 +84,11 @@ public class com/amplitude/core/Amplitude {
 	public final fun isBuilt ()Lkotlinx/coroutines/Deferred;
 	public final fun logEvent (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/Amplitude;
 	public final fun logRevenue (Lcom/amplitude/core/events/Revenue;)Lcom/amplitude/core/Amplitude;
+	public final fun notifyAllPlugins (Lkotlin/jvm/functions/Function1;)V
+	public final fun notifyTimelinePlugins (Lkotlin/jvm/functions/Function1;)V
 	public final fun remove (Lcom/amplitude/core/platform/Plugin;)Lcom/amplitude/core/Amplitude;
 	public fun reset ()Lcom/amplitude/core/Amplitude;
+	public final fun resetIdentity (Ljava/lang/String;)V
 	public final fun revenue (Lcom/amplitude/core/events/Revenue;)Lcom/amplitude/core/Amplitude;
 	public final fun revenue (Lcom/amplitude/core/events/Revenue;Lcom/amplitude/core/events/EventOptions;)Lcom/amplitude/core/Amplitude;
 	public final fun revenue (Lcom/amplitude/core/events/RevenueEvent;)Lcom/amplitude/core/Amplitude;
@@ -803,7 +807,13 @@ public abstract class com/amplitude/core/platform/ObservePlugin : com/amplitude/
 public abstract interface class com/amplitude/core/platform/Plugin {
 	public fun execute (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
 	public abstract fun getAmplitude ()Lcom/amplitude/core/Amplitude;
+	public fun getName ()Ljava/lang/String;
 	public abstract fun getType ()Lcom/amplitude/core/platform/Plugin$Type;
+	public fun onDeviceIdChanged (Ljava/lang/String;)V
+	public fun onOptOutChanged (Z)V
+	public fun onReset ()V
+	public fun onSessionIdChanged (J)V
+	public fun onUserIdChanged (Ljava/lang/String;)V
 	public abstract fun setAmplitude (Lcom/amplitude/core/Amplitude;)V
 	public fun setup (Lcom/amplitude/core/Amplitude;)V
 	public fun teardown ()V
@@ -837,9 +847,11 @@ public class com/amplitude/core/platform/Timeline {
 	public final fun add (Lcom/amplitude/core/platform/Plugin;)V
 	public final fun applyClosure (Lkotlin/jvm/functions/Function1;)V
 	public final fun applyPlugins (Lcom/amplitude/core/platform/Plugin$Type;Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
+	public final fun findPluginByName (Ljava/lang/String;)Lcom/amplitude/core/platform/Plugin;
 	public final fun getAmplitude ()Lcom/amplitude/core/Amplitude;
 	public fun process (Lcom/amplitude/core/events/BaseEvent;)V
 	public final fun remove (Lcom/amplitude/core/platform/Plugin;)V
+	public final fun removeByName (Ljava/lang/String;)V
 	public final fun setAmplitude (Lcom/amplitude/core/Amplitude;)V
 }
 

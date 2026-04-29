@@ -50,6 +50,7 @@ import java.util.concurrent.Executors
  * This is the SDK instance class that contains all of the SDK functionality.<br><br>
  * Many of the SDK functions return the SDK instance back, allowing you to chain multiple methods calls together.
  */
+@OptIn(RestrictedAmplitudeFeature::class)
 open class Amplitude(
     val configuration: Configuration,
     val store: State,
@@ -131,11 +132,25 @@ open class Amplitude(
         get() = configuration.optOut
         set(value) {
             configuration.optOut = value
+            notifyAllPlugins { it.onOptOutChanged(value) }
         }
 
     init {
         require(configuration.isValid()) { "invalid configuration" }
         timeline = this.createTimeline()
+
+        // Wire identity-change notifications from State to all plugins.
+        // The EnumSet tells us which fields changed in this update so we can
+        // collapse a setIdentity() call into one logical notification.
+        store.onIdentityChanged = { state, changes ->
+            if (changes.contains(State.IdentityChangeType.USER_ID)) {
+                notifyTimelinePlugins { it.onUserIdChanged(state.userId) }
+            }
+            if (changes.contains(State.IdentityChangeType.DEVICE_ID)) {
+                notifyTimelinePlugins { it.onDeviceIdChanged(state.deviceId) }
+            }
+        }
+
         isBuilt = this.build()
         isBuilt.start()
     }
@@ -341,11 +356,15 @@ open class Amplitude(
      * Reset identity:
      *  - reset userId to "null"
      *  - reset deviceId to random UUID
+     *
+     * Plugins receive [Plugin.onReset] together with one bundled identity-change
+     * notification covering both userId and deviceId — never two interleaved.
+     *
      * @return the Amplitude instance
      */
     open fun reset(): Amplitude {
-        setUserId(null)
-        setDeviceId(ContextPlugin.generateRandomDeviceId())
+        resetIdentity(ContextPlugin.generateRandomDeviceId())
+        notifyAllPlugins { it.onReset() }
         return this
     }
 
@@ -511,10 +530,21 @@ open class Amplitude(
     /**
      * Add a plugin.
      *
+     * If [plugin] declares a non-null [Plugin.name], any existing plugin with
+     * the same name is removed (and its [Plugin.teardown] invoked) before the
+     * new plugin is wired in. Plugins with a `null` name are never deduplicated.
+     *
      * @param plugin the plugin
      * @return the Amplitude instance
      */
     fun add(plugin: Plugin): Amplitude {
+        // Dedup: if the incoming plugin has a non-null name, evict any existing
+        // plugin sharing that name from both the timeline and the observe store.
+        plugin.name?.let { pluginName ->
+            timeline.removeByName(pluginName)
+            store.removeByName(pluginName)
+        }
+
         when (plugin) {
             is ObservePlugin -> {
                 this.store.add(plugin, this)
@@ -526,6 +556,19 @@ open class Amplitude(
 
         return this
     }
+
+    /**
+     * Find the first plugin of type [T] registered with this Amplitude
+     * instance, traversing all timeline layers (Before, Enrichment,
+     * Destination, Utility, Observe). Returns null if no plugin matches.
+     */
+    inline fun <reified T : Plugin> findPlugin(): T? = timeline.findPlugin()
+
+    /**
+     * Find the first plugin whose [Plugin.name] matches [name] across all
+     * timeline layers and the observe store. Returns null if no plugin matches.
+     */
+    fun findPluginByName(name: String): Plugin? = timeline.findPluginByName(name) ?: store.plugins.firstOrNull { it.name == name }
 
     fun remove(plugin: Plugin): Amplitude {
         when (plugin) {
@@ -548,6 +591,43 @@ open class Amplitude(
                 (it as? EventPlugin)?.flush()
             }
         }
+    }
+
+    /**
+     * Fan a closure out to every plugin in the timeline (Before, Enrichment,
+     * Destination, Utility, Observe).
+     *
+     * Restricted to platform-SDK use (e.g. the Android session-id wiring).
+     * Public to allow cross-module access; not part of the customer surface.
+     */
+    @RestrictedAmplitudeFeature
+    fun notifyTimelinePlugins(block: (Plugin) -> Unit) {
+        timeline.applyClosure(block)
+    }
+
+    /**
+     * Fan a closure out to every plugin registered with this Amplitude
+     * instance — both timeline plugins and [ObservePlugin]s in the store.
+     * Used for state-change callbacks where ObservePlugin authors reasonably
+     * expect to be notified ([Plugin.onOptOutChanged], [Plugin.onReset],
+     * [Plugin.onSessionIdChanged]).
+     *
+     * Restricted to platform-SDK use; not part of the customer surface.
+     */
+    @RestrictedAmplitudeFeature
+    fun notifyAllPlugins(block: (Plugin) -> Unit) {
+        timeline.applyClosure(block)
+        store.plugins.forEach(block)
+    }
+
+    /**
+     * Reset identity atomically: clear userId and rotate to [newDeviceId].
+     * Plugins observe one bundled identity-change notification rather than
+     * two interleaved ones. Restricted to platform-SDK use.
+     */
+    @RestrictedAmplitudeFeature
+    fun resetIdentity(newDeviceId: String) {
+        identityCoordinator.resetIdentity(newDeviceId)
     }
 
     private fun convertPropertiesToIdentify(userProperties: Map<String, Any?>?): Identify {
