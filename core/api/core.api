@@ -941,8 +941,30 @@ public final class com/amplitude/core/platform/plugins/GetAmpliExtrasPlugin$Comp
 }
 
 public abstract interface class com/amplitude/core/remoteconfig/RemoteConfigClient {
+	public abstract fun subscribe (Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;Lcom/amplitude/core/remoteconfig/RemoteConfigClient$DeliveryMode;Lcom/amplitude/core/remoteconfig/RemoteConfigClient$RemoteConfigCallback;)V
 	public abstract fun subscribe (Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;Lcom/amplitude/core/remoteconfig/RemoteConfigClient$RemoteConfigCallback;)V
 	public abstract fun updateConfigs ()V
+}
+
+public abstract class com/amplitude/core/remoteconfig/RemoteConfigClient$DeliveryMode {
+}
+
+public final class com/amplitude/core/remoteconfig/RemoteConfigClient$DeliveryMode$All : com/amplitude/core/remoteconfig/RemoteConfigClient$DeliveryMode {
+	public static final field INSTANCE Lcom/amplitude/core/remoteconfig/RemoteConfigClient$DeliveryMode$All;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/amplitude/core/remoteconfig/RemoteConfigClient$DeliveryMode$WaitForRemote : com/amplitude/core/remoteconfig/RemoteConfigClient$DeliveryMode {
+	public fun <init> (J)V
+	public final fun component1 ()J
+	public final fun copy (J)Lcom/amplitude/core/remoteconfig/RemoteConfigClient$DeliveryMode$WaitForRemote;
+	public static synthetic fun copy$default (Lcom/amplitude/core/remoteconfig/RemoteConfigClient$DeliveryMode$WaitForRemote;JILjava/lang/Object;)Lcom/amplitude/core/remoteconfig/RemoteConfigClient$DeliveryMode$WaitForRemote;
+	public fun equals (Ljava/lang/Object;)Z
+	public final fun getTimeoutMs ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
 }
 
 public final class com/amplitude/core/remoteconfig/RemoteConfigClient$Key : java/lang/Enum {

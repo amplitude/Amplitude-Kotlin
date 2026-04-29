@@ -1178,6 +1178,171 @@ class RemoteConfigClientTest {
 
     // endregion Additional Coverage
 
+    // region DeliveryMode
+
+    @org.junit.jupiter.api.Nested
+    inner class WaitForRemoteDeliveryMode {
+        @Test
+        fun `WaitForRemote delivers remote when fetch returns within timeout`() =
+            runTest {
+                val client = createClient(emptyApiConfig = false)
+                val results = mutableListOf<Triple<ConfigMap, Source, Long>>()
+                storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
+
+                client.subscribe(
+                    key = Key.SESSION_REPLAY_PRIVACY_CONFIG,
+                    deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 5_000L),
+                ) { config, source, timestamp ->
+                    results.add(Triple(config, source, timestamp))
+                }
+
+                testDispatcher.scheduler.advanceUntilIdle()
+
+                assertEquals(1, results.size, "Expected exactly one initial delivery, got: $results")
+                assertEquals(Source.REMOTE, results.single().second)
+                assertEquals("medium", results.single().first["defaultMaskLevel"])
+            }
+
+        @Test
+        fun `WaitForRemote times out and falls back to cached config`() =
+            runTest {
+                // HTTP returns 500: fetchRemoteConfig returns null, regular path does not
+                // deliver. WaitForRemote then times out and falls back to cache.
+                val mockHttpClient = mockk<HttpClient>()
+                every { mockHttpClient.request(any()) } returns
+                    HttpClient.Response(
+                        statusCode = 500,
+                        body = "",
+                        headers = emptyMap(),
+                        statusMessage = "Internal Server Error",
+                    )
+                val client =
+                    RemoteConfigClientImpl(
+                        apiKey = "test-key",
+                        serverZone = ServerZone.US,
+                        coroutineScope = testScope,
+                        networkIODispatcher = testDispatcher,
+                        storageIODispatcher = testDispatcher,
+                        storage = storage,
+                        httpClient = mockHttpClient,
+                        logger = silentLogger,
+                    )
+
+                // Pre-populate cache so timeout fallback has data to deliver.
+                storage.write(
+                    Storage.Constants.REMOTE_CONFIG,
+                    DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent(),
+                )
+                storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
+
+                val results = mutableListOf<Triple<ConfigMap, Source, Long>>()
+                client.subscribe(
+                    key = Key.SESSION_REPLAY_PRIVACY_CONFIG,
+                    deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 100L),
+                ) { config, source, timestamp ->
+                    results.add(Triple(config, source, timestamp))
+                }
+
+                testDispatcher.scheduler.advanceUntilIdle()
+
+                assertEquals(1, results.size, "Expected one timeout-fallback delivery, got: $results")
+                val (config, source, timestamp) = results.single()
+                assertEquals(Source.CACHE, source)
+                assertEquals("medium", config["defaultMaskLevel"])
+                assertEquals(1234567890L, timestamp)
+            }
+
+        @Test
+        fun `WaitForRemote falls back to empty config when cache is also empty`() =
+            runTest {
+                // HTTP returns 500: no cache, no remote. Fallback should be empty.
+                val mockHttpClient = mockk<HttpClient>()
+                every { mockHttpClient.request(any()) } returns
+                    HttpClient.Response(
+                        statusCode = 500,
+                        body = "",
+                        headers = emptyMap(),
+                        statusMessage = "Internal Server Error",
+                    )
+                val client =
+                    RemoteConfigClientImpl(
+                        apiKey = "test-key",
+                        serverZone = ServerZone.US,
+                        coroutineScope = testScope,
+                        networkIODispatcher = testDispatcher,
+                        storageIODispatcher = testDispatcher,
+                        storage = storage,
+                        httpClient = mockHttpClient,
+                        logger = silentLogger,
+                    )
+
+                val results = mutableListOf<Triple<ConfigMap, Source, Long>>()
+                client.subscribe(
+                    key = Key.EXPERIMENT,
+                    deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 50L),
+                ) { config, source, timestamp ->
+                    results.add(Triple(config, source, timestamp))
+                }
+
+                testDispatcher.scheduler.advanceUntilIdle()
+
+                assertEquals(1, results.size, "Expected one timeout-fallback delivery, got: $results")
+                assertTrue(results.single().first.isEmpty(), "Expected empty config fallback")
+                assertEquals(Source.CACHE, results.single().second)
+            }
+
+        @Test
+        fun `WaitForRemote does not deliver cache up front before remote arrives`() =
+            runTest {
+                val client = createClient(emptyApiConfig = false)
+
+                // Pre-populate cache to ensure DeliveryMode.All would have delivered it.
+                storage.write(
+                    Storage.Constants.REMOTE_CONFIG,
+                    DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent(),
+                )
+                storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
+
+                val sources = mutableListOf<Source>()
+                client.subscribe(
+                    key = Key.SESSION_REPLAY_PRIVACY_CONFIG,
+                    deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 5_000L),
+                ) { _, source, _ ->
+                    sources.add(source)
+                }
+
+                testDispatcher.scheduler.advanceUntilIdle()
+
+                // WaitForRemote should NOT have delivered cache first;
+                // only the remote callback should fire.
+                assertEquals(listOf(Source.REMOTE), sources)
+            }
+
+        @Test
+        fun `default subscribe overload preserves existing All semantics`() =
+            runTest {
+                val client = createClient(emptyApiConfig = false)
+                val sources = mutableListOf<Source>()
+                storage.write(
+                    Storage.Constants.REMOTE_CONFIG,
+                    DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent(),
+                )
+                storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
+
+                // The pre-existing single-arg overload must still deliver cache then remote.
+                client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, source, _ ->
+                    sources.add(source)
+                }
+
+                testDispatcher.scheduler.advanceUntilIdle()
+
+                // Cache delivered first, then remote.
+                assertEquals(listOf(Source.CACHE, Source.REMOTE), sources)
+            }
+    }
+
+    // endregion DeliveryMode
+
     companion object {
         private const val DEFAULT_API_REMOTE_CONFIG_JSON =
             """
