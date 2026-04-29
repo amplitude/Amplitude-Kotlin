@@ -1,16 +1,16 @@
 package com.amplitude.android
 
+import com.amplitude.android.Constants.EventProperties.ACTION
+import com.amplitude.android.Constants.EventProperties.CLICK_COUNT
+import com.amplitude.android.Constants.EventProperties.COORDINATE_X
+import com.amplitude.android.Constants.EventProperties.COORDINATE_Y
+import com.amplitude.android.Constants.EventProperties.TARGET_CLASS
+import com.amplitude.android.Constants.EventTypes.DEAD_CLICK
+import com.amplitude.android.Constants.EventTypes.RAGE_CLICK
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.signals.UiChangeSignal
 import com.amplitude.common.Logger
 import com.amplitude.core.Amplitude
-import com.amplitude.core.Constants.EventProperties.ACTION
-import com.amplitude.core.Constants.EventProperties.CLICK_COUNT
-import com.amplitude.core.Constants.EventProperties.COORDINATE_X
-import com.amplitude.core.Constants.EventProperties.COORDINATE_Y
-import com.amplitude.core.Constants.EventProperties.TARGET_CLASS
-import com.amplitude.core.Constants.EventTypes.DEAD_CLICK
-import com.amplitude.core.Constants.EventTypes.RAGE_CLICK
 import com.amplitude.core.platform.Signal
 import io.mockk.clearMocks
 import io.mockk.every

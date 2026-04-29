@@ -30,7 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.amplitude.core.Constants
+import com.amplitude.android.Constants
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
 import kotlinx.coroutines.CoroutineScope

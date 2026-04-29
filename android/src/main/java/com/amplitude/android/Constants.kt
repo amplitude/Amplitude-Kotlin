@@ -1,25 +1,14 @@
-package com.amplitude.core
+package com.amplitude.android
 
+/**
+ * Autocapture event-name and event-property constants for the Android SDK.
+ *
+ * These were previously hosted in `com.amplitude.core.Constants` but are only consumed by
+ * `:android` (autocapture, network tracking, frustration interactions). Aliases in `:core`
+ * remain for binary compatibility — see [com.amplitude.core.Constants.EventTypes] and
+ * [com.amplitude.core.Constants.EventProperties].
+ */
 object Constants {
-    const val SDK_LIBRARY = "amplitude-kotlin"
-    const val SDK_VERSION = "0.0.1"
-    const val DEFAULT_API_HOST = "https://api2.amplitude.com/2/httpapi"
-    const val EU_DEFAULT_API_HOST = "https://api.eu.amplitude.com/2/httpapi"
-    const val BATCH_API_HOST = "https://api2.amplitude.com/batch"
-    const val EU_BATCH_API_HOST = "https://api.eu.amplitude.com/batch"
-    const val IDENTIFY_EVENT = "\$identify"
-    const val GROUP_IDENTIFY_EVENT = "\$groupidentify"
-    const val AMP_REVENUE_EVENT = "revenue_amount"
-    const val MAX_PROPERTY_KEYS = 1024
-    const val MAX_STRING_LENGTH = 1024
-
-    @Deprecated(
-        "Moved to com.amplitude.android.Constants.EventTypes",
-        ReplaceWith(
-            "Constants.EventTypes",
-            "com.amplitude.android.Constants",
-        ),
-    )
     object EventTypes {
         const val APPLICATION_INSTALLED = "[Amplitude] Application Installed"
         const val APPLICATION_UPDATED = "[Amplitude] Application Updated"
@@ -34,13 +23,6 @@ object Constants {
         const val DEAD_CLICK = "[Amplitude] Dead Click"
     }
 
-    @Deprecated(
-        "Moved to com.amplitude.android.Constants.EventProperties",
-        ReplaceWith(
-            "Constants.EventProperties",
-            "com.amplitude.android.Constants",
-        ),
-    )
     object EventProperties {
         const val VERSION = "[Amplitude] Version"
         const val BUILD = "[Amplitude] Build"
