@@ -133,12 +133,17 @@ open class Amplitude internal constructor(
     }
 
     override fun reset(): Amplitude {
-        setUserId(null)
-        if (isBuilt.isCompleted) {
-            androidContextPlugin.initializeDeviceId(configuration as Configuration, forceRegenerate = true)
-        } else {
-            setDeviceId(ContextPlugin.generateRandomDeviceId())
-        }
+        // Resolve the new device id first so we can emit one bundled identity-change
+        // notification (userId -> null AND deviceId -> resolved) rather than two.
+        val newDeviceId =
+            if (isBuilt.isCompleted) {
+                androidContextPlugin.resolveDeviceId(configuration as Configuration, forceRegenerate = true)
+                    ?: ContextPlugin.generateRandomDeviceId()
+            } else {
+                ContextPlugin.generateRandomDeviceId()
+            }
+        resetIdentity(newDeviceId)
+        notifyAllPlugins { it.onReset() }
         return this
     }
 

@@ -15,6 +15,19 @@ internal class Mediator(
 
     fun remove(plugin: Plugin) = plugins.removeAll { it === plugin }
 
+    /**
+     * Remove every plugin whose [Plugin.name] matches [name] and call
+     * [Plugin.teardown] on each removed plugin. Returns true if at least one
+     * plugin was removed.
+     */
+    fun removeByName(name: String): Boolean {
+        val toRemove = plugins.filter { it.name == name }
+        if (toRemove.isEmpty()) return false
+        plugins.removeAll(toRemove)
+        toRemove.forEach { it.teardown() }
+        return true
+    }
+
     fun execute(event: BaseEvent): BaseEvent? {
         var result: BaseEvent? = event
 

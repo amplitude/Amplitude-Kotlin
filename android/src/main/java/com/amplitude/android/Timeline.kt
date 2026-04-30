@@ -2,6 +2,7 @@ package com.amplitude.android
 
 import com.amplitude.android.Amplitude.Companion.END_SESSION_EVENT
 import com.amplitude.android.Amplitude.Companion.START_SESSION_EVENT
+import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.Storage
 import com.amplitude.core.Storage.Constants
 import com.amplitude.core.Storage.Constants.LAST_EVENT_ID
@@ -17,6 +18,7 @@ import java.util.concurrent.atomic.AtomicLong
 private const val DEFAULT_SESSION_ID = -1L
 private const val DEFAULT_EVENT_ID_OR_TIME = 0L
 
+@OptIn(RestrictedAmplitudeFeature::class)
 class Timeline(
     private val initialSessionId: Long? = null,
 ) : Timeline() {
@@ -156,6 +158,9 @@ class Timeline(
     private suspend fun setSessionId(timestamp: Long) {
         _sessionId.set(timestamp)
         amplitude.storage.write(PREVIOUS_SESSION_ID, sessionId.toString())
+        // Phase 0: fire onSessionIdChanged on every plugin (timeline + observe).
+        // Closes the historical gap where the callback was declared but never invoked.
+        amplitude.notifyAllPlugins { it.onSessionIdChanged(timestamp) }
     }
 
     private suspend fun startNewSession(timestamp: Long): List<BaseEvent> {

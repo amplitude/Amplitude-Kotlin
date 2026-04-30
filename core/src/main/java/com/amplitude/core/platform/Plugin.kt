@@ -18,6 +18,18 @@ interface Plugin {
     val type: Type
     var amplitude: Amplitude
 
+    /**
+     * Optional unique identifier for this plugin, used for deduplication.
+     *
+     * When a plugin with a non-null [name] is added via [Amplitude.add], any
+     * previously registered plugin with the same name is removed (and its
+     * [teardown] called) before the new plugin is wired in. Plugins that leave
+     * [name] as `null` are never deduplicated.
+     *
+     * Defaults to `null` to preserve binary compatibility with existing plugins.
+     */
+    val name: String? get() = null
+
     fun setup(amplitude: Amplitude) {
         this.amplitude = amplitude
     }
@@ -29,6 +41,38 @@ interface Plugin {
     fun teardown() {
         // Clean up any resources from setup if necessary
     }
+
+    /**
+     * Invoked when [Amplitude.setUserId] mutates the userId on the
+     * Amplitude instance this plugin is registered with.
+     */
+    fun onUserIdChanged(userId: String?) {}
+
+    /**
+     * Invoked when [Amplitude.setDeviceId] mutates the deviceId on the
+     * Amplitude instance this plugin is registered with.
+     */
+    fun onDeviceIdChanged(deviceId: String?) {}
+
+    /**
+     * Invoked when the session id changes on the Amplitude instance this plugin
+     * is registered with. Only fires for SDK builds that maintain a session id
+     * (e.g. the Android SDK).
+     */
+    fun onSessionIdChanged(sessionId: Long) {}
+
+    /**
+     * Invoked when the [Amplitude.optOut] flag flips on the Amplitude instance
+     * this plugin is registered with.
+     */
+    fun onOptOutChanged(optOut: Boolean) {}
+
+    /**
+     * Invoked when [Amplitude.reset] is called on the Amplitude instance this
+     * plugin is registered with. The accompanying userId/deviceId changes are
+     * delivered via the same notification (one batched callback, not two).
+     */
+    fun onReset() {}
 }
 
 interface EventPlugin : Plugin {
@@ -108,9 +152,9 @@ abstract class DestinationPlugin : EventPlugin {
 abstract class ObservePlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Observe
 
-    abstract fun onUserIdChanged(userId: String?)
+    abstract override fun onUserIdChanged(userId: String?)
 
-    abstract fun onDeviceIdChanged(deviceId: String?)
+    abstract override fun onDeviceIdChanged(deviceId: String?)
 
     final override fun execute(event: BaseEvent): BaseEvent? {
         return null
