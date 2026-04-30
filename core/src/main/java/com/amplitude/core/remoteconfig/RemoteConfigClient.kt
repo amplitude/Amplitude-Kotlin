@@ -182,34 +182,65 @@ internal class RemoteConfigClientImpl(
         fun runSafely(action: RemoteConfigClient.RemoteConfigCallback.() -> Unit) {
             val callback = weakRef.get() ?: return
 
-            val isFirstDelivery: Boolean
             if (firstDeliveryClaimed != null) {
-                // Gated: only one path delivers the first callback. After the
-                // first delivery completes, all future deliveries pass through.
-                isFirstDelivery = firstDeliveryClaimed.compareAndSet(false, true)
-                if (!isFirstDelivery && firstDeliverySignal?.isCompleted != true) {
-                    // First delivery is in flight on another thread; suppress
-                    // this invocation to avoid double-delivering the initial
-                    // callback. Subsequent updates (after signal completes)
-                    // are not suppressed.
-                    return
+                // Gated: claim the first-delivery slot if available.
+                val claimedFirst = firstDeliveryClaimed.compareAndSet(false, true)
+                if (claimedFirst) {
+                    // Complete the signal *before* invoking the callback. This
+                    // closes the timeout/remote race: a remote update that
+                    // arrives during a slow fallback callback (or vice versa)
+                    // observes the signal as complete and falls through to
+                    // deliver as a subsequent update rather than being silently
+                    // dropped.
+                    firstDeliverySignal?.complete(Unit)
                 }
-            } else {
-                isFirstDelivery = false
+                // Whether we won the CAS or arrived after first delivery, deliver.
+                // The race-loser path simply becomes a regular subsequent update,
+                // which is the intended semantics for any fresh config arriving
+                // post-first-delivery.
             }
 
             try {
                 callback.action()
             } catch (e: Exception) {
                 logger.error("Exception in subscriber callback: ${e.message}")
-            } finally {
-                // Signal *after* the callback runs so a concurrent invocation
-                // that loses the CAS race correctly suppresses itself rather
-                // than racing the in-flight first delivery.
-                if (isFirstDelivery) {
-                    firstDeliverySignal?.complete(Unit)
-                }
             }
+        }
+
+        /**
+         * Deliver only if this callback can still claim the first-delivery slot.
+         *
+         * Used by the [RemoteConfigClient.DeliveryMode.WaitForRemote] timeout
+         * fallback path and the "key absent from successful fetch" fallback path.
+         * Both paths produce *fallback* data (cached or empty), so they must
+         * suppress themselves if a fresh remote delivery has already won the
+         * gate — otherwise stale fallback could overwrite a fresh remote update
+         * from the subscriber's perspective.
+         *
+         * Returns `true` if delivery occurred.
+         */
+        fun runSafelyIfFirst(action: RemoteConfigClient.RemoteConfigCallback.() -> Unit): Boolean {
+            val callback = weakRef.get() ?: return false
+            val claimed = firstDeliveryClaimed?.compareAndSet(false, true) ?: return false
+            if (!claimed) return false
+
+            firstDeliverySignal?.complete(Unit)
+            try {
+                callback.action()
+            } catch (e: Exception) {
+                logger.error("Exception in subscriber callback: ${e.message}")
+            }
+            return true
+        }
+
+        /**
+         * True if this callback is gated (i.e. uses
+         * [RemoteConfigClient.DeliveryMode.WaitForRemote]) and has not yet
+         * delivered its first callback.
+         */
+        fun isAwaitingFirstDelivery(): Boolean {
+            val claimed = firstDeliveryClaimed ?: return false
+            return !claimed.get()
         }
     }
 
@@ -309,23 +340,34 @@ internal class RemoteConfigClientImpl(
         // We let the caller-supplied [coroutineScope] pick a dispatcher (typically
         // a multi-thread pool) so the timeout truly races the fetch.
         coroutineScope.launch {
-            val delivered =
+            val signaled =
                 withTimeoutOrNull(timeoutMs) {
                     firstDeliverySignal.await()
                     true
                 }
-            if (delivered == null) {
-                // Timeout: fall back to cache (or empty if no cache).
+            if (signaled == null) {
+                // Timeout: fall back to cache (or empty if no cache). Use the
+                // first-only delivery path so a remote update that arrives mid-
+                // fallback wins the gate and the fallback suppresses itself —
+                // never overwriting a fresh remote delivery with stale data.
                 val storedData = getStoredConfigData(key.value)
                 val config = storedData?.config ?: emptyMap()
                 val timestamp = storedData?.timestamp ?: System.currentTimeMillis()
-                weakCallback.runSafely {
-                    onUpdate(config, CACHE, timestamp)
+                val delivered =
+                    weakCallback.runSafelyIfFirst {
+                        onUpdate(config, CACHE, timestamp)
+                    }
+                if (delivered) {
+                    logger.debug(
+                        "WaitForRemote timed out after ${timeoutMs}ms for ${key.value}; " +
+                            "delivered ${if (storedData != null) "cache" else "empty"} fallback.",
+                    )
+                } else {
+                    logger.debug(
+                        "WaitForRemote timeout fired after ${timeoutMs}ms for ${key.value}, " +
+                            "but a fresh remote delivery already won; fallback suppressed.",
+                    )
                 }
-                logger.debug(
-                    "WaitForRemote timed out after ${timeoutMs}ms for ${key.value}; " +
-                        "delivered ${if (storedData != null) "cache" else "empty"} fallback.",
-                )
             }
         }
     }
