@@ -102,6 +102,38 @@ class PluginContractTest {
             assertEquals(listOf(true), recorder.optOuts)
             assertEquals(1, recorder.resets)
         }
+
+        @Test
+        fun `notifyAllPlugins snapshots the observe store so callbacks can register new plugins safely`() {
+            // Codex finding 3: notifyAllPlugins iterates state.plugins (a plain
+            // MutableList). If a callback calls amplitude.add(...) we'd hit
+            // ConcurrentModificationException. The fix snapshots before
+            // iterating; newly added plugins do NOT receive the in-progress
+            // notification.
+            val a = amplitude
+            val late = RecordingObservePlugin()
+            val mutator =
+                object : ObservePlugin() {
+                    override val name: String = "mutator"
+                    override lateinit var amplitude: Amplitude
+
+                    override fun onUserIdChanged(userId: String?) {}
+
+                    override fun onDeviceIdChanged(deviceId: String?) {}
+
+                    override fun onReset() {
+                        amplitude.add(late)
+                    }
+                }
+            a.add(mutator)
+
+            // Should not throw CME.
+            a.reset()
+
+            // Snapshot semantics: the plugin added during onReset does NOT
+            // receive the in-progress onReset.
+            assertEquals(0, late.resets)
+        }
     }
 
     @Nested

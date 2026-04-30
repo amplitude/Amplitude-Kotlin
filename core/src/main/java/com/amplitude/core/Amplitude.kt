@@ -630,7 +630,17 @@ open class Amplitude(
     @RestrictedAmplitudeFeature
     fun notifyAllPlugins(block: (Plugin) -> Unit) {
         timeline.applyClosure { plugin -> safelyNotify(plugin, block) }
-        store.plugins.forEach { plugin -> safelyNotify(plugin, block) }
+        // Snapshot the observe store before iterating: callbacks routinely call
+        // amplitude.add()/remove(), which would mutate state.plugins under us
+        // and risk a ConcurrentModificationException (or skip remaining
+        // observers). Timeline iteration is already safe — its mediators use
+        // CopyOnWriteArrayList. Newly added plugins do NOT receive the
+        // in-progress notification (snapshot semantics).
+        val observeSnapshot =
+            synchronized(store.plugins) {
+                store.plugins.toList()
+            }
+        observeSnapshot.forEach { plugin -> safelyNotify(plugin, block) }
     }
 
     /**
