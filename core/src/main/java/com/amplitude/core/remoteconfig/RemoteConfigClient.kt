@@ -428,10 +428,64 @@ internal class RemoteConfigClientImpl(
                         }
                     }
                 }
+
+                // Unblock WaitForRemote subscribers whose key is absent from
+                // this otherwise-successful fetch. Without this, those
+                // subscribers would wait the full timeout for an answer that
+                // is already known to be "not configured" — bad UX for projects
+                // that have only some blades enabled.
+                notifyAbsentKeySubscribers(presentKeys = configs.keys)
             } catch (e: Exception) {
                 logger.error("Error updating remote configs: ${e.message}")
             } finally {
                 isFetching = false
+            }
+        }
+    }
+
+    /**
+     * For each registered subscriber whose key is *not* present in a fresh
+     * successful fetch, deliver the fallback (cache or empty) via the
+     * first-only delivery path so [RemoteConfigClient.DeliveryMode.WaitForRemote]
+     * gates resolve immediately instead of waiting for the timeout.
+     *
+     * Uses [WeakCallback.runSafelyIfFirst]: if a subscriber has already
+     * received its first delivery (e.g. timeout already fired), the call is a
+     * no-op. Subscribers using [RemoteConfigClient.DeliveryMode.All] also
+     * become no-ops because they aren't gated and cannot claim the gate.
+     */
+    private fun notifyAbsentKeySubscribers(presentKeys: Set<String>) {
+        val absentSubscribers =
+            synchronized(subscriberLock) {
+                keySpecificSubscribers
+                    .filterKeys { it !in presentKeys }
+                    .mapValues { (_, subs) -> subs.toList() }
+            }
+        if (absentSubscribers.isEmpty()) return
+
+        absentSubscribers.forEach { (configKey, subscribers) ->
+            // Snapshot stored fallback once per key — cheaper than per-subscriber
+            // and consistent across same-key subscribers in this batch.
+            var resolved: ConfigData? = null
+            var resolvedKnown = false
+            subscribers.forEach subscriber@{ weakCallback ->
+                if (!weakCallback.isAwaitingFirstDelivery()) return@subscriber
+                if (!resolvedKnown) {
+                    resolved = getStoredConfigData(configKey)
+                    resolvedKnown = true
+                }
+                val storedConfig = resolved?.config ?: emptyMap()
+                val storedTimestamp = resolved?.timestamp ?: System.currentTimeMillis()
+                val delivered =
+                    weakCallback.runSafelyIfFirst {
+                        onUpdate(storedConfig, CACHE, storedTimestamp)
+                    }
+                if (delivered) {
+                    logger.debug(
+                        "WaitForRemote unblocked for $configKey: key absent from fetch; " +
+                            "delivered ${if (resolved != null) "cache" else "empty"} fallback.",
+                    )
+                }
             }
         }
     }

@@ -1424,6 +1424,114 @@ class RemoteConfigClientTest {
             }
 
         @Test
+        fun `WaitForRemote unblocks immediately when key is absent from successful fetch`() =
+            runTest {
+                // Regression for "absent key" timeout: the response is successful
+                // but does NOT include the requested key (e.g. project doesn't
+                // have G&S configured). The subscriber must receive the empty/
+                // cached fallback as soon as the fetch returns — not after the
+                // full WaitForRemote timeout elapses.
+                val mockHttpClient = mockk<HttpClient>()
+                every { mockHttpClient.request(any()) } returns
+                    HttpClient.Response(
+                        statusCode = 200,
+                        // sessionReplay only — EXPERIMENT/GUIDES_AND_SURVEYS absent.
+                        body = DEFAULT_API_REMOTE_CONFIG_JSON.trimIndent(),
+                        headers = emptyMap(),
+                        statusMessage = "OK",
+                    )
+                val client =
+                    RemoteConfigClientImpl(
+                        apiKey = "test-key",
+                        serverZone = ServerZone.US,
+                        coroutineScope = testScope,
+                        networkIODispatcher = testDispatcher,
+                        storageIODispatcher = testDispatcher,
+                        storage = storage,
+                        httpClient = mockHttpClient,
+                        logger = silentLogger,
+                    )
+
+                // No cache: the fallback should be empty.
+                val results = mutableListOf<Triple<ConfigMap, Source, Long>>()
+                // 60_000ms timeout — far longer than the fetch could plausibly
+                // take. If the fix is wrong, advanceTimeBy below would have to
+                // run for the full timeout and the test would observe a
+                // post-fetch advance window with zero deliveries.
+                client.subscribe(
+                    key = Key.GUIDES_AND_SURVEYS,
+                    deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 60_000L),
+                ) { config, source, timestamp ->
+                    results.add(Triple(config, source, timestamp))
+                }
+
+                // Run all currently-pending tasks (the fetch). Crucially we do
+                // NOT advance virtual time anywhere near the 60_000ms timeout —
+                // the fix is what unblocks the gate.
+                testDispatcher.scheduler.runCurrent()
+                // Drain any continuations queued by the fetch's notification
+                // path, including the absent-key delivery.
+                testDispatcher.scheduler.advanceTimeBy(10L)
+                testDispatcher.scheduler.runCurrent()
+
+                assertEquals(
+                    1,
+                    results.size,
+                    "Expected exactly one absent-key fallback delivery before the timeout, got: $results",
+                )
+                val (config, source, _) = results.single()
+                assertEquals(Source.CACHE, source, "Absent-key fallback must report Source.CACHE")
+                assertTrue(
+                    config.isEmpty(),
+                    "Expected empty fallback when no cache exists for absent key, got: $config",
+                )
+            }
+
+        @Test
+        fun `WaitForRemote does not interfere with All subscribers on the absent key`() =
+            runTest {
+                // Sanity guard: the absent-key unblock path uses runSafelyIfFirst,
+                // which is a no-op for non-gated subscribers. A DeliveryMode.All
+                // subscriber on a key the response doesn't include should still
+                // see only its initial cache delivery (if any) and nothing
+                // synthesized by the absent-key path.
+                val mockHttpClient = mockk<HttpClient>()
+                every { mockHttpClient.request(any()) } returns
+                    HttpClient.Response(
+                        statusCode = 200,
+                        body = DEFAULT_API_REMOTE_CONFIG_JSON.trimIndent(),
+                        headers = emptyMap(),
+                        statusMessage = "OK",
+                    )
+                val client =
+                    RemoteConfigClientImpl(
+                        apiKey = "test-key",
+                        serverZone = ServerZone.US,
+                        coroutineScope = testScope,
+                        networkIODispatcher = testDispatcher,
+                        storageIODispatcher = testDispatcher,
+                        storage = storage,
+                        httpClient = mockHttpClient,
+                        logger = silentLogger,
+                    )
+
+                val results = mutableListOf<Triple<ConfigMap, Source, Long>>()
+                client.subscribe(Key.EXPERIMENT) { config, source, timestamp ->
+                    results.add(Triple(config, source, timestamp))
+                }
+
+                testDispatcher.scheduler.advanceUntilIdle()
+
+                // No cache on EXPERIMENT and no remote — All subscriber gets
+                // nothing, exactly as before. The absent-key path must not
+                // fabricate a delivery for it.
+                assertTrue(
+                    results.isEmpty(),
+                    "DeliveryMode.All on absent key must not receive a synthesized delivery, got: $results",
+                )
+            }
+
+        @Test
         fun `WaitForRemote suppresses timeout fallback when remote arrived during slow callback`() {
             // Race regression: the timeout fallback path must not overwrite a
             // fresh remote delivery that won the gate while the timeout
