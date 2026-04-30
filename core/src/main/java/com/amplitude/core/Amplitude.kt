@@ -139,6 +139,11 @@ open class Amplitude(
         require(configuration.isValid()) { "invalid configuration" }
         timeline = this.createTimeline()
 
+        // Hand State a logger so its per-plugin identity-callback iteration can
+        // report a misbehaving plugin without crashing the call site. Same
+        // isolation contract as notifyAllPlugins/notifyTimelinePlugins.
+        store.logger = logger
+
         // Wire identity-change notifications from State to all plugins.
         // The EnumSet tells us which fields changed in this update so we can
         // collapse a setIdentity() call into one logical notification.
@@ -612,7 +617,7 @@ open class Amplitude(
      */
     @RestrictedAmplitudeFeature
     fun notifyTimelinePlugins(block: (Plugin) -> Unit) {
-        timeline.applyClosure { plugin -> safelyNotify(plugin, block) }
+        timeline.applyClosure { plugin -> safelyNotify(plugin, logger, block) }
     }
 
     /**
@@ -629,7 +634,7 @@ open class Amplitude(
      */
     @RestrictedAmplitudeFeature
     fun notifyAllPlugins(block: (Plugin) -> Unit) {
-        timeline.applyClosure { plugin -> safelyNotify(plugin, block) }
+        timeline.applyClosure { plugin -> safelyNotify(plugin, logger, block) }
         // Snapshot the observe store before iterating: callbacks routinely call
         // amplitude.add()/remove(), which would mutate state.plugins under us
         // and risk a ConcurrentModificationException (or skip remaining
@@ -640,24 +645,7 @@ open class Amplitude(
             synchronized(store.plugins) {
                 store.plugins.toList()
             }
-        observeSnapshot.forEach { plugin -> safelyNotify(plugin, block) }
-    }
-
-    /**
-     * Invoke [block] on [plugin], catching any [Throwable] so one misbehaving
-     * plugin can't break the notification fan-out (or terminate the coroutine
-     * draining the Android event-message channel).
-     */
-    private fun safelyNotify(
-        plugin: Plugin,
-        block: (Plugin) -> Unit,
-    ) {
-        try {
-            block(plugin)
-        } catch (throwable: Throwable) {
-            val identifier = plugin.name ?: plugin::class.java.name
-            logger.warn("Plugin '$identifier' threw during notify callback: $throwable")
-        }
+        observeSnapshot.forEach { plugin -> safelyNotify(plugin, logger, block) }
     }
 
     /**

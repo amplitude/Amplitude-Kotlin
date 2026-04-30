@@ -104,6 +104,64 @@ class PluginContractTest {
         }
 
         @Test
+        fun `a throwing ObservePlugin in setUserId does not stop subsequent plugins`() {
+            // Hazard: State.userId setter iterates state.plugins directly to fire
+            // onUserIdChanged. If a customer ObservePlugin throws, the exception
+            // propagates out of setUserId() — crashing the call site or
+            // terminating the coroutine that triggered the identity change.
+            // Same isolation contract as notifyAllPlugins.
+            val a = amplitude
+            val thrower = ThrowingObservePlugin(throwOnUserId = true)
+            val recorder = RecordingObservePlugin()
+            a.add(thrower)
+            a.add(recorder)
+
+            a.setUserId("new-user")
+
+            assertEquals(listOf<String?>("new-user"), recorder.userIds)
+            assertEquals("new-user", a.store.userId)
+        }
+
+        @Test
+        fun `a throwing ObservePlugin in setDeviceId does not stop subsequent plugins`() {
+            val a = amplitude
+            val thrower = ThrowingObservePlugin(throwOnDeviceId = true)
+            val recorder = RecordingObservePlugin()
+            a.add(thrower)
+            a.add(recorder)
+
+            a.setDeviceId("new-device")
+
+            assertEquals(listOf<String?>("new-device"), recorder.deviceIds)
+            assertEquals("new-device", a.store.deviceId)
+        }
+
+        @Test
+        fun `a throwing ObservePlugin in reset (setIdentity) does not stop subsequent plugins`() {
+            // reset() routes through State.setIdentity, which fires both
+            // onUserIdChanged and onDeviceIdChanged on each ObservePlugin.
+            // Both callbacks must be isolated.
+            val a = amplitude
+            val thrower =
+                ThrowingObservePlugin(
+                    throwOnUserId = true,
+                    throwOnDeviceId = true,
+                    throwOnReset = false,
+                    throwOnOptOut = false,
+                )
+            val recorder = RecordingObservePlugin()
+            a.add(thrower)
+            a.add(recorder)
+
+            a.reset()
+
+            assertEquals(1, recorder.userIds.size)
+            assertNull(recorder.userIds.single())
+            assertEquals(1, recorder.deviceIds.size)
+            assertEquals(1, recorder.resets)
+        }
+
+        @Test
         fun `notifyAllPlugins snapshots the observe store so callbacks can register new plugins safely`() {
             // Codex finding 3: notifyAllPlugins iterates state.plugins (a plain
             // MutableList). If a callback calls amplitude.add(...) we'd hit
@@ -133,6 +191,35 @@ class PluginContractTest {
             // Snapshot semantics: the plugin added during onReset does NOT
             // receive the in-progress onReset.
             assertEquals(0, late.resets)
+        }
+
+        @Test
+        fun `State setUserId snapshots the observe store so callbacks can register new plugins safely`() {
+            // Same snapshot guarantee as notifyAllPlugins, but for the
+            // State.setIdentity / setUserId iteration path. A callback that
+            // calls amplitude.add() during onUserIdChanged must not trigger
+            // ConcurrentModificationException.
+            val a = amplitude
+            val late = RecordingObservePlugin()
+            val mutator =
+                object : ObservePlugin() {
+                    override val name: String = "state-mutator"
+                    override lateinit var amplitude: Amplitude
+
+                    override fun onUserIdChanged(userId: String?) {
+                        amplitude.add(late)
+                    }
+
+                    override fun onDeviceIdChanged(deviceId: String?) {}
+                }
+            a.add(mutator)
+
+            // Should not throw CME.
+            a.setUserId("new-user")
+
+            // Snapshot semantics: the plugin added during onUserIdChanged does
+            // NOT receive the in-progress notification.
+            assertEquals(0, late.userIds.size)
         }
     }
 
@@ -295,12 +382,18 @@ private open class RecordingPlugin(override val name: String? = "recorder") : Pl
 
 private class RecordingObservePlugin : ObservePlugin() {
     override lateinit var amplitude: Amplitude
+    val userIds = mutableListOf<String?>()
+    val deviceIds = mutableListOf<String?>()
     val optOuts = mutableListOf<Boolean>()
     var resets: Int = 0
 
-    override fun onUserIdChanged(userId: String?) {}
+    override fun onUserIdChanged(userId: String?) {
+        userIds += userId
+    }
 
-    override fun onDeviceIdChanged(deviceId: String?) {}
+    override fun onDeviceIdChanged(deviceId: String?) {
+        deviceIds += deviceId
+    }
 
     override fun onOptOutChanged(optOut: Boolean) {
         optOuts += optOut
@@ -311,23 +404,29 @@ private class RecordingObservePlugin : ObservePlugin() {
     }
 }
 
-private class ThrowingObservePlugin : ObservePlugin() {
+private class ThrowingObservePlugin(
+    private val throwOnUserId: Boolean = false,
+    private val throwOnDeviceId: Boolean = false,
+    private val throwOnOptOut: Boolean = true,
+    private val throwOnReset: Boolean = true,
+) : ObservePlugin() {
     override val name: String = "throwing-observe"
     override lateinit var amplitude: Amplitude
 
-    // Only throw from callbacks dispatched through notifyAllPlugins. The
-    // identity-change callbacks fire through State.setIdentity directly and
-    // are out of scope for this test.
-    override fun onUserIdChanged(userId: String?) {}
+    override fun onUserIdChanged(userId: String?) {
+        if (throwOnUserId) throw RuntimeException("boom: onUserIdChanged")
+    }
 
-    override fun onDeviceIdChanged(deviceId: String?) {}
+    override fun onDeviceIdChanged(deviceId: String?) {
+        if (throwOnDeviceId) throw RuntimeException("boom: onDeviceIdChanged")
+    }
 
     override fun onOptOutChanged(optOut: Boolean) {
-        throw RuntimeException("boom: onOptOutChanged")
+        if (throwOnOptOut) throw RuntimeException("boom: onOptOutChanged")
     }
 
     override fun onReset() {
-        throw RuntimeException("boom: onReset")
+        if (throwOnReset) throw RuntimeException("boom: onReset")
     }
 }
 
