@@ -941,7 +941,7 @@ public final class com/amplitude/core/platform/plugins/GetAmpliExtrasPlugin$Comp
 }
 
 public abstract interface class com/amplitude/core/remoteconfig/RemoteConfigClient {
-	public abstract fun subscribe (Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;Lcom/amplitude/core/remoteconfig/RemoteConfigClient$DeliveryMode;Lcom/amplitude/core/remoteconfig/RemoteConfigClient$RemoteConfigCallback;)V
+	public fun subscribe (Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;Lcom/amplitude/core/remoteconfig/RemoteConfigClient$DeliveryMode;Lcom/amplitude/core/remoteconfig/RemoteConfigClient$RemoteConfigCallback;)V
 	public abstract fun subscribe (Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;Lcom/amplitude/core/remoteconfig/RemoteConfigClient$RemoteConfigCallback;)V
 	public abstract fun updateConfigs ()V
 }

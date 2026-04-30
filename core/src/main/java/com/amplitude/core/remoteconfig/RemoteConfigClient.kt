@@ -97,6 +97,12 @@ interface RemoteConfigClient {
      * Subscribe to remote configuration updates for a specific configuration key
      * with the given [deliveryMode] controlling when the first callback fires.
      *
+     * Default implementation ignores [deliveryMode] and delegates to
+     * [subscribe] (key, callback). This preserves source/binary compatibility
+     * for downstream implementers compiled against earlier SDK versions; only
+     * implementations that explicitly override this method observe the
+     * [DeliveryMode.WaitForRemote] semantics.
+     *
      * @param key The configuration key to subscribe to
      * @param deliveryMode Controls how the initial config is delivered. See [DeliveryMode].
      * @param callback RemoteConfigCallback that handles config updates
@@ -105,7 +111,9 @@ interface RemoteConfigClient {
         key: Key,
         deliveryMode: DeliveryMode,
         callback: RemoteConfigCallback,
-    )
+    ) {
+        subscribe(key, callback)
+    }
 
     fun updateConfigs()
 

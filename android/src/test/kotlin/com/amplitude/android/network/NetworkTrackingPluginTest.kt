@@ -854,12 +854,6 @@ class NetworkTrackingPluginTest {
             if (key == RemoteConfigClient.Key.ANALYTICS_SDK) callbacks.add(callback)
         }
 
-        override fun subscribe(
-            key: RemoteConfigClient.Key,
-            deliveryMode: RemoteConfigClient.DeliveryMode,
-            callback: RemoteConfigClient.RemoteConfigCallback,
-        ) = subscribe(key, callback)
-
         override fun updateConfigs() {}
 
         fun emit(config: ConfigMap) {
