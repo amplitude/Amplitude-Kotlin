@@ -190,6 +190,19 @@ class PluginContractTest {
 
             assertSame(observe, a.findPluginByName("observed"))
         }
+
+        @Test
+        fun `findPlugin traverses the observe store too`() {
+            // Codex finding 2: ObservePlugins added via amplitude.add() live in
+            // State.plugins, not the timeline, so findPlugin<T>() must search
+            // both stores — same as findPluginByName.
+            val a = amplitude
+            val observe = NamedObservePlugin("observed-by-type")
+
+            a.add(observe)
+
+            assertSame(observe, a.findPlugin<NamedObservePlugin>())
+        }
     }
 
     @Nested

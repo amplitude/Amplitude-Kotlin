@@ -559,10 +559,15 @@ open class Amplitude(
 
     /**
      * Find the first plugin of type [T] registered with this Amplitude
-     * instance, traversing all timeline layers (Before, Enrichment,
-     * Destination, Utility, Observe). Returns null if no plugin matches.
+     * instance, traversing every timeline layer (Before, Enrichment,
+     * Destination, Utility, Observe) **and** the [ObservePlugin] store.
+     * Returns null if no plugin matches.
+     *
+     * Mirrors [findPluginByName]: an [ObservePlugin] registered via
+     * [Amplitude.add] lives in [State.plugins] rather than the timeline,
+     * so the type-based lookup must search both.
      */
-    inline fun <reified T : Plugin> findPlugin(): T? = timeline.findPlugin()
+    inline fun <reified T : Plugin> findPlugin(): T? = timeline.findPlugin<T>() ?: store.plugins.firstOrNull { it is T } as? T
 
     /**
      * Find the first plugin whose [Plugin.name] matches [name] across all
