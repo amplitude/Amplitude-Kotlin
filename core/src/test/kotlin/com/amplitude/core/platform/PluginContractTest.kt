@@ -83,6 +83,25 @@ class PluginContractTest {
             assertEquals(listOf(true), observer.optOuts)
             assertEquals(1, observer.resets)
         }
+
+        @Test
+        fun `a throwing plugin in notify fan-out does not stop subsequent plugins`() {
+            // High-severity Codex finding: a plugin throwing from a state callback
+            // (e.g. onSessionIdChanged) must not propagate out of notifyAllPlugins,
+            // because the Android event loop relies on these callbacks completing
+            // normally. Other registered plugins still receive the notification.
+            val a = amplitude
+            val thrower = ThrowingObservePlugin()
+            val recorder = RecordingObservePlugin()
+            a.add(thrower)
+            a.add(recorder)
+
+            a.optOut = true
+            a.reset()
+
+            assertEquals(listOf(true), recorder.optOuts)
+            assertEquals(1, recorder.resets)
+        }
     }
 
     @Nested
@@ -244,6 +263,26 @@ private class RecordingObservePlugin : ObservePlugin() {
 
     override fun onReset() {
         resets += 1
+    }
+}
+
+private class ThrowingObservePlugin : ObservePlugin() {
+    override val name: String = "throwing-observe"
+    override lateinit var amplitude: Amplitude
+
+    // Only throw from callbacks dispatched through notifyAllPlugins. The
+    // identity-change callbacks fire through State.setIdentity directly and
+    // are out of scope for this test.
+    override fun onUserIdChanged(userId: String?) {}
+
+    override fun onDeviceIdChanged(deviceId: String?) {}
+
+    override fun onOptOutChanged(optOut: Boolean) {
+        throw RuntimeException("boom: onOptOutChanged")
+    }
+
+    override fun onReset() {
+        throw RuntimeException("boom: onReset")
     }
 }
 

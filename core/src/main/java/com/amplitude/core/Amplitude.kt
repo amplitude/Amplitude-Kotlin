@@ -597,12 +597,17 @@ open class Amplitude(
      * Fan a closure out to every plugin in the timeline (Before, Enrichment,
      * Destination, Utility, Observe).
      *
+     * Each per-plugin invocation is isolated: if a plugin throws, the failure
+     * is logged and the remaining plugins still get notified. Callbacks may
+     * fire from any coroutine — they must never propagate plugin failures back
+     * to the caller (e.g. the Android event-processing loop).
+     *
      * Restricted to platform-SDK use (e.g. the Android session-id wiring).
      * Public to allow cross-module access; not part of the customer surface.
      */
     @RestrictedAmplitudeFeature
     fun notifyTimelinePlugins(block: (Plugin) -> Unit) {
-        timeline.applyClosure(block)
+        timeline.applyClosure { plugin -> safelyNotify(plugin, block) }
     }
 
     /**
@@ -612,12 +617,32 @@ open class Amplitude(
      * expect to be notified ([Plugin.onOptOutChanged], [Plugin.onReset],
      * [Plugin.onSessionIdChanged]).
      *
+     * Each per-plugin invocation is isolated: if a plugin throws, the failure
+     * is logged and the remaining plugins still get notified.
+     *
      * Restricted to platform-SDK use; not part of the customer surface.
      */
     @RestrictedAmplitudeFeature
     fun notifyAllPlugins(block: (Plugin) -> Unit) {
-        timeline.applyClosure(block)
-        store.plugins.forEach(block)
+        timeline.applyClosure { plugin -> safelyNotify(plugin, block) }
+        store.plugins.forEach { plugin -> safelyNotify(plugin, block) }
+    }
+
+    /**
+     * Invoke [block] on [plugin], catching any [Throwable] so one misbehaving
+     * plugin can't break the notification fan-out (or terminate the coroutine
+     * draining the Android event-message channel).
+     */
+    private fun safelyNotify(
+        plugin: Plugin,
+        block: (Plugin) -> Unit,
+    ) {
+        try {
+            block(plugin)
+        } catch (throwable: Throwable) {
+            val identifier = plugin.name ?: plugin::class.java.name
+            logger.warn("Plugin '$identifier' threw during notify callback: $throwable")
+        }
     }
 
     /**
