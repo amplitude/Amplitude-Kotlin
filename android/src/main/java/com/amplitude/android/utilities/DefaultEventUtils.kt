@@ -20,12 +20,23 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
     /** Superseded by [com.amplitude.android.plugins.AndroidLifecyclePlugin]; no-op after SDK init. */
     fun trackAppUpdatedInstalledEvent(packageInfo: PackageInfo) {
         val storage = amplitude.storage
+        val currentVersion = packageInfo.versionName ?: "Unknown"
+        val currentBuild = packageInfo.getVersionCode().toString()
         trackAppUpdatedInstalledEvent(
-            currentVersion = packageInfo.versionName ?: "Unknown",
-            currentBuild = packageInfo.getVersionCode().toString(),
+            currentVersion = currentVersion,
+            currentBuild = currentBuild,
             previousVersion = storage.read(Storage.Constants.APP_VERSION),
             previousBuild = storage.read(Storage.Constants.APP_BUILD),
         )
+        amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
+            amplitude.isBuilt.await()
+            try {
+                storage.write(Storage.Constants.APP_VERSION, currentVersion)
+                storage.write(Storage.Constants.APP_BUILD, currentBuild)
+            } catch (e: Exception) {
+                amplitude.logger.error("Failed to persist app version/build: $e")
+            }
+        }
     }
 
     internal fun trackAppUpdatedInstalledEvent(
