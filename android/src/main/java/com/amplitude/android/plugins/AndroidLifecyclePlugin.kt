@@ -16,8 +16,10 @@ import com.amplitude.android.internal.gestures.WindowCallbackManager
 import com.amplitude.android.utilities.ActivityCallbackType
 import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.android.utilities.DefaultEventUtils
+import com.amplitude.android.utilities.getVersionCode
 import com.amplitude.core.Amplitude
 import com.amplitude.core.RestrictedAmplitudeFeature
+import com.amplitude.core.Storage
 import com.amplitude.core.platform.Plugin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -48,6 +50,11 @@ class AndroidLifecyclePlugin(
     private var appInBackground = false
     private var trackedAppLifecycleEvent = false
 
+    // Snapshot read synchronously at setup so the state observer doesn't race the async storage write.
+    @Volatile private var previousAppVersion: String? = null
+
+    @Volatile private var previousAppBuild: String? = null
+
     private var stateObserverJob: Job? = null
 
     @VisibleForTesting
@@ -69,6 +76,9 @@ class AndroidLifecyclePlugin(
                 amplitude.logger.error("Cannot find package with application.packageName: " + application.packageName)
                 PackageInfo()
             }
+
+        // Run regardless of appLifecycles so a later flip doesn't fire a spurious Installed.
+        snapshotAndPersistAppVersionInfo()
 
         // Observe autocapture state changes (including the initial value) to
         // enable features at runtime via remote config. Collected on main thread
@@ -222,14 +232,34 @@ class AndroidLifecyclePlugin(
         )
     }
 
-    /**
-     * Fires the one-time app installed/updated event when appLifecycles becomes enabled,
-     * either initially or via remote config. Guarded to fire at most once per SDK lifetime.
-     */
+    private fun snapshotAndPersistAppVersionInfo() {
+        val currentVersion = packageInfo.versionName ?: "Unknown"
+        val currentBuild = packageInfo.getVersionCode().toString()
+        val storage = amplitude.storage
+
+        previousAppVersion = storage.read(Storage.Constants.APP_VERSION)
+        previousAppBuild = storage.read(Storage.Constants.APP_BUILD)
+
+        amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
+            amplitude.isBuilt.await()
+            try {
+                storage.write(Storage.Constants.APP_VERSION, currentVersion)
+                storage.write(Storage.Constants.APP_BUILD, currentBuild)
+            } catch (e: Exception) {
+                amplitude.logger.error("Failed to persist app version/build: $e")
+            }
+        }
+    }
+
     private fun trackAppLifecycleEventIfNeeded() {
         if (trackedAppLifecycleEvent || !autocaptureState.appLifecycles) return
         trackedAppLifecycleEvent = true
-        DefaultEventUtils(androidAmplitude).trackAppUpdatedInstalledEvent(packageInfo)
+        DefaultEventUtils(androidAmplitude).trackAppUpdatedInstalledEvent(
+            currentVersion = packageInfo.versionName ?: "Unknown",
+            currentBuild = packageInfo.getVersionCode().toString(),
+            previousVersion = previousAppVersion,
+            previousBuild = previousAppBuild,
+        )
     }
 
     /**
