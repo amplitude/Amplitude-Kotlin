@@ -12,22 +12,29 @@ import com.amplitude.android.Constants
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.registerFragmentLifecycleCallbacks
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.unregisterFragmentLifecycleCallbacks
 import com.amplitude.core.Storage
-import kotlinx.coroutines.launch
 import com.amplitude.android.Constants.EventProperties as ConstantsEventProperties
 import com.amplitude.android.Constants.EventTypes as ConstantsEventTypes
 
 @Deprecated("This class is deprecated and will be removed in future releases.")
 class DefaultEventUtils(private val amplitude: Amplitude) {
+    /** Superseded by [com.amplitude.android.plugins.AndroidLifecyclePlugin]; no-op after SDK init. */
     fun trackAppUpdatedInstalledEvent(packageInfo: PackageInfo) {
-        // Get current version/build and previously stored version/build information
-        val currentVersion = packageInfo.versionName ?: "Unknown"
-        val currentBuild = packageInfo.getVersionCode().toString()
         val storage = amplitude.storage
-        val previousVersion = storage.read(Storage.Constants.APP_VERSION)
-        val previousBuild = storage.read(Storage.Constants.APP_BUILD)
+        trackAppUpdatedInstalledEvent(
+            currentVersion = packageInfo.versionName ?: "Unknown",
+            currentBuild = packageInfo.getVersionCode().toString(),
+            previousVersion = storage.read(Storage.Constants.APP_VERSION),
+            previousBuild = storage.read(Storage.Constants.APP_BUILD),
+        )
+    }
 
+    internal fun trackAppUpdatedInstalledEvent(
+        currentVersion: String,
+        currentBuild: String,
+        previousVersion: String?,
+        previousBuild: String?,
+    ) {
         if (previousBuild == null) {
-            // No stored build, treat it as fresh installed
             amplitude.track(
                 ConstantsEventTypes.APPLICATION_INSTALLED,
                 mapOf(
@@ -36,7 +43,6 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 ),
             )
         } else if (currentBuild != previousBuild) {
-            // Has stored build, but different from current build
             amplitude.track(
                 ConstantsEventTypes.APPLICATION_UPDATED,
                 mapOf(
@@ -46,15 +52,6 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                     ConstantsEventProperties.BUILD to currentBuild,
                 ),
             )
-        }
-
-        // Write the current version/build into persistent storage
-        amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
-            // wait until it is built before writing to storage
-            amplitude.isBuilt.await()
-
-            storage.write(Storage.Constants.APP_VERSION, currentVersion)
-            storage.write(Storage.Constants.APP_BUILD, currentBuild)
         }
     }
 
@@ -428,7 +425,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
     }
 }
 
-private fun PackageInfo.getVersionCode(): Number =
+internal fun PackageInfo.getVersionCode(): Number =
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
         this.longVersionCode
     } else {
