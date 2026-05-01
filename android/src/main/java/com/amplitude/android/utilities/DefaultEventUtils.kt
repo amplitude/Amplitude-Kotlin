@@ -8,13 +8,13 @@ import android.net.ParseException
 import android.net.Uri
 import android.os.Build
 import com.amplitude.android.Amplitude
+import com.amplitude.android.Constants
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.registerFragmentLifecycleCallbacks
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.unregisterFragmentLifecycleCallbacks
-import com.amplitude.core.Constants
 import com.amplitude.core.Storage
 import kotlinx.coroutines.launch
-import com.amplitude.core.Constants.EventProperties as ConstantsEventProperties
-import com.amplitude.core.Constants.EventTypes as ConstantsEventTypes
+import com.amplitude.android.Constants.EventProperties as ConstantsEventProperties
+import com.amplitude.android.Constants.EventTypes as ConstantsEventTypes
 
 @Deprecated("This class is deprecated and will be removed in future releases.")
 class DefaultEventUtils(private val amplitude: Amplitude) {
@@ -193,7 +193,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             "Use Constants.EventTypes.APPLICATION_INSTALLED instead",
             ReplaceWith(
                 "Constants.EventTypes.APPLICATION_INSTALLED",
-                "com.amplitude.core.Constants.EventTypes.APPLICATION_INSTALLED",
+                "com.amplitude.android.Constants.EventTypes.APPLICATION_INSTALLED",
             ),
         )
         const val APPLICATION_INSTALLED = Constants.EventTypes.APPLICATION_INSTALLED
@@ -202,7 +202,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             "Use Constants.EventTypes.APPLICATION_UPDATED instead",
             ReplaceWith(
                 "Constants.EventTypes.APPLICATION_UPDATED",
-                "com.amplitude.core.Constants.EventTypes.APPLICATION_UPDATED",
+                "com.amplitude.android.Constants.EventTypes.APPLICATION_UPDATED",
             ),
         )
         const val APPLICATION_UPDATED = Constants.EventTypes.APPLICATION_UPDATED
@@ -211,7 +211,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             "Use Constants.EventTypes.APPLICATION_OPENED instead",
             ReplaceWith(
                 "Constants.EventTypes.APPLICATION_OPENED",
-                "com.amplitude.core.Constants.EventTypes.APPLICATION_OPENED",
+                "com.amplitude.android.Constants.EventTypes.APPLICATION_OPENED",
             ),
         )
         const val APPLICATION_OPENED = Constants.EventTypes.APPLICATION_OPENED
@@ -220,7 +220,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             "Use Constants.EventTypes.APPLICATION_BACKGROUNDED instead",
             ReplaceWith(
                 "Constants.EventTypes.APPLICATION_BACKGROUNDED",
-                "com.amplitude.core.Constants.EventTypes.APPLICATION_BACKGROUNDED",
+                "com.amplitude.android.Constants.EventTypes.APPLICATION_BACKGROUNDED",
             ),
         )
         const val APPLICATION_BACKGROUNDED = Constants.EventTypes.APPLICATION_BACKGROUNDED
@@ -229,7 +229,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             "Use Constants.EventTypes.DEEP_LINK_OPENED instead",
             ReplaceWith(
                 "Constants.EventTypes.DEEP_LINK_OPENED",
-                "com.amplitude.core.Constants.EventTypes.DEEP_LINK_OPENED",
+                "com.amplitude.android.Constants.EventTypes.DEEP_LINK_OPENED",
             ),
         )
         const val DEEP_LINK_OPENED = Constants.EventTypes.DEEP_LINK_OPENED
@@ -238,7 +238,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             "Use Constants.EventTypes.SCREEN_VIEWED instead",
             ReplaceWith(
                 "Constants.EventTypes.SCREEN_VIEWED",
-                "com.amplitude.core.Constants.EventTypes.SCREEN_VIEWED",
+                "com.amplitude.android.Constants.EventTypes.SCREEN_VIEWED",
             ),
         )
         const val SCREEN_VIEWED = Constants.EventTypes.SCREEN_VIEWED
@@ -247,7 +247,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             "Use Constants.EventTypes.FRAGMENT_VIEWED instead",
             ReplaceWith(
                 "Constants.EventTypes.FRAGMENT_VIEWED",
-                "com.amplitude.core.Constants.EventTypes.FRAGMENT_VIEWED",
+                "com.amplitude.android.Constants.EventTypes.FRAGMENT_VIEWED",
             ),
         )
         const val FRAGMENT_VIEWED = Constants.EventTypes.FRAGMENT_VIEWED
@@ -256,7 +256,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             "Use Constants.EventTypes.ELEMENT_INTERACTED instead",
             ReplaceWith(
                 "Constants.EventTypes.ELEMENT_INTERACTED",
-                "com.amplitude.core.Constants.EventTypes.ELEMENT_INTERACTED",
+                "com.amplitude.android.Constants.EventTypes.ELEMENT_INTERACTED",
             ),
         )
         const val ELEMENT_INTERACTED = Constants.EventTypes.ELEMENT_INTERACTED
@@ -268,7 +268,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             "Use Constants.EventProperties.VERSION instead",
             ReplaceWith(
                 "Constants.EventProperties.VERSION",
-                "com.amplitude.core.Constants.EventProperties.VERSION",
+                "com.amplitude.android.Constants.EventProperties.VERSION",
             ),
         )
         const val VERSION = Constants.EventProperties.VERSION
@@ -277,7 +277,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             "Use Constants.EventProperties.BUILD instead",
             ReplaceWith(
                 "Constants.EventProperties.BUILD",
-                "com.amplitude.core.Constants.EventProperties.BUILD",
+                "com.amplitude.android.Constants.EventProperties.BUILD",
             ),
         )
         const val BUILD = Constants.EventProperties.BUILD
@@ -286,7 +286,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             "Use Constants.EventProperties.PREVIOUS_VERSION instead",
             ReplaceWith(
                 "Constants.EventProperties.PREVIOUS_VERSION",
-                "com.amplitude.core.Constants.EventProperties.PREVIOUS_VERSION",
+                "com.amplitude.android.Constants.EventProperties.PREVIOUS_VERSION",
             ),
         )
         const val PREVIOUS_VERSION = Constants.EventProperties.PREVIOUS_VERSION
@@ -295,7 +295,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             "Use Constants.EventProperties.PREVIOUS_BUILD instead",
             ReplaceWith(
                 "Constants.EventProperties.PREVIOUS_BUILD",
-                "com.amplitude.core.Constants.EventProperties.PREVIOUS_BUILD",
+                "com.amplitude.android.Constants.EventProperties.PREVIOUS_BUILD",
             ),
         )
         const val PREVIOUS_BUILD = Constants.EventProperties.PREVIOUS_BUILD
@@ -304,7 +304,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             "Use Constants.EventProperties.FROM_BACKGROUND instead",
             ReplaceWith(
                 "Constants.EventProperties.FROM_BACKGROUND",
-                "com.amplitude.core.Constants.EventProperties.FROM_BACKGROUND",
+                "com.amplitude.android.Constants.EventProperties.FROM_BACKGROUND",
             ),
         )
         const val FROM_BACKGROUND = Constants.EventProperties.FROM_BACKGROUND
@@ -313,7 +313,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             "Use Constants.EventProperties.LINK_URL instead",
             ReplaceWith(
                 "Constants.EventProperties.LINK_URL",
-                "com.amplitude.core.Constants.EventProperties.LINK_URL",
+                "com.amplitude.android.Constants.EventProperties.LINK_URL",
             ),
         )
         const val LINK_URL = Constants.EventProperties.LINK_URL
@@ -322,7 +322,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             "Use Constants.EventProperties.LINK_REFERRER instead",
             ReplaceWith(
                 "Constants.EventProperties.LINK_REFERRER",
-                "com.amplitude.core.Constants.EventProperties.LINK_REFERRER",
+                "com.amplitude.android.Constants.EventProperties.LINK_REFERRER",
             ),
         )
         const val LINK_REFERRER = Constants.EventProperties.LINK_REFERRER
@@ -331,7 +331,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             "Use Constants.EventProperties.SCREEN_NAME instead",
             ReplaceWith(
                 "Constants.EventProperties.SCREEN_NAME",
-                "com.amplitude.core.Constants.EventProperties.SCREEN_NAME",
+                "com.amplitude.android.Constants.EventProperties.SCREEN_NAME",
             ),
         )
         const val SCREEN_NAME = Constants.EventProperties.SCREEN_NAME
@@ -340,7 +340,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             "Use Constants.EventProperties.FRAGMENT_CLASS instead",
             ReplaceWith(
                 "Constants.EventProperties.FRAGMENT_CLASS",
-                "com.amplitude.core.Constants.EventProperties.FRAGMENT_CLASS",
+                "com.amplitude.android.Constants.EventProperties.FRAGMENT_CLASS",
             ),
         )
         const val FRAGMENT_CLASS = Constants.EventProperties.FRAGMENT_CLASS
@@ -349,7 +349,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             "Use Constants.EventProperties.FRAGMENT_IDENTIFIER instead",
             ReplaceWith(
                 "Constants.EventProperties.FRAGMENT_IDENTIFIER",
-                "com.amplitude.core.Constants.EventProperties.FRAGMENT_IDENTIFIER",
+                "com.amplitude.android.Constants.EventProperties.FRAGMENT_IDENTIFIER",
             ),
         )
         const val FRAGMENT_IDENTIFIER = Constants.EventProperties.FRAGMENT_IDENTIFIER
@@ -358,7 +358,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             "Use Constants.EventProperties.FRAGMENT_TAG instead",
             ReplaceWith(
                 "Constants.EventProperties.FRAGMENT_TAG",
-                "com.amplitude.core.Constants.EventProperties.FRAGMENT_TAG",
+                "com.amplitude.android.Constants.EventProperties.FRAGMENT_TAG",
             ),
         )
         const val FRAGMENT_TAG = Constants.EventProperties.FRAGMENT_TAG
@@ -367,7 +367,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             "Use Constants.EventProperties.ACTION instead",
             ReplaceWith(
                 "Constants.EventProperties.ACTION",
-                "com.amplitude.core.Constants.EventProperties.ACTION",
+                "com.amplitude.android.Constants.EventProperties.ACTION",
             ),
         )
         const val ACTION = Constants.EventProperties.ACTION
@@ -376,7 +376,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             "Use Constants.EventProperties.TARGET_CLASS instead",
             ReplaceWith(
                 "Constants.EventProperties.TARGET_CLASS",
-                "com.amplitude.core.Constants.EventProperties.TARGET_CLASS",
+                "com.amplitude.android.Constants.EventProperties.TARGET_CLASS",
             ),
         )
         const val TARGET_CLASS = Constants.EventProperties.TARGET_CLASS
@@ -385,7 +385,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             "Use Constants.EventProperties.TARGET_RESOURCE instead",
             ReplaceWith(
                 "Constants.EventProperties.TARGET_RESOURCE",
-                "com.amplitude.core.Constants.EventProperties.TARGET_RESOURCE",
+                "com.amplitude.android.Constants.EventProperties.TARGET_RESOURCE",
             ),
         )
         const val TARGET_RESOURCE = Constants.EventProperties.TARGET_RESOURCE
@@ -394,7 +394,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             "Use Constants.EventProperties.TARGET_TAG instead",
             ReplaceWith(
                 "Constants.EventProperties.TARGET_TAG",
-                "com.amplitude.core.Constants.EventProperties.TARGET_TAG",
+                "com.amplitude.android.Constants.EventProperties.TARGET_TAG",
             ),
         )
         const val TARGET_TAG = Constants.EventProperties.TARGET_TAG
@@ -403,7 +403,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             "Use Constants.EventProperties.TARGET_TEXT instead",
             ReplaceWith(
                 "Constants.EventProperties.TARGET_TEXT",
-                "com.amplitude.core.Constants.EventProperties.TARGET_TEXT",
+                "com.amplitude.android.Constants.EventProperties.TARGET_TEXT",
             ),
         )
         const val TARGET_TEXT = Constants.EventProperties.TARGET_TEXT
@@ -412,7 +412,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             "Use Constants.EventProperties.TARGET_SOURCE instead",
             ReplaceWith(
                 "Constants.EventProperties.TARGET_SOURCE",
-                "com.amplitude.core.Constants.EventProperties.TARGET_SOURCE",
+                "com.amplitude.android.Constants.EventProperties.TARGET_SOURCE",
             ),
         )
         const val TARGET_SOURCE = Constants.EventProperties.TARGET_SOURCE
@@ -421,7 +421,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
             "Use Constants.EventProperties.HIERARCHY instead",
             ReplaceWith(
                 "Constants.EventProperties.HIERARCHY",
-                "com.amplitude.core.Constants.EventProperties.HIERARCHY",
+                "com.amplitude.android.Constants.EventProperties.HIERARCHY",
             ),
         )
         const val HIERARCHY = Constants.EventProperties.HIERARCHY

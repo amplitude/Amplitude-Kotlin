@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.amplitude.core.network
 
 import com.amplitude.core.Amplitude

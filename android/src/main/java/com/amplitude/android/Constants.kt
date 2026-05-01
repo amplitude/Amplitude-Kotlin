@@ -1,0 +1,74 @@
+package com.amplitude.android
+
+/**
+ * Autocapture event-name and event-property constants for the Android SDK.
+ *
+ * These were previously hosted in `com.amplitude.core.Constants` but are only consumed by
+ * `:android` (autocapture, network tracking, frustration interactions). Aliases in `:core`
+ * remain for binary compatibility — see [com.amplitude.core.Constants.EventTypes] and
+ * [com.amplitude.core.Constants.EventProperties].
+ */
+object Constants {
+    object EventTypes {
+        const val APPLICATION_INSTALLED = "[Amplitude] Application Installed"
+        const val APPLICATION_UPDATED = "[Amplitude] Application Updated"
+        const val APPLICATION_OPENED = "[Amplitude] Application Opened"
+        const val APPLICATION_BACKGROUNDED = "[Amplitude] Application Backgrounded"
+        const val DEEP_LINK_OPENED = "[Amplitude] Deep Link Opened"
+        const val SCREEN_VIEWED = "[Amplitude] Screen Viewed"
+        const val FRAGMENT_VIEWED = "[Amplitude] Fragment Viewed"
+        const val ELEMENT_INTERACTED = "[Amplitude] Element Interacted"
+        const val NETWORK_TRACKING = "[Amplitude] Network Request"
+        const val RAGE_CLICK = "[Amplitude] Rage Click"
+        const val DEAD_CLICK = "[Amplitude] Dead Click"
+    }
+
+    object EventProperties {
+        const val VERSION = "[Amplitude] Version"
+        const val BUILD = "[Amplitude] Build"
+        const val PREVIOUS_VERSION = "[Amplitude] Previous Version"
+        const val PREVIOUS_BUILD = "[Amplitude] Previous Build"
+        const val FROM_BACKGROUND = "[Amplitude] From Background"
+        const val LINK_URL = "[Amplitude] Link URL"
+        const val LINK_REFERRER = "[Amplitude] Link Referrer"
+        const val SCREEN_NAME = "[Amplitude] Screen Name"
+        const val FRAGMENT_CLASS = "[Amplitude] Fragment Class"
+        const val FRAGMENT_IDENTIFIER = "[Amplitude] Fragment Identifier"
+        const val FRAGMENT_TAG = "[Amplitude] Fragment Tag"
+        const val ACTION = "[Amplitude] Action"
+        const val TARGET_CLASS = "[Amplitude] Target Class"
+        const val TARGET_RESOURCE = "[Amplitude] Target Resource"
+        const val TARGET_TAG = "[Amplitude] Target Tag"
+        const val TARGET_TEXT = "[Amplitude] Target Text"
+        const val TARGET_SOURCE = "[Amplitude] Target Source"
+        const val HIERARCHY = "[Amplitude] Hierarchy"
+
+        const val NETWORK_TRACKING_URL = "[Amplitude] URL"
+        const val NETWORK_TRACKING_URL_QUERY = "[Amplitude] URL Query"
+        const val NETWORK_TRACKING_URL_FRAGMENT = "[Amplitude] URL Fragment"
+        const val NETWORK_TRACKING_REQUEST_METHOD = "[Amplitude] Request Method"
+        const val NETWORK_TRACKING_STATUS_CODE = "[Amplitude] Status Code"
+        const val NETWORK_TRACKING_ERROR_MESSAGE = "[Amplitude] Error Message"
+        const val NETWORK_TRACKING_START_TIME = "[Amplitude] Start Time"
+        const val NETWORK_TRACKING_COMPLETION_TIME = "[Amplitude] Completion Time"
+        const val NETWORK_TRACKING_DURATION = "[Amplitude] Duration"
+        const val NETWORK_TRACKING_REQUEST_BODY_SIZE = "[Amplitude] Request Body Size"
+        const val NETWORK_TRACKING_RESPONSE_BODY_SIZE = "[Amplitude] Response Body Size"
+        const val NETWORK_TRACKING_REQUEST_HEADERS = "[Amplitude] Request Headers"
+        const val NETWORK_TRACKING_RESPONSE_HEADERS = "[Amplitude] Response Headers"
+        const val NETWORK_TRACKING_REQUEST_BODY = "[Amplitude] Request Body"
+        const val NETWORK_TRACKING_RESPONSE_BODY = "[Amplitude] Response Body"
+
+        // Accessibility properties
+        const val TARGET_ACCESSIBILITY_LABEL = "[Amplitude] Target Accessibility Label"
+
+        // Frustration interactions properties
+        const val BEGIN_TIME = "[Amplitude] Begin Time"
+        const val END_TIME = "[Amplitude] End Time"
+        const val DURATION = "[Amplitude] Duration"
+        const val COORDINATE_X = "[Amplitude] X"
+        const val COORDINATE_Y = "[Amplitude] Y"
+        const val CLICKS = "[Amplitude] Clicks"
+        const val CLICK_COUNT = "[Amplitude] Click Count"
+    }
+}
