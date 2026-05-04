@@ -342,6 +342,10 @@ public abstract interface class com/amplitude/core/StorageProvider {
 	public static synthetic fun getStorage$default (Lcom/amplitude/core/StorageProvider;Lcom/amplitude/core/Amplitude;Ljava/lang/String;ILjava/lang/Object;)Lcom/amplitude/core/Storage;
 }
 
+public final class com/amplitude/core/StorageProvider$DefaultImpls {
+	public static synthetic fun getStorage$default (Lcom/amplitude/core/StorageProvider;Lcom/amplitude/core/Amplitude;Ljava/lang/String;ILjava/lang/Object;)Lcom/amplitude/core/Storage;
+}
+
 public abstract interface class com/amplitude/core/diagnostics/DiagnosticsClient {
 	public abstract fun close ()V
 	public abstract fun flush ()V
@@ -352,6 +356,11 @@ public abstract interface class com/amplitude/core/diagnostics/DiagnosticsClient
 	public abstract fun recordHistogram (Ljava/lang/String;D)V
 	public abstract fun setTag (Ljava/lang/String;Ljava/lang/String;)V
 	public abstract fun setTags (Ljava/util/Map;)V
+}
+
+public final class com/amplitude/core/diagnostics/DiagnosticsClient$DefaultImpls {
+	public static synthetic fun increment$default (Lcom/amplitude/core/diagnostics/DiagnosticsClient;Ljava/lang/String;JILjava/lang/Object;)V
+	public static synthetic fun recordEvent$default (Lcom/amplitude/core/diagnostics/DiagnosticsClient;Ljava/lang/String;Ljava/util/Map;ILjava/lang/Object;)V
 }
 
 public abstract interface class com/amplitude/core/diagnostics/DiagnosticsClientProvider {
@@ -750,10 +759,13 @@ public final class com/amplitude/core/network/NetworkTrackingPlugin : com/amplit
 	public fun <init> ()V
 	public fun <init> (Lcom/amplitude/core/network/NetworkTrackingOptions;)V
 	public synthetic fun <init> (Lcom/amplitude/core/network/NetworkTrackingOptions;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun execute (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
 	public fun getAmplitude ()Lcom/amplitude/core/Amplitude;
 	public fun getType ()Lcom/amplitude/core/platform/Plugin$Type;
 	public fun intercept (Lokhttp3/Interceptor$Chain;)Lokhttp3/Response;
 	public fun setAmplitude (Lcom/amplitude/core/Amplitude;)V
+	public fun setup (Lcom/amplitude/core/Amplitude;)V
+	public fun teardown ()V
 }
 
 public abstract class com/amplitude/core/platform/DestinationPlugin : com/amplitude/core/platform/EventPlugin {
@@ -761,12 +773,18 @@ public abstract class com/amplitude/core/platform/DestinationPlugin : com/amplit
 	public fun <init> ()V
 	public final fun add (Lcom/amplitude/core/platform/Plugin;)V
 	public final fun execute (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
+	public fun flush ()V
 	public fun getAmplitude ()Lcom/amplitude/core/Amplitude;
 	public fun getType ()Lcom/amplitude/core/platform/Plugin$Type;
+	public fun groupIdentify (Lcom/amplitude/core/events/GroupIdentifyEvent;)Lcom/amplitude/core/events/GroupIdentifyEvent;
+	public fun identify (Lcom/amplitude/core/events/IdentifyEvent;)Lcom/amplitude/core/events/IdentifyEvent;
 	public final fun process (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
 	public final fun remove (Lcom/amplitude/core/platform/Plugin;)V
+	public fun revenue (Lcom/amplitude/core/events/RevenueEvent;)Lcom/amplitude/core/events/RevenueEvent;
 	public fun setAmplitude (Lcom/amplitude/core/Amplitude;)V
 	public fun setup (Lcom/amplitude/core/Amplitude;)V
+	public fun teardown ()V
+	public fun track (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
 }
 
 public final class com/amplitude/core/platform/EventPipeline {
@@ -792,12 +810,25 @@ public abstract interface class com/amplitude/core/platform/EventPlugin : com/am
 	public fun track (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
 }
 
+public final class com/amplitude/core/platform/EventPlugin$DefaultImpls {
+	public static fun execute (Lcom/amplitude/core/platform/EventPlugin;Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
+	public static fun flush (Lcom/amplitude/core/platform/EventPlugin;)V
+	public static fun groupIdentify (Lcom/amplitude/core/platform/EventPlugin;Lcom/amplitude/core/events/GroupIdentifyEvent;)Lcom/amplitude/core/events/GroupIdentifyEvent;
+	public static fun identify (Lcom/amplitude/core/platform/EventPlugin;Lcom/amplitude/core/events/IdentifyEvent;)Lcom/amplitude/core/events/IdentifyEvent;
+	public static fun revenue (Lcom/amplitude/core/platform/EventPlugin;Lcom/amplitude/core/events/RevenueEvent;)Lcom/amplitude/core/events/RevenueEvent;
+	public static fun setup (Lcom/amplitude/core/platform/EventPlugin;Lcom/amplitude/core/Amplitude;)V
+	public static fun teardown (Lcom/amplitude/core/platform/EventPlugin;)V
+	public static fun track (Lcom/amplitude/core/platform/EventPlugin;Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
+}
+
 public abstract class com/amplitude/core/platform/ObservePlugin : com/amplitude/core/platform/Plugin {
 	public fun <init> ()V
 	public final fun execute (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
 	public fun getType ()Lcom/amplitude/core/platform/Plugin$Type;
 	public abstract fun onDeviceIdChanged (Ljava/lang/String;)V
 	public abstract fun onUserIdChanged (Ljava/lang/String;)V
+	public fun setup (Lcom/amplitude/core/Amplitude;)V
+	public fun teardown ()V
 }
 
 public abstract interface class com/amplitude/core/platform/Plugin {
@@ -807,6 +838,12 @@ public abstract interface class com/amplitude/core/platform/Plugin {
 	public abstract fun setAmplitude (Lcom/amplitude/core/Amplitude;)V
 	public fun setup (Lcom/amplitude/core/Amplitude;)V
 	public fun teardown ()V
+}
+
+public final class com/amplitude/core/platform/Plugin$DefaultImpls {
+	public static fun execute (Lcom/amplitude/core/platform/Plugin;Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
+	public static fun setup (Lcom/amplitude/core/platform/Plugin;Lcom/amplitude/core/Amplitude;)V
+	public static fun teardown (Lcom/amplitude/core/platform/Plugin;)V
 }
 
 public final class com/amplitude/core/platform/Plugin$Type : java/lang/Enum {
@@ -829,6 +866,12 @@ public abstract interface class com/amplitude/core/platform/SignalProvider {
 	public fun emitSignal (Lcom/amplitude/core/platform/Plugin;Lcom/amplitude/core/platform/Signal;)V
 	public abstract fun getActive ()Z
 	public abstract fun setActive (Z)V
+}
+
+public final class com/amplitude/core/platform/SignalProvider$DefaultImpls {
+	public static fun activate (Lcom/amplitude/core/platform/SignalProvider;)V
+	public static fun deactivate (Lcom/amplitude/core/platform/SignalProvider;)V
+	public static fun emitSignal (Lcom/amplitude/core/platform/SignalProvider;Lcom/amplitude/core/platform/Plugin;Lcom/amplitude/core/platform/Signal;)V
 }
 
 public class com/amplitude/core/platform/Timeline {
@@ -919,6 +962,7 @@ public class com/amplitude/core/platform/plugins/ContextPlugin : com/amplitude/c
 	public fun setAmplitude (Lcom/amplitude/core/Amplitude;)V
 	protected fun setDeviceId (Ljava/lang/String;)V
 	public fun setup (Lcom/amplitude/core/Amplitude;)V
+	public fun teardown ()V
 }
 
 public final class com/amplitude/core/platform/plugins/ContextPlugin$Companion {
@@ -935,6 +979,7 @@ public final class com/amplitude/core/platform/plugins/GetAmpliExtrasPlugin : co
 	public fun getType ()Lcom/amplitude/core/platform/Plugin$Type;
 	public fun setAmplitude (Lcom/amplitude/core/Amplitude;)V
 	public fun setup (Lcom/amplitude/core/Amplitude;)V
+	public fun teardown ()V
 }
 
 public final class com/amplitude/core/platform/plugins/GetAmpliExtrasPlugin$Companion {
@@ -1053,6 +1098,7 @@ public final class com/amplitude/core/utilities/ExponentialBackoffRetryHandler$C
 public final class com/amplitude/core/utilities/FileResponseHandler : com/amplitude/core/utilities/http/ResponseHandler {
 	public fun <init> (Lcom/amplitude/core/utilities/EventsFileStorage;Lcom/amplitude/core/platform/EventPipeline;Lcom/amplitude/core/Configuration;Lkotlinx/coroutines/CoroutineScope;Lkotlinx/coroutines/CoroutineDispatcher;Lcom/amplitude/common/Logger;)V
 	public fun <init> (Lcom/amplitude/core/utilities/EventsFileStorage;Lcom/amplitude/core/platform/EventPipeline;Lcom/amplitude/core/Configuration;Lkotlinx/coroutines/CoroutineScope;Lkotlinx/coroutines/CoroutineDispatcher;Lcom/amplitude/common/Logger;Lcom/amplitude/core/diagnostics/DiagnosticsClient;)V
+	public fun handle (Lcom/amplitude/core/utilities/http/AnalyticsResponse;Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Boolean;
 	public fun handleBadRequestResponse (Lcom/amplitude/core/utilities/http/BadRequestResponse;Ljava/lang/Object;Ljava/lang/String;)Z
 	public fun handleFailedResponse (Lcom/amplitude/core/utilities/http/FailedResponse;Ljava/lang/Object;Ljava/lang/String;)V
 	public fun handlePayloadTooLargeResponse (Lcom/amplitude/core/utilities/http/PayloadTooLargeResponse;Ljava/lang/Object;Ljava/lang/String;)V
@@ -1175,6 +1221,10 @@ public abstract interface class com/amplitude/core/utilities/http/HttpClientInte
 	public static synthetic fun upload$default (Lcom/amplitude/core/utilities/http/HttpClientInterface;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lcom/amplitude/core/utilities/http/AnalyticsResponse;
 }
 
+public final class com/amplitude/core/utilities/http/HttpClientInterface$DefaultImpls {
+	public static synthetic fun upload$default (Lcom/amplitude/core/utilities/http/HttpClientInterface;Ljava/lang/String;Ljava/lang/String;ILjava/lang/Object;)Lcom/amplitude/core/utilities/http/AnalyticsResponse;
+}
+
 public final class com/amplitude/core/utilities/http/HttpStatus : java/lang/Enum {
 	public static final field BAD_REQUEST Lcom/amplitude/core/utilities/http/HttpStatus;
 	public static final field FAILED Lcom/amplitude/core/utilities/http/HttpStatus;
@@ -1202,6 +1252,10 @@ public abstract interface class com/amplitude/core/utilities/http/ResponseHandle
 	public abstract fun handleSuccessResponse (Lcom/amplitude/core/utilities/http/SuccessResponse;Ljava/lang/Object;Ljava/lang/String;)V
 	public abstract fun handleTimeoutResponse (Lcom/amplitude/core/utilities/http/TimeoutResponse;Ljava/lang/Object;Ljava/lang/String;)V
 	public abstract fun handleTooManyRequestsResponse (Lcom/amplitude/core/utilities/http/TooManyRequestsResponse;Ljava/lang/Object;Ljava/lang/String;)V
+}
+
+public final class com/amplitude/core/utilities/http/ResponseHandler$DefaultImpls {
+	public static fun handle (Lcom/amplitude/core/utilities/http/ResponseHandler;Lcom/amplitude/core/utilities/http/AnalyticsResponse;Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/Boolean;
 }
 
 public final class com/amplitude/core/utilities/http/SuccessResponse : com/amplitude/core/utilities/http/AnalyticsResponse {
@@ -1374,6 +1428,10 @@ public abstract interface class com/amplitude/id/IdentityManager {
 	public abstract fun isInitialized ()Z
 	public abstract fun removeIdentityListener (Lcom/amplitude/id/IdentityListener;)V
 	public abstract fun setIdentity (Lcom/amplitude/id/Identity;Lcom/amplitude/id/IdentityUpdateType;)V
+	public static synthetic fun setIdentity$default (Lcom/amplitude/id/IdentityManager;Lcom/amplitude/id/Identity;Lcom/amplitude/id/IdentityUpdateType;ILjava/lang/Object;)V
+}
+
+public final class com/amplitude/id/IdentityManager$DefaultImpls {
 	public static synthetic fun setIdentity$default (Lcom/amplitude/id/IdentityManager;Lcom/amplitude/id/Identity;Lcom/amplitude/id/IdentityUpdateType;ILjava/lang/Object;)V
 }
 

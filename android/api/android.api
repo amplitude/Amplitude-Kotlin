@@ -792,11 +792,13 @@ public final class com/amplitude/android/network/NetworkTrackingPlugin : com/amp
 	public fun <init> ()V
 	public fun <init> (Lcom/amplitude/android/network/NetworkTrackingOptions;)V
 	public synthetic fun <init> (Lcom/amplitude/android/network/NetworkTrackingOptions;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun execute (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
 	public fun getAmplitude ()Lcom/amplitude/core/Amplitude;
 	public fun getType ()Lcom/amplitude/core/platform/Plugin$Type;
 	public fun intercept (Lokhttp3/Interceptor$Chain;)Lokhttp3/Response;
 	public fun setAmplitude (Lcom/amplitude/core/Amplitude;)V
 	public fun setup (Lcom/amplitude/core/Amplitude;)V
+	public fun teardown ()V
 }
 
 public final class com/amplitude/android/network/NetworkTrackingPlugin$Companion {
@@ -817,6 +819,7 @@ public class com/amplitude/android/plugins/AndroidContextPlugin : com/amplitude/
 	public fun setAmplitude (Lcom/amplitude/core/Amplitude;)V
 	protected fun setDeviceId (Ljava/lang/String;)V
 	public fun setup (Lcom/amplitude/core/Amplitude;)V
+	public fun teardown ()V
 }
 
 public final class com/amplitude/android/plugins/AndroidContextPlugin$Companion {
@@ -826,6 +829,7 @@ public final class com/amplitude/android/plugins/AndroidContextPlugin$Companion 
 public final class com/amplitude/android/plugins/AndroidLifecyclePlugin : android/app/Application$ActivityLifecycleCallbacks, com/amplitude/core/platform/Plugin {
 	public field amplitude Lcom/amplitude/core/Amplitude;
 	public fun <init> (Lcom/amplitude/android/utilities/ActivityLifecycleObserver;)V
+	public fun execute (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
 	public fun getAmplitude ()Lcom/amplitude/core/Amplitude;
 	public fun getType ()Lcom/amplitude/core/platform/Plugin$Type;
 	public fun onActivityCreated (Landroid/app/Activity;Landroid/os/Bundle;)V
@@ -844,6 +848,7 @@ public final class com/amplitude/android/plugins/AndroidNetworkConnectivityCheck
 	public static final field Companion Lcom/amplitude/android/plugins/AndroidNetworkConnectivityCheckerPlugin$Companion;
 	public field amplitude Lcom/amplitude/core/Amplitude;
 	public fun <init> ()V
+	public fun execute (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
 	public fun getAmplitude ()Lcom/amplitude/core/Amplitude;
 	public fun getType ()Lcom/amplitude/core/platform/Plugin$Type;
 	public fun setAmplitude (Lcom/amplitude/core/Amplitude;)V

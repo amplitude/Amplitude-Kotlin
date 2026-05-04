@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import java.io.File
+import kotlin.io.path.createTempDirectory
 
 class DiagnosticsStorageTest {
     private lateinit var storageDir: File
@@ -30,7 +31,7 @@ class DiagnosticsStorageTest {
 
     @BeforeEach
     fun setup() {
-        storageDir = createTempDir(prefix = "diag-storage")
+        storageDir = createTempDirectory(prefix = "diag-storage").toFile()
     }
 
     @AfterEach

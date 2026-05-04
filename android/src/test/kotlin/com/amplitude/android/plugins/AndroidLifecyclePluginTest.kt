@@ -16,6 +16,7 @@ import com.amplitude.android.internal.fragments.FragmentActivityHandler
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.registerFragmentLifecycleCallbacks
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.unregisterFragmentLifecycleCallbacks
 import com.amplitude.android.utilities.ActivityLifecycleObserver
+import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.Storage
 import com.amplitude.core.utilities.InMemoryStorage
 import io.mockk.coVerify
@@ -40,6 +41,7 @@ import org.robolectric.RobolectricTestRunner
 
 @ExperimentalCoroutinesApi
 @RunWith(RobolectricTestRunner::class)
+@OptIn(RestrictedAmplitudeFeature::class)
 class AndroidLifecyclePluginTest {
     private val mockedContext = mockk<Application>(relaxed = true)
     private val mockedAmplitude = mockk<Amplitude>(relaxed = true)
