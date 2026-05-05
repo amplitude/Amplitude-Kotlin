@@ -1,3 +1,10 @@
+## [1.28.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.28.1...v1.28.2) (2026-05-05)
+
+
+### Bug Fixes
+
+* **autocapture:** always persist app version/build at SDK setup ([#407](https://github.com/amplitude/Amplitude-Kotlin/issues/407)) ([41f6423](https://github.com/amplitude/Amplitude-Kotlin/commit/41f64231c992e55de13b4716c25b9d97dc3a5e4a))
+
 ## [1.28.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.28.0...v1.28.1) (2026-04-16)
 
 
