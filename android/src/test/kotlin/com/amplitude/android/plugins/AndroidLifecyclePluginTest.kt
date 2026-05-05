@@ -122,7 +122,7 @@ class AndroidLifecyclePluginTest {
         }
 
     @Test
-    fun `test application installed event is not tracked when disabled`() =
+    fun `test application installed event is not tracked when disabled but storage is still persisted`() =
         runTest {
             every { mockedAmplitude.amplitudeScope } returns this
 
@@ -138,8 +138,62 @@ class AndroidLifecyclePluginTest {
                 )
             }
 
-            coVerify(exactly = 0) { spiedStorage.write(eq(Storage.Constants.APP_VERSION), any()) }
-            coVerify(exactly = 0) { spiedStorage.write(eq(Storage.Constants.APP_BUILD), any()) }
+            coVerify(exactly = 1) { spiedStorage.write(eq(Storage.Constants.APP_VERSION), any()) }
+            coVerify(exactly = 1) { spiedStorage.write(eq(Storage.Constants.APP_BUILD), any()) }
+
+            close()
+        }
+
+    @Test
+    fun `test no spurious installed event when APP_LIFECYCLES is enabled later for an existing device`() =
+        runTest {
+            mockAutocapture(emptySet())
+            every { mockedAmplitude.amplitudeScope } returns this
+
+            plugin.setup(mockedAmplitude)
+            advanceUntilIdle()
+
+            verify(exactly = 0) { mockedAmplitude.track(EventTypes.APPLICATION_INSTALLED, any(), any()) }
+            coVerify(exactly = 1) { spiedStorage.write(eq(Storage.Constants.APP_BUILD), any()) }
+
+            close()
+
+            mockAutocapture(setOf(AutocaptureOption.APP_LIFECYCLES))
+            observer = ActivityLifecycleObserver()
+            plugin = AndroidLifecyclePlugin(observer)
+            plugin.setup(mockedAmplitude)
+            advanceUntilIdle()
+
+            verify(exactly = 0) { mockedAmplitude.track(EventTypes.APPLICATION_INSTALLED, any(), any()) }
+            verify(exactly = 0) { mockedAmplitude.track(EventTypes.APPLICATION_UPDATED, any(), any()) }
+
+            close()
+        }
+
+    @Test
+    fun `test updated event fires when APP_LIFECYCLES is enabled later and build changed`() =
+        runTest {
+            mockAutocapture(emptySet())
+            every { mockedAmplitude.amplitudeScope } returns this
+            plugin.setup(mockedAmplitude)
+            advanceUntilIdle()
+            close()
+
+            val updatedPackageInfo =
+                PackageInfo().apply {
+                    versionCode = 777
+                    versionName = "7.0.0"
+                }
+            every { mockedPackageManager.getPackageInfo(any<String>(), any<Int>()) } returns updatedPackageInfo
+
+            mockAutocapture(setOf(AutocaptureOption.APP_LIFECYCLES))
+            observer = ActivityLifecycleObserver()
+            plugin = AndroidLifecyclePlugin(observer)
+            plugin.setup(mockedAmplitude)
+            advanceUntilIdle()
+
+            verify(exactly = 0) { mockedAmplitude.track(EventTypes.APPLICATION_INSTALLED, any(), any()) }
+            verify(exactly = 1) { mockedAmplitude.track(EventTypes.APPLICATION_UPDATED, any(), any()) }
 
             close()
         }
@@ -173,7 +227,7 @@ class AndroidLifecyclePluginTest {
         }
 
     @Test
-    fun `test application updated event is not tracked when disabled`() =
+    fun `test application updated event is not tracked when disabled but storage is still persisted`() =
         runTest {
             every { mockedAmplitude.amplitudeScope } returns this
 
@@ -192,8 +246,8 @@ class AndroidLifecyclePluginTest {
                 )
             }
 
-            coVerify(exactly = 1) { spiedStorage.write(eq(Storage.Constants.APP_VERSION), any()) }
-            coVerify(exactly = 1) { spiedStorage.write(eq(Storage.Constants.APP_BUILD), any()) }
+            coVerify(exactly = 2) { spiedStorage.write(eq(Storage.Constants.APP_VERSION), any()) }
+            coVerify(exactly = 2) { spiedStorage.write(eq(Storage.Constants.APP_BUILD), any()) }
 
             close()
         }
