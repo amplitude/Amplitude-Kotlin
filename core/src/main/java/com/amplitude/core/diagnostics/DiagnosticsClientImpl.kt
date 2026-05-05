@@ -192,7 +192,7 @@ internal class DiagnosticsClientImpl(
             )
 
         remoteConfigCallback?.let { callback ->
-            remoteConfigClient?.subscribe(RemoteConfigClient.Key.DIAGNOSTICS, callback)
+            remoteConfigClient?.subscribe(RemoteConfigClient.Key.DIAGNOSTICS, callback = callback)
         }
 
         channel.trySend(Update.InitializeTasks)

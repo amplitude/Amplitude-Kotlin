@@ -304,6 +304,7 @@ class AutocaptureManagerTest {
 
         override fun subscribe(
             key: RemoteConfigClient.Key,
+            deliveryMode: RemoteConfigClient.DeliveryMode,
             callback: RemoteConfigClient.RemoteConfigCallback,
         ) {
             if (key == RemoteConfigClient.Key.ANALYTICS_SDK) {

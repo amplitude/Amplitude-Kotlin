@@ -59,7 +59,7 @@ class NetworkTrackingPlugin(
                 RemoteConfigClient.RemoteConfigCallback { config, _, _ ->
                     handleRemoteConfig(config)
                 }
-            androidAmplitude.remoteConfigClient.subscribe(Key.ANALYTICS_SDK, remoteConfigCallback!!)
+            androidAmplitude.remoteConfigClient.subscribe(Key.ANALYTICS_SDK, callback = remoteConfigCallback!!)
         }
     }
 
