@@ -41,7 +41,7 @@ internal class AutocaptureManager(
                 RemoteConfigClient.RemoteConfigCallback { config, _, _ ->
                     handleRemoteConfig(config)
                 }
-            remoteConfigClient.subscribe(Key.ANALYTICS_SDK, remoteConfigCallback)
+            remoteConfigClient.subscribe(Key.ANALYTICS_SDK, callback = remoteConfigCallback)
         } else {
             remoteConfigCallback = null
         }

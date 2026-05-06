@@ -13,12 +13,15 @@ import com.amplitude.core.remoteconfig.RemoteConfigClient.Source.REMOTE
 import com.amplitude.core.utilities.http.HttpClient
 import com.amplitude.core.utilities.toJSONObject
 import com.amplitude.core.utilities.toMapObj
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import java.lang.ref.WeakReference
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Type alias for remote configuration map data.
@@ -35,6 +38,20 @@ interface RemoteConfigClient {
         REMOTE,
     }
 
+    /**
+     * Controls when the first config is delivered to a subscriber.
+     *
+     * Subsequent updates after the first delivery always flow through normally.
+     * Only the *initial* delivery semantics differ between modes.
+     */
+    sealed class DeliveryMode {
+        /** Deliver cached config immediately if available, then remote when it arrives. */
+        data object All : DeliveryMode()
+
+        /** Wait for remote up to [timeoutMs], then fall back to cache (or empty). */
+        class WaitForRemote(val timeoutMs: Long) : DeliveryMode()
+    }
+
     enum class Key(val value: String) {
         ANALYTICS_SDK("analyticsSDK.androidSDK"),
         DIAGNOSTICS("diagnostics.androidSDK"),
@@ -45,12 +62,10 @@ interface RemoteConfigClient {
     /**
      * Subscribe to remote configuration updates for a specific configuration key.
      * The callback will be invoked whenever the specific configuration is updated.
-     *
-     * @param key The configuration key to subscribe to (e.g., "sessionReplay.sr_android_sampling_config")
-     * @param callback RemoteConfigCallback that handles config updates
      */
     fun subscribe(
         key: Key,
+        deliveryMode: DeliveryMode = DeliveryMode.All,
         callback: RemoteConfigCallback,
     )
 
@@ -95,22 +110,88 @@ internal class RemoteConfigClientImpl(
     }
 
     /**
-     * Wrapper class for weak reference callbacks to prevent memory leaks
+     * Wrapper class for weak reference callbacks to prevent memory leaks.
+     *
+     * For [RemoteConfigClient.DeliveryMode.WaitForRemote] subscribers, the first
+     * delivery is gated by [firstDeliveryClaimed]: whichever path (remote arrival
+     * via [updateConfigs] or timeout fallback) claims the gate first delivers the
+     * initial callback; the other becomes a no-op for that first delivery.
+     * Subsequent deliveries always pass through.
      */
     private inner class WeakCallback(
         callback: RemoteConfigClient.RemoteConfigCallback,
+        private val firstDeliveryClaimed: AtomicBoolean? = null,
+        private val firstDeliverySignal: CompletableDeferred<Unit>? = null,
     ) {
         private val weakRef = WeakReference(callback)
 
+        /**
+         * Serializes all [RemoteConfigClient.RemoteConfigCallback.onUpdate]
+         * invocations for this subscriber. Without this lock, the timeout
+         * fallback and the remote fetch can invoke the callback concurrently
+         * from different dispatchers, causing unsynchronized state in the
+         * subscriber.
+         */
+        private val deliveryLock = Any()
+
         fun isAlive(): Boolean = weakRef.get() != null
 
+        /**
+         * Invoke [action] on the wrapped callback if it is still alive and, when
+         * gating is in effect, only if this invocation successfully claims the
+         * first-delivery slot. Subsequent invocations after the first delivery
+         * always pass through.
+         */
         fun runSafely(action: RemoteConfigClient.RemoteConfigCallback.() -> Unit) {
             val callback = weakRef.get() ?: return
-            try {
-                callback.action()
-            } catch (e: Exception) {
-                logger.error("Exception in subscriber callback: ${e.message}")
+
+            if (firstDeliveryClaimed != null) {
+                // Gated: claim the first-delivery slot if available.
+                val claimedFirst = firstDeliveryClaimed.compareAndSet(false, true)
+                if (claimedFirst) {
+                    // Signal before callback so a concurrent arrival sees it complete
+                    // and delivers as a subsequent update instead of being dropped.
+                    firstDeliverySignal?.complete(Unit)
+                } else {
+                    // Another path claimed the gate. Wait for it to complete its
+                    // delivery before proceeding with this subsequent update, ensuring
+                    // correct ordering (gate-winner delivers first, then this).
+                    kotlinx.coroutines.runBlocking {
+                        firstDeliverySignal?.await()
+                    }
+                }
             }
+
+            synchronized(deliveryLock) {
+                try {
+                    callback.action()
+                } catch (e: Exception) {
+                    logger.error("Exception in subscriber callback: ${e.message}")
+                }
+            }
+        }
+
+        /** Deliver only if this callback can still claim the first-delivery slot. */
+        fun runSafelyIfFirst(action: RemoteConfigClient.RemoteConfigCallback.() -> Unit): Boolean {
+            val callback = weakRef.get() ?: return false
+            val claimed = firstDeliveryClaimed?.compareAndSet(false, true) ?: return false
+            if (!claimed) return false
+
+            firstDeliverySignal?.complete(Unit)
+            synchronized(deliveryLock) {
+                try {
+                    callback.action()
+                } catch (e: Exception) {
+                    logger.error("Exception in subscriber callback: ${e.message}")
+                }
+            }
+            return true
+        }
+
+        /** True if gated (WaitForRemote) and first delivery hasn't fired yet. */
+        fun isAwaitingFirstDelivery(): Boolean {
+            val claimed = firstDeliveryClaimed ?: return false
+            return !claimed.get()
         }
     }
 
@@ -121,30 +202,24 @@ internal class RemoteConfigClientImpl(
     // Simple in-flight fetch guard; safe because networkIODispatcher is single-threaded
     private var isFetching: Boolean = false
 
-    /**
-     * Subscribe to remote configuration updates for a specific configuration key.
-     * The callback will be invoked whenever the specific configuration is updated.
-     *
-     * @param key The configuration key to subscribe to
-     * @param callback RemoteConfigCallback that handles config updates
-     */
     override fun subscribe(
+        key: Key,
+        deliveryMode: RemoteConfigClient.DeliveryMode,
+        callback: RemoteConfigClient.RemoteConfigCallback,
+    ) {
+        when (deliveryMode) {
+            is RemoteConfigClient.DeliveryMode.All -> subscribeAll(key, callback)
+            is RemoteConfigClient.DeliveryMode.WaitForRemote ->
+                subscribeWaitForRemote(key, deliveryMode.timeoutMs, callback)
+        }
+    }
+
+    private fun subscribeAll(
         key: Key,
         callback: RemoteConfigClient.RemoteConfigCallback,
     ) {
         val weakCallback = WeakCallback(callback)
-        val subscriberCount =
-            synchronized(subscriberLock) {
-                cleanupDeadReferencesLocked()
-                val subscriberList =
-                    keySpecificSubscribers.getOrPut(key.value) {
-                        mutableListOf()
-                    }
-                subscriberList.add(weakCallback)
-                subscriberList.size
-            }
-
-        logger.debug("Added subscriber for key: ${key.value}. Total subscribers: $subscriberCount")
+        registerSubscriber(key, weakCallback)
 
         // Immediately provide stored config if available
         val storedData = getStoredConfigData(key.value)
@@ -157,6 +232,75 @@ internal class RemoteConfigClientImpl(
 
         // Trigger remote fetch to ensure latest config is available
         updateConfigs()
+    }
+
+    private fun subscribeWaitForRemote(
+        key: Key,
+        timeoutMs: Long,
+        callback: RemoteConfigClient.RemoteConfigCallback,
+    ) {
+        // Gate first delivery — timeout and remote race; first to claim wins.
+        val firstDeliveryClaimed = AtomicBoolean(false)
+        val firstDeliverySignal = CompletableDeferred<Unit>()
+        val weakCallback =
+            WeakCallback(
+                callback = callback,
+                firstDeliveryClaimed = firstDeliveryClaimed,
+                firstDeliverySignal = firstDeliverySignal,
+            )
+        registerSubscriber(key, weakCallback)
+
+        updateConfigs()
+
+        // Timeout runs on coroutineScope's dispatcher (not networkIODispatcher)
+        // so it can fire even while the single-threaded network executor is busy.
+        coroutineScope.launch {
+            val signaled =
+                withTimeoutOrNull(timeoutMs) {
+                    firstDeliverySignal.await()
+                    true
+                }
+            if (signaled == null) {
+                // Timeout: fall back to cache (or empty). runSafelyIfFirst
+                // suppresses this if a remote delivery already claimed the gate.
+                val storedData = getStoredConfigData(key.value)
+                val config = storedData?.config ?: emptyMap()
+                val timestamp = storedData?.timestamp ?: System.currentTimeMillis()
+                val delivered =
+                    weakCallback.runSafelyIfFirst {
+                        onUpdate(config, CACHE, timestamp)
+                    }
+                if (delivered) {
+                    logger.debug(
+                        "WaitForRemote timed out after ${timeoutMs}ms for ${key.value}; " +
+                            "delivered ${if (storedData != null) "cache" else "empty"} fallback.",
+                    )
+                } else {
+                    logger.debug(
+                        "WaitForRemote timeout fired after ${timeoutMs}ms for ${key.value}, " +
+                            "but a fresh remote delivery already won; fallback suppressed.",
+                    )
+                }
+            }
+        }
+    }
+
+    private fun registerSubscriber(
+        key: Key,
+        weakCallback: WeakCallback,
+    ) {
+        val subscriberCount =
+            synchronized(subscriberLock) {
+                cleanupDeadReferencesLocked()
+                val subscriberList =
+                    keySpecificSubscribers.getOrPut(key.value) {
+                        mutableListOf()
+                    }
+                subscriberList.add(weakCallback)
+                subscriberList.size
+            }
+
+        logger.debug("Added subscriber for key: ${key.value}. Total subscribers: $subscriberCount")
     }
 
     /**
@@ -178,6 +322,10 @@ internal class RemoteConfigClientImpl(
                 isFetching = true
                 val configs = fetchRemoteConfig() ?: return@launch
 
+                // Snapshot old cache before overwriting — absent-key fallback
+                // needs the pre-fetch values, not the partial new response.
+                val preFetchCache = getAllStoredConfigs()
+
                 val timestamp = System.currentTimeMillis()
                 withContext(storageIODispatcher) {
                     storage.write(REMOTE_CONFIG, configs.toJSONObject().toString())
@@ -186,7 +334,6 @@ internal class RemoteConfigClientImpl(
                 }
 
                 configs.forEach { (configKey, config) ->
-                    // Notify all subscribers for this config key
                     val subscriberList =
                         synchronized(subscriberLock) {
                             keySpecificSubscribers[configKey]?.toList().orEmpty()
@@ -197,10 +344,57 @@ internal class RemoteConfigClientImpl(
                         }
                     }
                 }
+
+                // Unblock WaitForRemote subscribers whose key is absent from
+                // a successful fetch — no point waiting the full timeout.
+                notifyAbsentKeySubscribers(presentKeys = configs.keys, preFetchCache = preFetchCache)
             } catch (e: Exception) {
                 logger.error("Error updating remote configs: ${e.message}")
             } finally {
                 isFetching = false
+            }
+        }
+    }
+
+    /**
+     * For each registered subscriber whose key is *not* present in a fresh
+     * successful fetch, deliver the fallback (cache or empty) via the
+     * first-only delivery path so [RemoteConfigClient.DeliveryMode.WaitForRemote]
+     * gates resolve immediately instead of waiting for the timeout.
+     *
+     * Uses [WeakCallback.runSafelyIfFirst]: if a subscriber has already
+     * received its first delivery (e.g. timeout already fired), the call is a
+     * no-op. Subscribers using [RemoteConfigClient.DeliveryMode.All] also
+     * become no-ops because they aren't gated and cannot claim the gate.
+     */
+    private fun notifyAbsentKeySubscribers(
+        presentKeys: Set<String>,
+        preFetchCache: Map<String, ConfigMap>,
+    ) {
+        val absentSubscribers =
+            synchronized(subscriberLock) {
+                keySpecificSubscribers
+                    .filterKeys { it !in presentKeys }
+                    .mapValues { (_, subs) -> subs.toList() }
+            }
+        if (absentSubscribers.isEmpty()) return
+
+        absentSubscribers.forEach { (configKey, subscribers) ->
+            val cachedConfig = preFetchCache[configKey]
+            subscribers.forEach subscriber@{ weakCallback ->
+                if (!weakCallback.isAwaitingFirstDelivery()) return@subscriber
+                val config = cachedConfig ?: emptyMap()
+                val timestamp = System.currentTimeMillis()
+                val delivered =
+                    weakCallback.runSafelyIfFirst {
+                        onUpdate(config, CACHE, timestamp)
+                    }
+                if (delivered) {
+                    logger.debug(
+                        "WaitForRemote unblocked for $configKey: key absent from fetch; " +
+                            "delivered ${if (cachedConfig != null) "cache" else "empty"} fallback.",
+                    )
+                }
             }
         }
     }
@@ -392,16 +586,17 @@ internal class RemoteConfigClientImpl(
         return responseBody?.let { body ->
             try {
                 val responseJson = JSONObject(body)
+
+                // Handle configs-wrapped response format:
+                // Format: {"configs": {"sessionReplay": {...}}}
+                val configsRoot = responseJson.optJSONObject("configs")
+                if (configsRoot == null) {
+                    logger.warn("No 'configs' key found in response")
+                    return null
+                }
+
                 val result =
                     buildMap {
-                        // Handle configs-wrapped response format:
-                        // Format: {"configs": {"sessionReplay": {...}}}
-                        val configsRoot = responseJson.optJSONObject("configs")
-                        if (configsRoot == null) {
-                            logger.warn("No 'configs' key found in response")
-                            return null
-                        }
-
                         // Dynamically parse all top-level config objects
                         for (topLevelKey in configsRoot.keys()) {
                             val topLevelObj = configsRoot.optJSONObject(topLevelKey)
@@ -426,6 +621,15 @@ internal class RemoteConfigClientImpl(
                             }
                         }
                     }
+
+                if (result.isEmpty() && configsRoot.length() == 0) {
+                    // The "configs" root is present but empty — project has no
+                    // blades enabled. This is a valid server answer; return an
+                    // empty map so that downstream logic (notifyAbsentKeySubscribers)
+                    // can unblock WaitForRemote subscribers immediately.
+                    logger.debug("Server returned empty configs — project may have no blades enabled")
+                    return emptyMap()
+                }
 
                 if (result.isEmpty() || result.values.all { it.isEmpty() }) {
                     logger.warn("No valid configs found in response")

@@ -941,8 +941,24 @@ public final class com/amplitude/core/platform/plugins/GetAmpliExtrasPlugin$Comp
 }
 
 public abstract interface class com/amplitude/core/remoteconfig/RemoteConfigClient {
-	public abstract fun subscribe (Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;Lcom/amplitude/core/remoteconfig/RemoteConfigClient$RemoteConfigCallback;)V
+	public abstract fun subscribe (Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;Lcom/amplitude/core/remoteconfig/RemoteConfigClient$DeliveryMode;Lcom/amplitude/core/remoteconfig/RemoteConfigClient$RemoteConfigCallback;)V
+	public static synthetic fun subscribe$default (Lcom/amplitude/core/remoteconfig/RemoteConfigClient;Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;Lcom/amplitude/core/remoteconfig/RemoteConfigClient$DeliveryMode;Lcom/amplitude/core/remoteconfig/RemoteConfigClient$RemoteConfigCallback;ILjava/lang/Object;)V
 	public abstract fun updateConfigs ()V
+}
+
+public abstract class com/amplitude/core/remoteconfig/RemoteConfigClient$DeliveryMode {
+}
+
+public final class com/amplitude/core/remoteconfig/RemoteConfigClient$DeliveryMode$All : com/amplitude/core/remoteconfig/RemoteConfigClient$DeliveryMode {
+	public static final field INSTANCE Lcom/amplitude/core/remoteconfig/RemoteConfigClient$DeliveryMode$All;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/amplitude/core/remoteconfig/RemoteConfigClient$DeliveryMode$WaitForRemote : com/amplitude/core/remoteconfig/RemoteConfigClient$DeliveryMode {
+	public fun <init> (J)V
+	public final fun getTimeoutMs ()J
 }
 
 public final class com/amplitude/core/remoteconfig/RemoteConfigClient$Key : java/lang/Enum {
