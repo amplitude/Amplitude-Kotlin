@@ -18,6 +18,8 @@ import io.mockk.spyk
 import io.mockk.verify
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -25,6 +27,10 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 class RemoteConfigClientTest {
     private val storage = InMemoryStorage()
@@ -359,6 +365,88 @@ class RemoteConfigClientTest {
                 )
             }
         }
+
+    @Test
+    fun `concurrent subscribe and updateConfigs - no crash under heavy contention`() {
+        // Use real threads + real dispatchers to reproduce the race that a
+        // StandardTestDispatcher cannot. Pre-fix (commit 7cedc4b), cleanupDeadReferences
+        // iterating CopyOnWriteArrayList.removeAll concurrently with subscribers
+        // mutating the same list threw ArrayIndexOutOfBoundsException from
+        // AutocaptureManager.<init>, taking down SDK init.
+        val executorService = Executors.newFixedThreadPool(8)
+        val networkDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+        val storageDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher()
+        val scope = CoroutineScope(Dispatchers.Default)
+
+        val mockHttpClient = mockk<HttpClient>()
+        every { mockHttpClient.request(any()) } answers {
+            // Simulate network latency so fetches overlap subscribe calls.
+            Thread.sleep(2)
+            HttpClient.Response(
+                statusCode = 200,
+                body = DEFAULT_API_REMOTE_CONFIG_JSON.trimIndent(),
+                headers = emptyMap(),
+                statusMessage = "OK",
+            )
+        }
+
+        val client =
+            RemoteConfigClientImpl(
+                apiKey = "test-key",
+                serverZone = ServerZone.US,
+                coroutineScope = scope,
+                networkIODispatcher = networkDispatcher,
+                storageIODispatcher = storageDispatcher,
+                storage = InMemoryStorage(),
+                httpClient = mockHttpClient,
+                logger = silentLogger,
+            )
+
+        val iterations = 2_000
+        val errors = ConcurrentLinkedQueue<Throwable>()
+        val latch = CountDownLatch(iterations)
+
+        repeat(iterations) { i ->
+            executorService.submit {
+                try {
+                    val key =
+                        if (i % 2 == 0) {
+                            Key.SESSION_REPLAY_PRIVACY_CONFIG
+                        } else {
+                            Key.SESSION_REPLAY_SAMPLING_CONFIG
+                        }
+                    // Temp callback (not held) so some become dead references
+                    // and exercise cleanupDeadReferences' removeAll path.
+                    client.subscribe(key) { _, _, _ -> }
+
+                    if (i % 7 == 0) {
+                        client.updateConfigs()
+                    }
+
+                    if (i % 50 == 0) {
+                        System.gc()
+                    }
+                } catch (t: Throwable) {
+                    errors.add(t)
+                } finally {
+                    latch.countDown()
+                }
+            }
+        }
+
+        val finished = latch.await(30, TimeUnit.SECONDS)
+        executorService.shutdownNow()
+        executorService.awaitTermination(5, TimeUnit.SECONDS)
+        networkDispatcher.close()
+        storageDispatcher.close()
+
+        assertTrue(finished, "Test timed out waiting for tasks")
+        assertTrue(
+            errors.isEmpty(),
+            "Expected no errors, but got ${errors.size}: " +
+                errors.joinToString { "${it::class.simpleName}: ${it.message}" },
+        )
+    }
 
     // endregion Subscription Management
 
