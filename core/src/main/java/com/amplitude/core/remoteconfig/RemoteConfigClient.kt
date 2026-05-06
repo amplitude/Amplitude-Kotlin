@@ -152,6 +152,13 @@ internal class RemoteConfigClientImpl(
                     // Signal before callback so a concurrent arrival sees it complete
                     // and delivers as a subsequent update instead of being dropped.
                     firstDeliverySignal?.complete(Unit)
+                } else {
+                    // Another path claimed the gate. Wait for it to complete its
+                    // delivery before proceeding with this subsequent update, ensuring
+                    // correct ordering (gate-winner delivers first, then this).
+                    kotlinx.coroutines.runBlocking {
+                        firstDeliverySignal?.await()
+                    }
                 }
             }
 
