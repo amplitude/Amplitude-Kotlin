@@ -23,7 +23,6 @@ import com.amplitude.core.platform.Plugin.Type
 import com.amplitude.core.platform.Plugin.Type.Utility
 import com.amplitude.core.remoteconfig.ConfigMap
 import com.amplitude.core.remoteconfig.RemoteConfigClient
-import com.amplitude.core.remoteconfig.RemoteConfigClient.Key
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.Interceptor.Chain
@@ -59,7 +58,7 @@ class NetworkTrackingPlugin(
                 RemoteConfigClient.RemoteConfigCallback { config, _, _ ->
                     handleRemoteConfig(config)
                 }
-            androidAmplitude.remoteConfigClient.subscribe(Key.ANALYTICS_SDK, callback = remoteConfigCallback!!)
+            androidAmplitude.remoteConfigClient.subscribe(RemoteConfigClient.Key.AnalyticsSdk, callback = remoteConfigCallback!!)
         }
     }
 

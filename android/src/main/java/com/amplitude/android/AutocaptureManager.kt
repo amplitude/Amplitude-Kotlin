@@ -5,7 +5,6 @@ import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.diagnostics.DiagnosticsClient
 import com.amplitude.core.remoteconfig.ConfigMap
 import com.amplitude.core.remoteconfig.RemoteConfigClient
-import com.amplitude.core.remoteconfig.RemoteConfigClient.Key
 import com.amplitude.core.remoteconfig.getBoolean
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -41,7 +40,7 @@ internal class AutocaptureManager(
                 RemoteConfigClient.RemoteConfigCallback { config, _, _ ->
                     handleRemoteConfig(config)
                 }
-            remoteConfigClient.subscribe(Key.ANALYTICS_SDK, callback = remoteConfigCallback)
+            remoteConfigClient.subscribe(RemoteConfigClient.Key.AnalyticsSdk, callback = remoteConfigCallback)
         } else {
             remoteConfigCallback = null
         }

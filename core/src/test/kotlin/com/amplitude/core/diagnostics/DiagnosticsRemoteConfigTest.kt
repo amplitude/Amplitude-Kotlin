@@ -157,7 +157,7 @@ class DiagnosticsRemoteConfigTest {
             deliveryMode: RemoteConfigClient.DeliveryMode,
             callback: RemoteConfigClient.RemoteConfigCallback,
         ) {
-            if (key == RemoteConfigClient.Key.DIAGNOSTICS) {
+            if (key == RemoteConfigClient.Key.Diagnostics) {
                 callbacks.add(callback)
             }
         }

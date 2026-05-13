@@ -961,15 +961,49 @@ public final class com/amplitude/core/remoteconfig/RemoteConfigClient$DeliveryMo
 	public final fun getTimeoutMs ()J
 }
 
-public final class com/amplitude/core/remoteconfig/RemoteConfigClient$Key : java/lang/Enum {
-	public static final field ANALYTICS_SDK Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;
-	public static final field DIAGNOSTICS Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;
-	public static final field SESSION_REPLAY_PRIVACY_CONFIG Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;
-	public static final field SESSION_REPLAY_SAMPLING_CONFIG Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;
-	public static fun getEntries ()Lkotlin/enums/EnumEntries;
-	public final fun getValue ()Ljava/lang/String;
-	public static fun valueOf (Ljava/lang/String;)Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;
-	public static fun values ()[Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key;
+public abstract class com/amplitude/core/remoteconfig/RemoteConfigClient$Key {
+	public static final field Companion Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key$Companion;
+	public synthetic fun <init> (Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
+	public fun getValue ()Ljava/lang/String;
+}
+
+public final class com/amplitude/core/remoteconfig/RemoteConfigClient$Key$AnalyticsSdk : com/amplitude/core/remoteconfig/RemoteConfigClient$Key {
+	public static final field INSTANCE Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key$AnalyticsSdk;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/amplitude/core/remoteconfig/RemoteConfigClient$Key$Companion {
+}
+
+public final class com/amplitude/core/remoteconfig/RemoteConfigClient$Key$Custom : com/amplitude/core/remoteconfig/RemoteConfigClient$Key {
+	public fun <init> (Ljava/lang/String;)V
+	public fun equals (Ljava/lang/Object;)Z
+	public fun getValue ()Ljava/lang/String;
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/amplitude/core/remoteconfig/RemoteConfigClient$Key$Diagnostics : com/amplitude/core/remoteconfig/RemoteConfigClient$Key {
+	public static final field INSTANCE Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key$Diagnostics;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/amplitude/core/remoteconfig/RemoteConfigClient$Key$SessionReplayPrivacyConfig : com/amplitude/core/remoteconfig/RemoteConfigClient$Key {
+	public static final field INSTANCE Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key$SessionReplayPrivacyConfig;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
+}
+
+public final class com/amplitude/core/remoteconfig/RemoteConfigClient$Key$SessionReplaySamplingConfig : com/amplitude/core/remoteconfig/RemoteConfigClient$Key {
+	public static final field INSTANCE Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key$SessionReplaySamplingConfig;
+	public fun equals (Ljava/lang/Object;)Z
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
 }
 
 public abstract interface class com/amplitude/core/remoteconfig/RemoteConfigClient$RemoteConfigCallback {

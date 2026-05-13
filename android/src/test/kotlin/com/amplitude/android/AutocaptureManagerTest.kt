@@ -307,7 +307,7 @@ class AutocaptureManagerTest {
             deliveryMode: RemoteConfigClient.DeliveryMode,
             callback: RemoteConfigClient.RemoteConfigCallback,
         ) {
-            if (key == RemoteConfigClient.Key.ANALYTICS_SDK) {
+            if (key == RemoteConfigClient.Key.AnalyticsSdk) {
                 callbacks.add(callback)
             }
         }

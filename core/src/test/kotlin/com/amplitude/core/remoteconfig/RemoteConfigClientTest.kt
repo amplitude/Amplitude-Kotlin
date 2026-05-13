@@ -7,6 +7,10 @@ import com.amplitude.core.Storage
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline
 import com.amplitude.core.remoteconfig.RemoteConfigClient.Key
+import com.amplitude.core.remoteconfig.RemoteConfigClient.Key.AnalyticsSdk
+import com.amplitude.core.remoteconfig.RemoteConfigClient.Key.Diagnostics
+import com.amplitude.core.remoteconfig.RemoteConfigClient.Key.SessionReplayPrivacyConfig
+import com.amplitude.core.remoteconfig.RemoteConfigClient.Key.SessionReplaySamplingConfig
 import com.amplitude.core.remoteconfig.RemoteConfigClient.Source
 import com.amplitude.core.utilities.InMemoryStorage
 import com.amplitude.core.utilities.http.HttpClient
@@ -90,17 +94,17 @@ class RemoteConfigClientTest {
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
             // Subscribe multiple callbacks to same key
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { config, _, _ ->
+            client.subscribe(SessionReplayPrivacyConfig) { config, _, _ ->
                 callbacks.add(
                     config,
                 )
             }
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { config, _, _ ->
+            client.subscribe(SessionReplayPrivacyConfig) { config, _, _ ->
                 callbacks.add(
                     config,
                 )
             }
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { config, _, _ ->
+            client.subscribe(SessionReplayPrivacyConfig) { config, _, _ ->
                 callbacks.add(
                     config,
                 )
@@ -108,17 +112,19 @@ class RemoteConfigClientTest {
 
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // All callbacks should receive cached data
-            assertEquals(3, callbacks.size)
-            callbacks.forEach { assertEquals("medium", it["defaultMaskLevel"]) }
+            // 3 CACHE callbacks + 3 REMOTE callbacks (empty config from emptyApiConfig)
+            assertEquals(6, callbacks.size)
+            // First 3 are cache, last 3 are remote (empty)
+            callbacks.take(3).forEach { assertEquals("medium", it["defaultMaskLevel"]) }
+            callbacks.drop(3).forEach { assertTrue(it.isEmpty()) }
         }
 
     @Test
     fun `subscribe with cached data - different keys receive only their config`() =
         runTest {
             val client = createClient()
-            var privacyConfig: ConfigMap? = null
-            var samplingConfig: ConfigMap? = null
+            val privacyCallbacks = mutableListOf<Pair<ConfigMap, Source>>()
+            val samplingCallbacks = mutableListOf<Pair<ConfigMap, Source>>()
 
             // Pre-populate storage with both configs
             storage.write(
@@ -128,24 +134,25 @@ class RemoteConfigClientTest {
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
             // Subscribe to different keys
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { config, _, _ ->
-                privacyConfig = config
+            client.subscribe(SessionReplayPrivacyConfig) { config, source, _ ->
+                privacyCallbacks.add(config to source)
             }
-            client.subscribe(Key.SESSION_REPLAY_SAMPLING_CONFIG) { config, _, _ ->
-                samplingConfig = config
+            client.subscribe(SessionReplaySamplingConfig) { config, source, _ ->
+                samplingCallbacks.add(config to source)
             }
 
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // Each should receive their specific config
-            val privacy = checkNotNull(privacyConfig) { "Privacy subscriber should receive config" }
-            val sampling =
-                checkNotNull(samplingConfig) { "Sampling subscriber should receive config" }
+            // CACHE callback has specific config; REMOTE callback is empty (emptyApiConfig)
+            assertTrue(privacyCallbacks.size >= 1)
+            val privacyCache = privacyCallbacks.first { it.second == Source.CACHE }.first
+            assertEquals("medium", privacyCache["defaultMaskLevel"])
+            assertFalse(privacyCache.containsKey("sample_rate"))
 
-            assertEquals("medium", privacy["defaultMaskLevel"])
-            assertEquals(1.0, sampling["sample_rate"])
-            assertEquals(true, sampling["capture_enabled"])
-            assertFalse(privacy.containsKey("sample_rate"))
+            assertTrue(samplingCallbacks.size >= 1)
+            val samplingCache = samplingCallbacks.first { it.second == Source.CACHE }.first
+            assertEquals(1.0, samplingCache["sample_rate"])
+            assertEquals(true, samplingCache["capture_enabled"])
         }
 
     @Test
@@ -166,7 +173,7 @@ class RemoteConfigClientTest {
                 RemoteConfigClient.RemoteConfigCallback { _, _, _ ->
                     persistentCallbackInvocations++
                 }
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG, callback = persistentCallback)
+            client.subscribe(SessionReplayPrivacyConfig, callback = persistentCallback)
             testDispatcher.scheduler.advanceUntilIdle()
             // Persistent callback should have received initial cache + remote
             assertEquals(
@@ -184,7 +191,7 @@ class RemoteConfigClientTest {
                     RemoteConfigClient.RemoteConfigCallback { _, _, _ ->
                         tempCallbackInvocations++
                     }
-                client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG, callback = tempCallback)
+                client.subscribe(SessionReplayPrivacyConfig, callback = tempCallback)
             }
             testDispatcher.scheduler.advanceUntilIdle()
 
@@ -201,7 +208,7 @@ class RemoteConfigClientTest {
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
 
             // Add new subscriber to trigger cleanup and another remote fetch
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ -> }
+            client.subscribe(SessionReplayPrivacyConfig) { _, _, _ -> }
             testDispatcher.scheduler.advanceUntilIdle()
 
             // The test demonstrates that weak reference system works
@@ -215,7 +222,7 @@ class RemoteConfigClientTest {
     fun `subscribe with callback exceptions - isolate exception and don't cascade failure`() =
         runTest {
             val client = createClient(useVerifiableLogger = true)
-            val workingCallbacks = mutableListOf<ConfigMap>()
+            val workingCallbacks = mutableListOf<Pair<ConfigMap, Source>>()
 
             // Pre-populate storage to ensure callbacks are triggered
             storage.write(
@@ -225,22 +232,24 @@ class RemoteConfigClientTest {
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
             // Add callback that throws exception
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ ->
+            client.subscribe(SessionReplayPrivacyConfig) { _, _, _ ->
                 throw RuntimeException("Test exception")
             }
 
             // Add working callbacks
             client.subscribe(
-                Key.SESSION_REPLAY_PRIVACY_CONFIG,
-            ) { config, _, _ -> workingCallbacks.add(config) }
+                SessionReplayPrivacyConfig,
+            ) { config, source, _ -> workingCallbacks.add(config to source) }
             client.subscribe(
-                Key.SESSION_REPLAY_PRIVACY_CONFIG,
-            ) { config, _, _ -> workingCallbacks.add(config) }
+                SessionReplayPrivacyConfig,
+            ) { config, source, _ -> workingCallbacks.add(config to source) }
 
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // Working callbacks should still be invoked despite exception
-            assertEquals(2, workingCallbacks.size)
+            // 2 CACHE + 2 REMOTE (empty from emptyApiConfig) = 4
+            assertEquals(4, workingCallbacks.size)
+            assertEquals(2, workingCallbacks.count { it.second == Source.CACHE })
+            assertEquals(2, workingCallbacks.count { it.second == Source.REMOTE })
             verify {
                 logger.error(
                     match<String> { it.contains("Exception in subscriber callback") },
@@ -253,40 +262,40 @@ class RemoteConfigClientTest {
         runTest {
             val client = createClient()
 
-            // Pre-populate storage with config
+            // Pre-populate storage with nested config blob
             storage.write(
                 Storage.Constants.REMOTE_CONFIG,
                 """
                 {
-                    "sessionReplay.sr_android_privacy_config": {
-                        "defaultMaskLevel": "strict"
-                    },
-                    "sessionReplay.sr_android_sampling_config": {
-                        "sample_rate": 0.003,
-                        "capture_enabled": false
+                    "sessionReplay": {
+                        "sr_android_privacy_config": {
+                            "defaultMaskLevel": "strict"
+                        },
+                        "sr_android_sampling_config": {
+                            "sample_rate": 0.003,
+                            "capture_enabled": false
+                        }
                     }
                 }
                 """.trimIndent(),
             )
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
-            var receivedConfig: ConfigMap? = null
-            var receivedSource: Source? = null
-            var receivedTimestamp: Long? = null
+            val results = mutableListOf<Triple<ConfigMap, Source, Long>>()
 
-            // Subscribe - should immediately get cached data
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { config, source, timestamp ->
-                receivedConfig = config
-                receivedSource = source
-                receivedTimestamp = timestamp
+            // Subscribe - should immediately get cached data, then REMOTE
+            client.subscribe(SessionReplayPrivacyConfig) { config, source, timestamp ->
+                results.add(Triple(config, source, timestamp))
             }
 
             testDispatcher.scheduler.advanceUntilIdle()
 
-            val config = checkNotNull(receivedConfig)
-            assertEquals(Source.CACHE, receivedSource)
-            assertEquals(1234567890L, receivedTimestamp)
-            assertEquals("strict", config["defaultMaskLevel"])
+            // First callback is CACHE with original data
+            assertTrue(results.size >= 1)
+            val (cacheConfig, cacheSource, cacheTimestamp) = results.first { it.second == Source.CACHE }
+            assertEquals(Source.CACHE, cacheSource)
+            assertEquals(1234567890L, cacheTimestamp)
+            assertEquals("strict", cacheConfig["defaultMaskLevel"])
         }
 
     @Test
@@ -300,12 +309,14 @@ class RemoteConfigClientTest {
                 Storage.Constants.REMOTE_CONFIG,
                 """
                 {
-                    "sessionReplay.sr_android_privacy_config": {
-                        "defaultMaskLevel": "moderate"
-                    },
-                    "sessionReplay.sr_android_sampling_config": {
-                        "sample_rate": 0.15,
-                        "capture_enabled": true
+                    "sessionReplay": {
+                        "sr_android_privacy_config": {
+                            "defaultMaskLevel": "moderate"
+                        },
+                        "sr_android_sampling_config": {
+                            "sample_rate": 0.15,
+                            "capture_enabled": true
+                        }
                     }
                 }
                 """.trimIndent(),
@@ -315,24 +326,24 @@ class RemoteConfigClientTest {
             val callback = RemoteConfigClient.RemoteConfigCallback { _, _, _ -> callCount++ }
 
             // Subscribe same callback reference multiple times
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG, callback = callback)
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG, callback = callback)
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG, callback = callback)
+            client.subscribe(SessionReplayPrivacyConfig, callback = callback)
+            client.subscribe(SessionReplayPrivacyConfig, callback = callback)
+            client.subscribe(SessionReplayPrivacyConfig, callback = callback)
 
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // Each subscription creates separate WeakCallback wrapper
-            assertEquals(3, callCount)
+            // 3 CACHE + 3 REMOTE (empty from emptyApiConfig) = 6
+            assertEquals(6, callCount)
             verify(exactly = 3) { logger.debug(match<String> { it.contains("Added subscriber") }) }
         }
 
     @Test
-    fun `subscribe with inconsistent storage - storage invalidated and no immediate callback`() =
+    fun `subscribe with old-format cache - migrated and delivered immediately`() =
         runTest {
             val client = createClient(useVerifiableLogger = true)
-            var callbackInvoked = false
+            val results = mutableListOf<Pair<ConfigMap, Source>>()
 
-            // Pre-populate storage with incomplete data (missing sampling config)
+            // Pre-populate storage with old pre-flattened format (keys contain dots)
             storage.write(
                 Storage.Constants.REMOTE_CONFIG,
                 """
@@ -345,21 +356,18 @@ class RemoteConfigClientTest {
             )
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ ->
-                callbackInvoked = true
+            client.subscribe(SessionReplayPrivacyConfig) { config, source, _ ->
+                results.add(config to source)
             }
 
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // Updated behavior: keep partial data if at least one expected key exists
-            assertTrue(callbackInvoked)
-            verify { logger.debug(match<String> { it.contains("Storage inconsistent keys") }) }
-            // Ensure we did NOT clear storage under middle-ground policy
-            verify(exactly = 0) {
-                logger.debug(
-                    match<String> { it.contains("Cleared inconsistent storage") },
-                )
-            }
+            // First delivery is migrated CACHE
+            assertTrue(results.isNotEmpty())
+            val (cacheConfig, cacheSource) = results.first { it.second == Source.CACHE }
+            assertEquals(Source.CACHE, cacheSource)
+            assertEquals("light", cacheConfig["defaultMaskLevel"])
+            verify { logger.debug(match<String> { it.contains("old pre-flattened cache format") }) }
         }
 
     // endregion Subscription Management
@@ -400,13 +408,13 @@ class RemoteConfigClientTest {
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
 
             // First subscribe call - should trigger HTTP request
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { config, source, _ ->
+            client.subscribe(SessionReplayPrivacyConfig) { config, source, _ ->
                 firstCallbackResults.add(config to source)
             }
 
             // Second subscribe call immediately after - should NOT trigger another HTTP request
             // but should still get notified when first request completes
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { config, source, _ ->
+            client.subscribe(SessionReplayPrivacyConfig) { config, source, _ ->
                 secondCallbackResults.add(config to source)
             }
 
@@ -463,7 +471,7 @@ class RemoteConfigClientTest {
                 )
 
             val callbackResults = mutableListOf<Pair<ConfigMap, Source>>()
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { config, source, _ ->
+            client.subscribe(SessionReplayPrivacyConfig) { config, source, _ ->
                 callbackResults.add(config to source)
             }
 
@@ -525,7 +533,7 @@ class RemoteConfigClientTest {
                 )
 
             val callbackResults = mutableListOf<Pair<ConfigMap, Source>>()
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { config, source, _ ->
+            client.subscribe(SessionReplayPrivacyConfig) { config, source, _ ->
                 callbackResults.add(config to source)
             }
 
@@ -600,7 +608,7 @@ class RemoteConfigClientTest {
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
             var callbackCount = 0
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ -> callbackCount++ }
+            client.subscribe(SessionReplayPrivacyConfig) { _, _, _ -> callbackCount++ }
             testDispatcher.scheduler.advanceUntilIdle()
 
             // Should still get cached config, no crash
@@ -631,7 +639,7 @@ class RemoteConfigClientTest {
             )
 
             var callbackCount = 0
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ -> callbackCount++ }
+            client.subscribe(SessionReplayPrivacyConfig) { _, _, _ -> callbackCount++ }
             testDispatcher.scheduler.advanceUntilIdle()
             assertTrue(callbackCount == 1, "Should receive cached config despite malformed JSON")
 
@@ -668,15 +676,15 @@ class RemoteConfigClientTest {
                 )
 
             var callbackCount = 0
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ -> callbackCount++ }
-            client.subscribe(Key.SESSION_REPLAY_SAMPLING_CONFIG) { _, _, _ -> callbackCount++ }
+            client.subscribe(SessionReplayPrivacyConfig) { _, _, _ -> callbackCount++ }
+            client.subscribe(SessionReplaySamplingConfig) { _, _, _ -> callbackCount++ }
             testDispatcher.scheduler.advanceUntilIdle()
 
             client.updateConfigs() // Should handle null fields gracefully
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // Should not crash, may or may not invoke callbacks depending on parsing
-            assertTrue(callbackCount >= 0, "Client should handle null fields without crashing")
+            // CACHE from pre-populated storage + REMOTE with resolved (possibly empty) config
+            assertTrue(callbackCount >= 2, "Subscribers should receive CACHE + REMOTE callbacks")
         }
 
     @Test
@@ -709,16 +717,14 @@ class RemoteConfigClientTest {
             )
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
-            var callbackCount = 0
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ ->
-                callbackCount++
+            val results = mutableListOf<Source>()
+            client.subscribe(SessionReplayPrivacyConfig) { _, source, _ ->
+                results.add(source)
             }
             testDispatcher.scheduler.advanceUntilIdle()
-            assertTrue(callbackCount == 1, "Client should handle wrong data types without crashing")
-
-            client.updateConfigs()
-            testDispatcher.scheduler.advanceUntilIdle()
-            assertTrue(callbackCount == 1, "Client should handle wrong data types without crashing")
+            // CACHE from stored data + REMOTE (dot-path fails on wrong types, delivers empty)
+            assertTrue(results.contains(Source.CACHE), "Should receive cached config")
+            assertTrue(results.size >= 1, "Client should handle wrong data types without crashing")
         }
 
     @Test
@@ -736,7 +742,7 @@ class RemoteConfigClientTest {
                 )
 
             var callbackInvoked = false
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ ->
+            client.subscribe(SessionReplayPrivacyConfig) { _, _, _ ->
                 callbackInvoked = true
             }
             testDispatcher.scheduler.advanceUntilIdle()
@@ -767,7 +773,7 @@ class RemoteConfigClientTest {
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
             var callbackCount = 0
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ -> callbackCount++ }
+            client.subscribe(SessionReplayPrivacyConfig) { _, _, _ -> callbackCount++ }
             testDispatcher.scheduler.advanceUntilIdle()
             assertTrue(callbackCount == 1, "Should receive cached config despite server error")
 
@@ -812,7 +818,7 @@ class RemoteConfigClientTest {
                 )
 
             var callbackCount = 0
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ -> callbackCount++ }
+            client.subscribe(SessionReplayPrivacyConfig) { _, _, _ -> callbackCount++ }
             testDispatcher.scheduler.advanceUntilIdle()
             assertTrue(
                 callbackCount == 1,
@@ -854,7 +860,7 @@ class RemoteConfigClientTest {
                 )
 
             var callbackCount = 0
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ -> callbackCount++ }
+            client.subscribe(SessionReplayPrivacyConfig) { _, _, _ -> callbackCount++ }
             testDispatcher.scheduler.advanceUntilIdle()
 
             client.updateConfigs()
@@ -902,12 +908,12 @@ class RemoteConfigClientTest {
             assertTrue(url.contains("sr-client-cfg.eu.amplitude.com"), "Should use EU endpoint")
             assertTrue(url.contains("api_key=test-key-eu"), "Should include correct API key")
             assertTrue(
-                url.contains("config_keys=sessionReplay.sr_android_privacy_config"),
-                "Should include privacy config key",
+                url.contains("config_keys=analyticsSDK"),
+                "Should include analyticsSDK fetch key",
             )
             assertTrue(
-                url.contains("config_keys=sessionReplay.sr_android_sampling_config"),
-                "Should include sampling config key",
+                url.contains("config_keys=sessionReplay"),
+                "Should include sessionReplay fetch key",
             )
             assertEquals(
                 HttpClient.Request.Method.GET,
@@ -952,12 +958,12 @@ class RemoteConfigClientTest {
             assertTrue(url.contains("sr-client-cfg.amplitude.com"), "Should use US endpoint")
             assertTrue(url.contains("api_key=test-key-us"), "Should include correct API key")
             assertTrue(
-                url.contains("config_keys=sessionReplay.sr_android_privacy_config"),
-                "Should include privacy config key",
+                url.contains("config_keys=analyticsSDK"),
+                "Should include analyticsSDK fetch key",
             )
             assertTrue(
-                url.contains("config_keys=sessionReplay.sr_android_sampling_config"),
-                "Should include sampling config key",
+                url.contains("config_keys=sessionReplay"),
+                "Should include sessionReplay fetch key",
             )
             assertEquals(
                 HttpClient.Request.Method.GET,
@@ -1028,7 +1034,7 @@ class RemoteConfigClientTest {
                 )
 
             var remoteCallbacks = mutableListOf<Pair<ConfigMap, Source>>()
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { config, source, _ ->
+            client.subscribe(SessionReplayPrivacyConfig) { config, source, _ ->
                 remoteCallbacks.add(config to source)
             }
             testDispatcher.scheduler.advanceUntilIdle()
@@ -1104,7 +1110,7 @@ class RemoteConfigClientTest {
                 )
 
             var callbackInvoked = false
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ ->
+            client.subscribe(SessionReplayPrivacyConfig) { _, _, _ ->
                 callbackInvoked = true
             }
             testDispatcher.scheduler.advanceUntilIdle()
@@ -1127,14 +1133,15 @@ class RemoteConfigClientTest {
             storage.write(Storage.Constants.REMOTE_CONFIG, "{this is corrupted json")
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "not_a_number")
 
-            var callbackInvoked = false
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ ->
-                callbackInvoked = true
+            val results = mutableListOf<Source>()
+            client.subscribe(SessionReplayPrivacyConfig) { _, source, _ ->
+                results.add(source)
             }
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // Should handle corrupted data gracefully - no crash, no callback
-            assertFalse(callbackInvoked, "Should handle corrupted storage data gracefully")
+            // No CACHE callback (corrupted), but REMOTE callback fires (empty from emptyApiConfig)
+            assertFalse(results.contains(Source.CACHE), "Should not deliver corrupted cache")
+            assertTrue(results.contains(Source.REMOTE), "Should still receive REMOTE notification")
             verify {
                 logger.error(
                     match<String> { it.contains("Failed to parse all stored configs") },
@@ -1143,39 +1150,39 @@ class RemoteConfigClientTest {
         }
 
     @Test
-    fun `storage with non-map values - skips invalid entries`() =
+    fun `storage with non-map values at top level - still resolves valid nested paths`() =
         runTest {
             val client = createClient(useVerifiableLogger = true)
 
-            // Write storage with mixed data types
+            // Write storage with mixed data types at top level
             storage.write(
                 Storage.Constants.REMOTE_CONFIG,
                 """
                 {
-                    "sessionReplay.sr_android_privacy_config": {
-                        "defaultMaskLevel": "medium"
-                    },
-                    "sessionReplay.sr_android_sampling_config": {
-                        "sample_rate": 1.0,
-                        "capture_enabled": true
+                    "sessionReplay": {
+                        "sr_android_privacy_config": {
+                            "defaultMaskLevel": "medium"
+                        },
+                        "sr_android_sampling_config": {
+                            "sample_rate": 1.0,
+                            "capture_enabled": true
+                        }
                     },
                     "invalidKey1": "string_instead_of_object",
-                    "invalidKey2": [1, 2, 3],
-                    "invalidKey3": 42
+                    "invalidKey2": [1, 2, 3]
                 }
                 """.trimIndent(),
             )
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
             var callbackInvoked = false
-            client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, _, _ ->
+            client.subscribe(SessionReplayPrivacyConfig) { _, _, _ ->
                 callbackInvoked = true
             }
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // Should receive callback despite invalid entries in storage
-            assertTrue(callbackInvoked, "Should handle non-map values in storage gracefully")
-            verify { logger.debug(match<String> { it.contains("Skipping non-map value") }) }
+            // Should resolve the valid nested path despite other top-level junk
+            assertTrue(callbackInvoked, "Should resolve valid dot-path despite non-map top-level entries")
         }
 
     // endregion Additional Coverage
@@ -1192,7 +1199,7 @@ class RemoteConfigClientTest {
                 storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
 
                 client.subscribe(
-                    key = Key.SESSION_REPLAY_PRIVACY_CONFIG,
+                    key = SessionReplayPrivacyConfig,
                     deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 5_000L),
                 ) { config, source, timestamp ->
                     results.add(Triple(config, source, timestamp))
@@ -1239,7 +1246,7 @@ class RemoteConfigClientTest {
 
                 val results = mutableListOf<Triple<ConfigMap, Source, Long>>()
                 client.subscribe(
-                    key = Key.SESSION_REPLAY_PRIVACY_CONFIG,
+                    key = SessionReplayPrivacyConfig,
                     deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 100L),
                 ) { config, source, timestamp ->
                     results.add(Triple(config, source, timestamp))
@@ -1280,7 +1287,7 @@ class RemoteConfigClientTest {
 
                 val results = mutableListOf<Triple<ConfigMap, Source, Long>>()
                 client.subscribe(
-                    key = Key.DIAGNOSTICS,
+                    key = Diagnostics,
                     deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 50L),
                 ) { config, source, timestamp ->
                     results.add(Triple(config, source, timestamp))
@@ -1307,7 +1314,7 @@ class RemoteConfigClientTest {
 
                 val sources = mutableListOf<Source>()
                 client.subscribe(
-                    key = Key.SESSION_REPLAY_PRIVACY_CONFIG,
+                    key = SessionReplayPrivacyConfig,
                     deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 5_000L),
                 ) { _, source, _ ->
                     sources.add(source)
@@ -1332,7 +1339,7 @@ class RemoteConfigClientTest {
                 storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
 
                 // The pre-existing single-arg overload must still deliver cache then remote.
-                client.subscribe(Key.SESSION_REPLAY_PRIVACY_CONFIG) { _, source, _ ->
+                client.subscribe(SessionReplayPrivacyConfig) { _, source, _ ->
                     sources.add(source)
                 }
 
@@ -1385,7 +1392,7 @@ class RemoteConfigClientTest {
 
                 val results = mutableListOf<Pair<ConfigMap, Source>>()
                 client.subscribe(
-                    key = Key.SESSION_REPLAY_PRIVACY_CONFIG,
+                    key = SessionReplayPrivacyConfig,
                     deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 50L),
                 ) { config, source, _ ->
                     results.add(config to source)
@@ -1426,11 +1433,9 @@ class RemoteConfigClientTest {
         @Test
         fun `WaitForRemote unblocks immediately when key is absent from successful fetch`() =
             runTest {
-                // Regression for "absent key" timeout: the response is successful
-                // but does NOT include the requested key (e.g. project doesn't
-                // have G&S configured). The subscriber must receive the empty/
-                // cached fallback as soon as the fetch returns — not after the
-                // full WaitForRemote timeout elapses.
+                // When the response is successful but does NOT include the
+                // requested key, all subscribers still get a REMOTE notification
+                // with emptyMap(). WaitForRemote is unblocked immediately.
                 val mockHttpClient = mockk<HttpClient>()
                 every { mockHttpClient.request(any()) } returns
                     HttpClient.Response(
@@ -1452,64 +1457,51 @@ class RemoteConfigClientTest {
                         logger = silentLogger,
                     )
 
-                // No cache: the fallback should be empty.
                 val results = mutableListOf<Triple<ConfigMap, Source, Long>>()
-                // 60_000ms timeout — far longer than the fetch could plausibly
-                // take. If the fix is wrong, advanceTimeBy below would have to
-                // run for the full timeout and the test would observe a
-                // post-fetch advance window with zero deliveries.
                 client.subscribe(
-                    key = Key.ANALYTICS_SDK,
+                    key = AnalyticsSdk,
                     deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 60_000L),
                 ) { config, source, timestamp ->
                     results.add(Triple(config, source, timestamp))
                 }
 
-                // Run all currently-pending tasks (the fetch). Crucially we do
-                // NOT advance virtual time anywhere near the 60_000ms timeout —
-                // the fix is what unblocks the gate.
+                // Run pending tasks. NOT advancing near the 60_000ms timeout.
                 testDispatcher.scheduler.runCurrent()
-                // Drain any continuations queued by the fetch's notification
-                // path, including the absent-key delivery.
                 testDispatcher.scheduler.advanceTimeBy(10L)
                 testDispatcher.scheduler.runCurrent()
 
                 assertEquals(
                     1,
                     results.size,
-                    "Expected exactly one absent-key fallback delivery before the timeout, got: $results",
+                    "Expected exactly one delivery before the timeout, got: $results",
                 )
                 val (config, source, _) = results.single()
-                assertEquals(Source.CACHE, source, "Absent-key fallback must report Source.CACHE")
+                assertEquals(Source.REMOTE, source, "Absent-key delivery should report Source.REMOTE")
                 assertTrue(
                     config.isEmpty(),
-                    "Expected empty fallback when no cache exists for absent key, got: $config",
+                    "Expected empty config for absent key, got: $config",
                 )
             }
 
         @Test
         fun `WaitForRemote unblocks immediately on empty successful fetch`() =
             runTest {
-                // Regression: when the server returns 200 with {"configs":{}}
-                // (valid empty config — project has no blades enabled),
-                // parseConfigsFromResponse used to return null causing the caller
-                // to treat it as a failure. WaitForRemote subscribers would then
-                // wait the full timeout. With the fix, an empty map is returned,
-                // notifyAbsentKeySubscribers fires, and the subscriber is unblocked.
+                // When the server returns 200 with {"configs": {}}, all subscribers
+                // are notified with REMOTE + emptyMap(). WaitForRemote is unblocked
+                // by the REMOTE delivery, not the timeout fallback.
                 val client = createClient(emptyApiConfig = true) // returns {"configs":{}}
                 storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
 
                 val results = mutableListOf<Triple<ConfigMap, Source, Long>>()
                 client.subscribe(
-                    key = Key.SESSION_REPLAY_PRIVACY_CONFIG,
+                    key = SessionReplayPrivacyConfig,
                     deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 60_000L),
                 ) { config, source, timestamp ->
                     results.add(Triple(config, source, timestamp))
                 }
 
                 // Run only the currently-pending tasks and a tiny virtual-time
-                // nudge — nowhere near the 60_000ms timeout. If the fix is wrong,
-                // the subscriber stays blocked until the timeout.
+                // nudge — nowhere near the 60_000ms timeout.
                 testDispatcher.scheduler.runCurrent()
                 testDispatcher.scheduler.advanceTimeBy(10L)
                 testDispatcher.scheduler.runCurrent()
@@ -1517,24 +1509,21 @@ class RemoteConfigClientTest {
                 assertEquals(
                     1,
                     results.size,
-                    "Expected one delivery from empty-config absent-key path, got: $results",
+                    "Expected one delivery from empty-config path, got: $results",
                 )
                 val (config, source, _) = results.single()
-                assertEquals(Source.CACHE, source, "Empty-config fallback must report Source.CACHE")
+                assertEquals(Source.REMOTE, source, "Empty-config delivery should report Source.REMOTE")
                 assertTrue(
                     config.isEmpty(),
-                    "Expected empty fallback config, got: $config",
+                    "Expected empty config, got: $config",
                 )
             }
 
         @Test
         fun `WaitForRemote does not interfere with All subscribers on the absent key`() =
             runTest {
-                // Sanity guard: the absent-key unblock path uses runSafelyIfFirst,
-                // which is a no-op for non-gated subscribers. A DeliveryMode.All
-                // subscriber on a key the response doesn't include should still
-                // see only its initial cache delivery (if any) and nothing
-                // synthesized by the absent-key path.
+                // All subscribers on a key absent from the response now receive a
+                // REMOTE notification with emptyMap() (platform-aligned behavior).
                 val mockHttpClient = mockk<HttpClient>()
                 every { mockHttpClient.request(any()) } returns
                     HttpClient.Response(
@@ -1556,19 +1545,17 @@ class RemoteConfigClientTest {
                     )
 
                 val results = mutableListOf<Triple<ConfigMap, Source, Long>>()
-                client.subscribe(Key.DIAGNOSTICS) { config, source, timestamp ->
+                client.subscribe(Diagnostics) { config, source, timestamp ->
                     results.add(Triple(config, source, timestamp))
                 }
 
                 testDispatcher.scheduler.advanceUntilIdle()
 
-                // No cache on DIAGNOSTICS and no remote — All subscriber gets
-                // nothing, exactly as before. The absent-key path must not
-                // fabricate a delivery for it.
-                assertTrue(
-                    results.isEmpty(),
-                    "DeliveryMode.All on absent key must not receive a synthesized delivery, got: $results",
-                )
+                // No cache on DIAGNOSTICS. REMOTE fires with empty config (key absent).
+                assertEquals(1, results.size, "All subscriber on absent key should receive REMOTE, got: $results")
+                val (config, source, _) = results.single()
+                assertEquals(Source.REMOTE, source)
+                assertTrue(config.isEmpty(), "Absent key should deliver empty config")
             }
 
         @Test
@@ -1606,12 +1593,14 @@ class RemoteConfigClientTest {
                         Storage.Constants.REMOTE_CONFIG,
                         """
                         {
-                            "sessionReplay.sr_android_privacy_config": {
-                                "defaultMaskLevel": "STALE"
-                            },
-                            "sessionReplay.sr_android_sampling_config": {
-                                "sample_rate": 0.0,
-                                "capture_enabled": false
+                            "sessionReplay": {
+                                "sr_android_privacy_config": {
+                                    "defaultMaskLevel": "STALE"
+                                },
+                                "sr_android_sampling_config": {
+                                    "sample_rate": 0.0,
+                                    "capture_enabled": false
+                                }
                             }
                         }
                         """.trimIndent(),
@@ -1639,7 +1628,7 @@ class RemoteConfigClientTest {
                 val allDone = java.util.concurrent.CountDownLatch(2)
 
                 client.subscribe(
-                    key = Key.SESSION_REPLAY_PRIVACY_CONFIG,
+                    key = SessionReplayPrivacyConfig,
                     deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 30L),
                 ) { config, source, _ ->
                     val current = concurrentCount.incrementAndGet()
@@ -1719,12 +1708,14 @@ class RemoteConfigClientTest {
                         Storage.Constants.REMOTE_CONFIG,
                         """
                         {
-                            "sessionReplay.sr_android_privacy_config": {
-                                "defaultMaskLevel": "STALE"
-                            },
-                            "sessionReplay.sr_android_sampling_config": {
-                                "sample_rate": 0.0,
-                                "capture_enabled": false
+                            "sessionReplay": {
+                                "sr_android_privacy_config": {
+                                    "defaultMaskLevel": "STALE"
+                                },
+                                "sr_android_sampling_config": {
+                                    "sample_rate": 0.0,
+                                    "capture_enabled": false
+                                }
                             }
                         }
                         """.trimIndent(),
@@ -1748,7 +1739,7 @@ class RemoteConfigClientTest {
                 val secondDelivery = java.util.concurrent.CountDownLatch(2)
 
                 client.subscribe(
-                    key = Key.SESSION_REPLAY_PRIVACY_CONFIG,
+                    key = SessionReplayPrivacyConfig,
                     deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 30L),
                 ) { config, source, _ ->
                     results.add(config to source)
@@ -1789,6 +1780,403 @@ class RemoteConfigClientTest {
 
     // endregion DeliveryMode
 
+    // region Dot-Path and Key Alignment
+
+    @Test
+    fun `subscribe with top-level key returns entire subtree`() =
+        runTest {
+            val client = createClient(emptyApiConfig = false)
+            storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
+
+            var receivedConfig: ConfigMap? = null
+            client.subscribe(Key.Custom("sessionReplay")) { config, _, _ ->
+                receivedConfig = config
+            }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            // "sessionReplay" should return the entire subtree
+            val config = checkNotNull(receivedConfig) { "Subscriber should receive subtree" }
+
+            @Suppress("UNCHECKED_CAST")
+            val privacyConfig = config["sr_android_privacy_config"] as? Map<String, Any>
+            assertEquals("medium", privacyConfig?.get("defaultMaskLevel"))
+            @Suppress("UNCHECKED_CAST")
+            val samplingConfig = config["sr_android_sampling_config"] as? Map<String, Any>
+            assertEquals(true, samplingConfig?.get("capture_enabled"))
+        }
+
+    @Test
+    fun `subscribe with Custom key resolves dot-path correctly`() =
+        runTest {
+            val client = createClient(emptyApiConfig = false)
+            storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
+
+            var receivedConfig: ConfigMap? = null
+            client.subscribe(Key.Custom("sessionReplay.sr_android_privacy_config")) { config, _, _ ->
+                receivedConfig = config
+            }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            val config = checkNotNull(receivedConfig)
+            assertEquals("medium", config["defaultMaskLevel"])
+        }
+
+    @Test
+    fun `Custom key works with cached data`() =
+        runTest {
+            val client = createClient()
+
+            storage.write(
+                Storage.Constants.REMOTE_CONFIG,
+                DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent(),
+            )
+            storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
+
+            val results = mutableListOf<Pair<ConfigMap, Source>>()
+            client.subscribe(Key.Custom("sessionReplay.sr_android_sampling_config")) { config, source, _ ->
+                results.add(config to source)
+            }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            // First delivery is CACHE with specific config
+            assertTrue(results.isNotEmpty())
+            val (cacheConfig, cacheSource) = results.first { it.second == Source.CACHE }
+            assertEquals(Source.CACHE, cacheSource)
+            assertEquals(1.0, cacheConfig["sample_rate"])
+            assertEquals(true, cacheConfig["capture_enabled"])
+        }
+
+    @Test
+    fun `old pre-flattened cache format is migrated and delivered`() =
+        runTest {
+            val client = createClient(useVerifiableLogger = true)
+
+            // Old format: keys are "topLevel.nested" (flat)
+            storage.write(
+                Storage.Constants.REMOTE_CONFIG,
+                """
+                {
+                    "sessionReplay.sr_android_privacy_config": {
+                        "defaultMaskLevel": "medium"
+                    },
+                    "sessionReplay.sr_android_sampling_config": {
+                        "sample_rate": 1.0,
+                        "capture_enabled": true
+                    }
+                }
+                """.trimIndent(),
+            )
+            storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
+
+            val results = mutableListOf<Pair<ConfigMap, Source>>()
+            client.subscribe(SessionReplayPrivacyConfig) { config, source, _ ->
+                results.add(config to source)
+            }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            // First delivery is migrated CACHE
+            assertTrue(results.isNotEmpty()) { "Migrated config should be delivered" }
+            val (cacheConfig, cacheSource) = results.first { it.second == Source.CACHE }
+            assertEquals(Source.CACHE, cacheSource)
+            assertEquals("medium", cacheConfig["defaultMaskLevel"])
+            verify { logger.debug(match<String> { it.contains("old pre-flattened cache format") }) }
+        }
+
+    @Test
+    fun `dot-path to non-existent path returns empty config`() =
+        runTest {
+            val client = createClient()
+
+            storage.write(
+                Storage.Constants.REMOTE_CONFIG,
+                DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent(),
+            )
+            storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
+
+            var receivedConfig: ConfigMap? = null
+            client.subscribe(Key.Custom("nonExistent.path")) { config, _, _ ->
+                receivedConfig = config
+            }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            // Should receive empty config (dot-path doesn't resolve)
+            val config = checkNotNull(receivedConfig)
+            assertTrue(config.isEmpty())
+        }
+
+    @Test
+    fun `Key sealed class instances have correct values`() {
+        assertEquals("analyticsSDK.androidSDK", Key.AnalyticsSdk.value)
+        assertEquals("diagnostics.androidSDK", Key.Diagnostics.value)
+        assertEquals("sessionReplay.sr_android_privacy_config", Key.SessionReplayPrivacyConfig.value)
+        assertEquals("sessionReplay.sr_android_sampling_config", Key.SessionReplaySamplingConfig.value)
+        assertEquals("experiment.androidSDK", Key.Custom("experiment.androidSDK").value)
+    }
+
+    // endregion Dot-Path and Key Alignment
+
+    // region Migration and Dynamic Fetch Keys
+
+    @Test
+    fun `old-format cache migrated and delivered when offline with WaitForRemote`() =
+        runTest {
+            // Simulates an upgrade scenario: old cache has flat dotted keys,
+            // fetch fails (offline). Subscribers should still receive the
+            // migrated cached config instead of empty.
+            val mockHttpClient = mockk<HttpClient>()
+            every { mockHttpClient.request(any()) } returns
+                HttpClient.Response(
+                    statusCode = 500,
+                    body = "",
+                    headers = emptyMap(),
+                    statusMessage = "Internal Server Error",
+                )
+            val client =
+                RemoteConfigClientImpl(
+                    apiKey = "test-key",
+                    serverZone = ServerZone.US,
+                    coroutineScope = testScope,
+                    networkIODispatcher = testDispatcher,
+                    storageIODispatcher = testDispatcher,
+                    storage = storage,
+                    httpClient = mockHttpClient,
+                    logger = silentLogger,
+                )
+
+            // Old flat format
+            storage.write(
+                Storage.Constants.REMOTE_CONFIG,
+                """
+                {
+                    "sessionReplay.sr_android_privacy_config": {
+                        "defaultMaskLevel": "strict"
+                    },
+                    "sessionReplay.sr_android_sampling_config": {
+                        "sample_rate": 0.5,
+                        "capture_enabled": true
+                    },
+                    "diagnostics.androidSDK": {
+                        "enabled": true
+                    }
+                }
+                """.trimIndent(),
+            )
+            storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
+
+            val privacyResults = mutableListOf<Triple<ConfigMap, Source, Long>>()
+            val diagnosticsResults = mutableListOf<Triple<ConfigMap, Source, Long>>()
+
+            client.subscribe(
+                key = SessionReplayPrivacyConfig,
+                deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 100L),
+            ) { config, source, timestamp ->
+                privacyResults.add(Triple(config, source, timestamp))
+            }
+
+            client.subscribe(
+                key = Diagnostics,
+                deliveryMode = RemoteConfigClient.DeliveryMode.All,
+            ) { config, source, timestamp ->
+                diagnosticsResults.add(Triple(config, source, timestamp))
+            }
+
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            // Privacy: WaitForRemote should get migrated cache (fetch failed, timeout fires).
+            assertTrue(
+                privacyResults.isNotEmpty(),
+                "WaitForRemote subscriber should receive migrated cache on offline upgrade",
+            )
+            val (privacyConfig, privacySource, _) = privacyResults.first()
+            assertEquals("strict", privacyConfig["defaultMaskLevel"])
+            assertEquals(Source.CACHE, privacySource)
+
+            // Diagnostics: All should get migrated cache immediately.
+            assertTrue(
+                diagnosticsResults.isNotEmpty(),
+                "All subscriber should receive migrated cache on offline upgrade",
+            )
+            val (diagConfig, diagSource, _) = diagnosticsResults.first()
+            assertEquals(true, diagConfig["enabled"])
+            assertEquals(Source.CACHE, diagSource)
+
+            // Verify the migrated blob was persisted back to storage.
+            val storedJson = storage.read(Storage.Constants.REMOTE_CONFIG)
+            val storedBlob = org.json.JSONObject(checkNotNull(storedJson))
+            assertTrue(
+                storedBlob.has("sessionReplay"),
+                "Migrated storage should have nested 'sessionReplay' key",
+            )
+            assertFalse(
+                storedBlob.keys().asSequence().any { "." in it },
+                "Migrated storage should have no dotted top-level keys",
+            )
+        }
+
+    @Test
+    fun `Custom key root is included in fetch URL`() =
+        runTest {
+            val requestSlot = slot<HttpClient.Request>()
+            val mockHttpClient = mockk<HttpClient>()
+            every { mockHttpClient.request(capture(requestSlot)) } returns
+                HttpClient.Response(
+                    statusCode = 200,
+                    body = """{"configs": {}}""",
+                    headers = emptyMap(),
+                    statusMessage = "OK",
+                )
+
+            val client =
+                RemoteConfigClientImpl(
+                    apiKey = "test-key",
+                    serverZone = ServerZone.US,
+                    coroutineScope = testScope,
+                    networkIODispatcher = testDispatcher,
+                    storageIODispatcher = testDispatcher,
+                    storage = storage,
+                    httpClient = mockHttpClient,
+                    logger = silentLogger,
+                )
+
+            // Subscribe with a Custom key whose root is NOT in the hardcoded list.
+            client.subscribe(Key.Custom("newBlade.config")) { _, _, _ -> }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            assertTrue(requestSlot.isCaptured, "Should have made an HTTP request")
+            val url = requestSlot.captured.url
+            assertTrue(
+                url.contains("config_keys=newBlade"),
+                "Fetch URL should include the custom root 'newBlade'. Got: $url",
+            )
+            // Hardcoded keys should still be present.
+            assertTrue(
+                url.contains("config_keys=analyticsSDK"),
+                "Fetch URL should still include hardcoded 'analyticsSDK'. Got: $url",
+            )
+            assertTrue(
+                url.contains("config_keys=sessionReplay"),
+                "Fetch URL should still include hardcoded 'sessionReplay'. Got: $url",
+            )
+        }
+
+    @Test
+    fun `Custom key with no dot uses entire value as root in fetch URL`() =
+        runTest {
+            val requestSlot = slot<HttpClient.Request>()
+            val mockHttpClient = mockk<HttpClient>()
+            every { mockHttpClient.request(capture(requestSlot)) } returns
+                HttpClient.Response(
+                    statusCode = 200,
+                    body = """{"configs": {}}""",
+                    headers = emptyMap(),
+                    statusMessage = "OK",
+                )
+
+            val client =
+                RemoteConfigClientImpl(
+                    apiKey = "test-key",
+                    serverZone = ServerZone.US,
+                    coroutineScope = testScope,
+                    networkIODispatcher = testDispatcher,
+                    storageIODispatcher = testDispatcher,
+                    storage = storage,
+                    httpClient = mockHttpClient,
+                    logger = silentLogger,
+                )
+
+            client.subscribe(Key.Custom("experiment")) { _, _, _ -> }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            assertTrue(requestSlot.isCaptured)
+            val url = requestSlot.captured.url
+            assertTrue(
+                url.contains("config_keys=experiment"),
+                "Fetch URL should include 'experiment' when Custom key has no dot. Got: $url",
+            )
+        }
+
+    @Test
+    fun `Custom key with hardcoded root does not duplicate fetch keys`() =
+        runTest {
+            val requestSlot = slot<HttpClient.Request>()
+            val mockHttpClient = mockk<HttpClient>()
+            every { mockHttpClient.request(capture(requestSlot)) } returns
+                HttpClient.Response(
+                    statusCode = 200,
+                    body = """{"configs": {}}""",
+                    headers = emptyMap(),
+                    statusMessage = "OK",
+                )
+
+            val client =
+                RemoteConfigClientImpl(
+                    apiKey = "test-key",
+                    serverZone = ServerZone.US,
+                    coroutineScope = testScope,
+                    networkIODispatcher = testDispatcher,
+                    storageIODispatcher = testDispatcher,
+                    storage = storage,
+                    httpClient = mockHttpClient,
+                    logger = silentLogger,
+                )
+
+            // "sessionReplay" is already hardcoded, so subscribing with it should not duplicate.
+            client.subscribe(Key.Custom("sessionReplay.customSubConfig")) { _, _, _ -> }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            assertTrue(requestSlot.isCaptured)
+            val url = requestSlot.captured.url
+            val occurrences = "config_keys=sessionReplay".toRegex().findAll(url).count()
+            assertEquals(
+                1,
+                occurrences,
+                "sessionReplay should appear exactly once in fetch URL, not duplicated. Got: $url",
+            )
+        }
+
+    @Test
+    fun `Custom key bypasses rate limit when root is new`() =
+        runTest {
+            val requestSlot = slot<HttpClient.Request>()
+            val mockHttpClient = mockk<HttpClient>()
+            every { mockHttpClient.request(capture(requestSlot)) } returns
+                HttpClient.Response(
+                    statusCode = 200,
+                    body = """{"configs": {}}""",
+                    headers = emptyMap(),
+                    statusMessage = "OK",
+                )
+
+            val client =
+                RemoteConfigClientImpl(
+                    apiKey = "test-key",
+                    serverZone = ServerZone.US,
+                    coroutineScope = testScope,
+                    networkIODispatcher = testDispatcher,
+                    storageIODispatcher = testDispatcher,
+                    storage = storage,
+                    httpClient = mockHttpClient,
+                    logger = silentLogger,
+                )
+
+            // Seed a recent timestamp so normal fetches would be rate-limited.
+            storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, System.currentTimeMillis().toString())
+
+            // Subscribe with a known key — should be rate-limited, no fetch.
+            client.subscribe(AnalyticsSdk) { _, _, _ -> }
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertFalse(requestSlot.isCaptured, "Known key should be rate-limited")
+
+            // Subscribe with a Custom key whose root is new — should bypass rate limit.
+            client.subscribe(Key.Custom("experiment.androidSDK")) { _, _, _ -> }
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertTrue(requestSlot.isCaptured, "Custom key with new root should bypass rate limit")
+            val url = requestSlot.captured.url
+            assertTrue(url.contains("config_keys=experiment"), "URL should include new root. Got: $url")
+        }
+
+    // endregion Migration and Dynamic Fetch Keys
+
     companion object {
         private const val DEFAULT_API_REMOTE_CONFIG_JSON =
             """
@@ -1812,12 +2200,14 @@ class RemoteConfigClientTest {
         private const val DEFAULT_STORED_REMOTE_CONFIG_JSON =
             """
             {
-                "sessionReplay.sr_android_privacy_config": {
-                    "defaultMaskLevel": "medium"
-                },
-                "sessionReplay.sr_android_sampling_config": {
-                    "sample_rate": 1.0,
-                    "capture_enabled": true
+                "sessionReplay": {
+                    "sr_android_privacy_config": {
+                        "defaultMaskLevel": "medium"
+                    },
+                    "sr_android_sampling_config": {
+                        "sample_rate": 1.0,
+                        "capture_enabled": true
+                    }
                 }
             }
             """

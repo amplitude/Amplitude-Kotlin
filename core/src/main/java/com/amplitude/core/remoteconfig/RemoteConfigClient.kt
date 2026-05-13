@@ -25,7 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Type alias for remote configuration map data.
- * Represents flattened config key-value pairs where keys are strings and values can be any type.
+ * Represents config key-value pairs where keys are strings and values can be any type.
  */
 typealias ConfigMap = Map<String, Any>
 
@@ -52,11 +52,35 @@ interface RemoteConfigClient {
         class WaitForRemote(val timeoutMs: Long) : DeliveryMode()
     }
 
-    enum class Key(val value: String) {
-        ANALYTICS_SDK("analyticsSDK.androidSDK"),
-        DIAGNOSTICS("diagnostics.androidSDK"),
-        SESSION_REPLAY_PRIVACY_CONFIG("sessionReplay.sr_android_privacy_config"),
-        SESSION_REPLAY_SAMPLING_CONFIG("sessionReplay.sr_android_sampling_config"),
+    /**
+     * Dot-path key for subscribing to remote config sections.
+     * Split by "." to walk nested config objects. For example,
+     * "sessionReplay.sr_android_privacy_config" resolves configs.sessionReplay.sr_android_privacy_config.
+     */
+    sealed class Key(open val value: String) {
+        data object AnalyticsSdk : Key("analyticsSDK.androidSDK")
+
+        data object Diagnostics : Key("diagnostics.androidSDK")
+
+        data object SessionReplayPrivacyConfig : Key("sessionReplay.sr_android_privacy_config")
+
+        data object SessionReplaySamplingConfig : Key("sessionReplay.sr_android_sampling_config")
+
+        class Custom(override val value: String) : Key(value) {
+            override fun equals(other: Any?): Boolean = other is Custom && other.value == value
+
+            override fun hashCode(): Int = value.hashCode()
+
+            override fun toString(): String = "Custom(value=$value)"
+        }
+
+        companion object {
+            internal val fetchKeys: List<String> by lazy {
+                listOf(AnalyticsSdk, Diagnostics, SessionReplayPrivacyConfig, SessionReplaySamplingConfig)
+                    .map { it.value.substringBefore(".") }
+                    .distinct()
+            }
+        }
     }
 
     /**
@@ -187,20 +211,22 @@ internal class RemoteConfigClientImpl(
             }
             return true
         }
-
-        /** True if gated (WaitForRemote) and first delivery hasn't fired yet. */
-        fun isAwaitingFirstDelivery(): Boolean {
-            val claimed = firstDeliveryClaimed ?: return false
-            return !claimed.get()
-        }
     }
 
     // Subscribers for specific config keys using weak references to prevent memory leaks
     private val subscriberLock = Any()
     private val keySpecificSubscribers = mutableMapOf<String, MutableList<WeakCallback>>()
 
-    // Simple in-flight fetch guard; safe because networkIODispatcher is single-threaded
+    // Additional root keys registered by Custom key subscribers, unioned with fetchKeys for the URL.
+    private val customFetchRoots = mutableSetOf<String>()
+
+    @Volatile
     private var isFetching: Boolean = false
+
+    // Set when customFetchRoots grows — bypasses rate limit on next fetch so
+    // newly registered custom roots get fetched promptly, not after 5 minutes.
+    @Volatile
+    private var fetchRootsExpanded: Boolean = false
 
     override fun subscribe(
         key: Key,
@@ -297,6 +323,14 @@ internal class RemoteConfigClientImpl(
                         mutableListOf()
                     }
                 subscriberList.add(weakCallback)
+
+                if (key is Key.Custom) {
+                    val root = key.value.substringBefore(".")
+                    if (root.isNotEmpty() && root !in Key.fetchKeys && customFetchRoots.add(root)) {
+                        fetchRootsExpanded = true
+                    }
+                }
+
                 subscriberList.size
             }
 
@@ -308,92 +342,49 @@ internal class RemoteConfigClientImpl(
      */
     override fun updateConfigs() {
         coroutineScope.launch(networkIODispatcher) {
+            if (isFetching) {
+                logger.debug("RemoteConfig update skipped: fetch already in progress")
+                return@launch
+            }
+
+            val bypassRateLimit = fetchRootsExpanded
+            if (bypassRateLimit) fetchRootsExpanded = false
+
+            if (!bypassRateLimit && shouldRateLimit()) {
+                logger.debug("RemoteConfig update skipped: within 5-minute window")
+                return@launch
+            }
+
+            isFetching = true
             try {
-                if (isFetching) {
-                    logger.debug("RemoteConfig update skipped: fetch already in progress")
-                    return@launch
-                }
-
-                if (shouldRateLimit()) {
-                    logger.debug("RemoteConfig update skipped: within 5-minute window")
-                    return@launch
-                }
-
-                isFetching = true
-                val configs = fetchRemoteConfig() ?: return@launch
-
-                // Snapshot old cache before overwriting — absent-key fallback
-                // needs the pre-fetch values, not the partial new response.
-                val preFetchCache = getAllStoredConfigs()
+                val blob = fetchRemoteConfig() ?: return@launch
 
                 val timestamp = System.currentTimeMillis()
                 withContext(storageIODispatcher) {
-                    storage.write(REMOTE_CONFIG, configs.toJSONObject().toString())
+                    storage.write(REMOTE_CONFIG, blob.toJSONObject().toString())
                     storage.write(REMOTE_CONFIG_TIMESTAMP, timestamp.toString())
                     logger.debug("Successfully stored remote configs to storage")
                 }
 
-                configs.forEach { (configKey, config) ->
-                    val subscriberList =
-                        synchronized(subscriberLock) {
-                            keySpecificSubscribers[configKey]?.toList().orEmpty()
-                        }
-                    subscriberList.forEach { weakCallback ->
+                val subscriberSnapshot =
+                    synchronized(subscriberLock) {
+                        keySpecificSubscribers.map { (dotPath, subs) -> dotPath to subs.toList() }
+                    }
+                for ((dotPath, subscribers) in subscriberSnapshot) {
+                    val resolved = resolveDotPath(blob, dotPath)
+                    val config = resolved ?: emptyMap()
+                    subscribers.forEach { weakCallback ->
                         weakCallback.runSafely {
                             onUpdate(config, REMOTE, timestamp)
                         }
                     }
                 }
-
-                // Unblock WaitForRemote subscribers whose key is absent from
-                // a successful fetch — no point waiting the full timeout.
-                notifyAbsentKeySubscribers(presentKeys = configs.keys, preFetchCache = preFetchCache)
             } catch (e: Exception) {
                 logger.error("Error updating remote configs: ${e.message}")
             } finally {
                 isFetching = false
-            }
-        }
-    }
-
-    /**
-     * For each registered subscriber whose key is *not* present in a fresh
-     * successful fetch, deliver the fallback (cache or empty) via the
-     * first-only delivery path so [RemoteConfigClient.DeliveryMode.WaitForRemote]
-     * gates resolve immediately instead of waiting for the timeout.
-     *
-     * Uses [WeakCallback.runSafelyIfFirst]: if a subscriber has already
-     * received its first delivery (e.g. timeout already fired), the call is a
-     * no-op. Subscribers using [RemoteConfigClient.DeliveryMode.All] also
-     * become no-ops because they aren't gated and cannot claim the gate.
-     */
-    private fun notifyAbsentKeySubscribers(
-        presentKeys: Set<String>,
-        preFetchCache: Map<String, ConfigMap>,
-    ) {
-        val absentSubscribers =
-            synchronized(subscriberLock) {
-                keySpecificSubscribers
-                    .filterKeys { it !in presentKeys }
-                    .mapValues { (_, subs) -> subs.toList() }
-            }
-        if (absentSubscribers.isEmpty()) return
-
-        absentSubscribers.forEach { (configKey, subscribers) ->
-            val cachedConfig = preFetchCache[configKey]
-            subscribers.forEach subscriber@{ weakCallback ->
-                if (!weakCallback.isAwaitingFirstDelivery()) return@subscriber
-                val config = cachedConfig ?: emptyMap()
-                val timestamp = System.currentTimeMillis()
-                val delivered =
-                    weakCallback.runSafelyIfFirst {
-                        onUpdate(config, CACHE, timestamp)
-                    }
-                if (delivered) {
-                    logger.debug(
-                        "WaitForRemote unblocked for $configKey: key absent from fetch; " +
-                            "delivered ${if (cachedConfig != null) "cache" else "empty"} fallback.",
-                    )
+                if (fetchRootsExpanded) {
+                    updateConfigs()
                 }
             }
         }
@@ -408,95 +399,104 @@ internal class RemoteConfigClientImpl(
     }
 
     /**
-     * Retrieve stored configuration data for a specific key.
-     * This method checks if the storage has consistent data for all expected keys.
+     * Retrieve stored configuration data for a specific dot-path key.
+     * Walks the stored nested blob using dot-path segments.
      */
-    private fun getStoredConfigData(configKey: String): ConfigData? {
+    private fun getStoredConfigData(dotPath: String): ConfigData? {
         return try {
-            val allStoredConfigs = getAllStoredConfigs()
+            val blob = getStoredConfigBlob() ?: return null
 
-            // If storage is completely empty, return empty config
-            if (allStoredConfigs.isEmpty()) {
-                return null
-            }
-
-            // Check if storage has consistent data for all expected keys
-            val expectedKeys = Key.entries.map { it.value }.toSet()
-            val storedKeys = allStoredConfigs.keys
-            if (!storedKeys.containsAll(expectedKeys)) {
-                logger.debug(
-                    "Storage inconsistent keys. Expected: $expectedKeys, Found: $storedKeys",
-                )
-                // Middle ground: invalidate only if none of the expected keys exist (hard inconsistency)
-                val hasAnyExpected = storedKeys.any { it in expectedKeys }
-                if (!hasAnyExpected) {
-                    coroutineScope.launch(storageIODispatcher) {
-                        try {
-                            storage.remove(REMOTE_CONFIG)
-                            storage.remove(REMOTE_CONFIG_TIMESTAMP)
-                            logger.debug("Cleared storage due to hard inconsistency (no expected keys present)")
-                        } catch (e: Exception) {
-                            logger.error("Failed to clear inconsistent storage: ${e.message}")
-                        }
-                    }
-                    return null
-                }
-                // If at least one expected key exists, keep partial data and proceed.
-            }
-
-            val configData = allStoredConfigs[configKey] ?: emptyMap()
+            val resolved = resolveDotPath(blob, dotPath) ?: emptyMap()
             val timestampStr = storage.read(REMOTE_CONFIG_TIMESTAMP)
             val timestamp = timestampStr?.toLongOrNull() ?: 0L
 
-            logger.debug("Retrieved stored config for $configKey with ${configData.size} properties")
-            ConfigData(configData, timestamp)
+            logger.debug("Retrieved stored config for $dotPath with ${resolved.size} properties")
+            ConfigData(resolved, timestamp)
         } catch (e: Exception) {
-            logger.error("Failed to retrieve stored config data for $configKey: ${e.message}")
+            logger.error("Failed to retrieve stored config data for $dotPath: ${e.message}")
             null
         }
     }
 
-    private fun getAllStoredConfigs(): Map<String, ConfigMap> {
+    /**
+     * Reads the stored config blob from storage. Returns the nested map
+     * structure or null if storage is empty/corrupt. Gracefully handles
+     * old pre-flattened storage format by treating it as a cache miss.
+     */
+    private fun getStoredConfigBlob(): ConfigMap? {
         return try {
             val configJson = storage.read(REMOTE_CONFIG)
             if (configJson.isNullOrBlank()) {
                 logger.debug("No stored config found in storage")
-                return emptyMap()
+                return null
             }
 
-            val allConfigs = JSONObject(configJson).toMapObj()
+            val allConfigs = JSONObject(configJson).toMapObj().filterNotNullValues()
+            if (allConfigs.isEmpty()) return null
 
-            // Parse each stored config and build the result map
-            buildMap {
-                for ((key, value) in allConfigs) {
-                    when (value) {
-                        is Map<*, *> -> {
-                            @Suppress("UNCHECKED_CAST")
-                            val configMap =
-                                (value as? ConfigMap)?.filterNotNullValues() ?: emptyMap()
-                            if (configMap.isNotEmpty()) {
-                                put(key, configMap)
-                                logger.debug("Successfully loaded stored config for key: $key")
-                            }
-                        }
-
-                        else -> {
-                            logger.debug(
-                                "Skipping non-map value for key $key: ${value?.javaClass?.simpleName}",
-                            )
-                        }
+            // Detect old pre-flattened format: keys contain dots (e.g. "sessionReplay.sr_android_privacy_config").
+            // New format has top-level keys without dots (e.g. "sessionReplay", "diagnostics").
+            val isOldFormat = allConfigs.keys.any { "." in it }
+            if (isOldFormat) {
+                logger.debug("Detected old pre-flattened cache format; migrating in place")
+                val migrated = migrateOldFormatToNested(allConfigs)
+                coroutineScope.launch(storageIODispatcher) {
+                    try {
+                        storage.write(REMOTE_CONFIG, migrated.toJSONObject().toString())
+                        logger.debug("Migrated old-format cache to nested format")
+                    } catch (e: Exception) {
+                        logger.error("Failed to write migrated cache: ${e.message}")
                     }
                 }
-            }.also {
-                logger.debug("Successfully loaded ${it.size} stored configs from storage")
+                return migrated
             }
+
+            logger.debug("Successfully loaded stored config blob with ${allConfigs.size} top-level keys")
+            allConfigs
         } catch (e: Exception) {
             logger.error("Failed to parse all stored configs: ${e.message}")
-            emptyMap()
+            null
         }
     }
 
-    private fun fetchRemoteConfig(): Map<String, ConfigMap>? {
+    // Temporary: old cache only stored single-dot keys (e.g. "sessionReplay.sr_android_privacy_config").
+    @Suppress("UNCHECKED_CAST")
+    private fun migrateOldFormatToNested(flat: ConfigMap): ConfigMap {
+        val result = mutableMapOf<String, Any>()
+        for ((key, value) in flat) {
+            val dotIndex = key.indexOf('.')
+            if (dotIndex < 0) {
+                result[key] = value
+                continue
+            }
+            val root = key.substring(0, dotIndex)
+            val child = key.substring(dotIndex + 1)
+            val existing = result[root] as? MutableMap<String, Any> ?: mutableMapOf()
+            existing[child] = value
+            result[root] = existing
+        }
+        return result
+    }
+
+    /**
+     * Walk a dot-path into a nested config blob and return the leaf as a [ConfigMap].
+     * Returns null if any segment is missing or non-map.
+     */
+    @Suppress("UNCHECKED_CAST")
+    private fun resolveDotPath(
+        blob: ConfigMap,
+        dotPath: String,
+    ): ConfigMap? {
+        val segments = dotPath.split(".")
+        var current: Any? = blob
+        for (segment in segments) {
+            val map = current as? Map<String, Any> ?: return null
+            current = map[segment] ?: return null
+        }
+        return current as? Map<String, Any>
+    }
+
+    private fun fetchRemoteConfig(): ConfigMap? {
         // Periodic cleanup of dead references during network operations
         cleanupDeadReferences()
 
@@ -538,27 +538,34 @@ internal class RemoteConfigClientImpl(
 
     private fun cleanupDeadReferencesLocked() {
         var totalCleaned = 0
-        var emptyListCount = 0
         val iterator = keySpecificSubscribers.iterator()
 
         while (iterator.hasNext()) {
             val (_, subscriberList) = iterator.next()
             val initialSize = subscriberList.size
             subscriberList.removeAll { !it.isAlive() }
-            val removedCount = initialSize - subscriberList.size
-            totalCleaned += removedCount
+            totalCleaned += initialSize - subscriberList.size
 
             if (subscriberList.isEmpty()) {
                 iterator.remove()
-                emptyListCount++
             }
         }
 
         if (totalCleaned > 0) {
-            logger.debug(
-                "Removed $totalCleaned dead references and $emptyListCount empty lists",
-            )
+            logger.debug("Cleaned up $totalCleaned dead references")
+            recomputeCustomFetchRootsLocked()
         }
+    }
+
+    private fun recomputeCustomFetchRootsLocked() {
+        val liveRoots = mutableSetOf<String>()
+        for (dotPath in keySpecificSubscribers.keys) {
+            val root = dotPath.substringBefore(".")
+            if (root.isNotEmpty() && root !in Key.fetchKeys) {
+                liveRoots.add(root)
+            }
+        }
+        customFetchRoots.retainAll(liveRoots)
     }
 
     private fun buildRemoteConfigUrl(): String {
@@ -568,8 +575,10 @@ internal class RemoteConfigClientImpl(
                 else -> US_REMOTE_CONFIG_URL
             }
 
-        // Request all config keys
-        val configKeysParam = Key.entries.joinToString("&") { "config_keys=${it.value}" }
+        val customRoots = synchronized(subscriberLock) { customFetchRoots.toSet() }
+        val allKeys = Key.fetchKeys.toSet() + customRoots
+        val configKeysParam =
+            allKeys.joinToString("&") { "config_keys=$it" }
         return "$baseUrl/config?api_key=$apiKey&$configKeysParam"
     }
 
@@ -582,62 +591,34 @@ internal class RemoteConfigClientImpl(
         )
     }
 
-    private fun parseConfigsFromResponse(responseBody: String?): Map<String, ConfigMap>? {
+    /**
+     * Parses the API response and returns the full nested config blob (the
+     * contents of the "configs" key). The blob is stored as-is — no flattening.
+     */
+    private fun parseConfigsFromResponse(responseBody: String?): ConfigMap? {
         return responseBody?.let { body ->
             try {
                 val responseJson = JSONObject(body)
 
-                // Handle configs-wrapped response format:
-                // Format: {"configs": {"sessionReplay": {...}}}
                 val configsRoot = responseJson.optJSONObject("configs")
                 if (configsRoot == null) {
                     logger.warn("No 'configs' key found in response")
                     return null
                 }
 
-                val result =
-                    buildMap {
-                        // Dynamically parse all top-level config objects
-                        for (topLevelKey in configsRoot.keys()) {
-                            val topLevelObj = configsRoot.optJSONObject(topLevelKey)
-                            if (topLevelObj != null) {
-                                // Parse each nested config within this top-level object
-                                for (nestedKey in topLevelObj.keys()) {
-                                    val flattenedKey = "$topLevelKey.$nestedKey"
-                                    val nestedConfig = topLevelObj.optJSONObject(nestedKey)
-
-                                    if (nestedConfig != null) {
-                                        put(flattenedKey, nestedConfig.toMapObj().filterNotNullValues())
-                                        logger.debug("Successfully parsed config: $flattenedKey")
-                                    } else {
-                                        logger.debug(
-                                            "Config $flattenedKey has no nested object, using empty map",
-                                        )
-                                        put(flattenedKey, emptyMap())
-                                    }
-                                }
-                            } else {
-                                logger.debug("Skipping non-object top-level key: $topLevelKey")
-                            }
-                        }
-                    }
-
-                if (result.isEmpty() && configsRoot.length() == 0) {
-                    // The "configs" root is present but empty — project has no
-                    // blades enabled. This is a valid server answer; return an
-                    // empty map so that downstream logic (notifyAbsentKeySubscribers)
-                    // can unblock WaitForRemote subscribers immediately.
+                if (configsRoot.length() == 0) {
                     logger.debug("Server returned empty configs — project may have no blades enabled")
                     return emptyMap()
                 }
 
-                if (result.isEmpty() || result.values.all { it.isEmpty() }) {
+                val blob = configsRoot.toMapObj().filterNotNullValues()
+                if (blob.isEmpty()) {
                     logger.warn("No valid configs found in response")
                     return null
                 }
 
-                logger.debug("Successfully parsed ${result.size} config entries")
-                result
+                logger.debug("Successfully parsed config blob with ${blob.size} top-level keys")
+                blob
             } catch (e: Exception) {
                 logger.error("Failed to parse configs from response: ${e.message}")
                 null
