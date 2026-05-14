@@ -73,14 +73,6 @@ interface RemoteConfigClient {
 
             override fun toString(): String = "Custom(value=$value)"
         }
-
-        companion object {
-            internal val fetchKeys: List<String> by lazy {
-                listOf(AnalyticsSdk, Diagnostics, SessionReplayPrivacyConfig, SessionReplaySamplingConfig)
-                    .map { it.value.substringBefore(".") }
-                    .distinct()
-            }
-        }
     }
 
     /**
@@ -127,9 +119,9 @@ internal class RemoteConfigClientImpl(
     )
 
     companion object {
-        // Remote config endpoints based on server zone
         private const val US_REMOTE_CONFIG_URL = "https://sr-client-cfg.amplitude.com"
         private const val EU_REMOTE_CONFIG_URL = "https://sr-client-cfg.eu.amplitude.com"
+        private const val CONFIG_GROUP = "android"
         private const val MIN_FETCH_INTERVAL_MS: Long = 5 * 60 * 1_000L
     }
 
@@ -217,16 +209,8 @@ internal class RemoteConfigClientImpl(
     private val subscriberLock = Any()
     private val keySpecificSubscribers = mutableMapOf<String, MutableList<WeakCallback>>()
 
-    // Additional root keys registered by Custom key subscribers, unioned with fetchKeys for the URL.
-    private val customFetchRoots = mutableSetOf<String>()
-
     @Volatile
     private var isFetching: Boolean = false
-
-    // Set when customFetchRoots grows — bypasses rate limit on next fetch so
-    // newly registered custom roots get fetched promptly, not after 5 minutes.
-    @Volatile
-    private var fetchRootsExpanded: Boolean = false
 
     override fun subscribe(
         key: Key,
@@ -323,14 +307,6 @@ internal class RemoteConfigClientImpl(
                         mutableListOf()
                     }
                 subscriberList.add(weakCallback)
-
-                if (key is Key.Custom) {
-                    val root = key.value.substringBefore(".")
-                    if (root.isNotEmpty() && root !in Key.fetchKeys && customFetchRoots.add(root)) {
-                        fetchRootsExpanded = true
-                    }
-                }
-
                 subscriberList.size
             }
 
@@ -347,10 +323,7 @@ internal class RemoteConfigClientImpl(
                 return@launch
             }
 
-            val bypassRateLimit = fetchRootsExpanded
-            if (bypassRateLimit) fetchRootsExpanded = false
-
-            if (!bypassRateLimit && shouldRateLimit()) {
+            if (shouldRateLimit()) {
                 logger.debug("RemoteConfig update skipped: within 5-minute window")
                 return@launch
             }
@@ -383,9 +356,6 @@ internal class RemoteConfigClientImpl(
                 logger.error("Error updating remote configs: ${e.message}")
             } finally {
                 isFetching = false
-                if (fetchRootsExpanded) {
-                    updateConfigs()
-                }
             }
         }
     }
@@ -553,19 +523,7 @@ internal class RemoteConfigClientImpl(
 
         if (totalCleaned > 0) {
             logger.debug("Cleaned up $totalCleaned dead references")
-            recomputeCustomFetchRootsLocked()
         }
-    }
-
-    private fun recomputeCustomFetchRootsLocked() {
-        val liveRoots = mutableSetOf<String>()
-        for (dotPath in keySpecificSubscribers.keys) {
-            val root = dotPath.substringBefore(".")
-            if (root.isNotEmpty() && root !in Key.fetchKeys) {
-                liveRoots.add(root)
-            }
-        }
-        customFetchRoots.retainAll(liveRoots)
     }
 
     private fun buildRemoteConfigUrl(): String {
@@ -574,12 +532,7 @@ internal class RemoteConfigClientImpl(
                 ServerZone.EU -> EU_REMOTE_CONFIG_URL
                 else -> US_REMOTE_CONFIG_URL
             }
-
-        val customRoots = synchronized(subscriberLock) { customFetchRoots.toSet() }
-        val allKeys = Key.fetchKeys.toSet() + customRoots
-        val configKeysParam =
-            allKeys.joinToString("&") { "config_keys=$it" }
-        return "$baseUrl/config?api_key=$apiKey&$configKeysParam"
+        return "$baseUrl/config?api_key=$apiKey&config_group=$CONFIG_GROUP"
     }
 
     private fun buildRequestHeaders(apiVersion: Int = 2): Map<String, String> {

@@ -962,7 +962,6 @@ public final class com/amplitude/core/remoteconfig/RemoteConfigClient$DeliveryMo
 }
 
 public abstract class com/amplitude/core/remoteconfig/RemoteConfigClient$Key {
-	public static final field Companion Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Key$Companion;
 	public synthetic fun <init> (Ljava/lang/String;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public fun getValue ()Ljava/lang/String;
 }
@@ -972,9 +971,6 @@ public final class com/amplitude/core/remoteconfig/RemoteConfigClient$Key$Analyt
 	public fun equals (Ljava/lang/Object;)Z
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
-}
-
-public final class com/amplitude/core/remoteconfig/RemoteConfigClient$Key$Companion {
 }
 
 public final class com/amplitude/core/remoteconfig/RemoteConfigClient$Key$Custom : com/amplitude/core/remoteconfig/RemoteConfigClient$Key {

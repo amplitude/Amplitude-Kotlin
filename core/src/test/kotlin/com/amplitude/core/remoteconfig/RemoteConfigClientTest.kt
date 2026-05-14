@@ -907,14 +907,7 @@ class RemoteConfigClientTest {
 
             assertTrue(url.contains("sr-client-cfg.eu.amplitude.com"), "Should use EU endpoint")
             assertTrue(url.contains("api_key=test-key-eu"), "Should include correct API key")
-            assertTrue(
-                url.contains("config_keys=analyticsSDK"),
-                "Should include analyticsSDK fetch key",
-            )
-            assertTrue(
-                url.contains("config_keys=sessionReplay"),
-                "Should include sessionReplay fetch key",
-            )
+            assertTrue(url.contains("config_group=android"), "Should include config_group=android")
             assertEquals(
                 HttpClient.Request.Method.GET,
                 capturedRequest.method,
@@ -957,14 +950,7 @@ class RemoteConfigClientTest {
 
             assertTrue(url.contains("sr-client-cfg.amplitude.com"), "Should use US endpoint")
             assertTrue(url.contains("api_key=test-key-us"), "Should include correct API key")
-            assertTrue(
-                url.contains("config_keys=analyticsSDK"),
-                "Should include analyticsSDK fetch key",
-            )
-            assertTrue(
-                url.contains("config_keys=sessionReplay"),
-                "Should include sessionReplay fetch key",
-            )
+            assertTrue(url.contains("config_group=android"), "Should include config_group=android")
             assertEquals(
                 HttpClient.Request.Method.GET,
                 capturedRequest.method,
@@ -2013,169 +1999,7 @@ class RemoteConfigClientTest {
             )
         }
 
-    @Test
-    fun `Custom key root is included in fetch URL`() =
-        runTest {
-            val requestSlot = slot<HttpClient.Request>()
-            val mockHttpClient = mockk<HttpClient>()
-            every { mockHttpClient.request(capture(requestSlot)) } returns
-                HttpClient.Response(
-                    statusCode = 200,
-                    body = """{"configs": {}}""",
-                    headers = emptyMap(),
-                    statusMessage = "OK",
-                )
-
-            val client =
-                RemoteConfigClientImpl(
-                    apiKey = "test-key",
-                    serverZone = ServerZone.US,
-                    coroutineScope = testScope,
-                    networkIODispatcher = testDispatcher,
-                    storageIODispatcher = testDispatcher,
-                    storage = storage,
-                    httpClient = mockHttpClient,
-                    logger = silentLogger,
-                )
-
-            // Subscribe with a Custom key whose root is NOT in the hardcoded list.
-            client.subscribe(Key.Custom("newBlade.config")) { _, _, _ -> }
-            testDispatcher.scheduler.advanceUntilIdle()
-
-            assertTrue(requestSlot.isCaptured, "Should have made an HTTP request")
-            val url = requestSlot.captured.url
-            assertTrue(
-                url.contains("config_keys=newBlade"),
-                "Fetch URL should include the custom root 'newBlade'. Got: $url",
-            )
-            // Hardcoded keys should still be present.
-            assertTrue(
-                url.contains("config_keys=analyticsSDK"),
-                "Fetch URL should still include hardcoded 'analyticsSDK'. Got: $url",
-            )
-            assertTrue(
-                url.contains("config_keys=sessionReplay"),
-                "Fetch URL should still include hardcoded 'sessionReplay'. Got: $url",
-            )
-        }
-
-    @Test
-    fun `Custom key with no dot uses entire value as root in fetch URL`() =
-        runTest {
-            val requestSlot = slot<HttpClient.Request>()
-            val mockHttpClient = mockk<HttpClient>()
-            every { mockHttpClient.request(capture(requestSlot)) } returns
-                HttpClient.Response(
-                    statusCode = 200,
-                    body = """{"configs": {}}""",
-                    headers = emptyMap(),
-                    statusMessage = "OK",
-                )
-
-            val client =
-                RemoteConfigClientImpl(
-                    apiKey = "test-key",
-                    serverZone = ServerZone.US,
-                    coroutineScope = testScope,
-                    networkIODispatcher = testDispatcher,
-                    storageIODispatcher = testDispatcher,
-                    storage = storage,
-                    httpClient = mockHttpClient,
-                    logger = silentLogger,
-                )
-
-            client.subscribe(Key.Custom("experiment")) { _, _, _ -> }
-            testDispatcher.scheduler.advanceUntilIdle()
-
-            assertTrue(requestSlot.isCaptured)
-            val url = requestSlot.captured.url
-            assertTrue(
-                url.contains("config_keys=experiment"),
-                "Fetch URL should include 'experiment' when Custom key has no dot. Got: $url",
-            )
-        }
-
-    @Test
-    fun `Custom key with hardcoded root does not duplicate fetch keys`() =
-        runTest {
-            val requestSlot = slot<HttpClient.Request>()
-            val mockHttpClient = mockk<HttpClient>()
-            every { mockHttpClient.request(capture(requestSlot)) } returns
-                HttpClient.Response(
-                    statusCode = 200,
-                    body = """{"configs": {}}""",
-                    headers = emptyMap(),
-                    statusMessage = "OK",
-                )
-
-            val client =
-                RemoteConfigClientImpl(
-                    apiKey = "test-key",
-                    serverZone = ServerZone.US,
-                    coroutineScope = testScope,
-                    networkIODispatcher = testDispatcher,
-                    storageIODispatcher = testDispatcher,
-                    storage = storage,
-                    httpClient = mockHttpClient,
-                    logger = silentLogger,
-                )
-
-            // "sessionReplay" is already hardcoded, so subscribing with it should not duplicate.
-            client.subscribe(Key.Custom("sessionReplay.customSubConfig")) { _, _, _ -> }
-            testDispatcher.scheduler.advanceUntilIdle()
-
-            assertTrue(requestSlot.isCaptured)
-            val url = requestSlot.captured.url
-            val occurrences = "config_keys=sessionReplay".toRegex().findAll(url).count()
-            assertEquals(
-                1,
-                occurrences,
-                "sessionReplay should appear exactly once in fetch URL, not duplicated. Got: $url",
-            )
-        }
-
-    @Test
-    fun `Custom key bypasses rate limit when root is new`() =
-        runTest {
-            val requestSlot = slot<HttpClient.Request>()
-            val mockHttpClient = mockk<HttpClient>()
-            every { mockHttpClient.request(capture(requestSlot)) } returns
-                HttpClient.Response(
-                    statusCode = 200,
-                    body = """{"configs": {}}""",
-                    headers = emptyMap(),
-                    statusMessage = "OK",
-                )
-
-            val client =
-                RemoteConfigClientImpl(
-                    apiKey = "test-key",
-                    serverZone = ServerZone.US,
-                    coroutineScope = testScope,
-                    networkIODispatcher = testDispatcher,
-                    storageIODispatcher = testDispatcher,
-                    storage = storage,
-                    httpClient = mockHttpClient,
-                    logger = silentLogger,
-                )
-
-            // Seed a recent timestamp so normal fetches would be rate-limited.
-            storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, System.currentTimeMillis().toString())
-
-            // Subscribe with a known key — should be rate-limited, no fetch.
-            client.subscribe(AnalyticsSdk) { _, _, _ -> }
-            testDispatcher.scheduler.advanceUntilIdle()
-            assertFalse(requestSlot.isCaptured, "Known key should be rate-limited")
-
-            // Subscribe with a Custom key whose root is new — should bypass rate limit.
-            client.subscribe(Key.Custom("experiment.androidSDK")) { _, _, _ -> }
-            testDispatcher.scheduler.advanceUntilIdle()
-            assertTrue(requestSlot.isCaptured, "Custom key with new root should bypass rate limit")
-            val url = requestSlot.captured.url
-            assertTrue(url.contains("config_keys=experiment"), "URL should include new root. Got: $url")
-        }
-
-    // endregion Migration and Dynamic Fetch Keys
+    // endregion Migration and Config Group
 
     companion object {
         private const val DEFAULT_API_REMOTE_CONFIG_JSON =
