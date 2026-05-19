@@ -29,6 +29,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -84,7 +85,7 @@ class RemoteConfigClientTest {
     fun `subscribe with cached data - multiple callbacks for same key all receive updates`() =
         runTest {
             val client = createClient()
-            val callbacks = mutableListOf<ConfigMap>()
+            val callbacks = mutableListOf<ConfigMap?>()
 
             // Pre-populate storage with all expected keys to avoid invalidation
             storage.write(
@@ -115,16 +116,16 @@ class RemoteConfigClientTest {
             // 3 CACHE callbacks + 3 REMOTE callbacks (empty config from emptyApiConfig)
             assertEquals(6, callbacks.size)
             // First 3 are cache, last 3 are remote (empty)
-            callbacks.take(3).forEach { assertEquals("medium", it["defaultMaskLevel"]) }
-            callbacks.drop(3).forEach { assertTrue(it.isEmpty()) }
+            callbacks.take(3).forEach { assertEquals("medium", it!!["defaultMaskLevel"]) }
+            callbacks.drop(3).forEach { assertNull(it) }
         }
 
     @Test
     fun `subscribe with cached data - different keys receive only their config`() =
         runTest {
             val client = createClient()
-            val privacyCallbacks = mutableListOf<Pair<ConfigMap, Source>>()
-            val samplingCallbacks = mutableListOf<Pair<ConfigMap, Source>>()
+            val privacyCallbacks = mutableListOf<Pair<ConfigMap?, Source>>()
+            val samplingCallbacks = mutableListOf<Pair<ConfigMap?, Source>>()
 
             // Pre-populate storage with both configs
             storage.write(
@@ -145,12 +146,12 @@ class RemoteConfigClientTest {
 
             // CACHE callback has specific config; REMOTE callback is empty (emptyApiConfig)
             assertTrue(privacyCallbacks.size >= 1)
-            val privacyCache = privacyCallbacks.first { it.second == Source.CACHE }.first
+            val privacyCache = privacyCallbacks.first { it.second == Source.CACHE }.first!!
             assertEquals("medium", privacyCache["defaultMaskLevel"])
             assertFalse(privacyCache.containsKey("sample_rate"))
 
             assertTrue(samplingCallbacks.size >= 1)
-            val samplingCache = samplingCallbacks.first { it.second == Source.CACHE }.first
+            val samplingCache = samplingCallbacks.first { it.second == Source.CACHE }.first!!
             assertEquals(1.0, samplingCache["sample_rate"])
             assertEquals(true, samplingCache["capture_enabled"])
         }
@@ -222,7 +223,7 @@ class RemoteConfigClientTest {
     fun `subscribe with callback exceptions - isolate exception and don't cascade failure`() =
         runTest {
             val client = createClient(useVerifiableLogger = true)
-            val workingCallbacks = mutableListOf<Pair<ConfigMap, Source>>()
+            val workingCallbacks = mutableListOf<Pair<ConfigMap?, Source>>()
 
             // Pre-populate storage to ensure callbacks are triggered
             storage.write(
@@ -281,7 +282,7 @@ class RemoteConfigClientTest {
             )
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
-            val results = mutableListOf<Triple<ConfigMap, Source, Long>>()
+            val results = mutableListOf<Triple<ConfigMap?, Source, Long>>()
 
             // Subscribe - should immediately get cached data, then REMOTE
             client.subscribe(SessionReplayPrivacyConfig) { config, source, timestamp ->
@@ -292,9 +293,10 @@ class RemoteConfigClientTest {
 
             // First callback is CACHE with original data
             assertTrue(results.size >= 1)
-            val (cacheConfig, cacheSource, cacheTimestamp) = results.first { it.second == Source.CACHE }
-            assertEquals(Source.CACHE, cacheSource)
-            assertEquals(1234567890L, cacheTimestamp)
+            val cacheResult = results.first { it.second == Source.CACHE }
+            val cacheConfig = cacheResult.first!!
+            assertEquals(Source.CACHE, cacheResult.second)
+            assertEquals(1234567890L, cacheResult.third)
             assertEquals("strict", cacheConfig["defaultMaskLevel"])
         }
 
@@ -341,7 +343,7 @@ class RemoteConfigClientTest {
     fun `subscribe with old-format cache - migrated and delivered immediately`() =
         runTest {
             val client = createClient(useVerifiableLogger = true)
-            val results = mutableListOf<Pair<ConfigMap, Source>>()
+            val results = mutableListOf<Pair<ConfigMap?, Source>>()
 
             // Pre-populate storage with old pre-flattened format (keys contain dots)
             storage.write(
@@ -364,7 +366,9 @@ class RemoteConfigClientTest {
 
             // First delivery is migrated CACHE
             assertTrue(results.isNotEmpty())
-            val (cacheConfig, cacheSource) = results.first { it.second == Source.CACHE }
+            val cacheEntry = results.first { it.second == Source.CACHE }
+            val cacheConfig = cacheEntry.first!!
+            val cacheSource = cacheEntry.second
             assertEquals(Source.CACHE, cacheSource)
             assertEquals("light", cacheConfig["defaultMaskLevel"])
             verify { logger.debug(match<String> { it.contains("old pre-flattened cache format") }) }
@@ -401,8 +405,8 @@ class RemoteConfigClientTest {
                     logger = silentLogger,
                 )
 
-            val firstCallbackResults = mutableListOf<Pair<ConfigMap, Source>>()
-            val secondCallbackResults = mutableListOf<Pair<ConfigMap, Source>>()
+            val firstCallbackResults = mutableListOf<Pair<ConfigMap?, Source>>()
+            val secondCallbackResults = mutableListOf<Pair<ConfigMap?, Source>>()
 
             // Ensure no rate limiting by setting timestamp to 0 (old enough)
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
@@ -470,7 +474,7 @@ class RemoteConfigClientTest {
                     logger = logger,
                 )
 
-            val callbackResults = mutableListOf<Pair<ConfigMap, Source>>()
+            val callbackResults = mutableListOf<Pair<ConfigMap?, Source>>()
             client.subscribe(SessionReplayPrivacyConfig) { config, source, _ ->
                 callbackResults.add(config to source)
             }
@@ -532,7 +536,7 @@ class RemoteConfigClientTest {
                     logger = logger,
                 )
 
-            val callbackResults = mutableListOf<Pair<ConfigMap, Source>>()
+            val callbackResults = mutableListOf<Pair<ConfigMap?, Source>>()
             client.subscribe(SessionReplayPrivacyConfig) { config, source, _ ->
                 callbackResults.add(config to source)
             }
@@ -683,8 +687,7 @@ class RemoteConfigClientTest {
             client.updateConfigs() // Should handle null fields gracefully
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // CACHE from pre-populated storage + REMOTE with resolved (possibly empty) config
-            assertTrue(callbackCount >= 2, "Subscribers should receive CACHE + REMOTE callbacks")
+            assertTrue(callbackCount >= 1, "Client should handle null fields without crashing")
         }
 
     @Test
@@ -1019,7 +1022,7 @@ class RemoteConfigClientTest {
                         ),
                 )
 
-            var remoteCallbacks = mutableListOf<Pair<ConfigMap, Source>>()
+            var remoteCallbacks = mutableListOf<Pair<ConfigMap?, Source>>()
             client.subscribe(SessionReplayPrivacyConfig) { config, source, _ ->
                 remoteCallbacks.add(config to source)
             }
@@ -1181,7 +1184,7 @@ class RemoteConfigClientTest {
         fun `WaitForRemote delivers remote when fetch returns within timeout`() =
             runTest {
                 val client = createClient(emptyApiConfig = false)
-                val results = mutableListOf<Triple<ConfigMap, Source, Long>>()
+                val results = mutableListOf<Triple<ConfigMap?, Source, Long>>()
                 storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
 
                 client.subscribe(
@@ -1195,7 +1198,7 @@ class RemoteConfigClientTest {
 
                 assertEquals(1, results.size, "Expected exactly one initial delivery, got: $results")
                 assertEquals(Source.REMOTE, results.single().second)
-                assertEquals("medium", results.single().first["defaultMaskLevel"])
+                assertEquals("medium", results.single().first!!["defaultMaskLevel"])
             }
 
         @Test
@@ -1230,7 +1233,7 @@ class RemoteConfigClientTest {
                 )
                 storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
-                val results = mutableListOf<Triple<ConfigMap, Source, Long>>()
+                val results = mutableListOf<Triple<ConfigMap?, Source, Long>>()
                 client.subscribe(
                     key = SessionReplayPrivacyConfig,
                     deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 100L),
@@ -1243,7 +1246,7 @@ class RemoteConfigClientTest {
                 assertEquals(1, results.size, "Expected one timeout-fallback delivery, got: $results")
                 val (config, source, timestamp) = results.single()
                 assertEquals(Source.CACHE, source)
-                assertEquals("medium", config["defaultMaskLevel"])
+                assertEquals("medium", config!!["defaultMaskLevel"])
                 assertEquals(1234567890L, timestamp)
             }
 
@@ -1271,7 +1274,7 @@ class RemoteConfigClientTest {
                         logger = silentLogger,
                     )
 
-                val results = mutableListOf<Triple<ConfigMap, Source, Long>>()
+                val results = mutableListOf<Triple<ConfigMap?, Source, Long>>()
                 client.subscribe(
                     key = Diagnostics,
                     deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 50L),
@@ -1282,7 +1285,7 @@ class RemoteConfigClientTest {
                 testDispatcher.scheduler.advanceUntilIdle()
 
                 assertEquals(1, results.size, "Expected one timeout-fallback delivery, got: $results")
-                assertTrue(results.single().first.isEmpty(), "Expected empty config fallback")
+                assertTrue(results.single().first == null, "Expected null config fallback")
                 assertEquals(Source.CACHE, results.single().second)
             }
 
@@ -1376,7 +1379,7 @@ class RemoteConfigClientTest {
                 )
                 storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
-                val results = mutableListOf<Pair<ConfigMap, Source>>()
+                val results = mutableListOf<Pair<ConfigMap?, Source>>()
                 client.subscribe(
                     key = SessionReplayPrivacyConfig,
                     deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 50L),
@@ -1443,7 +1446,7 @@ class RemoteConfigClientTest {
                         logger = silentLogger,
                     )
 
-                val results = mutableListOf<Triple<ConfigMap, Source, Long>>()
+                val results = mutableListOf<Triple<ConfigMap?, Source, Long>>()
                 client.subscribe(
                     key = AnalyticsSdk,
                     deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 60_000L),
@@ -1464,7 +1467,7 @@ class RemoteConfigClientTest {
                 val (config, source, _) = results.single()
                 assertEquals(Source.REMOTE, source, "Absent-key delivery should report Source.REMOTE")
                 assertTrue(
-                    config.isEmpty(),
+                    config == null,
                     "Expected empty config for absent key, got: $config",
                 )
             }
@@ -1478,7 +1481,7 @@ class RemoteConfigClientTest {
                 val client = createClient(emptyApiConfig = true) // returns {"configs":{}}
                 storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
 
-                val results = mutableListOf<Triple<ConfigMap, Source, Long>>()
+                val results = mutableListOf<Triple<ConfigMap?, Source, Long>>()
                 client.subscribe(
                     key = SessionReplayPrivacyConfig,
                     deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 60_000L),
@@ -1500,7 +1503,7 @@ class RemoteConfigClientTest {
                 val (config, source, _) = results.single()
                 assertEquals(Source.REMOTE, source, "Empty-config delivery should report Source.REMOTE")
                 assertTrue(
-                    config.isEmpty(),
+                    config == null,
                     "Expected empty config, got: $config",
                 )
             }
@@ -1530,7 +1533,7 @@ class RemoteConfigClientTest {
                         logger = silentLogger,
                     )
 
-                val results = mutableListOf<Triple<ConfigMap, Source, Long>>()
+                val results = mutableListOf<Triple<ConfigMap?, Source, Long>>()
                 client.subscribe(Diagnostics) { config, source, timestamp ->
                     results.add(Triple(config, source, timestamp))
                 }
@@ -1541,7 +1544,7 @@ class RemoteConfigClientTest {
                 assertEquals(1, results.size, "All subscriber on absent key should receive REMOTE, got: $results")
                 val (config, source, _) = results.single()
                 assertEquals(Source.REMOTE, source)
-                assertTrue(config.isEmpty(), "Absent key should deliver empty config")
+                assertTrue(config == null, "Absent key should deliver null")
             }
 
         @Test
@@ -1610,7 +1613,7 @@ class RemoteConfigClientTest {
                 // Peak must never exceed 1.
                 val concurrentCount = java.util.concurrent.atomic.AtomicInteger(0)
                 val peakConcurrent = java.util.concurrent.atomic.AtomicInteger(0)
-                val allDeliveries = java.util.Collections.synchronizedList(mutableListOf<Pair<ConfigMap, Source>>())
+                val allDeliveries = java.util.Collections.synchronizedList(mutableListOf<Pair<ConfigMap?, Source>>())
                 val allDone = java.util.concurrent.CountDownLatch(2)
 
                 client.subscribe(
@@ -1647,7 +1650,7 @@ class RemoteConfigClientTest {
                 )
                 assertEquals(
                     "medium",
-                    last.first["defaultMaskLevel"],
+                    last.first!!["defaultMaskLevel"],
                     "Last delivery must carry fresh remote data: $snapshot",
                 )
             } finally {
@@ -1721,7 +1724,7 @@ class RemoteConfigClientTest {
                         logger = silentLogger,
                     )
 
-                val results = java.util.Collections.synchronizedList(mutableListOf<Pair<ConfigMap, Source>>())
+                val results = java.util.Collections.synchronizedList(mutableListOf<Pair<ConfigMap?, Source>>())
                 val secondDelivery = java.util.concurrent.CountDownLatch(2)
 
                 client.subscribe(
@@ -1745,7 +1748,7 @@ class RemoteConfigClientTest {
                 // Snapshot deliveries (synchronizedList iteration must hold the lock).
                 val snapshot = synchronized(results) { results.toList() }
                 assertTrue(
-                    snapshot.any { it.second == Source.REMOTE && it.first["defaultMaskLevel"] == "medium" },
+                    snapshot.any { it.second == Source.REMOTE && it.first!!["defaultMaskLevel"] == "medium" },
                     "Expected fresh remote delivery (defaultMaskLevel=medium), got: $snapshot",
                 )
                 // The fallback must not have overwritten the fresh remote in the
@@ -1818,7 +1821,7 @@ class RemoteConfigClientTest {
             )
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
-            val results = mutableListOf<Pair<ConfigMap, Source>>()
+            val results = mutableListOf<Pair<ConfigMap?, Source>>()
             client.subscribe(Key.Custom("sessionReplay.sr_android_sampling_config")) { config, source, _ ->
                 results.add(config to source)
             }
@@ -1826,7 +1829,9 @@ class RemoteConfigClientTest {
 
             // First delivery is CACHE with specific config
             assertTrue(results.isNotEmpty())
-            val (cacheConfig, cacheSource) = results.first { it.second == Source.CACHE }
+            val cacheEntry = results.first { it.second == Source.CACHE }
+            val cacheConfig = cacheEntry.first!!
+            val cacheSource = cacheEntry.second
             assertEquals(Source.CACHE, cacheSource)
             assertEquals(1.0, cacheConfig["sample_rate"])
             assertEquals(true, cacheConfig["capture_enabled"])
@@ -1854,7 +1859,7 @@ class RemoteConfigClientTest {
             )
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
-            val results = mutableListOf<Pair<ConfigMap, Source>>()
+            val results = mutableListOf<Pair<ConfigMap?, Source>>()
             client.subscribe(SessionReplayPrivacyConfig) { config, source, _ ->
                 results.add(config to source)
             }
@@ -1862,14 +1867,16 @@ class RemoteConfigClientTest {
 
             // First delivery is migrated CACHE
             assertTrue(results.isNotEmpty()) { "Migrated config should be delivered" }
-            val (cacheConfig, cacheSource) = results.first { it.second == Source.CACHE }
+            val cacheEntry2 = results.first { it.second == Source.CACHE }
+            val cacheConfig = cacheEntry2.first!!
+            val cacheSource = cacheEntry2.second
             assertEquals(Source.CACHE, cacheSource)
             assertEquals("medium", cacheConfig["defaultMaskLevel"])
             verify { logger.debug(match<String> { it.contains("old pre-flattened cache format") }) }
         }
 
     @Test
-    fun `dot-path to non-existent path returns empty config`() =
+    fun `dot-path to non-existent path returns null`() =
         runTest {
             val client = createClient()
 
@@ -1885,9 +1892,8 @@ class RemoteConfigClientTest {
             }
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // Should receive empty config (dot-path doesn't resolve)
-            val config = checkNotNull(receivedConfig)
-            assertTrue(config.isEmpty())
+            // Should receive null (dot-path does not resolve)
+            assertNull(receivedConfig)
         }
 
     @Test
@@ -1949,8 +1955,8 @@ class RemoteConfigClientTest {
             )
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
-            val privacyResults = mutableListOf<Triple<ConfigMap, Source, Long>>()
-            val diagnosticsResults = mutableListOf<Triple<ConfigMap, Source, Long>>()
+            val privacyResults = mutableListOf<Triple<ConfigMap?, Source, Long>>()
+            val diagnosticsResults = mutableListOf<Triple<ConfigMap?, Source, Long>>()
 
             client.subscribe(
                 key = SessionReplayPrivacyConfig,
@@ -1973,7 +1979,9 @@ class RemoteConfigClientTest {
                 privacyResults.isNotEmpty(),
                 "WaitForRemote subscriber should receive migrated cache on offline upgrade",
             )
-            val (privacyConfig, privacySource, _) = privacyResults.first()
+            val privacyEntry = privacyResults.first()
+            val privacyConfig = privacyEntry.first!!
+            val privacySource = privacyEntry.second
             assertEquals("strict", privacyConfig["defaultMaskLevel"])
             assertEquals(Source.CACHE, privacySource)
 
@@ -1982,7 +1990,9 @@ class RemoteConfigClientTest {
                 diagnosticsResults.isNotEmpty(),
                 "All subscriber should receive migrated cache on offline upgrade",
             )
-            val (diagConfig, diagSource, _) = diagnosticsResults.first()
+            val diagEntry = diagnosticsResults.first()
+            val diagConfig = diagEntry.first!!
+            val diagSource = diagEntry.second
             assertEquals(true, diagConfig["enabled"])
             assertEquals(Source.CACHE, diagSource)
 

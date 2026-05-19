@@ -89,7 +89,7 @@ interface RemoteConfigClient {
 
     fun interface RemoteConfigCallback {
         fun onUpdate(
-            config: ConfigMap,
+            config: ConfigMap?,
             source: Source,
             timestamp: Long,
         )
@@ -114,7 +114,7 @@ internal class RemoteConfigClientImpl(
      * Data class for storing config data with timestamp
      */
     private data class ConfigData(
-        val config: ConfigMap,
+        val config: ConfigMap?,
         val timestamp: Long,
     )
 
@@ -209,7 +209,7 @@ internal class RemoteConfigClientImpl(
     private val subscriberLock = Any()
     private val keySpecificSubscribers = mutableMapOf<String, MutableList<WeakCallback>>()
 
-    @Volatile
+    // Safe without synchronization: all reads/writes happen on the single-threaded networkIODispatcher.
     private var isFetching: Boolean = false
 
     override fun subscribe(
@@ -274,7 +274,7 @@ internal class RemoteConfigClientImpl(
                 // Timeout: fall back to cache (or empty). runSafelyIfFirst
                 // suppresses this if a remote delivery already claimed the gate.
                 val storedData = getStoredConfigData(key.value)
-                val config = storedData?.config ?: emptyMap()
+                val config = storedData?.config
                 val timestamp = storedData?.timestamp ?: System.currentTimeMillis()
                 val delivered =
                     weakCallback.runSafelyIfFirst {
@@ -344,8 +344,7 @@ internal class RemoteConfigClientImpl(
                         keySpecificSubscribers.map { (dotPath, subs) -> dotPath to subs.toList() }
                     }
                 for ((dotPath, subscribers) in subscriberSnapshot) {
-                    val resolved = resolveDotPath(blob, dotPath)
-                    val config = resolved ?: emptyMap()
+                    val config = resolveDotPath(blob, dotPath)
                     subscribers.forEach { weakCallback ->
                         weakCallback.runSafely {
                             onUpdate(config, REMOTE, timestamp)
@@ -376,11 +375,11 @@ internal class RemoteConfigClientImpl(
         return try {
             val blob = getStoredConfigBlob() ?: return null
 
-            val resolved = resolveDotPath(blob, dotPath) ?: emptyMap()
+            val resolved = resolveDotPath(blob, dotPath)
             val timestampStr = storage.read(REMOTE_CONFIG_TIMESTAMP)
             val timestamp = timestampStr?.toLongOrNull() ?: 0L
 
-            logger.debug("Retrieved stored config for $dotPath with ${resolved.size} properties")
+            logger.debug("Retrieved stored config for $dotPath with ${resolved?.size ?: 0} properties")
             ConfigData(resolved, timestamp)
         } catch (e: Exception) {
             logger.error("Failed to retrieve stored config data for $dotPath: ${e.message}")

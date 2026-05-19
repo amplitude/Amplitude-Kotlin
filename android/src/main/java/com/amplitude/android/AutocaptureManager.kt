@@ -47,7 +47,8 @@ internal class AutocaptureManager(
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun handleRemoteConfig(config: ConfigMap) {
+    private fun handleRemoteConfig(config: ConfigMap?) {
+        if (config == null) return
         val currentState = _state.value
 
         val autocaptureConfig = config["autocapture"] as? ConfigMap

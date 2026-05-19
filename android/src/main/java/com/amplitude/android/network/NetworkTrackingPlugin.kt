@@ -63,7 +63,11 @@ class NetworkTrackingPlugin(
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun handleRemoteConfig(config: ConfigMap) {
+    private fun handleRemoteConfig(config: ConfigMap?) {
+        if (config == null) {
+            currentOptions = originalOptions
+            return
+        }
         val autocaptureConfig = config["autocapture"] as? ConfigMap
         val networkConfig = autocaptureConfig?.get("networkTracking") as? ConfigMap
 
