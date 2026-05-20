@@ -231,10 +231,11 @@ internal class RemoteConfigClientImpl(
         val weakCallback = WeakCallback(callback)
         registerSubscriber(key, weakCallback)
 
-        // Immediately provide stored config if available
+        // Immediately deliver cached config only when the subscriber's key actually
+        // resolves in the cached blob. A null resolved config means "not in cache"
+        // — the upcoming REMOTE delivery will report the authoritative state.
         val storedData = getStoredConfigData(key.value)
-        if (storedData != null) {
-            // Notify only the newly added subscriber
+        if (storedData?.config != null) {
             weakCallback.runSafely {
                 onUpdate(storedData.config, CACHE, storedData.timestamp)
             }
