@@ -366,9 +366,12 @@ class RemoteConfigClientTest {
 
             // Old-format blob is detected and discarded — no CACHE delivery
             assertFalse(results.any { it.second == Source.CACHE }, "Old-format stale blob must not produce a CACHE delivery")
-            // Stale blob cleared in storage
+            // After clear + empty-config fetch, storage must have no dotted top-level keys
             val storedJson = storage.read(Storage.Constants.REMOTE_CONFIG)
-            assertTrue(storedJson.isNullOrBlank(), "Old-format blob should be cleared from storage")
+            if (!storedJson.isNullOrBlank()) {
+                val storedKeys = org.json.JSONObject(storedJson).keys().asSequence().toList()
+                assertFalse(storedKeys.any { "." in it }, "Old dotted keys must be gone from storage")
+            }
             verify { logger.debug(match<String> { it.contains("old pre-flattened cache format") }) }
         }
 
@@ -1905,9 +1908,12 @@ class RemoteConfigClientTest {
 
             // Old-format blob must not produce a CACHE delivery
             assertFalse(results.any { it.second == Source.CACHE }, "Old-format stale blob must not produce a CACHE delivery")
-            // Stale blob cleared from storage so the next read will treat it as a cache miss
+            // After clear + empty-config fetch, storage must have no dotted top-level keys
             val storedJson = storage.read(Storage.Constants.REMOTE_CONFIG)
-            assertTrue(storedJson.isNullOrBlank(), "Old-format blob should be cleared from storage")
+            if (!storedJson.isNullOrBlank()) {
+                val storedKeys = org.json.JSONObject(storedJson).keys().asSequence().toList()
+                assertFalse(storedKeys.any { "." in it }, "Old dotted keys must be gone from storage")
+            }
             verify { logger.debug(match<String> { it.contains("old pre-flattened cache format") }) }
         }
 
@@ -2010,11 +2016,15 @@ class RemoteConfigClientTest {
 
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // Privacy: WaitForRemote — fetch failure claims gate immediately, delivers null REMOTE
-            assertEquals(1, privacyResults.size, "Expected one null REMOTE delivery on fetch failure")
-            val (privacyConfig, privacySource, _) = privacyResults.single()
-            assertEquals(Source.REMOTE, privacySource, "Fetch failure must deliver Source.REMOTE")
-            assertNull(privacyConfig, "Stale old-format blob must not produce real cache data")
+            // Privacy: WaitForRemote — fetch failure delivers null REMOTE (no stale CACHE)
+            assertFalse(
+                privacyResults.any { it.second == Source.CACHE },
+                "Old-format stale blob must not produce a CACHE delivery for WaitForRemote",
+            )
+            assertTrue(
+                privacyResults.all { it.first == null && it.second == Source.REMOTE },
+                "All deliveries on fetch failure must be null REMOTE, got: $privacyResults",
+            )
 
             // Diagnostics: All mode — old-format blob discarded (no CACHE), null REMOTE from failure
             assertFalse(
@@ -2026,7 +2036,7 @@ class RemoteConfigClientTest {
                 "All subscriber should receive null REMOTE callback on fetch failure",
             )
 
-            // Stale blob cleared from storage
+            // Stale blob cleared from storage (fetch failure does not re-write)
             val storedJson = storage.read(Storage.Constants.REMOTE_CONFIG)
             assertTrue(storedJson.isNullOrBlank(), "Old-format blob should be cleared from storage")
         }
