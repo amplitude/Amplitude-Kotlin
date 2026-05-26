@@ -340,7 +340,7 @@ class RemoteConfigClientTest {
         }
 
     @Test
-    fun `subscribe with old-format cache - migrated and delivered immediately`() =
+    fun `subscribe with old-format cache - stale blob is cleared and no cache delivery happens`() =
         runTest {
             val client = createClient(useVerifiableLogger = true)
             val results = mutableListOf<Pair<ConfigMap?, Source>>()
@@ -364,13 +364,11 @@ class RemoteConfigClientTest {
 
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // First delivery is migrated CACHE
-            assertTrue(results.isNotEmpty())
-            val cacheEntry = results.first { it.second == Source.CACHE }
-            val cacheConfig = cacheEntry.first!!
-            val cacheSource = cacheEntry.second
-            assertEquals(Source.CACHE, cacheSource)
-            assertEquals("light", cacheConfig["defaultMaskLevel"])
+            // Old-format blob is detected and discarded — no CACHE delivery
+            assertFalse(results.any { it.second == Source.CACHE }, "Old-format stale blob must not produce a CACHE delivery")
+            // Stale blob cleared in storage
+            val storedJson = storage.read(Storage.Constants.REMOTE_CONFIG)
+            assertTrue(storedJson.isNullOrBlank(), "Old-format blob should be cleared from storage")
             verify { logger.debug(match<String> { it.contains("old pre-flattened cache format") }) }
         }
 
@@ -1838,7 +1836,7 @@ class RemoteConfigClientTest {
         }
 
     @Test
-    fun `old pre-flattened cache format is migrated and delivered`() =
+    fun `old pre-flattened cache format is discarded and storage is cleared`() =
         runTest {
             val client = createClient(useVerifiableLogger = true)
 
@@ -1865,13 +1863,11 @@ class RemoteConfigClientTest {
             }
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // First delivery is migrated CACHE
-            assertTrue(results.isNotEmpty()) { "Migrated config should be delivered" }
-            val cacheEntry2 = results.first { it.second == Source.CACHE }
-            val cacheConfig = cacheEntry2.first!!
-            val cacheSource = cacheEntry2.second
-            assertEquals(Source.CACHE, cacheSource)
-            assertEquals("medium", cacheConfig["defaultMaskLevel"])
+            // Old-format blob must not produce a CACHE delivery
+            assertFalse(results.any { it.second == Source.CACHE }, "Old-format stale blob must not produce a CACHE delivery")
+            // Stale blob cleared from storage so the next read will treat it as a cache miss
+            val storedJson = storage.read(Storage.Constants.REMOTE_CONFIG)
+            assertTrue(storedJson.isNullOrBlank(), "Old-format blob should be cleared from storage")
             verify { logger.debug(match<String> { it.contains("old pre-flattened cache format") }) }
         }
 
@@ -1910,11 +1906,11 @@ class RemoteConfigClientTest {
     // region Migration and Dynamic Fetch Keys
 
     @Test
-    fun `old-format cache migrated and delivered when offline with WaitForRemote`() =
+    fun `old-format cache cleared and no cache delivery when offline with WaitForRemote`() =
         runTest {
             // Simulates an upgrade scenario: old cache has flat dotted keys,
-            // fetch fails (offline). Subscribers should still receive the
-            // migrated cached config instead of empty.
+            // fetch fails (offline). The stale blob is discarded immediately so
+            // no stale CACHE delivery occurs; WaitForRemote times out with null fallback.
             val mockHttpClient = mockk<HttpClient>()
             every { mockHttpClient.request(any()) } returns
                 HttpClient.Response(
@@ -1974,39 +1970,21 @@ class RemoteConfigClientTest {
 
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // Privacy: WaitForRemote should get migrated cache (fetch failed, timeout fires).
-            assertTrue(
-                privacyResults.isNotEmpty(),
-                "WaitForRemote subscriber should receive migrated cache on offline upgrade",
-            )
-            val privacyEntry = privacyResults.first()
-            val privacyConfig = privacyEntry.first!!
-            val privacySource = privacyEntry.second
-            assertEquals("strict", privacyConfig["defaultMaskLevel"])
-            assertEquals(Source.CACHE, privacySource)
+            // Privacy: WaitForRemote times out, blob was cleared so fallback is null
+            assertEquals(1, privacyResults.size, "Expected exactly one timeout-fallback delivery")
+            val (privacyConfig, privacySource, _) = privacyResults.single()
+            assertEquals(Source.CACHE, privacySource, "Timeout fallback reports Source.CACHE")
+            assertNull(privacyConfig, "Stale old-format blob must not produce real cache data")
 
-            // Diagnostics: All should get migrated cache immediately.
-            assertTrue(
-                diagnosticsResults.isNotEmpty(),
-                "All subscriber should receive migrated cache on offline upgrade",
-            )
-            val diagEntry = diagnosticsResults.first()
-            val diagConfig = diagEntry.first!!
-            val diagSource = diagEntry.second
-            assertEquals(true, diagConfig["enabled"])
-            assertEquals(Source.CACHE, diagSource)
-
-            // Verify the migrated blob was persisted back to storage.
-            val storedJson = storage.read(Storage.Constants.REMOTE_CONFIG)
-            val storedBlob = org.json.JSONObject(checkNotNull(storedJson))
-            assertTrue(
-                storedBlob.has("sessionReplay"),
-                "Migrated storage should have nested 'sessionReplay' key",
-            )
+            // Diagnostics: All mode — old-format blob is discarded so no CACHE delivery
             assertFalse(
-                storedBlob.keys().asSequence().any { "." in it },
-                "Migrated storage should have no dotted top-level keys",
+                diagnosticsResults.any { it.second == Source.CACHE },
+                "All subscriber must not receive stale old-format blob as CACHE",
             )
+
+            // Stale blob cleared from storage
+            val storedJson = storage.read(Storage.Constants.REMOTE_CONFIG)
+            assertTrue(storedJson.isNullOrBlank(), "Old-format blob should be cleared from storage")
         }
 
     // endregion Migration and Config Group

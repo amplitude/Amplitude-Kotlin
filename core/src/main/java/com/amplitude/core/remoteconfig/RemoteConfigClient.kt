@@ -390,8 +390,9 @@ internal class RemoteConfigClientImpl(
 
     /**
      * Reads the stored config blob from storage. Returns the nested map
-     * structure or null if storage is empty/corrupt. Gracefully handles
-     * old pre-flattened storage format by treating it as a cache miss.
+     * structure or null if storage is empty/corrupt. Discards stale
+     * old pre-flattened format blobs so the in-flight remote fetch can
+     * refill storage with the correct nested format.
      */
     private fun getStoredConfigBlob(): ConfigMap? {
         return try {
@@ -408,17 +409,11 @@ internal class RemoteConfigClientImpl(
             // New format has top-level keys without dots (e.g. "sessionReplay", "diagnostics").
             val isOldFormat = allConfigs.keys.any { "." in it }
             if (isOldFormat) {
-                logger.debug("Detected old pre-flattened cache format; migrating in place")
-                val migrated = migrateOldFormatToNested(allConfigs)
+                logger.debug("Detected old pre-flattened cache format; discarding stale blob")
                 coroutineScope.launch(storageIODispatcher) {
-                    try {
-                        storage.write(REMOTE_CONFIG, migrated.toJSONObject().toString())
-                        logger.debug("Migrated old-format cache to nested format")
-                    } catch (e: Exception) {
-                        logger.error("Failed to write migrated cache: ${e.message}")
-                    }
+                    storage.write(REMOTE_CONFIG, "")
                 }
-                return migrated
+                return null
             }
 
             logger.debug("Successfully loaded stored config blob with ${allConfigs.size} top-level keys")
@@ -427,25 +422,6 @@ internal class RemoteConfigClientImpl(
             logger.error("Failed to parse all stored configs: ${e.message}")
             null
         }
-    }
-
-    // Temporary: old cache only stored single-dot keys (e.g. "sessionReplay.sr_android_privacy_config").
-    @Suppress("UNCHECKED_CAST")
-    private fun migrateOldFormatToNested(flat: ConfigMap): ConfigMap {
-        val result = mutableMapOf<String, Any>()
-        for ((key, value) in flat) {
-            val dotIndex = key.indexOf('.')
-            if (dotIndex < 0) {
-                result[key] = value
-                continue
-            }
-            val root = key.substring(0, dotIndex)
-            val child = key.substring(dotIndex + 1)
-            val existing = result[root] as? MutableMap<String, Any> ?: mutableMapOf()
-            existing[child] = value
-            result[root] = existing
-        }
-        return result
     }
 
     /**
