@@ -53,9 +53,10 @@ interface RemoteConfigClient {
     }
 
     /**
-     * Dot-path key for subscribing to remote config sections.
-     * Split by "." to walk nested config objects. For example,
-     * "sessionReplay.sr_android_privacy_config" resolves configs.sessionReplay.sr_android_privacy_config.
+     * Dot-path key for subscribing to a section of the remote config blob.
+     * Segments are split by "." and used to walk nested maps. For example,
+     * "sessionReplay.sr_android_privacy_config" resolves the nested map at
+     * configs.sessionReplay.sr_android_privacy_config.
      */
     sealed class Key(open val value: String) {
         data object AnalyticsSdk : Key("analyticsSDK.androidSDK")
