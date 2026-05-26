@@ -332,7 +332,11 @@ internal class RemoteConfigClientImpl(
 
             isFetching = true
             try {
-                val blob = fetchRemoteConfig() ?: return@launch
+                val blob = fetchRemoteConfig()
+                if (blob == null) {
+                    notifySubscribersOnFailure(System.currentTimeMillis())
+                    return@launch
+                }
 
                 val timestamp = System.currentTimeMillis()
                 withContext(storageIODispatcher) {
@@ -355,8 +359,28 @@ internal class RemoteConfigClientImpl(
                 }
             } catch (e: Exception) {
                 logger.error("Error updating remote configs: ${e.message}")
+                notifySubscribersOnFailure(System.currentTimeMillis())
             } finally {
                 isFetching = false
+            }
+        }
+    }
+
+    /**
+     * Notifies all current subscribers with a null config and [Source.REMOTE] to signal
+     * a failed fetch. The [WeakCallback.runSafely] gate prevents double-delivery for
+     * [DeliveryMode.WaitForRemote] subscribers that have already received a timeout fallback.
+     */
+    private fun notifySubscribersOnFailure(timestamp: Long) {
+        val subscriberSnapshot =
+            synchronized(subscriberLock) {
+                keySpecificSubscribers.map { (_, subs) -> subs.toList() }
+            }
+        for (subscribers in subscriberSnapshot) {
+            subscribers.forEach { weakCallback ->
+                weakCallback.runSafely {
+                    onUpdate(null, REMOTE, timestamp)
+                }
             }
         }
     }
