@@ -415,9 +415,12 @@ internal class RemoteConfigClientImpl(
 
     /**
      * Reads the stored config blob from storage. Returns the nested map
-     * structure or null if storage is empty/corrupt. Discards stale
-     * old pre-flattened format blobs so the in-flight remote fetch can
-     * refill storage with the correct nested format.
+     * structure or null if storage is empty/corrupt. Stale old pre-flattened
+     * format blobs are ignored (treated as a cache miss) so the in-flight
+     * remote fetch refills storage with the correct nested format. The stale
+     * blob is left untouched here — clearing it from the read path could race
+     * with the fetch's write and erase a freshly stored blob; a successful
+     * fetch overwrites it, and until then it is simply never delivered.
      */
     private fun getStoredConfigBlob(): ConfigMap? {
         return try {
@@ -434,10 +437,7 @@ internal class RemoteConfigClientImpl(
             // New format has top-level keys without dots (e.g. "sessionReplay", "diagnostics").
             val isOldFormat = allConfigs.keys.any { "." in it }
             if (isOldFormat) {
-                logger.debug("Detected old pre-flattened cache format; discarding stale blob")
-                coroutineScope.launch(storageIODispatcher) {
-                    storage.write(REMOTE_CONFIG, "")
-                }
+                logger.debug("Detected old pre-flattened cache format; ignoring stale blob")
                 return null
             }
 

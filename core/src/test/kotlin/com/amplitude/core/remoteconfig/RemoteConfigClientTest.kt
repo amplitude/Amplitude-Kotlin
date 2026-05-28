@@ -340,9 +340,12 @@ class RemoteConfigClientTest {
         }
 
     @Test
-    fun `subscribe with old-format cache - stale blob is cleared and no cache delivery happens`() =
+    fun `subscribe with old-format cache - stale blob is ignored and overwritten by fetch`() =
         runTest {
-            val client = createClient(useVerifiableLogger = true)
+            // emptyApiConfig = false so the fetch returns a real nested blob. This
+            // guards the prior fire-and-forget clear race: the stale blob must be
+            // replaced by the fetched nested config, never clobbering it back to empty.
+            val client = createClient(useVerifiableLogger = true, emptyApiConfig = false)
             val results = mutableListOf<Pair<ConfigMap?, Source>>()
 
             // Pre-populate storage with old pre-flattened format (keys contain dots)
@@ -364,14 +367,15 @@ class RemoteConfigClientTest {
 
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // Old-format blob is detected and discarded — no CACHE delivery
+            // Old-format blob is detected and ignored — no CACHE delivery
             assertFalse(results.any { it.second == Source.CACHE }, "Old-format stale blob must not produce a CACHE delivery")
-            // After clear + empty-config fetch, storage must have no dotted top-level keys
-            val storedJson = storage.read(Storage.Constants.REMOTE_CONFIG)
-            if (!storedJson.isNullOrBlank()) {
-                val storedKeys = org.json.JSONObject(storedJson).keys().asSequence().toList()
-                assertFalse(storedKeys.any { "." in it }, "Old dotted keys must be gone from storage")
-            }
+            // The fetch must overwrite storage with the nested format: top-level
+            // "sessionReplay" key present, no dotted keys remaining.
+            val storedKeys =
+                org.json.JSONObject(storage.read(Storage.Constants.REMOTE_CONFIG)!!)
+                    .keys().asSequence().toList()
+            assertTrue(storedKeys.contains("sessionReplay"), "Fetched nested blob must be stored")
+            assertFalse(storedKeys.any { "." in it }, "Old dotted keys must be gone from storage")
             verify { logger.debug(match<String> { it.contains("old pre-flattened cache format") }) }
         }
 
@@ -2043,11 +2047,11 @@ class RemoteConfigClientTest {
     // region Migration and Dynamic Fetch Keys
 
     @Test
-    fun `old-format cache cleared and no cache delivery when offline with WaitForRemote`() =
+    fun `old-format cache ignored and no cache delivery when offline with WaitForRemote`() =
         runTest {
             // Simulates an upgrade scenario: old cache has flat dotted keys,
-            // fetch fails (offline). The stale blob is discarded immediately so
-            // no stale CACHE delivery occurs; WaitForRemote times out with null fallback.
+            // fetch fails (offline). The stale blob is ignored on read so no stale
+            // CACHE delivery occurs; WaitForRemote times out with null fallback.
             val mockHttpClient = mockk<HttpClient>()
             every { mockHttpClient.request(any()) } returns
                 HttpClient.Response(
@@ -2127,9 +2131,16 @@ class RemoteConfigClientTest {
                 "All subscriber should receive null REMOTE callback on fetch failure",
             )
 
-            // Stale blob cleared from storage (fetch failure does not re-write)
+            // On fetch failure storage is not re-written, and the read path no longer
+            // clears the stale blob (that would race with a concurrent fetch write).
+            // The old-format blob therefore remains on disk but is always ignored on
+            // read — verified above by the absence of any CACHE delivery.
             val storedJson = storage.read(Storage.Constants.REMOTE_CONFIG)
-            assertTrue(storedJson.isNullOrBlank(), "Old-format blob should be cleared from storage")
+            assertFalse(storedJson.isNullOrBlank(), "Stale blob is left untouched on fetch failure")
+            assertTrue(
+                org.json.JSONObject(storedJson).keys().asSequence().any { "." in it },
+                "Stale dotted blob remains on disk, harmlessly ignored on read",
+            )
         }
 
     // endregion Migration and Config Group
