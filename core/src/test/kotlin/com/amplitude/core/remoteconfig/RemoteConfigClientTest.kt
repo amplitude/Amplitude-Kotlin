@@ -2034,6 +2034,40 @@ class RemoteConfigClientTest {
         }
 
     @Test
+    fun `dot-path leaf with nested null values - nulls filtered from delivered config`() =
+        runTest {
+            val client = createClient()
+            val results = mutableListOf<Pair<ConfigMap?, Source>>()
+
+            // Leaf contains a JSON null (becomes Java null via toMapObj). The delivered
+            // ConfigMap must not surface it — ConfigMap is Map<String, Any> (non-null).
+            storage.write(
+                Storage.Constants.REMOTE_CONFIG,
+                """
+                {
+                    "sessionReplay": {
+                        "sr_android_privacy_config": {
+                            "defaultMaskLevel": "medium",
+                            "optionalField": null
+                        }
+                    }
+                }
+                """.trimIndent(),
+            )
+            storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
+
+            client.subscribe(SessionReplayPrivacyConfig) { config, source, _ ->
+                results.add(config to source)
+            }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            val cache = results.first { it.second == Source.CACHE }.first
+            assertEquals("medium", cache!!["defaultMaskLevel"])
+            assertFalse(cache.containsKey("optionalField"), "Null leaf value must be filtered out")
+            assertFalse(cache.values.any { it == null }, "Delivered config must contain no null values")
+        }
+
+    @Test
     fun `Key sealed class instances have correct values`() {
         assertEquals("analyticsSDK.androidSDK", Key.AnalyticsSdk.value)
         assertEquals("diagnostics.androidSDK", Key.Diagnostics.value)

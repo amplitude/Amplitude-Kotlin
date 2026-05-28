@@ -325,13 +325,17 @@ internal class RemoteConfigClientImpl(
                 return@launch
             }
 
+            // Claim the in-flight slot synchronously, before the suspending
+            // shouldRateLimit() read. Otherwise a second coroutine queued on the
+            // single network dispatcher could pass the isFetching guard during the
+            // suspension and issue a duplicate fetch.
+            isFetching = true
             try {
                 if (shouldRateLimit()) {
                     logger.debug("RemoteConfig update skipped: within 5-minute window")
                     return@launch
                 }
 
-                isFetching = true
                 val blob = fetchRemoteConfig()
                 if (blob == null) {
                     notifySubscribersOnFailure(System.currentTimeMillis())
@@ -451,7 +455,9 @@ internal class RemoteConfigClientImpl(
 
     /**
      * Walk a dot-path into a nested config blob and return the leaf as a [ConfigMap].
-     * Returns null if any segment is missing or non-map.
+     * Returns null if any segment is missing or non-map. Null values inside the
+     * resolved leaf (from `JSONObject.NULL` in nested objects) are filtered out so
+     * the delivered map honors the non-null [ConfigMap] contract.
      */
     @Suppress("UNCHECKED_CAST")
     private fun resolveDotPath(
@@ -461,10 +467,10 @@ internal class RemoteConfigClientImpl(
         val segments = dotPath.split(".")
         var current: Any? = blob
         for (segment in segments) {
-            val map = current as? Map<String, Any> ?: return null
+            val map = current as? Map<String, Any?> ?: return null
             current = map[segment] ?: return null
         }
-        return current as? Map<String, Any>
+        return (current as? Map<String, Any?>)?.filterNotNullValues()
     }
 
     private fun fetchRemoteConfig(): ConfigMap? {
