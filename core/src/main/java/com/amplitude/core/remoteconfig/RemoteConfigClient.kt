@@ -372,8 +372,11 @@ internal class RemoteConfigClientImpl(
 
     /**
      * Notifies all current subscribers with a null config and [Source.REMOTE] to signal
-     * a failed fetch. The [WeakCallback.runSafely] gate prevents double-delivery for
-     * [DeliveryMode.WaitForRemote] subscribers that have already received a timeout fallback.
+     * a failed fetch. For a [DeliveryMode.WaitForRemote] subscriber that has not yet
+     * received its first delivery, [WeakCallback.runSafely] claims the first-delivery
+     * gate so this null REMOTE becomes its initial callback. If such a subscriber has
+     * already been served (e.g. by the timeout fallback), this null REMOTE is delivered
+     * as a subsequent update — it is not suppressed.
      */
     private fun notifySubscribersOnFailure(timestamp: Long) {
         val subscriberSnapshot =
