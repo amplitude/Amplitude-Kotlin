@@ -58,7 +58,7 @@ interface RemoteConfigClient {
      * "sessionReplay.sr_android_privacy_config" resolves the nested map at
      * configs.sessionReplay.sr_android_privacy_config.
      */
-    sealed class Key(open val value: String) {
+    sealed class Key(val value: String) {
         data object AnalyticsSdk : Key("analyticsSDK.androidSDK")
 
         data object Diagnostics : Key("diagnostics.androidSDK")
@@ -67,7 +67,7 @@ interface RemoteConfigClient {
 
         data object SessionReplaySamplingConfig : Key("sessionReplay.sr_android_sampling_config")
 
-        class Custom(override val value: String) : Key(value) {
+        class Custom(value: String) : Key(value) {
             override fun equals(other: Any?): Boolean = other is Custom && other.value == value
 
             override fun hashCode(): Int = value.hashCode()
