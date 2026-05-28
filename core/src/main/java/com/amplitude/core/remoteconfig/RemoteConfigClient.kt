@@ -154,55 +154,44 @@ internal class RemoteConfigClientImpl(
         fun isAlive(): Boolean = weakRef.get() != null
 
         /**
-         * Invoke [action] on the wrapped callback if it is still alive and, when
-         * gating is in effect, only if this invocation successfully claims the
-         * first-delivery slot. Subsequent invocations after the first delivery
-         * always pass through.
+         * Invoke [action] on the wrapped callback if it is still alive. When gating
+         * is in effect, the first invocation to reach [deliveryLock] claims the
+         * first-delivery slot and signals waiters; later invocations fall through and
+         * deliver as subsequent updates. Claiming inside the lock guarantees the
+         * first delivery completes before any subsequent one — without blocking a
+         * thread waiting on [firstDeliverySignal].
          */
         fun runSafely(action: RemoteConfigClient.RemoteConfigCallback.() -> Unit) {
             val callback = weakRef.get() ?: return
-
-            if (firstDeliveryClaimed != null) {
-                // Gated: claim the first-delivery slot if available.
-                val claimedFirst = firstDeliveryClaimed.compareAndSet(false, true)
-                if (claimedFirst) {
-                    // Signal before callback so a concurrent arrival sees it complete
-                    // and delivers as a subsequent update instead of being dropped.
-                    firstDeliverySignal?.complete(Unit)
-                } else {
-                    // Another path claimed the gate. Wait for it to complete its
-                    // delivery before proceeding with this subsequent update, ensuring
-                    // correct ordering (gate-winner delivers first, then this).
-                    kotlinx.coroutines.runBlocking {
-                        firstDeliverySignal?.await()
-                    }
-                }
-            }
-
             synchronized(deliveryLock) {
-                try {
-                    callback.action()
-                } catch (e: Exception) {
-                    logger.error("Exception in subscriber callback: ${e.message}")
+                if (firstDeliveryClaimed?.compareAndSet(false, true) == true) {
+                    firstDeliverySignal?.complete(Unit)
                 }
+                deliver(callback, action)
             }
         }
 
         /** Deliver only if this callback can still claim the first-delivery slot. */
         fun runSafelyIfFirst(action: RemoteConfigClient.RemoteConfigCallback.() -> Unit): Boolean {
             val callback = weakRef.get() ?: return false
-            val claimed = firstDeliveryClaimed?.compareAndSet(false, true) ?: return false
-            if (!claimed) return false
-
-            firstDeliverySignal?.complete(Unit)
             synchronized(deliveryLock) {
-                try {
-                    callback.action()
-                } catch (e: Exception) {
-                    logger.error("Exception in subscriber callback: ${e.message}")
-                }
+                val claimed = firstDeliveryClaimed?.compareAndSet(false, true) ?: return false
+                if (!claimed) return false
+                firstDeliverySignal?.complete(Unit)
+                deliver(callback, action)
+                return true
             }
-            return true
+        }
+
+        private fun deliver(
+            callback: RemoteConfigClient.RemoteConfigCallback,
+            action: RemoteConfigClient.RemoteConfigCallback.() -> Unit,
+        ) {
+            try {
+                callback.action()
+            } catch (e: Exception) {
+                logger.error("Exception in subscriber callback: ${e.message}")
+            }
         }
     }
 
