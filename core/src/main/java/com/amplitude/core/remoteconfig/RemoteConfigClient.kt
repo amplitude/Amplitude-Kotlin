@@ -325,13 +325,13 @@ internal class RemoteConfigClientImpl(
                 return@launch
             }
 
-            if (shouldRateLimit()) {
-                logger.debug("RemoteConfig update skipped: within 5-minute window")
-                return@launch
-            }
-
-            isFetching = true
             try {
+                if (shouldRateLimit()) {
+                    logger.debug("RemoteConfig update skipped: within 5-minute window")
+                    return@launch
+                }
+
+                isFetching = true
                 val blob = fetchRemoteConfig()
                 if (blob == null) {
                     notifySubscribersOnFailure(System.currentTimeMillis())

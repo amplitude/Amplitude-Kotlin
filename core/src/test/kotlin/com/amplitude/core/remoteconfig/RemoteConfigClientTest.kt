@@ -1098,17 +1098,108 @@ class RemoteConfigClientTest {
                     logger = logger,
                 )
 
-            var callbackInvoked = false
-            client.subscribe(SessionReplayPrivacyConfig) { _, _, _ ->
-                callbackInvoked = true
+            val callbacks = mutableListOf<Pair<ConfigMap?, Source>>()
+            client.subscribe(SessionReplayPrivacyConfig) { config, source, _ ->
+                callbacks.add(config to source)
             }
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // Should handle storage failure gracefully - no immediate callback
-            assertFalse(callbackInvoked, "Should handle storage read failure gracefully")
+            // Cache read failure must not deliver a bogus CACHE callback, but the
+            // subscriber is still unblocked with a null REMOTE signal rather than
+            // hanging when the fetch path itself fails on a storage read.
+            assertFalse(
+                callbacks.any { it.second == Source.CACHE },
+                "Should not deliver cache on storage read failure",
+            )
+            assertEquals(1, callbacks.size, "Subscriber should be notified exactly once")
+            assertNull(callbacks.first().first, "Failed fetch delivers null config")
+            assertEquals(Source.REMOTE, callbacks.first().second)
             verify {
                 logger.error(
                     match<String> { it.contains("Failed to parse all stored configs") },
+                )
+            }
+            verify {
+                logger.error(
+                    match<String> { it.contains("Error updating remote configs") },
+                )
+            }
+        }
+
+    @Test
+    fun `rate-limit read failure - notifies subscribers instead of leaking exception`() =
+        runTest {
+            // Storage where the cache blob is absent (no CACHE delivery) but the
+            // timestamp read used by shouldRateLimit() throws. This exercises the
+            // path where the exception originates outside the fetch body.
+            val rateLimitFailingStorage =
+                object : Storage {
+                    override fun read(key: Storage.Constants): String? {
+                        if (key == Storage.Constants.REMOTE_CONFIG_TIMESTAMP) {
+                            throw RuntimeException("Timestamp read failed")
+                        }
+                        return null
+                    }
+
+                    override suspend fun write(
+                        key: Storage.Constants,
+                        value: String,
+                    ) {
+                    }
+
+                    override suspend fun remove(key: Storage.Constants) {}
+
+                    override suspend fun writeEvent(event: BaseEvent) {}
+
+                    override suspend fun rollover() {}
+
+                    override fun readEventsContent(): List<Any> = emptyList()
+
+                    override suspend fun getEventsString(content: Any): String = ""
+
+                    override fun getResponseHandler(
+                        eventPipeline: EventPipeline,
+                        configuration: Configuration,
+                        scope: CoroutineScope,
+                        storageDispatcher: CoroutineDispatcher,
+                    ): ResponseHandler = mockk()
+                }
+
+            val client =
+                RemoteConfigClientImpl(
+                    apiKey = "test-key",
+                    serverZone = ServerZone.US,
+                    coroutineScope = testScope,
+                    networkIODispatcher = testDispatcher,
+                    storageIODispatcher = testDispatcher,
+                    storage = rateLimitFailingStorage,
+                    httpClient =
+                        mockk<HttpClient>().apply {
+                            every { request(any()) } returns
+                                HttpClient.Response(
+                                    statusCode = 200,
+                                    body = """{"configs": {}}""",
+                                    headers = emptyMap(),
+                                    statusMessage = "OK",
+                                )
+                        },
+                    logger = logger,
+                )
+
+            val callbacks = mutableListOf<Pair<ConfigMap?, Source>>()
+            client.subscribe(SessionReplayPrivacyConfig) { config, source, _ ->
+                callbacks.add(config to source)
+            }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            // Subscriber must still be unblocked with a null REMOTE signal rather
+            // than the exception leaking out of the launch and hanging it forever.
+            assertEquals(1, callbacks.size, "Subscriber should be notified exactly once")
+            assertNull(callbacks.first().first, "Failed fetch delivers null config")
+            assertEquals(Source.REMOTE, callbacks.first().second)
+            verify {
+                logger.error(
+                    match<String> { it.contains("Error updating remote configs") },
                 )
             }
         }
