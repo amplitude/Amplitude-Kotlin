@@ -1002,7 +1002,7 @@ public final class com/amplitude/core/remoteconfig/RemoteConfigClient$Key$Sessio
 }
 
 public abstract interface class com/amplitude/core/remoteconfig/RemoteConfigClient$RemoteConfigCallback {
-	public abstract fun onUpdate (Ljava/util/Map;Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Source;J)V
+	public abstract fun onUpdate (Ljava/util/Map;Lcom/amplitude/core/remoteconfig/RemoteConfigClient$Source;Ljava/lang/Long;)V
 }
 
 public final class com/amplitude/core/remoteconfig/RemoteConfigClient$Source : java/lang/Enum {

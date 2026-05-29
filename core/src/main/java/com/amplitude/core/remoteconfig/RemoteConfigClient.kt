@@ -13,9 +13,10 @@ import com.amplitude.core.remoteconfig.RemoteConfigClient.Source.REMOTE
 import com.amplitude.core.utilities.http.HttpClient
 import com.amplitude.core.utilities.toJSONObject
 import com.amplitude.core.utilities.toMapObj
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -89,10 +90,19 @@ interface RemoteConfigClient {
     fun updateConfigs()
 
     fun interface RemoteConfigCallback {
+        /**
+         * @param config resolved config slice; null when the key is absent from a
+         *   successful fetch, or when the fetch failed.
+         * @param source whether [config] came from cache or remote.
+         * @param timestamp time of the successful fetch that produced [config];
+         *   null signals a failed fetch. This is the discriminator between an
+         *   absent-but-valid key (non-null timestamp, null config) and an error
+         *   (null timestamp, null config).
+         */
         fun onUpdate(
             config: ConfigMap?,
             source: Source,
-            timestamp: Long,
+            timestamp: Long?,
         )
     }
 }
@@ -127,80 +137,87 @@ internal class RemoteConfigClientImpl(
     }
 
     /**
-     * Wrapper class for weak reference callbacks to prevent memory leaks.
+     * Weak-reference wrapper around a subscriber callback to avoid leaks.
      *
-     * For [RemoteConfigClient.DeliveryMode.WaitForRemote] subscribers, the first
-     * delivery is gated by [firstDeliveryClaimed]: whichever path (remote arrival
-     * via [updateConfigs] or timeout fallback) claims the gate first delivers the
-     * initial callback; the other becomes a no-op for that first delivery.
-     * Subsequent deliveries always pass through.
+     * Each subscriber receives at most one *first* delivery (cache, remote, or a
+     * failure signal). [deliverFirst] claims that slot atomically so racing paths
+     * (remote arrival vs. timeout fallback) can't double-deliver the first
+     * callback. [deliver] always fires and is used for the immediate cache
+     * delivery and for ongoing [RemoteConfigClient.DeliveryMode.All] updates.
      */
     private inner class WeakCallback(
         callback: RemoteConfigClient.RemoteConfigCallback,
-        private val firstDeliveryClaimed: AtomicBoolean? = null,
-        private val firstDeliverySignal: CompletableDeferred<Unit>? = null,
+        val deliveryMode: RemoteConfigClient.DeliveryMode,
     ) {
         private val weakRef = WeakReference(callback)
 
         /**
-         * Serializes all [RemoteConfigClient.RemoteConfigCallback.onUpdate]
-         * invocations for this subscriber. Without this lock, the timeout
-         * fallback and the remote fetch can invoke the callback concurrently
-         * from different dispatchers, causing unsynchronized state in the
-         * subscriber.
+         * Serializes all callback invocations for this subscriber so concurrent
+         * paths (remote fetch, timeout fallback, refresh) can't deliver at once.
          */
         private val deliveryLock = Any()
+        private val delivered = AtomicBoolean(false)
 
         fun isAlive(): Boolean = weakRef.get() != null
 
-        /**
-         * Invoke [action] on the wrapped callback if it is still alive. When gating
-         * is in effect, the first invocation to reach [deliveryLock] claims the
-         * first-delivery slot and signals waiters; later invocations fall through and
-         * deliver as subsequent updates. Claiming inside the lock guarantees the
-         * first delivery completes before any subsequent one — without blocking a
-         * thread waiting on [firstDeliverySignal].
-         */
-        fun runSafely(action: RemoteConfigClient.RemoteConfigCallback.() -> Unit) {
+        fun hasDelivered(): Boolean = delivered.get()
+
+        /** Always deliver, marking this subscriber as having received a callback. */
+        fun deliver(
+            config: ConfigMap?,
+            source: RemoteConfigClient.Source,
+            timestamp: Long?,
+        ) {
             val callback = weakRef.get() ?: return
             synchronized(deliveryLock) {
-                if (firstDeliveryClaimed?.compareAndSet(false, true) == true) {
-                    firstDeliverySignal?.complete(Unit)
-                }
-                deliver(callback, action)
+                delivered.set(true)
+                invoke(callback, config, source, timestamp)
             }
         }
 
-        /** Deliver only if this callback can still claim the first-delivery slot. */
-        fun runSafelyIfFirst(action: RemoteConfigClient.RemoteConfigCallback.() -> Unit): Boolean {
+        /** Deliver only as the first callback. Returns whether it fired. */
+        fun deliverFirst(
+            config: ConfigMap?,
+            source: RemoteConfigClient.Source,
+            timestamp: Long?,
+        ): Boolean {
             val callback = weakRef.get() ?: return false
             synchronized(deliveryLock) {
-                val claimed = firstDeliveryClaimed?.compareAndSet(false, true) ?: return false
-                if (!claimed) return false
-                firstDeliverySignal?.complete(Unit)
-                deliver(callback, action)
+                if (!delivered.compareAndSet(false, true)) return false
+                invoke(callback, config, source, timestamp)
                 return true
             }
         }
 
-        private fun deliver(
+        private fun invoke(
             callback: RemoteConfigClient.RemoteConfigCallback,
-            action: RemoteConfigClient.RemoteConfigCallback.() -> Unit,
+            config: ConfigMap?,
+            source: RemoteConfigClient.Source,
+            timestamp: Long?,
         ) {
             try {
-                callback.action()
+                callback.onUpdate(config, source, timestamp)
             } catch (e: Exception) {
                 logger.error("Exception in subscriber callback: ${e.message}")
             }
         }
     }
 
+    /** Result of a remote fetch: a successful blob with its fetch time, or a failure. */
+    private sealed interface FetchOutcome {
+        data class Success(val blob: ConfigMap, val timestamp: Long) : FetchOutcome
+
+        data object Failure : FetchOutcome
+    }
+
     // Subscribers for specific config keys using weak references to prevent memory leaks
     private val subscriberLock = Any()
     private val keySpecificSubscribers = mutableMapOf<String, MutableList<WeakCallback>>()
 
-    // Safe without synchronization: all reads/writes happen on the single-threaded networkIODispatcher.
-    private var isFetching: Boolean = false
+    // Shared in-flight remote fetch so concurrent subscribers share a single network call.
+    private val fetchLock = Any()
+    private var inFlightFetch: Deferred<FetchOutcome>? = null
+    private var lastSuccess: FetchOutcome.Success? = null
 
     override fun subscribe(
         key: Key,
@@ -214,73 +231,78 @@ internal class RemoteConfigClientImpl(
         }
     }
 
+    /**
+     * Deliver cached config immediately if present, then the remote result when it
+     * arrives. A failure (null config, null timestamp) is delivered only when nothing
+     * else was — no cache and the fetch failed — guaranteeing exactly one initial
+     * callback. Mirrors iOS `.all`.
+     */
     private fun subscribeAll(
         key: Key,
         callback: RemoteConfigClient.RemoteConfigCallback,
     ) {
-        val weakCallback = WeakCallback(callback)
+        val weakCallback = WeakCallback(callback, RemoteConfigClient.DeliveryMode.All)
         registerSubscriber(key, weakCallback)
 
-        // Immediately deliver cached config only when the subscriber's key actually
-        // resolves in the cached blob. A null resolved config means "not in cache"
-        // — the upcoming REMOTE delivery will report the authoritative state.
-        val storedData = getStoredConfigData(key.value)
-        if (storedData?.config != null) {
-            weakCallback.runSafely {
-                onUpdate(storedData.config, CACHE, storedData.timestamp)
+        coroutineScope.launch {
+            val cached = withContext(storageIODispatcher) { getStoredConfigData(key.value) }
+            if (cached?.config != null) {
+                weakCallback.deliver(cached.config, CACHE, cached.timestamp)
+            }
+
+            when (val handle = obtainSubscribeFetch()) {
+                // A recent success is reused without a network call, so no broadcast
+                // fires — deliver it to this subscriber directly.
+                is FetchHandle.Reuse ->
+                    weakCallback.deliver(
+                        resolveDotPath(handle.success.blob, key.value),
+                        REMOTE,
+                        handle.success.timestamp,
+                    )
+                // A live fetch broadcasts its success to all subscribers (including
+                // us). Only the failure case needs handling here.
+                is FetchHandle.Pending ->
+                    if (handle.deferred.await() is FetchOutcome.Failure && !weakCallback.hasDelivered()) {
+                        weakCallback.deliver(null, REMOTE, null)
+                    }
             }
         }
-
-        // Trigger remote fetch to ensure latest config is available
-        updateConfigs()
     }
 
+    /**
+     * Wait for the remote fetch up to [timeoutMs]. On success deliver remote; on
+     * failure or timeout fall back to cache, or a failure signal (null config, null
+     * timestamp) when no cache exists. Exactly one callback is delivered. Mirrors
+     * iOS `.waitForRemote`.
+     */
     private fun subscribeWaitForRemote(
         key: Key,
         timeoutMs: Long,
         callback: RemoteConfigClient.RemoteConfigCallback,
     ) {
-        // Gate first delivery — timeout and remote race; first to claim wins.
-        val firstDeliveryClaimed = AtomicBoolean(false)
-        val firstDeliverySignal = CompletableDeferred<Unit>()
         val weakCallback =
-            WeakCallback(
-                callback = callback,
-                firstDeliveryClaimed = firstDeliveryClaimed,
-                firstDeliverySignal = firstDeliverySignal,
-            )
+            WeakCallback(callback, RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs))
         registerSubscriber(key, weakCallback)
 
-        updateConfigs()
-
-        // Timeout runs on coroutineScope's dispatcher (not networkIODispatcher)
-        // so it can fire even while the single-threaded network executor is busy.
         coroutineScope.launch {
-            val signaled =
-                withTimeoutOrNull(timeoutMs) {
-                    firstDeliverySignal.await()
-                    true
-                }
-            if (signaled == null) {
-                // Timeout: fall back to cache (or empty). runSafelyIfFirst
-                // suppresses this if a remote delivery already claimed the gate.
-                val storedData = getStoredConfigData(key.value)
-                val config = storedData?.config
-                val timestamp = storedData?.timestamp ?: System.currentTimeMillis()
-                val delivered =
-                    weakCallback.runSafelyIfFirst {
-                        onUpdate(config, CACHE, timestamp)
-                    }
-                if (delivered) {
-                    logger.debug(
-                        "WaitForRemote timed out after ${timeoutMs}ms for ${key.value}; " +
-                            "delivered ${if (storedData != null) "cache" else "empty"} fallback.",
+            when (val handle = obtainSubscribeFetch()) {
+                is FetchHandle.Reuse ->
+                    weakCallback.deliverFirst(
+                        resolveDotPath(handle.success.blob, key.value),
+                        REMOTE,
+                        handle.success.timestamp,
                     )
+                // On success the fetch's broadcast claims the first delivery. We only
+                // wait up to the timeout; if it elapses (or the fetch fails) we fall back.
+                is FetchHandle.Pending ->
+                    withTimeoutOrNull(timeoutMs) { handle.deferred.await() }
+            }
+            if (!weakCallback.hasDelivered()) {
+                val cached = withContext(storageIODispatcher) { getStoredConfigData(key.value) }
+                if (cached?.config != null) {
+                    weakCallback.deliverFirst(cached.config, CACHE, cached.timestamp)
                 } else {
-                    logger.debug(
-                        "WaitForRemote timeout fired after ${timeoutMs}ms for ${key.value}, " +
-                            "but a fresh remote delivery already won; fallback suppressed.",
-                    )
+                    weakCallback.deliverFirst(null, REMOTE, null)
                 }
             }
         }
@@ -305,88 +327,121 @@ internal class RemoteConfigClientImpl(
     }
 
     /**
-     * Trigger a remote fetch for all config keys
+     * Trigger a remote refresh. Rate-limited; on success, delivers the new config to
+     * existing subscribers ([RemoteConfigClient.DeliveryMode.All] always,
+     * [RemoteConfigClient.DeliveryMode.WaitForRemote] only if it hasn't received its
+     * first callback). Failures are never delivered from a refresh — subscribers keep
+     * their last valid config. Mirrors iOS `updateConfigs`.
      */
     override fun updateConfigs() {
         coroutineScope.launch(networkIODispatcher) {
-            if (isFetching) {
-                logger.debug("RemoteConfig update skipped: fetch already in progress")
+            if (shouldRateLimit()) {
+                logger.debug("RemoteConfig update skipped: within 5-minute window")
                 return@launch
             }
+            // A successful fetch broadcasts itself to all subscribers; nothing else to do.
+            startOrJoinFetch()
+        }
+    }
 
-            // Claim the in-flight slot synchronously, before the suspending
-            // shouldRateLimit() read. Otherwise a second coroutine queued on the
-            // single network dispatcher could pass the isFetching guard during the
-            // suspension and issue a duplicate fetch.
-            isFetching = true
-            try {
-                if (shouldRateLimit()) {
-                    logger.debug("RemoteConfig update skipped: within 5-minute window")
-                    return@launch
+    /** Delivers a freshly fetched config to all current subscribers as an update. */
+    private fun broadcastUpdate(
+        blob: ConfigMap,
+        timestamp: Long,
+    ) {
+        val subscriberSnapshot =
+            synchronized(subscriberLock) {
+                keySpecificSubscribers.map { (dotPath, subs) -> dotPath to subs.toList() }
+            }
+        for ((dotPath, subscribers) in subscriberSnapshot) {
+            val config = resolveDotPath(blob, dotPath)
+            subscribers.forEach { weakCallback ->
+                when (weakCallback.deliveryMode) {
+                    is RemoteConfigClient.DeliveryMode.All ->
+                        weakCallback.deliver(config, REMOTE, timestamp)
+                    is RemoteConfigClient.DeliveryMode.WaitForRemote ->
+                        weakCallback.deliverFirst(config, REMOTE, timestamp)
                 }
-
-                val blob = fetchRemoteConfig()
-                if (blob == null) {
-                    notifySubscribersOnFailure(System.currentTimeMillis())
-                    return@launch
-                }
-
-                val timestamp = System.currentTimeMillis()
-                withContext(storageIODispatcher) {
-                    storage.write(REMOTE_CONFIG, blob.toJSONObject().toString())
-                    storage.write(REMOTE_CONFIG_TIMESTAMP, timestamp.toString())
-                    logger.debug("Successfully stored remote configs to storage")
-                }
-
-                val subscriberSnapshot =
-                    synchronized(subscriberLock) {
-                        keySpecificSubscribers.map { (dotPath, subs) -> dotPath to subs.toList() }
-                    }
-                for ((dotPath, subscribers) in subscriberSnapshot) {
-                    val config = resolveDotPath(blob, dotPath)
-                    subscribers.forEach { weakCallback ->
-                        weakCallback.runSafely {
-                            onUpdate(config, REMOTE, timestamp)
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                logger.error("Error updating remote configs: ${e.message}")
-                notifySubscribersOnFailure(System.currentTimeMillis())
-            } finally {
-                isFetching = false
             }
         }
+    }
+
+    /** How a subscribe obtains its config: a reusable recent success, or a live fetch. */
+    private sealed interface FetchHandle {
+        data class Reuse(val success: FetchOutcome.Success) : FetchHandle
+
+        data class Pending(val deferred: Deferred<FetchOutcome>) : FetchHandle
     }
 
     /**
-     * Notifies all current subscribers with a null config and [Source.REMOTE] to signal
-     * a failed fetch. For a [DeliveryMode.WaitForRemote] subscriber that has not yet
-     * received its first delivery, [WeakCallback.runSafely] claims the first-delivery
-     * gate so this null REMOTE becomes its initial callback. If such a subscriber has
-     * already been served (e.g. by the timeout fallback), this null REMOTE is delivered
-     * as a subsequent update — it is not suppressed.
+     * Obtains config for an initial subscribe: joins an in-flight fetch, reuses a
+     * recent successful result to avoid hammering the server, or starts a new fetch.
+     * Never rate-limited — a subscribe must always resolve to a delivery.
      */
-    private fun notifySubscribersOnFailure(timestamp: Long) {
-        val subscriberSnapshot =
-            synchronized(subscriberLock) {
-                keySpecificSubscribers.map { (_, subs) -> subs.toList() }
-            }
-        for (subscribers in subscriberSnapshot) {
-            subscribers.forEach { weakCallback ->
-                weakCallback.runSafely {
-                    onUpdate(null, REMOTE, timestamp)
-                }
-            }
+    private fun obtainSubscribeFetch(): FetchHandle {
+        synchronized(fetchLock) {
+            inFlightFetch?.let { if (it.isActive) return FetchHandle.Pending(it) }
+            lastSuccess?.let { if (isFresh(it.timestamp)) return FetchHandle.Reuse(it) }
+            return FetchHandle.Pending(startFetchLocked())
         }
     }
 
+    /** Joins an in-flight fetch or starts a new one. Used by the refresh path. */
+    private fun startOrJoinFetch(): Deferred<FetchOutcome> {
+        synchronized(fetchLock) {
+            inFlightFetch?.let { if (it.isActive) return it }
+            return startFetchLocked()
+        }
+    }
+
+    private fun startFetchLocked(): Deferred<FetchOutcome> {
+        val deferred =
+            coroutineScope.async(networkIODispatcher) {
+                val outcome = performFetch()
+                if (outcome is FetchOutcome.Success) {
+                    synchronized(fetchLock) { lastSuccess = outcome }
+                    // A single broadcast per successful fetch delivers to every current
+                    // subscriber — avoids each awaiter delivering its own duplicate.
+                    broadcastUpdate(outcome.blob, outcome.timestamp)
+                }
+                outcome
+            }
+        inFlightFetch = deferred
+        return deferred
+    }
+
+    private suspend fun performFetch(): FetchOutcome {
+        return try {
+            val blob = fetchRemoteConfig() ?: return FetchOutcome.Failure
+            val timestamp = System.currentTimeMillis()
+            withContext(storageIODispatcher) {
+                storage.write(REMOTE_CONFIG, blob.toJSONObject().toString())
+                storage.write(REMOTE_CONFIG_TIMESTAMP, timestamp.toString())
+                logger.debug("Successfully stored remote configs to storage")
+            }
+            FetchOutcome.Success(blob, timestamp)
+        } catch (e: Exception) {
+            logger.error("Error updating remote configs: ${e.message}")
+            FetchOutcome.Failure
+        }
+    }
+
+    private fun isFresh(timestamp: Long): Boolean {
+        return timestamp > 0L && (System.currentTimeMillis() - timestamp) < MIN_FETCH_INTERVAL_MS
+    }
+
     private suspend fun shouldRateLimit(): Boolean {
-        val lastTsStr = withContext(storageIODispatcher) { storage.read(REMOTE_CONFIG_TIMESTAMP) }
-        val lastTs = lastTsStr?.toLongOrNull() ?: 0L
-        if (lastTs <= 0L) return false
-        val now = System.currentTimeMillis()
-        return (now - lastTs) < MIN_FETCH_INTERVAL_MS
+        return try {
+            val lastTsStr = withContext(storageIODispatcher) { storage.read(REMOTE_CONFIG_TIMESTAMP) }
+            val lastTs = lastTsStr?.toLongOrNull() ?: 0L
+            if (lastTs <= 0L) return false
+            (System.currentTimeMillis() - lastTs) < MIN_FETCH_INTERVAL_MS
+        } catch (e: Exception) {
+            // Don't let a storage read failure leak out of the refresh coroutine or
+            // wedge the rate limiter — fall through and let the fetch proceed.
+            logger.error("Failed to read rate-limit timestamp: ${e.message}")
+            false
+        }
     }
 
     /**

@@ -29,6 +29,7 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -40,6 +41,20 @@ class RemoteConfigClientTest {
         mockk<com.amplitude.common.Logger>(relaxed = true)
     private val testDispatcher = StandardTestDispatcher()
     private val testScope = TestScope(testDispatcher)
+
+    // The client holds subscribers weakly, and deliveries are fully async. Retain test
+    // callbacks so a natural GC (heap pressure across the suite) can't collect an inline
+    // lambda before its delivery fires — production callers always keep a strong ref.
+    private val retainedCallbacks = mutableListOf<RemoteConfigClient.RemoteConfigCallback>()
+
+    private fun RemoteConfigClient.subscribeAndRetain(
+        key: RemoteConfigClient.Key,
+        deliveryMode: RemoteConfigClient.DeliveryMode = RemoteConfigClient.DeliveryMode.All,
+        callback: RemoteConfigClient.RemoteConfigCallback,
+    ) {
+        retainedCallbacks.add(callback)
+        subscribe(key, deliveryMode, callback)
+    }
 
     private fun createClient(
         serverZone: ServerZone = ServerZone.US,
@@ -95,17 +110,17 @@ class RemoteConfigClientTest {
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
             // Subscribe multiple callbacks to same key
-            client.subscribe(SessionReplayPrivacyConfig) { config, _, _ ->
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { config, _, _ ->
                 callbacks.add(
                     config,
                 )
             }
-            client.subscribe(SessionReplayPrivacyConfig) { config, _, _ ->
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { config, _, _ ->
                 callbacks.add(
                     config,
                 )
             }
-            client.subscribe(SessionReplayPrivacyConfig) { config, _, _ ->
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { config, _, _ ->
                 callbacks.add(
                     config,
                 )
@@ -135,10 +150,10 @@ class RemoteConfigClientTest {
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
             // Subscribe to different keys
-            client.subscribe(SessionReplayPrivacyConfig) { config, source, _ ->
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { config, source, _ ->
                 privacyCallbacks.add(config to source)
             }
-            client.subscribe(SessionReplaySamplingConfig) { config, source, _ ->
+            client.subscribeAndRetain(SessionReplaySamplingConfig) { config, source, _ ->
                 samplingCallbacks.add(config to source)
             }
 
@@ -174,7 +189,7 @@ class RemoteConfigClientTest {
                 RemoteConfigClient.RemoteConfigCallback { _, _, _ ->
                     persistentCallbackInvocations++
                 }
-            client.subscribe(SessionReplayPrivacyConfig, callback = persistentCallback)
+            client.subscribeAndRetain(SessionReplayPrivacyConfig, callback = persistentCallback)
             testDispatcher.scheduler.advanceUntilIdle()
             // Persistent callback should have received initial cache + remote
             assertEquals(
@@ -192,6 +207,7 @@ class RemoteConfigClientTest {
                     RemoteConfigClient.RemoteConfigCallback { _, _, _ ->
                         tempCallbackInvocations++
                     }
+                // Intentionally NOT retained — this callback must be GC-eligible.
                 client.subscribe(SessionReplayPrivacyConfig, callback = tempCallback)
             }
             testDispatcher.scheduler.advanceUntilIdle()
@@ -205,18 +221,25 @@ class RemoteConfigClientTest {
                 Thread.sleep(10)
             }
 
-            // Reset timestamp to allow another remote fetch on next subscribe
+            // Reset the rate-limit window and trigger an explicit refresh. A successful
+            // refresh broadcasts to all live subscribers (persistent), while the GC'd
+            // temp callback receives nothing.
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
-
-            // Add new subscriber to trigger cleanup and another remote fetch
-            client.subscribe(SessionReplayPrivacyConfig) { _, _, _ -> }
+            client.updateConfigs()
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // The test demonstrates that weak reference system works
-            // Counter shows temp callback were invoked initially and then cleaned up
+            // Add a new subscriber to trigger dead-reference cleanup.
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { _, _, _ -> }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            // Temp callback was invoked before GC; persistent keeps receiving refresh updates.
             assertTrue(tempCallbackInvocations >= 2)
-            // Persistent callback should have received multiple remote updates across steps
             assertTrue(persistentCallbackInvocations >= 3)
+
+            // Keep a strong reference to the persistent callback past the assertions so
+            // GC above can't collect it — otherwise the refresh broadcast would find no
+            // live subscriber (the var is otherwise unused after subscribe).
+            assertNotNull(persistentCallback)
         }
 
     @Test
@@ -233,15 +256,15 @@ class RemoteConfigClientTest {
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
             // Add callback that throws exception
-            client.subscribe(SessionReplayPrivacyConfig) { _, _, _ ->
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { _, _, _ ->
                 throw RuntimeException("Test exception")
             }
 
             // Add working callbacks
-            client.subscribe(
+            client.subscribeAndRetain(
                 SessionReplayPrivacyConfig,
             ) { config, source, _ -> workingCallbacks.add(config to source) }
-            client.subscribe(
+            client.subscribeAndRetain(
                 SessionReplayPrivacyConfig,
             ) { config, source, _ -> workingCallbacks.add(config to source) }
 
@@ -282,10 +305,10 @@ class RemoteConfigClientTest {
             )
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
-            val results = mutableListOf<Triple<ConfigMap?, Source, Long>>()
+            val results = mutableListOf<Triple<ConfigMap?, Source, Long?>>()
 
             // Subscribe - should immediately get cached data, then REMOTE
-            client.subscribe(SessionReplayPrivacyConfig) { config, source, timestamp ->
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { config, source, timestamp ->
                 results.add(Triple(config, source, timestamp))
             }
 
@@ -328,9 +351,9 @@ class RemoteConfigClientTest {
             val callback = RemoteConfigClient.RemoteConfigCallback { _, _, _ -> callCount++ }
 
             // Subscribe same callback reference multiple times
-            client.subscribe(SessionReplayPrivacyConfig, callback = callback)
-            client.subscribe(SessionReplayPrivacyConfig, callback = callback)
-            client.subscribe(SessionReplayPrivacyConfig, callback = callback)
+            client.subscribeAndRetain(SessionReplayPrivacyConfig, callback = callback)
+            client.subscribeAndRetain(SessionReplayPrivacyConfig, callback = callback)
+            client.subscribeAndRetain(SessionReplayPrivacyConfig, callback = callback)
 
             testDispatcher.scheduler.advanceUntilIdle()
 
@@ -361,7 +384,7 @@ class RemoteConfigClientTest {
             )
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
-            client.subscribe(SessionReplayPrivacyConfig) { config, source, _ ->
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { config, source, _ ->
                 results.add(config to source)
             }
 
@@ -417,13 +440,13 @@ class RemoteConfigClientTest {
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
 
             // First subscribe call - should trigger HTTP request
-            client.subscribe(SessionReplayPrivacyConfig) { config, source, _ ->
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { config, source, _ ->
                 firstCallbackResults.add(config to source)
             }
 
             // Second subscribe call immediately after - should NOT trigger another HTTP request
             // but should still get notified when first request completes
-            client.subscribe(SessionReplayPrivacyConfig) { config, source, _ ->
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { config, source, _ ->
                 secondCallbackResults.add(config to source)
             }
 
@@ -480,7 +503,7 @@ class RemoteConfigClientTest {
                 )
 
             val callbackResults = mutableListOf<Pair<ConfigMap?, Source>>()
-            client.subscribe(SessionReplayPrivacyConfig) { config, source, _ ->
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { config, source, _ ->
                 callbackResults.add(config to source)
             }
 
@@ -542,7 +565,7 @@ class RemoteConfigClientTest {
                 )
 
             val callbackResults = mutableListOf<Pair<ConfigMap?, Source>>()
-            client.subscribe(SessionReplayPrivacyConfig) { config, source, _ ->
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { config, source, _ ->
                 callbackResults.add(config to source)
             }
 
@@ -617,12 +640,12 @@ class RemoteConfigClientTest {
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
             val results = mutableListOf<Source>()
-            client.subscribe(SessionReplayPrivacyConfig) { _, source, _ -> results.add(source) }
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { _, source, _ -> results.add(source) }
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // CACHE from pre-populated storage, then null REMOTE from failed fetch
+            // Cache satisfies the subscribe; a failed fetch delivers no failure callback.
             assertTrue(results.contains(Source.CACHE), "Should receive cached config despite null API response")
-            assertTrue(results.contains(Source.REMOTE), "Should receive null REMOTE callback on fetch failure")
+            assertFalse(results.contains(Source.REMOTE), "No failure callback once cache was delivered")
         }
 
     @Test
@@ -645,12 +668,12 @@ class RemoteConfigClientTest {
             )
 
             val results = mutableListOf<Source>()
-            client.subscribe(SessionReplayPrivacyConfig) { _, source, _ -> results.add(source) }
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { _, source, _ -> results.add(source) }
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // CACHE from pre-populated storage, then null REMOTE from failed parse
+            // Cache satisfies the subscribe; a failed parse delivers no failure callback.
             assertTrue(results.contains(Source.CACHE), "Should receive cached config despite malformed JSON")
-            assertTrue(results.contains(Source.REMOTE), "Should receive null REMOTE callback on parse failure")
+            assertFalse(results.contains(Source.REMOTE), "No failure callback once cache was delivered")
         }
 
     @Test
@@ -681,8 +704,8 @@ class RemoteConfigClientTest {
                 )
 
             var callbackCount = 0
-            client.subscribe(SessionReplayPrivacyConfig) { _, _, _ -> callbackCount++ }
-            client.subscribe(SessionReplaySamplingConfig) { _, _, _ -> callbackCount++ }
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { _, _, _ -> callbackCount++ }
+            client.subscribeAndRetain(SessionReplaySamplingConfig) { _, _, _ -> callbackCount++ }
             testDispatcher.scheduler.advanceUntilIdle()
 
             client.updateConfigs() // Should handle null fields gracefully
@@ -722,7 +745,7 @@ class RemoteConfigClientTest {
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
             val results = mutableListOf<Source>()
-            client.subscribe(SessionReplayPrivacyConfig) { _, source, _ ->
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { _, source, _ ->
                 results.add(source)
             }
             testDispatcher.scheduler.advanceUntilIdle()
@@ -745,8 +768,8 @@ class RemoteConfigClientTest {
                         ),
                 )
 
-            val results = mutableListOf<Triple<ConfigMap?, Source, Long>>()
-            client.subscribe(SessionReplayPrivacyConfig) { config, source, timestamp ->
+            val results = mutableListOf<Triple<ConfigMap?, Source, Long?>>()
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { config, source, timestamp ->
                 results.add(Triple(config, source, timestamp))
             }
             testDispatcher.scheduler.advanceUntilIdle()
@@ -778,12 +801,12 @@ class RemoteConfigClientTest {
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
             val results = mutableListOf<Source>()
-            client.subscribe(SessionReplayPrivacyConfig) { _, source, _ -> results.add(source) }
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { _, source, _ -> results.add(source) }
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // CACHE from pre-populated storage, then null REMOTE from 500 fetch failure
+            // Cache satisfies the subscribe; a 500 fetch failure delivers no failure callback.
             assertTrue(results.contains(Source.CACHE), "Should receive cached config despite server error")
-            assertTrue(results.contains(Source.REMOTE), "Should receive null REMOTE callback on 500 error")
+            assertFalse(results.contains(Source.REMOTE), "No failure callback once cache was delivered")
         }
 
     @Test
@@ -822,7 +845,7 @@ class RemoteConfigClientTest {
                 )
 
             var callbackCount = 0
-            client.subscribe(SessionReplayPrivacyConfig) { _, _, _ -> callbackCount++ }
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { _, _, _ -> callbackCount++ }
             testDispatcher.scheduler.advanceUntilIdle()
             assertTrue(
                 callbackCount == 1,
@@ -863,8 +886,8 @@ class RemoteConfigClientTest {
                         ),
                 )
 
-            val results = mutableListOf<Triple<ConfigMap?, Source, Long>>()
-            client.subscribe(SessionReplayPrivacyConfig) { config, source, timestamp ->
+            val results = mutableListOf<Triple<ConfigMap?, Source, Long?>>()
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { config, source, timestamp ->
                 results.add(Triple(config, source, timestamp))
             }
             testDispatcher.scheduler.advanceUntilIdle()
@@ -1027,7 +1050,7 @@ class RemoteConfigClientTest {
                 )
 
             var remoteCallbacks = mutableListOf<Pair<ConfigMap?, Source>>()
-            client.subscribe(SessionReplayPrivacyConfig) { config, source, _ ->
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { config, source, _ ->
                 remoteCallbacks.add(config to source)
             }
             testDispatcher.scheduler.advanceUntilIdle()
@@ -1103,39 +1126,34 @@ class RemoteConfigClientTest {
                 )
 
             val callbacks = mutableListOf<Pair<ConfigMap?, Source>>()
-            client.subscribe(SessionReplayPrivacyConfig) { config, source, _ ->
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { config, source, _ ->
                 callbacks.add(config to source)
             }
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // Cache read failure must not deliver a bogus CACHE callback, but the
-            // subscriber is still unblocked with a null REMOTE signal rather than
-            // hanging when the fetch path itself fails on a storage read.
+            // A cache-read failure is logged and yields no CACHE delivery. The fetch
+            // itself succeeds (empty configs), so the subscriber receives exactly one
+            // REMOTE callback with a null config (key absent) instead of hanging.
             assertFalse(
                 callbacks.any { it.second == Source.CACHE },
                 "Should not deliver cache on storage read failure",
             )
             assertEquals(1, callbacks.size, "Subscriber should be notified exactly once")
-            assertNull(callbacks.first().first, "Failed fetch delivers null config")
+            assertNull(callbacks.first().first, "Absent key from empty fetch resolves to null")
             assertEquals(Source.REMOTE, callbacks.first().second)
             verify {
                 logger.error(
                     match<String> { it.contains("Failed to parse all stored configs") },
                 )
             }
-            verify {
-                logger.error(
-                    match<String> { it.contains("Error updating remote configs") },
-                )
-            }
         }
 
     @Test
-    fun `rate-limit read failure - notifies subscribers instead of leaking exception`() =
+    fun `rate-limit timestamp read failure - handled gracefully without leaking`() =
         runTest {
-            // Storage where the cache blob is absent (no CACHE delivery) but the
-            // timestamp read used by shouldRateLimit() throws. This exercises the
-            // path where the exception originates outside the fetch body.
+            // Storage where the cache blob is absent (no CACHE delivery) and the
+            // timestamp read used by shouldRateLimit() throws. The refresh must
+            // swallow that error, fall through to the fetch, and not crash.
             val rateLimitFailingStorage =
                 object : Storage {
                     override fun read(key: Storage.Constants): String? {
@@ -1191,19 +1209,25 @@ class RemoteConfigClientTest {
                 )
 
             val callbacks = mutableListOf<Pair<ConfigMap?, Source>>()
-            client.subscribe(SessionReplayPrivacyConfig) { config, source, _ ->
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { config, source, _ ->
                 callbacks.add(config to source)
             }
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // Subscriber must still be unblocked with a null REMOTE signal rather
-            // than the exception leaking out of the launch and hanging it forever.
-            assertEquals(1, callbacks.size, "Subscriber should be notified exactly once")
-            assertNull(callbacks.first().first, "Failed fetch delivers null config")
-            assertEquals(Source.REMOTE, callbacks.first().second)
+            // An explicit refresh hits the throwing timestamp read in shouldRateLimit.
+            client.updateConfigs()
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            // No crash; subscriber received REMOTE callbacks (null config = empty fetch),
+            // and the rate-limit read failure was logged rather than leaked.
+            assertTrue(callbacks.isNotEmpty(), "Subscriber should be notified")
+            assertTrue(
+                callbacks.all { it.first == null && it.second == Source.REMOTE },
+                "All deliveries are null REMOTE from the empty fetch, got: $callbacks",
+            )
             verify {
                 logger.error(
-                    match<String> { it.contains("Error updating remote configs") },
+                    match<String> { it.contains("Failed to read rate-limit timestamp") },
                 )
             }
         }
@@ -1218,7 +1242,7 @@ class RemoteConfigClientTest {
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "not_a_number")
 
             val results = mutableListOf<Source>()
-            client.subscribe(SessionReplayPrivacyConfig) { _, source, _ ->
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { _, source, _ ->
                 results.add(source)
             }
             testDispatcher.scheduler.advanceUntilIdle()
@@ -1260,13 +1284,18 @@ class RemoteConfigClientTest {
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
             var callbackInvoked = false
-            client.subscribe(SessionReplayPrivacyConfig) { _, _, _ ->
-                callbackInvoked = true
-            }
+            // Hold a strong reference: subscribers are weakly held, and the full suite
+            // can GC an inline lambda before the cache delivery fires.
+            val callback =
+                RemoteConfigClient.RemoteConfigCallback { _, _, _ ->
+                    callbackInvoked = true
+                }
+            client.subscribeAndRetain(SessionReplayPrivacyConfig, callback = callback)
             testDispatcher.scheduler.advanceUntilIdle()
 
             // Should resolve the valid nested path despite other top-level junk
             assertTrue(callbackInvoked, "Should resolve valid dot-path despite non-map top-level entries")
+            assertNotNull(callback)
         }
 
     // endregion Additional Coverage
@@ -1279,10 +1308,10 @@ class RemoteConfigClientTest {
         fun `WaitForRemote delivers remote when fetch returns within timeout`() =
             runTest {
                 val client = createClient(emptyApiConfig = false)
-                val results = mutableListOf<Triple<ConfigMap?, Source, Long>>()
+                val results = mutableListOf<Triple<ConfigMap?, Source, Long?>>()
                 storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
 
-                client.subscribe(
+                client.subscribeAndRetain(
                     key = SessionReplayPrivacyConfig,
                     deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 5_000L),
                 ) { config, source, timestamp ->
@@ -1297,11 +1326,10 @@ class RemoteConfigClientTest {
             }
 
         @Test
-        fun `WaitForRemote receives null REMOTE immediately when fetch fails`() =
+        fun `WaitForRemote falls back to cache when fetch fails`() =
             runTest {
-                // HTTP returns 500: notifySubscribersOnFailure fires immediately, claiming
-                // the WaitForRemote gate. The timeout fallback is suppressed because the
-                // gate is already claimed — subscriber gets null REMOTE, not a stale cache.
+                // HTTP returns 500. WaitForRemote can't get a remote, so it falls back to
+                // the cached value (mirrors iOS) rather than signalling a failure.
                 val mockHttpClient = mockk<HttpClient>()
                 every { mockHttpClient.request(any()) } returns
                     HttpClient.Response(
@@ -1322,15 +1350,15 @@ class RemoteConfigClientTest {
                         logger = silentLogger,
                     )
 
-                // Pre-populate cache — must NOT be delivered (gate claimed by failure path first).
+                // Pre-populate cache — the failed fetch should fall back to it.
                 storage.write(
                     Storage.Constants.REMOTE_CONFIG,
                     DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent(),
                 )
                 storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
-                val results = mutableListOf<Triple<ConfigMap?, Source, Long>>()
-                client.subscribe(
+                val results = mutableListOf<Triple<ConfigMap?, Source, Long?>>()
+                client.subscribeAndRetain(
                     key = SessionReplayPrivacyConfig,
                     deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 100L),
                 ) { config, source, timestamp ->
@@ -1339,10 +1367,10 @@ class RemoteConfigClientTest {
 
                 testDispatcher.scheduler.advanceUntilIdle()
 
-                assertEquals(1, results.size, "Expected one null REMOTE delivery on fetch failure, got: $results")
+                assertEquals(1, results.size, "Expected one cache fallback delivery, got: $results")
                 val (config, source, _) = results.single()
-                assertEquals(Source.REMOTE, source, "Fetch failure must deliver Source.REMOTE")
-                assertNull(config, "Fetch failure must deliver null config")
+                assertEquals(Source.CACHE, source, "Failed fetch with cache must deliver Source.CACHE")
+                assertEquals("medium", config!!["defaultMaskLevel"], "Should deliver the cached config")
             }
 
         @Test
@@ -1370,8 +1398,8 @@ class RemoteConfigClientTest {
                         logger = silentLogger,
                     )
 
-                val results = mutableListOf<Triple<ConfigMap?, Source, Long>>()
-                client.subscribe(
+                val results = mutableListOf<Triple<ConfigMap?, Source, Long?>>()
+                client.subscribeAndRetain(
                     key = Diagnostics,
                     deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 50L),
                 ) { config, source, timestamp ->
@@ -1398,7 +1426,7 @@ class RemoteConfigClientTest {
                 storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
 
                 val sources = mutableListOf<Source>()
-                client.subscribe(
+                client.subscribeAndRetain(
                     key = SessionReplayPrivacyConfig,
                     deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 5_000L),
                 ) { _, source, _ ->
@@ -1424,7 +1452,7 @@ class RemoteConfigClientTest {
                 storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
 
                 // The pre-existing single-arg overload must still deliver cache then remote.
-                client.subscribe(SessionReplayPrivacyConfig) { _, source, _ ->
+                client.subscribeAndRetain(SessionReplayPrivacyConfig) { _, source, _ ->
                     sources.add(source)
                 }
 
@@ -1435,16 +1463,13 @@ class RemoteConfigClientTest {
             }
 
         @Test
-        fun `WaitForRemote delivers fresh remote that arrives after timeout fallback fires`() =
+        fun `WaitForRemote delivers once and ignores later refreshes`() =
             runTest {
-                // Regression: when the timeout fallback wins the gate first and a
-                // fresh remote arrives later, the subscriber must still receive
-                // the remote update — not stay stuck on the stale fallback.
+                // WaitForRemote is one-and-done (mirrors iOS): once it has received its
+                // single initial delivery, subsequent refreshes do NOT re-notify it.
                 //
-                // Repro: first fetch fails (500), so the timeout fallback fires
-                // and delivers a cached value. Then the rate-limit window is
-                // reset and a successful fetch is triggered. The subscriber
-                // should receive the fresh REMOTE delivery as a subsequent update.
+                // First fetch fails (500) with a cache present, so the fallback delivers
+                // CACHE. A later successful refresh must NOT produce a second delivery.
                 var responseProvider: () -> HttpClient.Response = {
                     HttpClient.Response(
                         statusCode = 500,
@@ -1468,7 +1493,7 @@ class RemoteConfigClientTest {
                         logger = silentLogger,
                     )
 
-                // Pre-populate cache so the timeout fallback has data to deliver.
+                // Pre-populate cache so the failed fetch falls back to it.
                 storage.write(
                     Storage.Constants.REMOTE_CONFIG,
                     DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent(),
@@ -1476,7 +1501,7 @@ class RemoteConfigClientTest {
                 storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
                 val results = mutableListOf<Pair<ConfigMap?, Source>>()
-                client.subscribe(
+                client.subscribeAndRetain(
                     key = SessionReplayPrivacyConfig,
                     deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 50L),
                 ) { config, source, _ ->
@@ -1485,17 +1510,15 @@ class RemoteConfigClientTest {
 
                 testDispatcher.scheduler.advanceUntilIdle()
 
-                // Fetch failure immediately claims the gate and delivers null REMOTE.
+                // Failed fetch with a cache present delivers the CACHE fallback.
                 assertEquals(
-                    listOf(Source.REMOTE),
+                    listOf(Source.CACHE),
                     results.map { it.second },
-                    "Expected null REMOTE from fetch failure before successful remote arrives, got: $results",
+                    "Expected cache fallback as the single delivery, got: $results",
                 )
-                assertNull(results.single().first, "First delivery must be null from fetch failure")
 
-                // Now flip the response to a fresh successful payload and trigger
-                // another fetch. The previously-gated subscriber must receive
-                // the fresh remote as a subsequent update.
+                // Flip to a fresh successful payload and trigger a refresh. WaitForRemote
+                // already delivered, so it must NOT be notified again.
                 responseProvider = {
                     HttpClient.Response(
                         statusCode = 200,
@@ -1510,11 +1533,10 @@ class RemoteConfigClientTest {
                 testDispatcher.scheduler.advanceUntilIdle()
 
                 assertEquals(
-                    listOf(Source.REMOTE, Source.REMOTE),
+                    listOf(Source.CACHE),
                     results.map { it.second },
-                    "Subscriber must receive fresh remote after the fetch-failure null, got: $results",
+                    "WaitForRemote must not receive refresh updates after its first delivery, got: $results",
                 )
-                assertEquals("medium", results.last().first!!["defaultMaskLevel"], "Second REMOTE must carry fresh data")
             }
 
         @Test
@@ -1544,8 +1566,8 @@ class RemoteConfigClientTest {
                         logger = silentLogger,
                     )
 
-                val results = mutableListOf<Triple<ConfigMap?, Source, Long>>()
-                client.subscribe(
+                val results = mutableListOf<Triple<ConfigMap?, Source, Long?>>()
+                client.subscribeAndRetain(
                     key = AnalyticsSdk,
                     deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 60_000L),
                 ) { config, source, timestamp ->
@@ -1579,8 +1601,8 @@ class RemoteConfigClientTest {
                 val client = createClient(emptyApiConfig = true) // returns {"configs":{}}
                 storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
 
-                val results = mutableListOf<Triple<ConfigMap?, Source, Long>>()
-                client.subscribe(
+                val results = mutableListOf<Triple<ConfigMap?, Source, Long?>>()
+                client.subscribeAndRetain(
                     key = SessionReplayPrivacyConfig,
                     deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 60_000L),
                 ) { config, source, timestamp ->
@@ -1609,8 +1631,8 @@ class RemoteConfigClientTest {
         @Test
         fun `WaitForRemote does not interfere with All subscribers on the absent key`() =
             runTest {
-                // All subscribers on a key absent from the response now receive a
-                // REMOTE notification with emptyMap() (platform-aligned behavior).
+                // All subscribers on a key absent from a successful response receive a
+                // REMOTE notification with a null config (and a valid timestamp).
                 val mockHttpClient = mockk<HttpClient>()
                 every { mockHttpClient.request(any()) } returns
                     HttpClient.Response(
@@ -1631,8 +1653,8 @@ class RemoteConfigClientTest {
                         logger = silentLogger,
                     )
 
-                val results = mutableListOf<Triple<ConfigMap?, Source, Long>>()
-                client.subscribe(Diagnostics) { config, source, timestamp ->
+                val results = mutableListOf<Triple<ConfigMap?, Source, Long?>>()
+                client.subscribeAndRetain(Diagnostics) { config, source, timestamp ->
                     results.add(Triple(config, source, timestamp))
                 }
 
@@ -1646,11 +1668,10 @@ class RemoteConfigClientTest {
             }
 
         @Test
-        fun `WaitForRemote serializes callback delivery to prevent concurrent invocations`() {
-            // Regression: the timeout fallback and the remote fetch can invoke
-            // the callback concurrently from different dispatchers. This test
-            // blocks inside the fallback callback and verifies that the remote
-            // delivery waits until the fallback returns — no concurrent calls.
+        fun `All-mode serializes callback delivery to prevent concurrent invocations`() {
+            // Regression: the immediate cache delivery and the remote broadcast can
+            // invoke the callback from different dispatchers. This test blocks inside
+            // the first callback and verifies the second waits — no concurrent calls.
             val networkExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
             val storageExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
             val networkDispatcher = networkExecutor.asCoroutineDispatcher()
@@ -1714,13 +1735,13 @@ class RemoteConfigClientTest {
                 val allDeliveries = java.util.Collections.synchronizedList(mutableListOf<Pair<ConfigMap?, Source>>())
                 val allDone = java.util.concurrent.CountDownLatch(2)
 
-                client.subscribe(
+                client.subscribeAndRetain(
                     key = SessionReplayPrivacyConfig,
-                    deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 30L),
+                    deliveryMode = RemoteConfigClient.DeliveryMode.All,
                 ) { config, source, _ ->
                     val current = concurrentCount.incrementAndGet()
                     peakConcurrent.updateAndGet { peak -> maxOf(peak, current) }
-                    // Simulate slow processing in the fallback callback.
+                    // Simulate slow processing in the callback.
                     Thread.sleep(100)
                     allDeliveries.add(config to source)
                     concurrentCount.decrementAndGet()
@@ -1731,7 +1752,7 @@ class RemoteConfigClientTest {
 
                 assertTrue(
                     gotBoth,
-                    "Expected two deliveries (fallback + remote), got: $allDeliveries",
+                    "Expected two deliveries (cache + remote), got: $allDeliveries",
                 )
                 assertEquals(
                     1,
@@ -1759,11 +1780,10 @@ class RemoteConfigClientTest {
         }
 
         @Test
-        fun `WaitForRemote suppresses timeout fallback when remote arrived during slow callback`() {
-            // Race regression: the timeout fallback path must not overwrite a
-            // fresh remote delivery that won the gate while the timeout
-            // continuation was being scheduled. Uses real dispatchers and a
-            // slow HTTP response so the race is observable end-to-end.
+        fun `WaitForRemote ignores a late remote after the timeout fallback`() {
+            // WaitForRemote is one-and-done: once the timeout fallback delivers the
+            // cache, a remote that lands later must NOT produce a second delivery.
+            // Uses real dispatchers and a slow HTTP response to exercise it end-to-end.
             val networkExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
             val storageExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
             val networkDispatcher = networkExecutor.asCoroutineDispatcher()
@@ -1823,39 +1843,31 @@ class RemoteConfigClientTest {
                     )
 
                 val results = java.util.Collections.synchronizedList(mutableListOf<Pair<ConfigMap?, Source>>())
-                val secondDelivery = java.util.concurrent.CountDownLatch(2)
+                val firstDelivery = java.util.concurrent.CountDownLatch(1)
 
-                client.subscribe(
+                client.subscribeAndRetain(
                     key = SessionReplayPrivacyConfig,
                     deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 30L),
                 ) { config, source, _ ->
                     results.add(config to source)
-                    secondDelivery.countDown()
+                    firstDelivery.countDown()
                 }
 
-                // Wait until the fetch has had time to land and the subscriber
-                // has received both the timeout fallback and the fresh remote.
-                // If our fix is wrong, the fresh remote is silently dropped
-                // and we never see a REMOTE delivery.
-                val gotBoth = secondDelivery.await(2_000L, java.util.concurrent.TimeUnit.MILLISECONDS)
-
+                // The 30ms timeout fires before the 80ms remote, delivering the cache fallback.
                 assertTrue(
-                    gotBoth,
-                    "Expected timeout fallback + fresh remote, got: $results",
+                    firstDelivery.await(2_000L, java.util.concurrent.TimeUnit.MILLISECONDS),
+                    "Expected the timeout cache fallback delivery, got: $results",
                 )
-                // Snapshot deliveries (synchronizedList iteration must hold the lock).
+                // Wait well past the remote's 80ms latency. WaitForRemote is one-and-done,
+                // so the late remote must NOT produce a second delivery.
+                Thread.sleep(200)
                 val snapshot = synchronized(results) { results.toList() }
-                assertTrue(
-                    snapshot.any { it.second == Source.REMOTE && it.first!!["defaultMaskLevel"] == "medium" },
-                    "Expected fresh remote delivery (defaultMaskLevel=medium), got: $snapshot",
-                )
-                // The fallback must not have overwritten the fresh remote in the
-                // delivery order: the last delivery should be the fresh remote.
-                val last = snapshot.last()
+                assertEquals(1, snapshot.size, "WaitForRemote must deliver exactly once, got: $snapshot")
+                assertEquals(Source.CACHE, snapshot.single().second, "Single delivery is the cache fallback")
                 assertEquals(
-                    Source.REMOTE,
-                    last.second,
-                    "Last delivery must be the fresh remote, not a stale fallback: $snapshot",
+                    "STALE",
+                    snapshot.single().first!!["defaultMaskLevel"],
+                    "Fallback carries the cached data: $snapshot",
                 )
             } finally {
                 realScope.cancel()
@@ -1866,7 +1878,7 @@ class RemoteConfigClientTest {
     }
 
     @Test
-    fun `updateConfigs delivers null callback to All subscribers when fetch fails`() =
+    fun `subscribe with no cache delivers null REMOTE when fetch fails`() =
         runTest {
             val mockHttpClient = mockk<HttpClient>()
             every { mockHttpClient.request(any()) } returns
@@ -1888,9 +1900,9 @@ class RemoteConfigClientTest {
                     logger = silentLogger,
                 )
 
-            val results = mutableListOf<Triple<ConfigMap?, Source, Long>>()
+            val results = mutableListOf<Triple<ConfigMap?, Source, Long?>>()
             // Subscribe with All mode and no pre-populated cache
-            client.subscribe(SessionReplayPrivacyConfig) { config, source, timestamp ->
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { config, source, timestamp ->
                 results.add(Triple(config, source, timestamp))
             }
 
@@ -1914,7 +1926,7 @@ class RemoteConfigClientTest {
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
 
             var receivedConfig: ConfigMap? = null
-            client.subscribe(Key.Custom("sessionReplay")) { config, _, _ ->
+            client.subscribeAndRetain(Key.Custom("sessionReplay")) { config, _, _ ->
                 receivedConfig = config
             }
             testDispatcher.scheduler.advanceUntilIdle()
@@ -1937,7 +1949,7 @@ class RemoteConfigClientTest {
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
 
             var receivedConfig: ConfigMap? = null
-            client.subscribe(Key.Custom("sessionReplay.sr_android_privacy_config")) { config, _, _ ->
+            client.subscribeAndRetain(Key.Custom("sessionReplay.sr_android_privacy_config")) { config, _, _ ->
                 receivedConfig = config
             }
             testDispatcher.scheduler.advanceUntilIdle()
@@ -1958,7 +1970,7 @@ class RemoteConfigClientTest {
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
             val results = mutableListOf<Pair<ConfigMap?, Source>>()
-            client.subscribe(Key.Custom("sessionReplay.sr_android_sampling_config")) { config, source, _ ->
+            client.subscribeAndRetain(Key.Custom("sessionReplay.sr_android_sampling_config")) { config, source, _ ->
                 results.add(config to source)
             }
             testDispatcher.scheduler.advanceUntilIdle()
@@ -1996,7 +2008,7 @@ class RemoteConfigClientTest {
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
             val results = mutableListOf<Pair<ConfigMap?, Source>>()
-            client.subscribe(SessionReplayPrivacyConfig) { config, source, _ ->
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { config, source, _ ->
                 results.add(config to source)
             }
             testDispatcher.scheduler.advanceUntilIdle()
@@ -2024,7 +2036,7 @@ class RemoteConfigClientTest {
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
             var receivedConfig: ConfigMap? = null
-            client.subscribe(Key.Custom("nonExistent.path")) { config, _, _ ->
+            client.subscribeAndRetain(Key.Custom("nonExistent.path")) { config, _, _ ->
                 receivedConfig = config
             }
             testDispatcher.scheduler.advanceUntilIdle()
@@ -2056,7 +2068,7 @@ class RemoteConfigClientTest {
             )
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
-            client.subscribe(SessionReplayPrivacyConfig) { config, source, _ ->
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { config, source, _ ->
                 results.add(config to source)
             }
             testDispatcher.scheduler.advanceUntilIdle()
@@ -2126,17 +2138,17 @@ class RemoteConfigClientTest {
             )
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "1234567890")
 
-            val privacyResults = mutableListOf<Triple<ConfigMap?, Source, Long>>()
-            val diagnosticsResults = mutableListOf<Triple<ConfigMap?, Source, Long>>()
+            val privacyResults = mutableListOf<Triple<ConfigMap?, Source, Long?>>()
+            val diagnosticsResults = mutableListOf<Triple<ConfigMap?, Source, Long?>>()
 
-            client.subscribe(
+            client.subscribeAndRetain(
                 key = SessionReplayPrivacyConfig,
                 deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 100L),
             ) { config, source, timestamp ->
                 privacyResults.add(Triple(config, source, timestamp))
             }
 
-            client.subscribe(
+            client.subscribeAndRetain(
                 key = Diagnostics,
                 deliveryMode = RemoteConfigClient.DeliveryMode.All,
             ) { config, source, timestamp ->
