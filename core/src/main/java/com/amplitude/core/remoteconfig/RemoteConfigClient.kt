@@ -1,8 +1,11 @@
+@file:OptIn(RestrictedAmplitudeFeature::class)
+
 package com.amplitude.core.remoteconfig
 
 import com.amplitude.common.Logger
 import com.amplitude.core.Constants.SDK_LIBRARY
 import com.amplitude.core.Constants.SDK_VERSION
+import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.ServerZone
 import com.amplitude.core.Storage
 import com.amplitude.core.Storage.Constants.REMOTE_CONFIG
@@ -34,7 +37,9 @@ typealias ConfigMap = Map<String, Any>
 /**
  * Interface for remote configuration client.
  */
+@RestrictedAmplitudeFeature
 interface RemoteConfigClient {
+    @RestrictedAmplitudeFeature
     enum class Source {
         CACHE,
         REMOTE,
@@ -46,6 +51,7 @@ interface RemoteConfigClient {
      * Subsequent updates after the first delivery always flow through normally.
      * Only the *initial* delivery semantics differ between modes.
      */
+    @RestrictedAmplitudeFeature
     sealed class DeliveryMode {
         /** Deliver cached config immediately if available, then remote when it arrives. */
         data object All : DeliveryMode()
@@ -60,6 +66,7 @@ interface RemoteConfigClient {
      * "sessionReplay.sr_android_privacy_config" resolves the nested map at
      * configs.sessionReplay.sr_android_privacy_config.
      */
+    @RestrictedAmplitudeFeature
     sealed class Key(val value: String) {
         data object AnalyticsSdk : Key("analyticsSDK.androidSDK")
 
@@ -90,6 +97,7 @@ interface RemoteConfigClient {
 
     fun updateConfigs()
 
+    @RestrictedAmplitudeFeature
     fun interface RemoteConfigCallback {
         /**
          * @param config resolved config slice; null when the key is absent from a
@@ -707,6 +715,7 @@ internal class RemoteConfigClientImpl(
  * Safely extracts a String value from the config map with a default fallback.
  * These functions provide type-safe access with defaults and never crash.
  */
+@RestrictedAmplitudeFeature
 fun ConfigMap.getString(
     key: String,
     default: String = "",
@@ -717,6 +726,7 @@ fun ConfigMap.getString(
 /**
  * Safely extracts a Boolean value from the config map with a default fallback.
  */
+@RestrictedAmplitudeFeature
 fun ConfigMap.getBoolean(
     key: String,
     default: Boolean = false,
@@ -727,6 +737,7 @@ fun ConfigMap.getBoolean(
 /**
  * Safely extracts a Double value from the config map with a default fallback.
  */
+@RestrictedAmplitudeFeature
 fun ConfigMap.getDouble(
     key: String,
     default: Double = 0.0,
@@ -742,6 +753,7 @@ fun ConfigMap.getDouble(
 /**
  * Safely extracts an Int value from the config map with a default fallback.
  */
+@RestrictedAmplitudeFeature
 fun ConfigMap.getInt(
     key: String,
     default: Int = 0,
@@ -757,6 +769,7 @@ fun ConfigMap.getInt(
 /**
  * Safely extracts a List<String> value from the config map with a default fallback.
  */
+@RestrictedAmplitudeFeature
 fun ConfigMap.getStringList(
     key: String,
     default: List<String> = emptyList(),

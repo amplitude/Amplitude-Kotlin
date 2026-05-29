@@ -18,6 +18,7 @@ import com.amplitude.android.Constants.EventProperties.NETWORK_TRACKING_URL_QUER
 import com.amplitude.android.Constants.EventTypes.NETWORK_TRACKING
 import com.amplitude.android.network.NetworkTrackingOptions.CaptureRule
 import com.amplitude.core.Amplitude
+import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.platform.Plugin
 import com.amplitude.core.platform.Plugin.Type
 import com.amplitude.core.platform.Plugin.Type.Utility
@@ -45,8 +46,10 @@ class NetworkTrackingPlugin(
     internal var currentOptions: NetworkTrackingOptions = options
 
     // Strong reference to prevent GC — RemoteConfigClient uses WeakReference
+    @OptIn(RestrictedAmplitudeFeature::class)
     private var remoteConfigCallback: RemoteConfigClient.RemoteConfigCallback? = null
 
+    @OptIn(RestrictedAmplitudeFeature::class)
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
 

@@ -1,7 +1,10 @@
+@file:OptIn(RestrictedAmplitudeFeature::class)
+
 package com.amplitude.core.remoteconfig
 
 import com.amplitude.common.jvm.ConsoleLogger
 import com.amplitude.core.Configuration
+import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.ServerZone
 import com.amplitude.core.Storage
 import com.amplitude.core.events.BaseEvent

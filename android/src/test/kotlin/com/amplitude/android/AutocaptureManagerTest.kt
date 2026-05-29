@@ -1,3 +1,5 @@
+@file:OptIn(RestrictedAmplitudeFeature::class)
+
 package com.amplitude.android
 
 import com.amplitude.common.Logger

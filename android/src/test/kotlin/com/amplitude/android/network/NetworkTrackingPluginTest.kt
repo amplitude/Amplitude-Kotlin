@@ -1,3 +1,5 @@
+@file:OptIn(RestrictedAmplitudeFeature::class)
+
 package com.amplitude.android.network
 
 import com.amplitude.android.Constants.EventProperties.NETWORK_TRACKING_COMPLETION_TIME
@@ -21,6 +23,7 @@ import com.amplitude.android.network.NetworkTrackingOptions.CaptureHeader
 import com.amplitude.android.network.NetworkTrackingOptions.CaptureRule
 import com.amplitude.android.network.NetworkTrackingOptions.URLPattern
 import com.amplitude.core.Amplitude
+import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.remoteconfig.ConfigMap
 import com.amplitude.core.remoteconfig.RemoteConfigClient
