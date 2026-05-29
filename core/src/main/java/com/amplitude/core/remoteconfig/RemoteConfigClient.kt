@@ -57,7 +57,13 @@ interface RemoteConfigClient {
         data object All : DeliveryMode()
 
         /** Wait for remote up to [timeoutMs], then fall back to cache (or empty). */
-        class WaitForRemote(val timeoutMs: Long) : DeliveryMode()
+        class WaitForRemote(val timeoutMs: Long) : DeliveryMode() {
+            override fun equals(other: Any?): Boolean = other is WaitForRemote && other.timeoutMs == timeoutMs
+
+            override fun hashCode(): Int = timeoutMs.hashCode()
+
+            override fun toString(): String = "WaitForRemote(timeoutMs=$timeoutMs)"
+        }
     }
 
     /**
@@ -173,7 +179,7 @@ internal class RemoteConfigClientImpl(
          * race the cache read, and a stale cache must never land after a fresh remote.
          */
         fun deliverCache(
-            config: ConfigMap,
+            config: ConfigMap?,
             timestamp: Long,
         ) {
             val callback = weakRef.get() ?: return
@@ -280,8 +286,10 @@ internal class RemoteConfigClientImpl(
         registerSubscriber(key, weakCallback)
 
         coroutineScope.launch {
+            // A cached blob counts even when the key is absent within it: iOS delivers
+            // (null, CACHE, lastFetch) in that case, distinct from a true cache miss.
             val cached = withContext(storageIODispatcher) { getStoredConfigData(key.value) }
-            if (cached?.config != null) {
+            if (cached != null) {
                 weakCallback.deliverCache(cached.config, cached.timestamp)
             }
 
@@ -352,7 +360,10 @@ internal class RemoteConfigClientImpl(
             // concurrent broadcast that already delivered makes these calls no-ops.
             if (!weakCallback.hasDelivered()) {
                 val cached = withContext(storageIODispatcher) { getStoredConfigData(key.value) }
-                if (cached?.config != null) {
+                if (cached != null) {
+                    // A cached blob is a valid answer even when the key is absent within
+                    // it: deliver (null, CACHE, lastFetch), mirroring iOS. Only a true
+                    // cache miss yields the (null, REMOTE, null) failure signal.
                     weakCallback.deliverFirst(cached.config, CACHE, cached.timestamp)
                 } else {
                     weakCallback.deliverFirst(null, REMOTE, null)
@@ -473,19 +484,26 @@ internal class RemoteConfigClientImpl(
     }
 
     private suspend fun performFetch(fetchId: Long): FetchOutcome {
-        return try {
-            val blob = fetchRemoteConfig() ?: return FetchOutcome.Failure
-            val timestamp = System.currentTimeMillis()
+        val blob =
+            try {
+                fetchRemoteConfig() ?: return FetchOutcome.Failure
+            } catch (e: Exception) {
+                logger.error("Error fetching remote configs: ${e.message}")
+                return FetchOutcome.Failure
+            }
+        val timestamp = System.currentTimeMillis()
+        // Persisting the blob is best-effort: a storage write failure must not discard
+        // a valid in-memory remote config (mirrors iOS `try? storage.setConfig`).
+        try {
             withContext(storageIODispatcher) {
                 storage.write(REMOTE_CONFIG, blob.toJSONObject().toString())
                 storage.write(REMOTE_CONFIG_TIMESTAMP, timestamp.toString())
                 logger.debug("Successfully stored remote configs to storage")
             }
-            FetchOutcome.Success(blob, timestamp, fetchId)
         } catch (e: Exception) {
-            logger.error("Error updating remote configs: ${e.message}")
-            FetchOutcome.Failure
+            logger.error("Failed to persist remote configs (delivering anyway): ${e.message}")
         }
+        return FetchOutcome.Success(blob, timestamp, fetchId)
     }
 
     private fun isFresh(timestamp: Long): Boolean {
@@ -547,7 +565,10 @@ internal class RemoteConfigClientImpl(
             }
 
             val allConfigs = JSONObject(configJson).toMapObj().filterNotNullValues()
-            if (allConfigs.isEmpty()) return null
+
+            // An empty (but parseable) blob is a valid cached answer — a successful fetch
+            // that returned no config. It must remain distinguishable from a true cache
+            // miss (null), so subscribers get (null, CACHE, ts) rather than a failure.
 
             // Detect old pre-flattened format: keys contain dots (e.g. "sessionReplay.sr_android_privacy_config").
             // New format has top-level keys without dots (e.g. "sessionReplay", "diagnostics").

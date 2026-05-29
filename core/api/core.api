@@ -958,7 +958,10 @@ public final class com/amplitude/core/remoteconfig/RemoteConfigClient$DeliveryMo
 
 public final class com/amplitude/core/remoteconfig/RemoteConfigClient$DeliveryMode$WaitForRemote : com/amplitude/core/remoteconfig/RemoteConfigClient$DeliveryMode {
 	public fun <init> (J)V
+	public fun equals (Ljava/lang/Object;)Z
 	public final fun getTimeoutMs ()J
+	public fun hashCode ()I
+	public fun toString ()Ljava/lang/String;
 }
 
 public abstract class com/amplitude/core/remoteconfig/RemoteConfigClient$Key {
