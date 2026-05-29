@@ -1915,6 +1915,105 @@ class RemoteConfigClientTest {
             assertNull(config, "Failed fetch must deliver null config")
         }
 
+    @Test
+    fun `All subscriber receives ongoing remote updates from later refreshes`() =
+        runTest {
+            val client = createClient(emptyApiConfig = false)
+
+            val remoteDeliveries = mutableListOf<ConfigMap?>()
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { config, source, _ ->
+                if (source == Source.REMOTE) remoteDeliveries.add(config)
+            }
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertEquals(1, remoteDeliveries.size, "Initial subscribe should deliver one REMOTE")
+
+            // A later refresh (distinct fetch) must deliver again to the All subscriber.
+            storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
+            client.updateConfigs()
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertEquals(2, remoteDeliveries.size, "All subscriber should receive the refresh update")
+        }
+
+    @Test
+    fun `All subscriber never receives stale cache after a remote`() =
+        runTest {
+            val client = createClient(emptyApiConfig = false)
+            // Cache present, and a refresh is interleaved with the subscribe so a remote
+            // can race ahead of the cache delivery.
+            storage.write(
+                Storage.Constants.REMOTE_CONFIG,
+                DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent(),
+            )
+            storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
+
+            val sources = mutableListOf<Source>()
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { _, source, _ ->
+                sources.add(source)
+            }
+            client.updateConfigs()
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            // Invariant: a CACHE delivery must never follow a REMOTE one.
+            val firstRemote = sources.indexOf(Source.REMOTE)
+            if (firstRemote >= 0) {
+                assertFalse(
+                    sources.drop(firstRemote + 1).contains(Source.CACHE),
+                    "Stale CACHE delivered after REMOTE: $sources",
+                )
+            }
+        }
+
+    @Test
+    fun `subscribe reuses a recent successful fetch without a new request`() =
+        runTest {
+            val requests = mutableListOf<HttpClient.Request>()
+            val mockHttpClient = mockk<HttpClient>()
+            every { mockHttpClient.request(any()) } answers {
+                requests.add(firstArg())
+                HttpClient.Response(
+                    statusCode = 200,
+                    body = DEFAULT_API_REMOTE_CONFIG_JSON.trimIndent(),
+                    headers = emptyMap(),
+                    statusMessage = "OK",
+                )
+            }
+            val client =
+                RemoteConfigClientImpl(
+                    apiKey = "test-key",
+                    serverZone = ServerZone.US,
+                    coroutineScope = testScope,
+                    networkIODispatcher = testDispatcher,
+                    storageIODispatcher = testDispatcher,
+                    storage = storage,
+                    httpClient = mockHttpClient,
+                    logger = silentLogger,
+                )
+
+            // First subscribe triggers a single fetch.
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { _, _, _ -> }
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertEquals(1, requests.size, "First subscribe should make one request")
+
+            // Second subscribe within the rate-limit window reuses the fresh result —
+            // no new request — and still gets a REMOTE delivery (DeliveryMode.All).
+            val allSources = mutableListOf<Source>()
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { _, source, _ -> allSources.add(source) }
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertEquals(1, requests.size, "Second subscribe should reuse, not refetch")
+            assertTrue(allSources.contains(Source.REMOTE), "Reuse delivers REMOTE to All, got: $allSources")
+
+            // A WaitForRemote subscriber also reuses the fresh result with no new request.
+            val waitResults = mutableListOf<Pair<ConfigMap?, Source>>()
+            client.subscribeAndRetain(
+                key = SessionReplayPrivacyConfig,
+                deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 5_000L),
+            ) { config, source, _ -> waitResults.add(config to source) }
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertEquals(1, requests.size, "WaitForRemote should reuse, not refetch")
+            assertEquals(1, waitResults.size, "WaitForRemote delivers exactly once")
+            assertEquals(Source.REMOTE, waitResults.single().second, "Reuse delivers REMOTE to WaitForRemote")
+        }
+
     // endregion DeliveryMode
 
     // region Dot-Path and Key Alignment
