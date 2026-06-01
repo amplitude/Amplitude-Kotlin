@@ -18,6 +18,23 @@ interface Plugin {
     val type: Type
     var amplitude: Amplitude
 
+    /**
+     * Optional unique identifier for this plugin, used for deduplication.
+     *
+     * When a plugin with a non-null [name] is added via [Amplitude.add], any
+     * previously registered plugin with the same name is removed (and its
+     * [teardown] called) before the new plugin is wired in. Plugins that leave
+     * [name] as `null` are never deduplicated.
+     *
+     * Deduplication is best-effort: [Amplitude.add] is expected to be called
+     * from a single thread (typically setup). Concurrent `add()` calls with the
+     * same [name] from different threads may race and leave more than one
+     * instance registered.
+     *
+     * Defaults to `null` to preserve binary compatibility with existing plugins.
+     */
+    val name: String? get() = null
+
     fun setup(amplitude: Amplitude) {
         this.amplitude = amplitude
     }
@@ -29,6 +46,50 @@ interface Plugin {
     fun teardown() {
         // Clean up any resources from setup if necessary
     }
+
+    /**
+     * Invoked when [Amplitude.setUserId] mutates the userId on the
+     * Amplitude instance this plugin is registered with.
+     *
+     * Delivery is latest-value, not per-transition: identity mutation is
+     * expected from a single thread, but if the userId changes again before
+     * this callback runs, notifications may coalesce to the most recent value.
+     * The value passed is always consistent with the instance's current
+     * identity.
+     *
+     * Plugins registered before the SDK finishes building may not receive
+     * the initial identity values delivered during bootstrap — bootstrap/startup
+     * delivery is best-effort.
+     */
+    fun onUserIdChanged(userId: String?) {}
+
+    /**
+     * Invoked when [Amplitude.setDeviceId] mutates the deviceId on the
+     * Amplitude instance this plugin is registered with. Delivery semantics
+     * match [onUserIdChanged] (latest-value, may coalesce under concurrency;
+     * bootstrap delivery is best-effort).
+     */
+    fun onDeviceIdChanged(deviceId: String?) {}
+
+    /**
+     * Invoked when the session id changes on the Amplitude instance this plugin
+     * is registered with. Only fires for SDK builds that maintain a session id
+     * (e.g. the Android SDK).
+     */
+    fun onSessionIdChanged(sessionId: Long) {}
+
+    /**
+     * Invoked when the [Amplitude.optOut] flag flips on the Amplitude instance
+     * this plugin is registered with.
+     */
+    fun onOptOutChanged(optOut: Boolean) {}
+
+    /**
+     * Invoked when [Amplitude.reset] is called on the Amplitude instance this
+     * plugin is registered with. The accompanying userId/deviceId changes are
+     * delivered via the same notification (one batched callback, not two).
+     */
+    fun onReset() {}
 }
 
 interface EventPlugin : Plugin {
@@ -108,9 +169,9 @@ abstract class DestinationPlugin : EventPlugin {
 abstract class ObservePlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Observe
 
-    abstract fun onUserIdChanged(userId: String?)
+    abstract override fun onUserIdChanged(userId: String?)
 
-    abstract fun onDeviceIdChanged(deviceId: String?)
+    abstract override fun onDeviceIdChanged(deviceId: String?)
 
     final override fun execute(event: BaseEvent): BaseEvent? {
         return null
