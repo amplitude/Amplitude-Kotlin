@@ -60,18 +60,30 @@ open class AndroidContextPlugin : Plugin {
         configuration: Configuration,
         forceRegenerate: Boolean = false,
     ) {
+        val resolved = resolveDeviceId(configuration, forceRegenerate)
+        // null means "keep the existing device id" (only happens when forceRegenerate is false
+        // and the current value in [State] is already valid).
+        resolved?.let { setDeviceId(it) }
+    }
+
+    /**
+     * Resolve the device id to use, applying the same precedence rules as
+     * [initializeDeviceId] but without writing it to [State]. Returns null if
+     * the existing device id in the store should be retained (only possible
+     * when [forceRegenerate] is false).
+     */
+    internal fun resolveDeviceId(
+        configuration: Configuration,
+        forceRegenerate: Boolean = false,
+    ): String? {
         // Check configuration
-        var deviceId = configuration.deviceId
-        if (deviceId != null) {
-            setDeviceId(deviceId)
-            return
-        }
+        configuration.deviceId?.let { return it }
 
         // Check store
         if (!forceRegenerate) {
-            deviceId = amplitude.store.deviceId
-            if (deviceId != null && validDeviceId(deviceId) && !deviceId.endsWith(APP_SET_DEVICE_ID_SUFFIX)) {
-                return
+            val existing = amplitude.store.deviceId
+            if (existing != null && validDeviceId(existing) && !existing.endsWith(APP_SET_DEVICE_ID_SUFFIX)) {
+                return null
             }
         }
 
@@ -82,8 +94,7 @@ open class AndroidContextPlugin : Plugin {
         ) {
             val advertisingId = contextProvider.advertisingId
             if (advertisingId != null && validDeviceId(advertisingId)) {
-                setDeviceId(advertisingId)
-                return
+                return advertisingId
             }
         }
 
@@ -91,13 +102,12 @@ open class AndroidContextPlugin : Plugin {
         if (configuration.useAppSetIdForDeviceId) {
             val appSetId = contextProvider.appSetId
             if (appSetId != null && validDeviceId(appSetId)) {
-                setDeviceId("$appSetId$APP_SET_DEVICE_ID_SUFFIX")
-                return
+                return "$appSetId$APP_SET_DEVICE_ID_SUFFIX"
             }
         }
 
         // Generate random id
-        setDeviceId(ContextPlugin.generateRandomDeviceId())
+        return ContextPlugin.generateRandomDeviceId()
     }
 
     private fun applyContextData(event: BaseEvent) {

@@ -27,7 +27,6 @@ import java.io.File
 import java.util.concurrent.Executors
 import com.amplitude.core.Amplitude as CoreAmplitude
 
-@OptIn(RestrictedAmplitudeFeature::class)
 open class Amplitude internal constructor(
     configuration: Configuration,
     state: State,
@@ -45,16 +44,7 @@ open class Amplitude internal constructor(
     ) {
     constructor(configuration: Configuration) : this(configuration, State())
 
-    internal val autocaptureManager: AutocaptureManager by lazy {
-        val androidConfig = configuration
-        AutocaptureManager(
-            initialAutocapture = androidConfig.autocapture,
-            initialInteractionsOptions = androidConfig.interactionsOptions,
-            remoteConfigClient = if (androidConfig.enableAutocaptureRemoteConfig) remoteConfigClient else null,
-            logger = logger,
-            diagnosticsClient = diagnosticsClient,
-        )
-    }
+    internal val autocaptureManager: AutocaptureManager by lazy { buildAutocaptureManager() }
 
     val sessionId: Long
         get() {
@@ -133,12 +123,16 @@ open class Amplitude internal constructor(
     }
 
     override fun reset(): Amplitude {
-        setUserId(null)
-        if (isBuilt.isCompleted) {
-            androidContextPlugin.initializeDeviceId(configuration as Configuration, forceRegenerate = true)
-        } else {
-            setDeviceId(ContextPlugin.generateRandomDeviceId())
-        }
+        // Resolve the new device id first so we can emit one bundled identity-change
+        // notification (userId -> null AND deviceId -> resolved) rather than two.
+        val newDeviceId =
+            if (isBuilt.isCompleted) {
+                androidContextPlugin.resolveDeviceId(configuration as Configuration, forceRegenerate = true)
+                    ?: ContextPlugin.generateRandomDeviceId()
+            } else {
+                ContextPlugin.generateRandomDeviceId()
+            }
+        doAndroidReset(newDeviceId)
         return this
     }
 
@@ -180,6 +174,26 @@ open class Amplitude internal constructor(
          */
         const val END_SESSION_EVENT = "session_end"
     }
+}
+
+// ── restricted-feature bridge: the only place @OptIn lives ──
+
+@OptIn(RestrictedAmplitudeFeature::class)
+private fun Amplitude.buildAutocaptureManager(): AutocaptureManager {
+    val androidConfig = configuration as Configuration
+    return AutocaptureManager(
+        initialAutocapture = androidConfig.autocapture,
+        initialInteractionsOptions = androidConfig.interactionsOptions,
+        remoteConfigClient = if (androidConfig.enableAutocaptureRemoteConfig) remoteConfigClient else null,
+        logger = logger,
+        diagnosticsClient = diagnosticsClient,
+    )
+}
+
+@OptIn(RestrictedAmplitudeFeature::class)
+private fun Amplitude.doAndroidReset(newDeviceId: String) {
+    resetIdentity(newDeviceId)
+    notifyAllPlugins { it.onReset() }
 }
 
 /**

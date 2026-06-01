@@ -2,6 +2,7 @@ package com.amplitude.android
 
 import com.amplitude.android.Amplitude.Companion.END_SESSION_EVENT
 import com.amplitude.android.Amplitude.Companion.START_SESSION_EVENT
+import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.Storage
 import com.amplitude.core.Storage.Constants
 import com.amplitude.core.Storage.Constants.LAST_EVENT_ID
@@ -156,6 +157,10 @@ class Timeline(
     private suspend fun setSessionId(timestamp: Long) {
         _sessionId.set(timestamp)
         amplitude.storage.write(PREVIOUS_SESSION_ID, sessionId.toString())
+        // Fire onSessionIdChanged on every plugin (timeline + observe store).
+        // This is the callback's only invocation site: it was declared on the
+        // Plugin interface but never wired to the session manager before.
+        amplitude.fireSessionIdChanged(timestamp)
     }
 
     private suspend fun startNewSession(timestamp: Long): List<BaseEvent> {
@@ -211,6 +216,11 @@ class Timeline(
         return read(key)?.toLongOrNull() ?: default
     }
 }
+
+// ── restricted-feature bridge: the only place @OptIn lives ──
+
+@OptIn(RestrictedAmplitudeFeature::class)
+private fun com.amplitude.core.Amplitude.fireSessionIdChanged(timestamp: Long) = notifyAllPlugins { it.onSessionIdChanged(timestamp) }
 
 sealed class EventQueueMessage {
     data class Event(val event: BaseEvent) : EventQueueMessage()
