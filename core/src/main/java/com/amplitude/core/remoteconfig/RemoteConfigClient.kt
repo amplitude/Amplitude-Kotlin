@@ -166,7 +166,6 @@ internal class RemoteConfigClientImpl(
      */
     private inner class WeakCallback(
         callback: RemoteConfigClient.RemoteConfigCallback,
-        val deliveryMode: RemoteConfigClient.DeliveryMode,
     ) {
         private val weakRef = WeakReference(callback)
         private val deliveryLock = Any()
@@ -288,7 +287,7 @@ internal class RemoteConfigClientImpl(
         key: Key,
         callback: RemoteConfigClient.RemoteConfigCallback,
     ) {
-        val weakCallback = WeakCallback(callback, RemoteConfigClient.DeliveryMode.All)
+        val weakCallback = WeakCallback(callback)
         registerSubscriber(key, weakCallback)
 
         coroutineScope.launch {
@@ -336,8 +335,7 @@ internal class RemoteConfigClientImpl(
         timeoutMs: Long,
         callback: RemoteConfigClient.RemoteConfigCallback,
     ) {
-        val weakCallback =
-            WeakCallback(callback, RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs))
+        val weakCallback = WeakCallback(callback)
         registerSubscriber(key, weakCallback)
 
         coroutineScope.launch {
