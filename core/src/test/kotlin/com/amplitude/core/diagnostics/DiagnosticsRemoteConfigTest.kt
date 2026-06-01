@@ -1,6 +1,9 @@
+@file:OptIn(RestrictedAmplitudeFeature::class)
+
 package com.amplitude.core.diagnostics
 
 import com.amplitude.common.Logger
+import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.ServerZone
 import com.amplitude.core.remoteconfig.ConfigMap
 import com.amplitude.core.remoteconfig.RemoteConfigClient
@@ -157,7 +160,7 @@ class DiagnosticsRemoteConfigTest {
             deliveryMode: RemoteConfigClient.DeliveryMode,
             callback: RemoteConfigClient.RemoteConfigCallback,
         ) {
-            if (key == RemoteConfigClient.Key.DIAGNOSTICS) {
+            if (key == RemoteConfigClient.Key.Diagnostics) {
                 callbacks.add(callback)
             }
         }

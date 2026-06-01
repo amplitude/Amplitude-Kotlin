@@ -92,6 +92,8 @@ open class Amplitude(
             enabled = configuration.enableDiagnostics,
         )
     }
+
+    @RestrictedAmplitudeFeature
     val remoteConfigClient: RemoteConfigClient by lazy {
         RemoteConfigClientImpl(
             apiKey = configuration.apiKey,

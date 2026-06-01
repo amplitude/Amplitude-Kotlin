@@ -18,12 +18,12 @@ import com.amplitude.android.Constants.EventProperties.NETWORK_TRACKING_URL_QUER
 import com.amplitude.android.Constants.EventTypes.NETWORK_TRACKING
 import com.amplitude.android.network.NetworkTrackingOptions.CaptureRule
 import com.amplitude.core.Amplitude
+import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.platform.Plugin
 import com.amplitude.core.platform.Plugin.Type
 import com.amplitude.core.platform.Plugin.Type.Utility
 import com.amplitude.core.remoteconfig.ConfigMap
 import com.amplitude.core.remoteconfig.RemoteConfigClient
-import com.amplitude.core.remoteconfig.RemoteConfigClient.Key
 import okhttp3.HttpUrl
 import okhttp3.Interceptor
 import okhttp3.Interceptor.Chain
@@ -46,8 +46,10 @@ class NetworkTrackingPlugin(
     internal var currentOptions: NetworkTrackingOptions = options
 
     // Strong reference to prevent GC — RemoteConfigClient uses WeakReference
+    @OptIn(RestrictedAmplitudeFeature::class)
     private var remoteConfigCallback: RemoteConfigClient.RemoteConfigCallback? = null
 
+    @OptIn(RestrictedAmplitudeFeature::class)
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
 
@@ -59,12 +61,16 @@ class NetworkTrackingPlugin(
                 RemoteConfigClient.RemoteConfigCallback { config, _, _ ->
                     handleRemoteConfig(config)
                 }
-            androidAmplitude.remoteConfigClient.subscribe(Key.ANALYTICS_SDK, callback = remoteConfigCallback!!)
+            androidAmplitude.remoteConfigClient.subscribe(RemoteConfigClient.Key.AnalyticsSdk, callback = remoteConfigCallback!!)
         }
     }
 
     @Suppress("UNCHECKED_CAST")
-    private fun handleRemoteConfig(config: ConfigMap) {
+    private fun handleRemoteConfig(config: ConfigMap?) {
+        if (config == null) {
+            currentOptions = originalOptions
+            return
+        }
         val autocaptureConfig = config["autocapture"] as? ConfigMap
         val networkConfig = autocaptureConfig?.get("networkTracking") as? ConfigMap
 

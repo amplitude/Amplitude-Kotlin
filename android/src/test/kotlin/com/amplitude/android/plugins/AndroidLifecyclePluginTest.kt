@@ -1,3 +1,5 @@
+@file:OptIn(RestrictedAmplitudeFeature::class)
+
 package com.amplitude.android.plugins
 
 import android.app.Activity
@@ -16,6 +18,7 @@ import com.amplitude.android.internal.fragments.FragmentActivityHandler
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.registerFragmentLifecycleCallbacks
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.unregisterFragmentLifecycleCallbacks
 import com.amplitude.android.utilities.ActivityLifecycleObserver
+import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.Storage
 import com.amplitude.core.utilities.InMemoryStorage
 import io.mockk.coVerify

@@ -143,8 +143,8 @@ internal class DiagnosticsClientImpl(
     private val remoteConfigCallback: RemoteConfigClient.RemoteConfigCallback? =
         if (remoteConfigClient != null) {
             RemoteConfigClient.RemoteConfigCallback { config, _, _ ->
-                val enabledConfig = config["enabled"] as? Boolean
-                val sampleRateConfig = (config["sampleRate"] as? Number)?.toDouble()
+                val enabledConfig = config?.get("enabled") as? Boolean
+                val sampleRateConfig = (config?.get("sampleRate") as? Number)?.toDouble()
 
                 logger.debug("DiagnosticsClient: Did fetch remote config with sampleRate: $sampleRateConfig")
 
@@ -192,7 +192,7 @@ internal class DiagnosticsClientImpl(
             )
 
         remoteConfigCallback?.let { callback ->
-            remoteConfigClient?.subscribe(RemoteConfigClient.Key.DIAGNOSTICS, callback = callback)
+            remoteConfigClient?.subscribe(RemoteConfigClient.Key.Diagnostics, callback = callback)
         }
 
         channel.trySend(Update.InitializeTasks)
