@@ -30,16 +30,19 @@ iOS (`AmplitudeCore-Swift`) and Web clients so behavior is consistent across SDK
 
 ## Delivery semantics
 
-- **`subscribe` always delivers exactly once** initially — cache, remote, or a
-  failure signal — so callers can reliably gate setup on it.
+- **`subscribe` always delivers an initial callback** — cache, remote, or a failure
+  signal — so callers can reliably gate setup on it. The mode controls only this
+  *initial* delivery; afterward every subscriber receives subsequent successful
+  fetches as updates.
 - **`All`**: delivers cache immediately (if present), then the remote result, then
-  every subsequent successful refresh.
-- **`WaitForRemote(timeout)`**: waits for the remote up to `timeout`; on
-  failure/timeout falls back to cache, else a failure signal. **One-and-done** —
-  later refreshes do not re-notify it.
-- **`updateConfigs()`** (refresh): rate-limited (5 min). Only *successful* configs
-  are delivered to existing subscribers; failures are never fanned out, so
-  subscribers keep their last valid config.
+  every subsequent successful fetch.
+- **`WaitForRemote(timeout)`**: blocks the *initial* delivery on the remote up to
+  `timeout`; on failure/timeout falls back to cache, else a failure signal. After
+  that initial callback it receives subsequent fetches as updates, the same as `All`.
+- **Any successful fetch** — whether triggered by a `subscribe` or by
+  `updateConfigs()` — delivers the latest config to **all** current subscribers
+  (de-duplicated per subscriber by `fetchId`). Failures are never fanned out, so
+  subscribers keep their last valid config. `updateConfigs()` is rate-limited (5 min).
 
 ## Internals
 

@@ -1613,13 +1613,14 @@ class RemoteConfigClientTest {
             }
 
         @Test
-        fun `WaitForRemote delivers once and ignores later refreshes`() =
+        fun `WaitForRemote receives later refreshes after its initial delivery`() =
             runTest {
-                // WaitForRemote is one-and-done (mirrors iOS): once it has received its
-                // single initial delivery, subsequent refreshes do NOT re-notify it.
+                // The delivery mode governs only the INITIAL callback; afterward a
+                // WaitForRemote subscriber receives subsequent successful fetches as
+                // updates, the same as All (matches iOS, AmplitudeCore-Swift#80).
                 //
                 // First fetch fails (500) with a cache present, so the fallback delivers
-                // CACHE. A later successful refresh must NOT produce a second delivery.
+                // CACHE. A later successful refresh MUST then deliver a REMOTE update.
                 var responseProvider: () -> HttpClient.Response = {
                     HttpClient.Response(
                         statusCode = 500,
@@ -1668,7 +1669,7 @@ class RemoteConfigClientTest {
                 )
 
                 // Flip to a fresh successful payload and trigger a refresh. WaitForRemote
-                // already delivered, so it must NOT be notified again.
+                // already had its initial delivery, so the refresh delivers a REMOTE update.
                 responseProvider = {
                     HttpClient.Response(
                         statusCode = 200,
@@ -1683,9 +1684,14 @@ class RemoteConfigClientTest {
                 testDispatcher.scheduler.advanceUntilIdle()
 
                 assertEquals(
-                    listOf(Source.CACHE),
+                    listOf(Source.CACHE, Source.REMOTE),
                     results.map { it.second },
-                    "WaitForRemote must not receive refresh updates after its first delivery, got: $results",
+                    "WaitForRemote should receive the refresh as a REMOTE update after its initial delivery, got: $results",
+                )
+                assertEquals(
+                    "medium",
+                    results.last().first?.get("defaultMaskLevel"),
+                    "The refresh update must carry the fresh remote config",
                 )
             }
 
@@ -1838,7 +1844,7 @@ class RemoteConfigClientTest {
                 val releaseRemote = java.util.concurrent.CountDownLatch(1)
                 val mockHttpClient = mockk<HttpClient>()
                 every { mockHttpClient.request(any()) } answers {
-                    releaseRemote.await(2_000L, java.util.concurrent.TimeUnit.MILLISECONDS)
+                    releaseRemote.await(5_000L, java.util.concurrent.TimeUnit.MILLISECONDS)
                     HttpClient.Response(
                         statusCode = 200,
                         body = DEFAULT_API_REMOTE_CONFIG_JSON.trimIndent(),
@@ -1910,7 +1916,7 @@ class RemoteConfigClientTest {
                 // Once the cache delivery is inside the callback (holding the lock),
                 // release the remote and trigger a refresh broadcast that races it.
                 assertTrue(
-                    cacheEntered.await(2_000L, java.util.concurrent.TimeUnit.MILLISECONDS),
+                    cacheEntered.await(5_000L, java.util.concurrent.TimeUnit.MILLISECONDS),
                     "Expected the immediate cache delivery",
                 )
                 releaseRemote.countDown()
@@ -1948,10 +1954,10 @@ class RemoteConfigClientTest {
         }
 
         @Test
-        fun `WaitForRemote ignores a late remote after the timeout fallback`() {
-            // WaitForRemote is one-and-done: once the timeout fallback delivers the
-            // cache, a remote that lands later must NOT produce a second delivery.
-            // Uses real dispatchers and a slow HTTP response to exercise it end-to-end.
+        fun `WaitForRemote delivers a late remote after the timeout fallback`() {
+            // After the timeout fallback delivers the cache, a remote that lands later
+            // IS delivered as an update (matches iOS, AmplitudeCore-Swift#80).
+            // Uses real dispatchers and a gated HTTP response to exercise it end-to-end.
             val networkExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
             val storageExecutor = java.util.concurrent.Executors.newSingleThreadExecutor()
             val networkDispatcher = networkExecutor.asCoroutineDispatcher()
@@ -1968,7 +1974,7 @@ class RemoteConfigClientTest {
                 val releaseRemote = java.util.concurrent.CountDownLatch(1)
                 val mockHttpClient = mockk<HttpClient>()
                 every { mockHttpClient.request(any()) } answers {
-                    releaseRemote.await(2_000L, java.util.concurrent.TimeUnit.MILLISECONDS)
+                    releaseRemote.await(5_000L, java.util.concurrent.TimeUnit.MILLISECONDS)
                     HttpClient.Response(
                         statusCode = 200,
                         body = DEFAULT_API_REMOTE_CONFIG_JSON.trimIndent(),
@@ -2015,45 +2021,44 @@ class RemoteConfigClientTest {
                 val results = java.util.Collections.synchronizedList(mutableListOf<Pair<ConfigMap?, Source>>())
                 val firstDelivery = java.util.concurrent.CountDownLatch(1)
 
-                // A second, All-mode subscriber on the same key is a deterministic signal
-                // that the remote has actually been fetched and dispatched — its REMOTE
-                // delivery is our cue to assert, instead of guessing with a sleep.
-                val remoteDispatched = java.util.concurrent.CountDownLatch(1)
-                client.subscribeAndRetain(
-                    key = SessionReplayPrivacyConfig,
-                    deliveryMode = RemoteConfigClient.DeliveryMode.All,
-                ) { _, source, _ ->
-                    if (source == Source.REMOTE) remoteDispatched.countDown()
-                }
-
+                // The WaitForRemote subscriber's own deliveries drive the test: a CACHE
+                // fallback first, then the late REMOTE once the gated fetch completes.
+                val lateRemote = java.util.concurrent.CountDownLatch(1)
                 client.subscribeAndRetain(
                     key = SessionReplayPrivacyConfig,
                     deliveryMode = RemoteConfigClient.DeliveryMode.WaitForRemote(timeoutMs = 30L),
                 ) { config, source, _ ->
                     results.add(config to source)
-                    firstDelivery.countDown()
+                    if (source == Source.CACHE) firstDelivery.countDown()
+                    if (source == Source.REMOTE) lateRemote.countDown()
                 }
 
                 // The 30ms timeout fires before the gated remote, delivering the cache fallback.
                 assertTrue(
-                    firstDelivery.await(2_000L, java.util.concurrent.TimeUnit.MILLISECONDS),
+                    firstDelivery.await(5_000L, java.util.concurrent.TimeUnit.MILLISECONDS),
                     "Expected the timeout cache fallback delivery, got: $results",
                 )
-                // Let the remote complete and wait until it has been dispatched (observed
-                // by the All subscriber). WaitForRemote is one-and-done, so the late
-                // remote must NOT produce a second delivery to it.
+                // Let the gated remote complete; the late remote is now delivered as an update.
                 releaseRemote.countDown()
                 assertTrue(
-                    remoteDispatched.await(2_000L, java.util.concurrent.TimeUnit.MILLISECONDS),
-                    "Expected the remote to be fetched and dispatched",
+                    lateRemote.await(5_000L, java.util.concurrent.TimeUnit.MILLISECONDS),
+                    "Expected the late remote to be delivered as an update, got: $results",
                 )
                 val snapshot = synchronized(results) { results.toList() }
-                assertEquals(1, snapshot.size, "WaitForRemote must deliver exactly once, got: $snapshot")
-                assertEquals(Source.CACHE, snapshot.single().second, "Single delivery is the cache fallback")
+                assertEquals(
+                    listOf(Source.CACHE, Source.REMOTE),
+                    snapshot.map { it.second },
+                    "Expected cache fallback then a late REMOTE update, got: $snapshot",
+                )
                 assertEquals(
                     "STALE",
-                    snapshot.single().first!!["defaultMaskLevel"],
-                    "Fallback carries the cached data: $snapshot",
+                    snapshot.first().first!!["defaultMaskLevel"],
+                    "First delivery is the cache fallback",
+                )
+                assertEquals(
+                    "medium",
+                    snapshot.last().first!!["defaultMaskLevel"],
+                    "Second delivery carries the fresh remote config",
                 )
             } finally {
                 realScope.cancel()
