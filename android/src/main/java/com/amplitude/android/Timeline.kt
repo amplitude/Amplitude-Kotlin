@@ -42,7 +42,11 @@ class Timeline(
                 isBuilt.await()
 
                 if (initialSessionId == null) {
-                    _sessionId.set(storage.readLong(PREVIOUS_SESSION_ID, DEFAULT_SESSION_ID))
+                    val restoredSessionId = storage.readLong(PREVIOUS_SESSION_ID, DEFAULT_SESSION_ID)
+                    _sessionId.set(restoredSessionId)
+                    if (restoredSessionId > DEFAULT_SESSION_ID) {
+                        amplitude.fireSessionIdChanged(restoredSessionId)
+                    }
                 }
                 lastEventId = storage.readLong(LAST_EVENT_ID, DEFAULT_EVENT_ID_OR_TIME)
                 lastEventTime = storage.readLong(LAST_EVENT_TIME, DEFAULT_EVENT_ID_OR_TIME)
