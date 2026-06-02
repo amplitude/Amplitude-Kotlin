@@ -157,9 +157,6 @@ class Timeline(
     private suspend fun setSessionId(timestamp: Long) {
         _sessionId.set(timestamp)
         amplitude.storage.write(PREVIOUS_SESSION_ID, sessionId.toString())
-        // Fire onSessionIdChanged on every plugin (timeline + observe store).
-        // This is the callback's only invocation site: it was declared on the
-        // Plugin interface but never wired to the session manager before.
         amplitude.fireSessionIdChanged(timestamp)
     }
 
