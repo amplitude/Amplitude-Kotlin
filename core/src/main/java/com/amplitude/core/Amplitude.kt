@@ -133,6 +133,7 @@ open class Amplitude(
     open var optOut: Boolean
         get() = configuration.optOut
         set(value) {
+            if (configuration.optOut == value) return
             configuration.optOut = value
             notifyPlugins { it.onOptOutChanged(value) }
         }
