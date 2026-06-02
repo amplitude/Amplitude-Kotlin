@@ -18,6 +18,12 @@ interface Plugin {
     val type: Type
     var amplitude: Amplitude
 
+    /**
+     * Optional stable plugin identifier. When non-null, adding another plugin
+     * with the same name replaces the previous one.
+     */
+    val name: String? get() = null
+
     fun setup(amplitude: Amplitude) {
         this.amplitude = amplitude
     }
@@ -29,6 +35,16 @@ interface Plugin {
     fun teardown() {
         // Clean up any resources from setup if necessary
     }
+
+    fun onUserIdChanged(userId: String?) {}
+
+    fun onDeviceIdChanged(deviceId: String?) {}
+
+    fun onSessionIdChanged(sessionId: Long) {}
+
+    fun onOptOutChanged(optOut: Boolean) {}
+
+    fun onReset() {}
 }
 
 interface EventPlugin : Plugin {
@@ -108,9 +124,9 @@ abstract class DestinationPlugin : EventPlugin {
 abstract class ObservePlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Observe
 
-    abstract fun onUserIdChanged(userId: String?)
+    abstract override fun onUserIdChanged(userId: String?)
 
-    abstract fun onDeviceIdChanged(deviceId: String?)
+    abstract override fun onDeviceIdChanged(deviceId: String?)
 
     final override fun execute(event: BaseEvent): BaseEvent? {
         return null

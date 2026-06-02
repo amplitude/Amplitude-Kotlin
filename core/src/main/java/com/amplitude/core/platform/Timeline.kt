@@ -10,6 +10,7 @@ open class Timeline {
             Plugin.Type.Enrichment to Mediator(),
             Plugin.Type.Destination to Mediator(),
             Plugin.Type.Utility to Mediator(),
+            Plugin.Type.Observe to Mediator(),
         )
     lateinit var amplitude: Amplitude
 
@@ -55,13 +56,26 @@ open class Timeline {
     }
 
     fun remove(plugin: Plugin) {
-        // remove all plugins with this name in every category
         plugins.forEach { (_, list) ->
             val wasRemoved = list.remove(plugin)
             if (wasRemoved) {
                 plugin.teardown()
             }
         }
+    }
+
+    internal fun removeByName(name: String): List<Plugin> = plugins.values.flatMap { it.removeByName(name) }
+
+    internal fun pluginsSnapshot(): List<Plugin> = plugins.values.flatMap { it.snapshot() }
+
+    inline fun <reified T : Plugin> findPlugin(): T? {
+        var match: T? = null
+        applyClosure { plugin ->
+            if (match == null && plugin is T) {
+                match = plugin
+            }
+        }
+        return match
     }
 
     // Applies a closure on all registered plugins

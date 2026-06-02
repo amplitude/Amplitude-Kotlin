@@ -2,6 +2,7 @@ package com.amplitude.android
 
 import com.amplitude.android.Amplitude.Companion.END_SESSION_EVENT
 import com.amplitude.android.Amplitude.Companion.START_SESSION_EVENT
+import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.Storage
 import com.amplitude.core.Storage.Constants
 import com.amplitude.core.Storage.Constants.LAST_EVENT_ID
@@ -41,7 +42,13 @@ class Timeline(
                 isBuilt.await()
 
                 if (initialSessionId == null) {
-                    _sessionId.set(storage.readLong(PREVIOUS_SESSION_ID, DEFAULT_SESSION_ID))
+                    val restoredSessionId = storage.readLong(PREVIOUS_SESSION_ID, DEFAULT_SESSION_ID)
+                    _sessionId.set(restoredSessionId)
+                    if (restoredSessionId > DEFAULT_SESSION_ID) {
+                        amplitude.notifySessionIdChanged(restoredSessionId)
+                    }
+                } else if (initialSessionId > DEFAULT_SESSION_ID) {
+                    amplitude.notifySessionIdChanged(initialSessionId)
                 }
                 lastEventId = storage.readLong(LAST_EVENT_ID, DEFAULT_EVENT_ID_OR_TIME)
                 lastEventTime = storage.readLong(LAST_EVENT_TIME, DEFAULT_EVENT_ID_OR_TIME)
@@ -156,6 +163,7 @@ class Timeline(
     private suspend fun setSessionId(timestamp: Long) {
         _sessionId.set(timestamp)
         amplitude.storage.write(PREVIOUS_SESSION_ID, sessionId.toString())
+        amplitude.notifySessionIdChanged(timestamp)
     }
 
     private suspend fun startNewSession(timestamp: Long): List<BaseEvent> {
@@ -210,6 +218,11 @@ class Timeline(
     ): Long {
         return read(key)?.toLongOrNull() ?: default
     }
+}
+
+@OptIn(RestrictedAmplitudeFeature::class)
+private fun com.amplitude.core.Amplitude.notifySessionIdChanged(sessionId: Long) {
+    notifyAllPlugins { it.onSessionIdChanged(sessionId) }
 }
 
 sealed class EventQueueMessage {
