@@ -36,7 +36,7 @@ public final class com/amplitude/common/jvm/ConsoleLogger$Companion {
 	public final fun getLogger ()Lcom/amplitude/common/jvm/ConsoleLogger;
 }
 
-public class com/amplitude/core/Amplitude {
+public class com/amplitude/core/Amplitude : com/amplitude/core/AnalyticsClient {
 	public fun <init> (Lcom/amplitude/core/Configuration;)V
 	public fun <init> (Lcom/amplitude/core/Configuration;Lcom/amplitude/core/State;Lkotlinx/coroutines/CoroutineScope;Lkotlinx/coroutines/CoroutineDispatcher;Lkotlinx/coroutines/CoroutineDispatcher;Lkotlinx/coroutines/CoroutineDispatcher;)V
 	public synthetic fun <init> (Lcom/amplitude/core/Configuration;Lcom/amplitude/core/State;Lkotlinx/coroutines/CoroutineScope;Lkotlinx/coroutines/CoroutineDispatcher;Lkotlinx/coroutines/CoroutineDispatcher;Lkotlinx/coroutines/CoroutineDispatcher;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
@@ -58,11 +58,13 @@ public class com/amplitude/core/Amplitude {
 	public final fun getDiagnosticsClient ()Lcom/amplitude/core/diagnostics/DiagnosticsClient;
 	public final fun getIdContainer ()Lcom/amplitude/id/IdentityContainer;
 	public final fun getIdentifyInterceptStorage ()Lcom/amplitude/core/Storage;
+	public fun getIdentity ()Lcom/amplitude/core/AnalyticsIdentity;
 	public final fun getIdentityStorage ()Lcom/amplitude/id/IdentityStorage;
 	public final fun getLogger ()Lcom/amplitude/common/Logger;
 	public final fun getNetworkIODispatcher ()Lkotlinx/coroutines/CoroutineDispatcher;
 	public fun getOptOut ()Z
 	public final fun getRemoteConfigClient ()Lcom/amplitude/core/remoteconfig/RemoteConfigClient;
+	public fun getSessionId ()J
 	public final fun getSignalFlow ()Lkotlinx/coroutines/flow/SharedFlow;
 	public final fun getStorage ()Lcom/amplitude/core/Storage;
 	public final fun getStorageIODispatcher ()Lkotlinx/coroutines/CoroutineDispatcher;
@@ -105,6 +107,7 @@ public class com/amplitude/core/Amplitude {
 	public final fun track (Lcom/amplitude/core/events/BaseEvent;Lcom/amplitude/core/events/EventOptions;Lkotlin/jvm/functions/Function3;)Lcom/amplitude/core/Amplitude;
 	public final fun track (Ljava/lang/String;)Lcom/amplitude/core/Amplitude;
 	public final fun track (Ljava/lang/String;Ljava/util/Map;)Lcom/amplitude/core/Amplitude;
+	public fun track (Ljava/lang/String;Ljava/util/Map;)V
 	public final fun track (Ljava/lang/String;Ljava/util/Map;Lcom/amplitude/core/events/EventOptions;)Lcom/amplitude/core/Amplitude;
 	public static synthetic fun track$default (Lcom/amplitude/core/Amplitude;Lcom/amplitude/core/events/BaseEvent;Lcom/amplitude/core/events/EventOptions;Lkotlin/jvm/functions/Function3;ILjava/lang/Object;)Lcom/amplitude/core/Amplitude;
 	public static synthetic fun track$default (Lcom/amplitude/core/Amplitude;Ljava/lang/String;Ljava/util/Map;Lcom/amplitude/core/events/EventOptions;ILjava/lang/Object;)Lcom/amplitude/core/Amplitude;
@@ -112,6 +115,19 @@ public class com/amplitude/core/Amplitude {
 
 public final class com/amplitude/core/AmplitudeKt {
 	public static final fun Amplitude (Ljava/lang/String;Lkotlin/jvm/functions/Function1;)Lcom/amplitude/core/Amplitude;
+}
+
+public abstract interface class com/amplitude/core/AnalyticsClient {
+	public abstract fun getIdentity ()Lcom/amplitude/core/AnalyticsIdentity;
+	public abstract fun getOptOut ()Z
+	public abstract fun getSessionId ()J
+	public abstract fun track (Ljava/lang/String;Ljava/util/Map;)V
+	public static synthetic fun track$default (Lcom/amplitude/core/AnalyticsClient;Ljava/lang/String;Ljava/util/Map;ILjava/lang/Object;)V
+}
+
+public abstract interface class com/amplitude/core/AnalyticsIdentity {
+	public abstract fun getDeviceId ()Ljava/lang/String;
+	public abstract fun getUserId ()Ljava/lang/String;
 }
 
 public class com/amplitude/core/Configuration {
@@ -802,7 +818,7 @@ public abstract class com/amplitude/core/platform/ObservePlugin : com/amplitude/
 	public abstract fun onUserIdChanged (Ljava/lang/String;)V
 }
 
-public abstract interface class com/amplitude/core/platform/Plugin {
+public abstract interface class com/amplitude/core/platform/Plugin : com/amplitude/core/platform/UniversalPlugin {
 	public fun execute (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
 	public abstract fun getAmplitude ()Lcom/amplitude/core/Amplitude;
 	public fun getName ()Ljava/lang/String;
@@ -814,6 +830,7 @@ public abstract interface class com/amplitude/core/platform/Plugin {
 	public fun onUserIdChanged (Ljava/lang/String;)V
 	public abstract fun setAmplitude (Lcom/amplitude/core/Amplitude;)V
 	public fun setup (Lcom/amplitude/core/Amplitude;)V
+	public fun setup (Lcom/amplitude/core/AnalyticsClient;)V
 	public fun teardown ()V
 }
 
@@ -849,6 +866,17 @@ public class com/amplitude/core/platform/Timeline {
 	public fun process (Lcom/amplitude/core/events/BaseEvent;)V
 	public final fun remove (Lcom/amplitude/core/platform/Plugin;)V
 	public final fun setAmplitude (Lcom/amplitude/core/Amplitude;)V
+}
+
+public abstract interface class com/amplitude/core/platform/UniversalPlugin {
+	public fun execute (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
+	public fun getName ()Ljava/lang/String;
+	public fun onIdentityChanged (Lcom/amplitude/core/AnalyticsIdentity;)V
+	public fun onOptOutChanged (Z)V
+	public fun onReset ()V
+	public fun onSessionIdChanged (J)V
+	public fun setup (Lcom/amplitude/core/AnalyticsClient;)V
+	public fun teardown ()V
 }
 
 public final class com/amplitude/core/platform/WriteQueueMessage {
