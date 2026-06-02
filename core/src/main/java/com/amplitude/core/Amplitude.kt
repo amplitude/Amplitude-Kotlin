@@ -43,6 +43,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import java.io.File
+import java.util.EnumSet
 import java.util.concurrent.Executors
 
 /**
@@ -86,7 +87,7 @@ open class Amplitude(
             coroutineScope = amplitudeScope,
             networkIODispatcher = networkIODispatcher,
             storageIODispatcher = storageIODispatcher,
-            remoteConfigClient = remoteConfigClient,
+            remoteConfigClient = if (configuration.enableDiagnostics) remoteConfigClient else null,
             httpClient = HttpClient(configuration, logger),
             contextProvider = diagnosticsContextProvider(),
             enabled = configuration.enableDiagnostics,
@@ -132,12 +133,15 @@ open class Amplitude(
     open var optOut: Boolean
         get() = configuration.optOut
         set(value) {
+            if (configuration.optOut == value) return
             configuration.optOut = value
+            notifyPlugins { it.onOptOutChanged(value) }
         }
 
     init {
         require(configuration.isValid()) { "invalid configuration" }
         timeline = this.createTimeline()
+        store.onIdentityChanged = ::notifyIdentityChanged
         isBuilt = this.build()
         isBuilt.start()
     }
@@ -164,7 +168,7 @@ open class Amplitude(
 
     protected fun createIdentityContainer(identityConfiguration: IdentityConfiguration) {
         idContainer = IdentityContainer.getInstance(identityConfiguration)
-        identityCoordinator.bootstrap(idContainer.identityManager)
+        notifyIdentityChanged(identityCoordinator.bootstrap(idContainer.identityManager))
     }
 
     protected open fun build(): Deferred<Boolean> {
@@ -306,7 +310,7 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     fun setUserId(userId: String?): Amplitude {
-        identityCoordinator.setUserId(userId)
+        notifyIdentityChanged(identityCoordinator.setUserId(userId))
         return this
     }
 
@@ -326,7 +330,7 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     fun setDeviceId(deviceId: String): Amplitude {
-        identityCoordinator.setDeviceId(deviceId)
+        notifyIdentityChanged(identityCoordinator.setDeviceId(deviceId))
         return this
     }
 
@@ -346,8 +350,7 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     open fun reset(): Amplitude {
-        setUserId(null)
-        setDeviceId(ContextPlugin.generateRandomDeviceId())
+        doResetWithDeviceId(ContextPlugin.generateRandomDeviceId())
         return this
     }
 
@@ -517,6 +520,8 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     fun add(plugin: Plugin): Amplitude {
+        plugin.name?.let { removePluginsByName(it) }
+
         when (plugin) {
             is ObservePlugin -> {
                 this.store.add(plugin, this)
@@ -527,6 +532,12 @@ open class Amplitude(
         }
 
         return this
+    }
+
+    inline fun <reified T : Plugin> findPlugin(): T? {
+        timeline.findPlugin<T>()?.let { return it }
+        val observeSnapshot = synchronized(store.plugins) { store.plugins.toList() }
+        return observeSnapshot.firstOrNull { it is T } as? T
     }
 
     fun remove(plugin: Plugin): Amplitude {
@@ -542,6 +553,20 @@ open class Amplitude(
         return this
     }
 
+    @RestrictedAmplitudeFeature
+    fun notifyAllPlugins(block: (Plugin) -> Unit) {
+        notifyPlugins(block)
+    }
+
+    @RestrictedAmplitudeFeature
+    fun resetIdentity(newDeviceId: String) {
+        doResetWithDeviceId(newDeviceId)
+    }
+
+    private fun doResetWithDeviceId(newDeviceId: String) {
+        notifyIdentityChanged(identityCoordinator.resetIdentity(newDeviceId), notifyReset = true)
+    }
+
     fun flush() {
         amplitudeScope.launch(amplitudeDispatcher) {
             isBuilt.await()
@@ -549,6 +574,74 @@ open class Amplitude(
             timeline.applyClosure {
                 (it as? EventPlugin)?.flush()
             }
+        }
+    }
+
+    private fun notifyIdentityChanged(changes: EnumSet<State.IdentityChange>) {
+        notifyIdentityChanged(changes, notifyReset = false)
+    }
+
+    private fun notifyIdentityChanged(
+        changes: EnumSet<State.IdentityChange>,
+        notifyReset: Boolean,
+    ) {
+        if (changes.isEmpty() && !notifyReset) return
+
+        val plugins = pluginsSnapshot()
+        if (changes.contains(State.IdentityChange.USER_ID)) {
+            plugins.forEach { plugin ->
+                notifyPlugin(plugin) { it.onUserIdChanged(store.userId) }
+            }
+        }
+        if (changes.contains(State.IdentityChange.DEVICE_ID)) {
+            plugins.forEach { plugin ->
+                notifyPlugin(plugin) { it.onDeviceIdChanged(store.deviceId) }
+            }
+        }
+        if (notifyReset) {
+            plugins.forEach { plugin ->
+                notifyPlugin(plugin) { it.onReset() }
+            }
+        }
+    }
+
+    private fun pluginsSnapshot(): List<Plugin> {
+        return timeline.pluginsSnapshot() + store.pluginsSnapshot()
+    }
+
+    private fun notifyPlugins(block: (Plugin) -> Unit) {
+        pluginsSnapshot().forEach { notifyPlugin(it, block) }
+    }
+
+    private fun removePluginsByName(name: String) {
+        val removed = timeline.removeByName(name) + store.removeByName(name)
+        removed.forEach { teardownPlugin(it) }
+    }
+
+    private fun teardownPlugin(plugin: Plugin) {
+        try {
+            plugin.teardown()
+        } catch (e: Exception) {
+            logger.warn("Plugin '${plugin.identifier()}' threw during teardown: $e")
+        }
+    }
+
+    private fun notifyPlugin(
+        plugin: Plugin,
+        block: (Plugin) -> Unit,
+    ) {
+        try {
+            block(plugin)
+        } catch (e: Exception) {
+            logger.warn("Plugin '${plugin.identifier()}' threw during notify callback: $e")
+        }
+    }
+
+    private fun Plugin.identifier(): String {
+        return try {
+            name ?: this::class.java.name
+        } catch (_: Exception) {
+            this::class.java.name
         }
     }
 

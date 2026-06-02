@@ -15,6 +15,14 @@ internal class Mediator(
 
     fun remove(plugin: Plugin) = plugins.removeAll { it === plugin }
 
+    fun removeByName(name: String): List<Plugin> {
+        val removed = plugins.filter { it.name == name }
+        plugins.removeAll(removed)
+        return removed
+    }
+
+    fun snapshot(): List<Plugin> = plugins.toList()
+
     fun execute(event: BaseEvent): BaseEvent? {
         var result: BaseEvent? = event
 
