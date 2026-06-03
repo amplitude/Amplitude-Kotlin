@@ -133,7 +133,6 @@ open class Amplitude(
         get() = configuration.optOut
         set(value) {
             configuration.optOut = value
-            notifyPlugins { it.onOptOutChanged(value) }
         }
 
     init {
@@ -308,7 +307,6 @@ open class Amplitude(
      */
     fun setUserId(userId: String?): Amplitude {
         identityCoordinator.setUserId(userId)
-        notifyPlugins { it.onUserIdChanged(store.userId) }
         return this
     }
 
@@ -329,7 +327,6 @@ open class Amplitude(
      */
     fun setDeviceId(deviceId: String): Amplitude {
         identityCoordinator.setDeviceId(deviceId)
-        notifyPlugins { it.onDeviceIdChanged(store.deviceId) }
         return this
     }
 
@@ -349,29 +346,9 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     open fun reset(): Amplitude {
-        doResetWithDeviceId(ContextPlugin.generateRandomDeviceId())
+        setUserId(null)
+        setDeviceId(ContextPlugin.generateRandomDeviceId())
         return this
-    }
-
-    /**
-     * Reset identity and fan the bundled change out to every plugin from a **single**
-     * snapshot: onUserIdChanged(null), then onDeviceIdChanged(newDeviceId), then onReset().
-     * The mutation commits under the identity lock before any callback runs (reentrancy-safe).
-     */
-    protected fun doResetWithDeviceId(newDeviceId: String) {
-        identityCoordinator.reset(newDeviceId)
-        val plugins = pluginsSnapshot()
-        plugins.forEach { safelyNotify(it) { plugin -> plugin.onUserIdChanged(store.userId) } }
-        plugins.forEach { safelyNotify(it) { plugin -> plugin.onDeviceIdChanged(store.deviceId) } }
-        plugins.forEach { safelyNotify(it) { plugin -> plugin.onReset() } }
-    }
-
-    /**
-     * Fan an arbitrary state-change callback out to every plugin (timeline + observe store).
-     * For platform SDKs (e.g. Android session-id changes); each invocation is isolated.
-     */
-    protected fun notifyAllPlugins(block: (Plugin) -> Unit) {
-        notifyPlugins(block)
     }
 
     /**
@@ -540,10 +517,6 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     fun add(plugin: Plugin): Amplitude {
-        // Dedup by name (best-effort; add() is expected from a single thread): a named plugin
-        // replaces and tears down any existing plugin with the same name.
-        plugin.name?.let { removePluginsByName(it) }
-
         when (plugin) {
             is ObservePlugin -> {
                 this.store.add(plugin, this)
@@ -554,16 +527,6 @@ open class Amplitude(
         }
 
         return this
-    }
-
-    /**
-     * Find the first registered plugin assignable to [T], across both the timeline mediators
-     * and the observe store (store iteration is snapshotted under its lock).
-     */
-    inline fun <reified T : Plugin> findPlugin(): T? {
-        timeline.findPlugin<T>()?.let { return it }
-        val observeSnapshot = synchronized(store.plugins) { store.plugins.toList() }
-        return observeSnapshot.firstOrNull { it is T } as? T
     }
 
     fun remove(plugin: Plugin): Amplitude {
@@ -588,48 +551,6 @@ open class Amplitude(
             }
         }
     }
-
-    /**
-     * The single plugin fan-out path. Snapshots timeline + store once and isolates every
-     * invocation, so a throwing plugin can't break the loop or the calling thread.
-     * Never call while holding the identity lock (notify happens after it's released).
-     */
-    private fun notifyPlugins(block: (Plugin) -> Unit) {
-        pluginsSnapshot().forEach { safelyNotify(it, block) }
-    }
-
-    private fun pluginsSnapshot(): List<Plugin> = timeline.pluginsSnapshot() + store.pluginsSnapshot()
-
-    private fun removePluginsByName(name: String) {
-        val removed = timeline.removeByName(name) + store.removeByName(name)
-        removed.forEach { teardownPlugin(it) }
-    }
-
-    private fun teardownPlugin(plugin: Plugin) {
-        try {
-            plugin.teardown()
-        } catch (e: Exception) {
-            logger.warn("Plugin '${plugin.identifier()}' threw during teardown: $e")
-        }
-    }
-
-    private fun safelyNotify(
-        plugin: Plugin,
-        block: (Plugin) -> Unit,
-    ) {
-        try {
-            block(plugin)
-        } catch (e: Exception) {
-            logger.warn("Plugin '${plugin.identifier()}' threw during state callback: $e")
-        }
-    }
-
-    private fun Plugin.identifier(): String =
-        try {
-            name ?: this::class.java.name
-        } catch (_: Exception) {
-            this::class.java.name
-        }
 
     private fun convertPropertiesToIdentify(userProperties: Map<String, Any?>?): Identify {
         val identify = Identify()

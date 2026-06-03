@@ -133,19 +133,13 @@ open class Amplitude internal constructor(
     }
 
     override fun reset(): Amplitude {
-        val newDeviceId =
-            if (isBuilt.isCompleted) {
-                androidContextPlugin.resolveDeviceId(configuration as Configuration, forceRegenerate = true)
-                    ?: ContextPlugin.generateRandomDeviceId()
-            } else {
-                ContextPlugin.generateRandomDeviceId()
-            }
-        doResetWithDeviceId(newDeviceId)
+        setUserId(null)
+        if (isBuilt.isCompleted) {
+            androidContextPlugin.initializeDeviceId(configuration as Configuration, forceRegenerate = true)
+        } else {
+            setDeviceId(ContextPlugin.generateRandomDeviceId())
+        }
         return this
-    }
-
-    internal fun notifySessionIdChanged(sessionId: Long) {
-        notifyAllPlugins { it.onSessionIdChanged(sessionId) }
     }
 
     @GuardedAmplitudeFeature

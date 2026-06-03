@@ -3,19 +3,11 @@ package com.amplitude.core
 import com.amplitude.id.IdentityManager
 
 /**
- * Owns **runtime** identity (userId/deviceId) for one [Amplitude] instance. The two-layer model:
+ * Coordinates identity (userId/deviceId) updates between [State] and [IdentityManager].
  *
- *  - [IdentityCoordinator] (here): the in-memory mirror in [State] + pre-build pending intent +
- *    bootstrap reconciliation. Every mutation is serialized on [lock] so the State write and the
- *    persistence commit are atomic. Before build there is no [IdentityManager], so touched fields
- *    are remembered as pending; [bootstrap] reconciles them against persisted values (user intent
- *    wins) once the manager binds.
- *  - [IdentityManager] (com.amplitude.id, shared with Experiment): durable persistence only.
- *
- * Notification is intentionally **not** here. The coordinator only mutates and returns; [Amplitude]
- * fans plugin callbacks out *after* [lock] is released, which is what makes a reentrant
- * setUserId/setDeviceId from inside a callback safe (the inner write can't be clobbered by the
- * outer commit). Keep this class free of plugin/callback concerns.
+ * All mutations go through synchronized blocks to ensure atomic state + persistence.
+ * Before build, only [State] is updated and pending flags are set.
+ * During [bootstrap], persisted identity is reconciled with any pre-build changes.
  */
 internal class IdentityCoordinator internal constructor(private val state: State) {
     private val lock = Any()
@@ -41,25 +33,6 @@ internal class IdentityCoordinator internal constructor(private val state: State
             state.deviceId = deviceId
             identityManager?.editIdentity()?.setDeviceId(deviceId)?.commit()
                 ?: run { pendingDeviceId = Pending(deviceId) }
-        }
-    }
-
-    /**
-     * Reset clears userId and rotates deviceId as **one** locked mutation, so the two fields
-     * never tear apart and persistence commits once. Callers fan out callbacks after this
-     * returns (lock released) — never from inside.
-     */
-    fun reset(newDeviceId: String) {
-        synchronized(lock) {
-            state.userId = null
-            state.deviceId = newDeviceId
-            val editor = identityManager?.editIdentity()
-            if (editor != null) {
-                editor.setUserId(null).setDeviceId(newDeviceId).commit()
-            } else {
-                pendingUserId = Pending(null)
-                pendingDeviceId = Pending(newDeviceId)
-            }
         }
     }
 
