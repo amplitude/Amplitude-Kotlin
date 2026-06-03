@@ -37,6 +37,25 @@ internal class IdentityCoordinator internal constructor(private val state: State
     }
 
     /**
+     * Reset clears userId and rotates deviceId as **one** locked mutation, so the two fields
+     * never tear apart and persistence commits once. Callers fan out callbacks after this
+     * returns (lock released) — never from inside.
+     */
+    fun reset(newDeviceId: String) {
+        synchronized(lock) {
+            state.userId = null
+            state.deviceId = newDeviceId
+            val editor = identityManager?.editIdentity()
+            if (editor != null) {
+                editor.setUserId(null).setDeviceId(newDeviceId).commit()
+            } else {
+                pendingUserId = Pending(null)
+                pendingDeviceId = Pending(newDeviceId)
+            }
+        }
+    }
+
+    /**
      * Called during [com.amplitude.core.Amplitude.createIdentityContainer] to reconcile
      * persisted identity with any pre-build changes. User intent wins over persisted values.
      */
