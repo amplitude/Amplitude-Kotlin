@@ -51,9 +51,11 @@ doesn't receive that reset's callbacks but is immediately findable afterward.
 
 **Semantics: intent-based.** Every explicit `setUserId` / `setDeviceId` / `optOut` /
 `reset` notifies once, whether or not the value changed. Delivery is best-effort,
-latest-value: under concurrent setters notifications may coalesce, but the value a
-plugin sees is always consistent with the instance's current identity. Identity
-mutation is expected from a single thread.
+latest-value: each callback reads the *current* `store` value (reset's three passes
+re-read too), so under concurrent setters — or a plugin that reentrantly re-sets
+identity from within a callback — notifications may coalesce, but the value a plugin
+sees is always consistent with the instance's current identity. Identity mutation is
+expected from a single thread.
 
 ---
 
