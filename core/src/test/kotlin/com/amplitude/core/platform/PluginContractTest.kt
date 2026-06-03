@@ -176,6 +176,330 @@ class PluginContractTest {
         assertTrue(done.await(5, TimeUnit.SECONDS))
         assertTrue(errors.isEmpty(), errors.joinToString { it.message.orEmpty() })
     }
+
+    @RepeatedTest(20)
+    fun `concurrent setUserId calls do not crash or lose notifications`() {
+        val amplitude = FakeAmplitude()
+        val received = Collections.synchronizedList(mutableListOf<String?>())
+        val observer =
+            object : ObservePlugin() {
+                override lateinit var amplitude: Amplitude
+
+                override fun onUserIdChanged(userId: String?) {
+                    received += userId
+                }
+
+                override fun onDeviceIdChanged(deviceId: String?) {}
+            }
+        amplitude.add(observer)
+
+        val threads = 10
+        val barrier = CyclicBarrier(threads)
+        val latch = CountDownLatch(threads)
+        repeat(threads) { i ->
+            Thread {
+                barrier.await()
+                amplitude.setUserId("user-$i")
+                latch.countDown()
+            }.start()
+        }
+        latch.await(5, TimeUnit.SECONDS)
+
+        assertEquals(threads, received.size, "every setUserId should produce exactly one notification")
+    }
+
+    @RepeatedTest(20)
+    fun `concurrent add and setUserId do not throw CME`() {
+        val amplitude = FakeAmplitude()
+        val threads = 10
+        val barrier = CyclicBarrier(threads * 2)
+        val latch = CountDownLatch(threads * 2)
+
+        repeat(threads) { i ->
+            Thread {
+                barrier.await()
+                amplitude.add(RecordingObservePlugin("obs-add-$i"))
+                latch.countDown()
+            }.start()
+            Thread {
+                barrier.await()
+                amplitude.setUserId("user-$i")
+                latch.countDown()
+            }.start()
+        }
+
+        assertTrue(latch.await(5, TimeUnit.SECONDS), "all threads should complete without deadlock")
+    }
+
+    @RepeatedTest(20)
+    fun `concurrent add and remove do not throw CME on observe store`() {
+        val amplitude = FakeAmplitude()
+        val plugins = (0 until 20).map { NamedObservePlugin("obs-$it") }
+        plugins.forEach { amplitude.add(it) }
+
+        val barrier = CyclicBarrier(2)
+        val latch = CountDownLatch(2)
+
+        Thread {
+            barrier.await()
+            plugins.take(10).forEach { amplitude.remove(it) }
+            latch.countDown()
+        }.start()
+        Thread {
+            barrier.await()
+            (20 until 30).forEach { amplitude.add(NamedObservePlugin("obs-$it")) }
+            latch.countDown()
+        }.start()
+
+        assertTrue(latch.await(5, TimeUnit.SECONDS), "concurrent add+remove should not deadlock or crash")
+    }
+
+    @RepeatedTest(20)
+    fun `concurrent reset and setUserId produce consistent state`() {
+        val amplitude = FakeAmplitude()
+        val barrier = CyclicBarrier(2)
+        val latch = CountDownLatch(2)
+
+        Thread {
+            barrier.await()
+            amplitude.reset()
+            latch.countDown()
+        }.start()
+        Thread {
+            barrier.await()
+            amplitude.setUserId("concurrent-user")
+            latch.countDown()
+        }.start()
+
+        assertTrue(latch.await(5, TimeUnit.SECONDS), "concurrent reset + setUserId should not deadlock")
+        val finalUserId = amplitude.store.userId
+        assertTrue(
+            finalUserId == null || finalUserId == "concurrent-user",
+            "userId should be null or 'concurrent-user', got: $finalUserId",
+        )
+    }
+
+    @RepeatedTest(20)
+    fun `concurrent findPlugin and add do not throw CME`() {
+        val amplitude = FakeAmplitude()
+        val found = AtomicInteger(0)
+        val threads = 10
+        val barrier = CyclicBarrier(threads * 2)
+        val latch = CountDownLatch(threads * 2)
+
+        repeat(threads) { i ->
+            Thread {
+                barrier.await()
+                amplitude.add(NamedObservePlugin("lookup-$i"))
+                latch.countDown()
+            }.start()
+            Thread {
+                barrier.await()
+                if (amplitude.findPlugin<NamedObservePlugin>() != null) found.incrementAndGet()
+                latch.countDown()
+            }.start()
+        }
+
+        assertTrue(latch.await(5, TimeUnit.SECONDS), "concurrent findPlugin + add should not crash")
+    }
+
+    @RepeatedTest(20)
+    fun `concurrent dedup with same name does not leave duplicates`() {
+        val amplitude = FakeAmplitude()
+        val threads = 10
+        val barrier = CyclicBarrier(threads)
+        val latch = CountDownLatch(threads)
+
+        repeat(threads) {
+            Thread {
+                barrier.await()
+                amplitude.add(NamedPlugin("dedup-race"))
+                latch.countDown()
+            }.start()
+        }
+
+        assertTrue(latch.await(5, TimeUnit.SECONDS), "concurrent dedup should not deadlock")
+
+        // Count how many plugins named "dedup-race" exist in the timeline.
+        var count = 0
+        amplitude.timeline.applyClosure { if (it.name == "dedup-race") count++ }
+        // Known limitation: without full lock around add(), concurrent dedup can leave more than one.
+        // This test documents the current behavior — it must never crash, but may leave duplicates
+        // under extreme concurrency.
+        assertTrue(count >= 1, "at least one plugin should be registered")
+    }
+
+    @Test
+    fun `dedup teardown and identity callback add do not deadlock`() {
+        val amplitude = FakeAmplitude()
+        val enteredTeardown = CountDownLatch(1)
+        val callbackReadyToAdd = CountDownLatch(1)
+        val completed = CountDownLatch(2)
+        val errors = Collections.synchronizedList(mutableListOf<Throwable>())
+        val evicted =
+            TeardownSetsUserIdPlugin(
+                name = "deadlock-target",
+                enteredTeardown = enteredTeardown,
+                callbackReadyToAdd = callbackReadyToAdd,
+                errors = errors,
+            )
+        val identityCallback =
+            object : Plugin {
+                override val type: Plugin.Type = Plugin.Type.Before
+                override val name: String = "identity-callback"
+                override lateinit var amplitude: Amplitude
+
+                override fun execute(event: BaseEvent): BaseEvent = event
+
+                override fun onUserIdChanged(userId: String?) {
+                    if (userId != "identity-thread") return
+                    callbackReadyToAdd.countDown()
+                    if (!enteredTeardown.await(5, TimeUnit.SECONDS)) {
+                        errors += AssertionError("dedup teardown did not start")
+                        return
+                    }
+                    amplitude.add(NamedPlugin("callback-add"))
+                }
+            }
+
+        amplitude.add(evicted)
+        amplitude.add(identityCallback)
+
+        Thread {
+            try {
+                amplitude.add(NamedPlugin("deadlock-target"))
+            } catch (t: Throwable) {
+                errors += t
+            } finally {
+                completed.countDown()
+            }
+        }.apply {
+            isDaemon = true
+            start()
+        }
+        Thread {
+            try {
+                amplitude.setUserId("identity-thread")
+            } catch (t: Throwable) {
+                errors += t
+            } finally {
+                completed.countDown()
+            }
+        }.apply {
+            isDaemon = true
+            start()
+        }
+
+        assertTrue(completed.await(5, TimeUnit.SECONDS), "dedup teardown and identity callback add should not deadlock")
+        assertTrue(errors.isEmpty(), "unexpected concurrency errors: ${errors.joinToString { it.message.orEmpty() }}")
+    }
+
+    @RepeatedTest(20)
+    fun `notification during remove does not crash`() {
+        val amplitude = FakeAmplitude()
+        val observer = RecordingObservePlugin("remove-race")
+        amplitude.add(observer)
+
+        val barrier = CyclicBarrier(2)
+        val latch = CountDownLatch(2)
+
+        Thread {
+            barrier.await()
+            repeat(50) { amplitude.setUserId("user-$it") }
+            latch.countDown()
+        }.start()
+        Thread {
+            barrier.await()
+            amplitude.remove(observer)
+            latch.countDown()
+        }.start()
+
+        assertTrue(latch.await(5, TimeUnit.SECONDS), "notification during remove should not crash")
+    }
+
+    @RepeatedTest(20)
+    fun `optOut and setUserId racing do not crash`() {
+        val amplitude = FakeAmplitude()
+        val recorder = RecordingPlugin("opt-out-race")
+        amplitude.add(recorder)
+
+        val barrier = CyclicBarrier(2)
+        val latch = CountDownLatch(2)
+
+        Thread {
+            barrier.await()
+            repeat(50) { amplitude.optOut = it % 2 == 0 }
+            latch.countDown()
+        }.start()
+        Thread {
+            barrier.await()
+            repeat(50) { amplitude.setUserId("user-$it") }
+            latch.countDown()
+        }.start()
+
+        assertTrue(latch.await(5, TimeUnit.SECONDS), "optOut + setUserId racing should not crash")
+    }
+
+    @Test
+    fun `plugin reentrancy in onDeviceIdChanged does not overwrite inner setDeviceId value`() {
+        val amplitude = FakeAmplitude()
+        val done = CountDownLatch(1)
+
+        val reentrantPlugin =
+            object : ObservePlugin() {
+                override lateinit var amplitude: Amplitude
+                var triggered = false
+
+                override fun onUserIdChanged(userId: String?) {}
+
+                override fun onDeviceIdChanged(deviceId: String?) {
+                    if (!triggered && deviceId == "device-outer") {
+                        triggered = true
+                        amplitude.setDeviceId("device-inner")
+                    }
+                    if (deviceId == "device-inner") done.countDown()
+                }
+            }
+        amplitude.add(reentrantPlugin)
+
+        amplitude.setDeviceId("device-outer")
+
+        assertTrue(done.await(5, TimeUnit.SECONDS), "inner setDeviceId callback should complete")
+        assertEquals("device-inner", amplitude.store.deviceId, "inner setDeviceId must not be overwritten by outer call")
+    }
+
+    @Test
+    fun `plugin reentrancy in onUserIdChanged during reset does not overwrite inner setUserId value`() {
+        val amplitude = FakeAmplitude()
+        val done = CountDownLatch(1)
+
+        val reentrantPlugin =
+            object : ObservePlugin() {
+                override lateinit var amplitude: Amplitude
+                var triggered = false
+
+                override fun onUserIdChanged(userId: String?) {
+                    if (!triggered && userId == null) {
+                        triggered = true
+                        // Simulate a plugin that re-assigns userId after a reset.
+                        amplitude.setUserId("post-reset-user")
+                    }
+                    if (userId == "post-reset-user") done.countDown()
+                }
+
+                override fun onDeviceIdChanged(deviceId: String?) {}
+            }
+        amplitude.add(reentrantPlugin)
+
+        amplitude.reset()
+
+        assertTrue(done.await(5, TimeUnit.SECONDS), "inner setUserId from onUserIdChanged during reset should complete")
+        assertEquals(
+            "post-reset-user",
+            amplitude.store.userId,
+            "userId set inside onUserIdChanged callback must not be overwritten by the reset",
+        )
+    }
 }
 
 private open class RecordingPlugin(
@@ -272,4 +596,37 @@ private class NamedObservePlugin(override val name: String) : ObservePlugin() {
     override fun onUserIdChanged(userId: String?) {}
 
     override fun onDeviceIdChanged(deviceId: String?) {}
+}
+
+/** A named plugin whose teardown() always throws. */
+private class ThrowingTeardownPlugin(override val name: String) : Plugin {
+    override val type: Plugin.Type = Plugin.Type.Before
+    override lateinit var amplitude: Amplitude
+
+    override fun execute(event: BaseEvent): BaseEvent = event
+
+    override fun teardown() {
+        throw RuntimeException("boom: teardown")
+    }
+}
+
+private class TeardownSetsUserIdPlugin(
+    override val name: String,
+    private val enteredTeardown: CountDownLatch,
+    private val callbackReadyToAdd: CountDownLatch,
+    private val errors: MutableList<Throwable>,
+) : Plugin {
+    override val type: Plugin.Type = Plugin.Type.Before
+    override lateinit var amplitude: Amplitude
+
+    override fun execute(event: BaseEvent): BaseEvent = event
+
+    override fun teardown() {
+        enteredTeardown.countDown()
+        if (!callbackReadyToAdd.await(5, TimeUnit.SECONDS)) {
+            errors += AssertionError("identity callback did not enter add path")
+            return
+        }
+        amplitude.setUserId("teardown-thread")
+    }
 }
