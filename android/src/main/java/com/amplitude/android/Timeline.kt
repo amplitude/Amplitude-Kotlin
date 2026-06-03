@@ -47,6 +47,8 @@ class Timeline(
                     if (restoredSessionId > DEFAULT_SESSION_ID) {
                         amplitude.notifySessionIdChanged(restoredSessionId)
                     }
+                } else if (initialSessionId > DEFAULT_SESSION_ID) {
+                    amplitude.notifySessionIdChanged(initialSessionId)
                 }
                 lastEventId = storage.readLong(LAST_EVENT_ID, DEFAULT_EVENT_ID_OR_TIME)
                 lastEventTime = storage.readLong(LAST_EVENT_TIME, DEFAULT_EVENT_ID_OR_TIME)
