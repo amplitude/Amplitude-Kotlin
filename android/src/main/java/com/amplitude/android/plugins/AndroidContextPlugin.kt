@@ -60,18 +60,26 @@ open class AndroidContextPlugin : Plugin {
         configuration: Configuration,
         forceRegenerate: Boolean = false,
     ) {
+        resolveDeviceId(configuration, forceRegenerate)?.let { setDeviceId(it) }
+    }
+
+    /**
+     * Resolve the device id without writing it. Returns the id to use, or `null` to mean
+     * "keep the current one" (only possible when [forceRegenerate] is false). Splitting this
+     * out lets reset() compute a fresh id and route it through the single identity-reset path.
+     */
+    internal fun resolveDeviceId(
+        configuration: Configuration,
+        forceRegenerate: Boolean = false,
+    ): String? {
         // Check configuration
-        var deviceId = configuration.deviceId
-        if (deviceId != null) {
-            setDeviceId(deviceId)
-            return
-        }
+        configuration.deviceId?.let { return it }
 
         // Check store
         if (!forceRegenerate) {
-            deviceId = amplitude.store.deviceId
+            val deviceId = amplitude.store.deviceId
             if (deviceId != null && validDeviceId(deviceId) && !deviceId.endsWith(APP_SET_DEVICE_ID_SUFFIX)) {
-                return
+                return null
             }
         }
 
@@ -82,8 +90,7 @@ open class AndroidContextPlugin : Plugin {
         ) {
             val advertisingId = contextProvider.advertisingId
             if (advertisingId != null && validDeviceId(advertisingId)) {
-                setDeviceId(advertisingId)
-                return
+                return advertisingId
             }
         }
 
@@ -91,13 +98,12 @@ open class AndroidContextPlugin : Plugin {
         if (configuration.useAppSetIdForDeviceId) {
             val appSetId = contextProvider.appSetId
             if (appSetId != null && validDeviceId(appSetId)) {
-                setDeviceId("$appSetId$APP_SET_DEVICE_ID_SUFFIX")
-                return
+                return "$appSetId$APP_SET_DEVICE_ID_SUFFIX"
             }
         }
 
         // Generate random id
-        setDeviceId(ContextPlugin.generateRandomDeviceId())
+        return ContextPlugin.generateRandomDeviceId()
     }
 
     private fun applyContextData(event: BaseEvent) {
