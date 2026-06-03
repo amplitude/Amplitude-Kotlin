@@ -3,11 +3,19 @@ package com.amplitude.core
 import com.amplitude.id.IdentityManager
 
 /**
- * Coordinates identity (userId/deviceId) updates between [State] and [IdentityManager].
+ * Owns **runtime** identity (userId/deviceId) for one [Amplitude] instance. The two-layer model:
  *
- * All mutations go through synchronized blocks to ensure atomic state + persistence.
- * Before build, only [State] is updated and pending flags are set.
- * During [bootstrap], persisted identity is reconciled with any pre-build changes.
+ *  - [IdentityCoordinator] (here): the in-memory mirror in [State] + pre-build pending intent +
+ *    bootstrap reconciliation. Every mutation is serialized on [lock] so the State write and the
+ *    persistence commit are atomic. Before build there is no [IdentityManager], so touched fields
+ *    are remembered as pending; [bootstrap] reconciles them against persisted values (user intent
+ *    wins) once the manager binds.
+ *  - [IdentityManager] (com.amplitude.id, shared with Experiment): durable persistence only.
+ *
+ * Notification is intentionally **not** here. The coordinator only mutates and returns; [Amplitude]
+ * fans plugin callbacks out *after* [lock] is released, which is what makes a reentrant
+ * setUserId/setDeviceId from inside a callback safe (the inner write can't be clobbered by the
+ * outer commit). Keep this class free of plugin/callback concerns.
  */
 internal class IdentityCoordinator internal constructor(private val state: State) {
     private val lock = Any()
