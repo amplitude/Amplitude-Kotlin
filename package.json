@@ -1,11 +1,18 @@
 {
   "private": true,
   "dependencies": {
-    "lodash": "4.17.21",
-    "semantic-release": "17.4.7",
-    "@semantic-release/changelog": "5.0.1",
-    "@semantic-release/git": "9.0.1",
     "@google/semantic-release-replace-plugin": "1.2.0",
-    "@semantic-release/exec": "5.0.0"
+    "@semantic-release/changelog": "5.0.1",
+    "@semantic-release/exec": "5.0.0",
+    "@semantic-release/git": "9.0.1",
+    "lodash": "4.17.21",
+    "semantic-release": "17.4.7"
+  },
+  "devDependencies": {
+    "@size-limit/file": "12.1.0",
+    "size-limit": "12.1.0"
+  },
+  "scripts": {
+    "size-limit": "size-limit"
   }
 }
