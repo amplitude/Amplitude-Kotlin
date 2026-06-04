@@ -127,7 +127,9 @@ open class Amplitude(
 
     /**
      * Whether events should be suppressed. Set this at runtime to opt the user in or out.
-     * Delegates to [Configuration.optOut] — mutating either is equivalent.
+     * Reads through to [Configuration.optOut]. Set via this property (not
+     * `configuration.optOut` directly) — only this setter notifies plugins via
+     * [Plugin.onOptOutChanged].
      */
     open var optOut: Boolean
         get() = configuration.optOut
