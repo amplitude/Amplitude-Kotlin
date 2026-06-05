@@ -82,7 +82,7 @@ jobs:
       - name: Build binaries
         run: ./gradlew :core:jar :android:assembleRelease -x test
 
-      - name: Setup Node.js ${{ inputs.node-version }}
+      - name: Setup Node.js 24
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
