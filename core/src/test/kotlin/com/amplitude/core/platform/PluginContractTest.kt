@@ -90,6 +90,29 @@ class PluginContractTest {
     }
 
     @Test
+    fun `reset still delivers onReset to a plugin that threw in onDeviceIdChanged`() {
+        val amplitude = FakeAmplitude()
+        val thrower = ThrowingObservePlugin()
+        val recorder = RecordingObservePlugin("recorder")
+
+        amplitude.add(thrower)
+        amplitude.add(recorder)
+
+        amplitude.setUserId("pre-reset-user")
+        amplitude.reset()
+
+        // Thrower: all three loops attempted — throws are caught, not propagated.
+        assertEquals(2, thrower.userCallbackAttempts, "onUserIdChanged called for setUserId + reset")
+        assertEquals(1, thrower.deviceCallbackAttempts, "onDeviceIdChanged called during reset")
+        assertEquals(1, thrower.resets, "onReset still called despite prior throws in same reset")
+
+        // Clean recorder: all three callbacks delivered regardless of thrower's exceptions.
+        assertEquals(listOf("pre-reset-user", null), recorder.userIds)
+        assertEquals(1, recorder.deviceIds.size)
+        assertEquals(1, recorder.resets)
+    }
+
+    @Test
     fun `reentrant userId callback does not get overwritten by outer mutation`() {
         val amplitude = FakeAmplitude()
         val completed = CountDownLatch(1)
@@ -517,9 +540,13 @@ private class RecordingObservePlugin(
 private class ThrowingObservePlugin : ObservePlugin() {
     override val name: String = "thrower"
     override lateinit var amplitude: Amplitude
+    var userCallbackAttempts = 0
     var deviceCallbackAttempts = 0
+    private val resetCount = AtomicInteger()
+    val resets: Int get() = resetCount.get()
 
     override fun onUserIdChanged(userId: String?) {
+        userCallbackAttempts += 1
         throw RuntimeException("user")
     }
 
@@ -529,6 +556,7 @@ private class ThrowingObservePlugin : ObservePlugin() {
     }
 
     override fun onReset() {
+        resetCount.incrementAndGet()
         throw RuntimeException("reset")
     }
 }

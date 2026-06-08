@@ -40,7 +40,15 @@ interface Plugin {
     /**
      * State-change callbacks. Default no-ops so existing plugins are unaffected.
      * Delivered to every registered plugin (timeline and observe store) by
-     * [com.amplitude.core.Amplitude], each invocation isolated from exceptions.
+     * [com.amplitude.core.Amplitude]; each invocation is isolated so one plugin throwing an
+     * exception does not affect the others.
+     *
+     * Threading: callbacks are delivered **synchronously on the thread that triggers the
+     * change** — e.g. the caller's thread for [com.amplitude.core.Amplitude.setUserId] /
+     * [com.amplitude.core.Amplitude.setDeviceId], and a background (session/lifecycle) thread
+     * for [onSessionIdChanged]. No specific thread is guaranteed (in particular, not the main
+     * thread). Keep callbacks fast and non-blocking; identity values are read from `@Volatile`
+     * fields so individual reads are safe, but do not assume a stable thread across callbacks.
      */
     fun onUserIdChanged(userId: String?) {}
 

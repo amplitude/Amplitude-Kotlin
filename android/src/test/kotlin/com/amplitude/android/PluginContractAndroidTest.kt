@@ -75,6 +75,21 @@ class PluginContractAndroidTest {
         }
 
     @Test
+    fun `persisted session restore reaches an ObservePlugin`() =
+        runTest {
+            val storage = InMemoryStorage()
+            storage.write(Storage.Constants.PREVIOUS_SESSION_ID, "12345")
+            val amplitude = createTestAmplitude(storageProvider = SharedStorageProvider(storage))
+            val observe = SessionObservePlugin("observe-restore")
+
+            amplitude.add(observe)
+            amplitude.isBuilt.await()
+            advanceUntilIdle()
+
+            assertEquals(listOf(12345L), observe.sessionIds)
+        }
+
+    @Test
     fun `reset rotates deviceId and uses one identity reset notification`() =
         runTest {
             val amplitude = createTestAmplitude()

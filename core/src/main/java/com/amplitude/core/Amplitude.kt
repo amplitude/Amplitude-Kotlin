@@ -595,7 +595,8 @@ open class Amplitude(
 
     /**
      * The single plugin fan-out path. Snapshots timeline + store once and isolates every
-     * invocation, so a throwing plugin can't break the loop or the calling thread.
+     * invocation, so a plugin that throws an exception can't break the loop or the other
+     * plugins. Errors (e.g. OutOfMemoryError) are not caught and propagate to the caller.
      * Never call while holding the identity lock (notify happens after it's released).
      */
     private fun notifyPlugins(block: (Plugin) -> Unit) {
