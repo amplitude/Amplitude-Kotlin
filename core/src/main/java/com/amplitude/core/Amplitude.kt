@@ -550,6 +550,7 @@ open class Amplitude(
             return this
         }
         try {
+            @Suppress("DEPRECATION")
             when (plugin) {
                 is ObservePlugin -> store.add(plugin, this)
                 else -> timeline.add(plugin)
@@ -567,12 +568,14 @@ open class Amplitude(
      */
     inline fun <reified T : Plugin> findPlugin(): T? {
         timeline.findPlugin<T>()?.let { return it }
+        @Suppress("DEPRECATION")
         val observeSnapshot = synchronized(store.plugins) { store.plugins.toList() }
         return observeSnapshot.firstOrNull { it is T } as? T
     }
 
     fun remove(plugin: Plugin): Amplitude {
         plugin.name?.let { reservedPlugins.remove(it, plugin) }
+        @Suppress("DEPRECATION")
         when (plugin) {
             is ObservePlugin -> store.remove(plugin)
             else -> timeline.remove(plugin)
