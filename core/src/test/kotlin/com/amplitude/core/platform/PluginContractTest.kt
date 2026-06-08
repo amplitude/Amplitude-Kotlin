@@ -4,6 +4,7 @@ import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utils.FakeAmplitude
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -118,17 +119,22 @@ class PluginContractTest {
     }
 
     @Test
-    fun `named plugin add replaces existing plugin across stores`() {
+    fun `named plugin add keeps the first registration across stores`() {
         val amplitude = FakeAmplitude()
+        // first is a timeline-type plugin, duplicate is an ObservePlugin — proves name
+        // reservation blocks across both registries.
         val first = NamedPlugin("shared")
-        val replacement = NamedObservePlugin("shared")
+        val duplicate = NamedObservePlugin("shared")
 
         amplitude.add(first)
-        amplitude.add(replacement)
+        amplitude.add(duplicate)
 
-        assertTrue(first.tornDown)
-        assertNull(amplitude.findPlugin<NamedPlugin>())
-        assertSame(replacement, amplitude.findPlugin<NamedObservePlugin>())
+        // First plugin survives untouched.
+        assertSame(first, amplitude.findPlugin<NamedPlugin>())
+        assertFalse(first.tornDown, "incumbent must not be torn down")
+        // Duplicate was never set up and is not findable.
+        assertFalse(duplicate.wasSetUp, "duplicate must not be set up")
+        assertNull(amplitude.findPlugin<NamedObservePlugin>())
     }
 
     @Test
@@ -320,78 +326,27 @@ class PluginContractTest {
 
         assertTrue(latch.await(5, TimeUnit.SECONDS), "concurrent dedup should not deadlock")
 
-        // Count how many plugins named "dedup-race" exist in the timeline.
+        // Exactly one plugin named "dedup-race" must survive — registration is atomic via
+        // putIfAbsent, so only one thread wins and the rest are rejected.
         var count = 0
         amplitude.timeline.applyClosure { if (it.name == "dedup-race") count++ }
-        // Known limitation: without full lock around add(), concurrent dedup can leave more than one.
-        // This test documents the current behavior — it must never crash, but may leave duplicates
-        // under extreme concurrency.
-        assertTrue(count >= 1, "at least one plugin should be registered")
+        assertEquals(1, count, "exactly one plugin should be registered")
     }
 
     @Test
-    fun `dedup teardown and identity callback add do not deadlock`() {
+    fun `duplicate add neither tears down the incumbent nor sets up the newcomer`() {
         val amplitude = FakeAmplitude()
-        val enteredTeardown = CountDownLatch(1)
-        val callbackReadyToAdd = CountDownLatch(1)
-        val completed = CountDownLatch(2)
-        val errors = Collections.synchronizedList(mutableListOf<Throwable>())
-        val evicted =
-            TeardownSetsUserIdPlugin(
-                name = "deadlock-target",
-                enteredTeardown = enteredTeardown,
-                callbackReadyToAdd = callbackReadyToAdd,
-                errors = errors,
-            )
-        val identityCallback =
-            object : Plugin {
-                override val type: Plugin.Type = Plugin.Type.Before
-                override val name: String = "identity-callback"
-                override lateinit var amplitude: Amplitude
+        val incumbent = NamedPlugin("dup-target")
+        val newcomer = NamedPlugin("dup-target")
 
-                override fun execute(event: BaseEvent): BaseEvent = event
+        amplitude.add(incumbent)
+        amplitude.add(newcomer)
 
-                override fun onUserIdChanged(userId: String?) {
-                    if (userId != "identity-thread") return
-                    callbackReadyToAdd.countDown()
-                    if (!enteredTeardown.await(5, TimeUnit.SECONDS)) {
-                        errors += AssertionError("dedup teardown did not start")
-                        return
-                    }
-                    amplitude.add(NamedPlugin("callback-add"))
-                }
-            }
-
-        amplitude.add(evicted)
-        amplitude.add(identityCallback)
-
-        Thread {
-            try {
-                amplitude.add(NamedPlugin("deadlock-target"))
-            } catch (t: Throwable) {
-                errors += t
-            } finally {
-                completed.countDown()
-            }
-        }.apply {
-            isDaemon = true
-            start()
-        }
-        Thread {
-            try {
-                amplitude.setUserId("identity-thread")
-            } catch (t: Throwable) {
-                errors += t
-            } finally {
-                completed.countDown()
-            }
-        }.apply {
-            isDaemon = true
-            start()
-        }
-
-        assertTrue(completed.await(5, TimeUnit.SECONDS), "dedup teardown and identity callback add should not deadlock")
-        assertTrue(errors.isEmpty(), "unexpected concurrency errors: ${errors.joinToString { it.message.orEmpty() }}")
+        // Incumbent is still registered and was not torn down.
+        assertSame(incumbent, amplitude.findPlugin<NamedPlugin>())
+        assertFalse(incumbent.tornDown, "incumbent must not be torn down")
+        // Newcomer was never set up.
+        assertFalse(newcomer.wasSetUp, "newcomer must not be set up")
     }
 
     @RepeatedTest(20)
@@ -582,6 +537,12 @@ private class NamedPlugin(override val name: String) : Plugin {
     override val type: Plugin.Type = Plugin.Type.Before
     override lateinit var amplitude: Amplitude
     var tornDown = false
+    var wasSetUp = false
+
+    override fun setup(amplitude: Amplitude) {
+        super.setup(amplitude)
+        wasSetUp = true
+    }
 
     override fun execute(event: BaseEvent): BaseEvent = event
 
@@ -592,41 +553,14 @@ private class NamedPlugin(override val name: String) : Plugin {
 
 private class NamedObservePlugin(override val name: String) : ObservePlugin() {
     override lateinit var amplitude: Amplitude
+    var wasSetUp = false
+
+    override fun setup(amplitude: Amplitude) {
+        super.setup(amplitude)
+        wasSetUp = true
+    }
 
     override fun onUserIdChanged(userId: String?) {}
 
     override fun onDeviceIdChanged(deviceId: String?) {}
-}
-
-/** A named plugin whose teardown() always throws. */
-private class ThrowingTeardownPlugin(override val name: String) : Plugin {
-    override val type: Plugin.Type = Plugin.Type.Before
-    override lateinit var amplitude: Amplitude
-
-    override fun execute(event: BaseEvent): BaseEvent = event
-
-    override fun teardown() {
-        throw RuntimeException("boom: teardown")
-    }
-}
-
-private class TeardownSetsUserIdPlugin(
-    override val name: String,
-    private val enteredTeardown: CountDownLatch,
-    private val callbackReadyToAdd: CountDownLatch,
-    private val errors: MutableList<Throwable>,
-) : Plugin {
-    override val type: Plugin.Type = Plugin.Type.Before
-    override lateinit var amplitude: Amplitude
-
-    override fun execute(event: BaseEvent): BaseEvent = event
-
-    override fun teardown() {
-        enteredTeardown.countDown()
-        if (!callbackReadyToAdd.await(5, TimeUnit.SECONDS)) {
-            errors += AssertionError("identity callback did not enter add path")
-            return
-        }
-        amplitude.setUserId("teardown-thread")
-    }
 }

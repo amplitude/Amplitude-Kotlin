@@ -40,13 +40,6 @@ class State {
         return removed
     }
 
-    internal fun removeByName(name: String): List<ObservePlugin> =
-        synchronized(plugins) {
-            val removed = plugins.filter { it.name == name }
-            plugins.removeAll(removed)
-            removed
-        }
-
     internal fun pluginsSnapshot(): List<ObservePlugin> =
         synchronized(plugins) {
             plugins.toList()

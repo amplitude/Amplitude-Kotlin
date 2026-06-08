@@ -65,8 +65,6 @@ open class Timeline {
         }
     }
 
-    internal fun removeByName(name: String): List<Plugin> = plugins.values.flatMap { it.removeByName(name) }
-
     internal fun pluginsSnapshot(): List<Plugin> = plugins.values.flatMap { it.snapshot() }
 
     inline fun <reified T : Plugin> findPlugin(): T? {

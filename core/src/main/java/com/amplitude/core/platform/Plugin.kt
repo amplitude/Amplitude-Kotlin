@@ -20,7 +20,8 @@ interface Plugin {
 
     /**
      * Optional stable plugin identifier. When non-null, adding another plugin
-     * with the same name replaces (and tears down) the previous one.
+     * with the same name is **skipped** — the first registration wins and is
+     * not torn down. A warning is logged for the duplicate.
      */
     val name: String? get() = null
 

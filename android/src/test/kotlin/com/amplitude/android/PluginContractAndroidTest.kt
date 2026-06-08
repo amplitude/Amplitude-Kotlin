@@ -25,10 +25,10 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertSame
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -96,7 +96,7 @@ class PluginContractAndroidTest {
         }
 
     @Test
-    fun `named plugin add replaces old Android plugin`() =
+    fun `named plugin add keeps the first Android plugin`() =
         runTest {
             val amplitude = createTestAmplitude()
             amplitude.isBuilt.await()
@@ -107,8 +107,11 @@ class PluginContractAndroidTest {
             amplitude.add(first)
             amplitude.add(second)
 
-            assertTrue(first.tornDown)
-            assertSame(second, amplitude.findPlugin<NamedPlugin>())
+            // First registration wins; incumbent is not torn down.
+            assertSame(first, amplitude.findPlugin<NamedPlugin>())
+            assertFalse(first.tornDown)
+            // Newcomer was never set up.
+            assertFalse(second.wasSetUp)
         }
 
     private fun TestScope.createTestAmplitude(
@@ -207,6 +210,12 @@ private class NamedPlugin(override val name: String) : Plugin {
     override val type: Plugin.Type = Plugin.Type.Before
     override lateinit var amplitude: Amplitude
     var tornDown = false
+    var wasSetUp = false
+
+    override fun setup(amplitude: Amplitude) {
+        super.setup(amplitude)
+        wasSetUp = true
+    }
 
     override fun execute(event: BaseEvent): BaseEvent = event
 

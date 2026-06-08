@@ -43,6 +43,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
 /**
@@ -59,6 +60,7 @@ open class Amplitude(
     val storageIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
 ) {
     val timeline: Timeline
+    private val reservedPlugins: ConcurrentHashMap<String, Plugin> = ConcurrentHashMap()
     val storage: Storage by lazy {
         configuration.storageProvider.getStorage(this)
     }
@@ -542,19 +544,20 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     fun add(plugin: Plugin): Amplitude {
-        // Dedup by name (best-effort; add() is expected from a single thread): a named plugin
-        // replaces and tears down any existing plugin with the same name.
-        plugin.name?.let { removePluginsByName(it) }
-
-        when (plugin) {
-            is ObservePlugin -> {
-                this.store.add(plugin, this)
-            }
-            else -> {
-                this.timeline.add(plugin)
-            }
+        val name = plugin.name
+        if (name != null && reservedPlugins.putIfAbsent(name, plugin) != null) {
+            logger.warn("Plugin \"$name\" is already registered; keeping the existing one.")
+            return this
         }
-
+        try {
+            when (plugin) {
+                is ObservePlugin -> store.add(plugin, this)
+                else -> timeline.add(plugin)
+            }
+        } catch (t: Throwable) {
+            if (name != null) reservedPlugins.remove(name, plugin)
+            throw t
+        }
         return this
     }
 
@@ -569,15 +572,11 @@ open class Amplitude(
     }
 
     fun remove(plugin: Plugin): Amplitude {
+        plugin.name?.let { reservedPlugins.remove(it, plugin) }
         when (plugin) {
-            is ObservePlugin -> {
-                this.store.remove(plugin)
-            }
-            else -> {
-                this.timeline.remove(plugin)
-            }
+            is ObservePlugin -> store.remove(plugin)
+            else -> timeline.remove(plugin)
         }
-
         return this
     }
 
@@ -601,19 +600,6 @@ open class Amplitude(
     }
 
     private fun pluginsSnapshot(): List<Plugin> = timeline.pluginsSnapshot() + store.pluginsSnapshot()
-
-    private fun removePluginsByName(name: String) {
-        val removed = timeline.removeByName(name) + store.removeByName(name)
-        removed.forEach { teardownPlugin(it) }
-    }
-
-    private fun teardownPlugin(plugin: Plugin) {
-        try {
-            plugin.teardown()
-        } catch (e: Exception) {
-            logger.warn("Plugin '${plugin.identifier()}' threw during teardown: $e")
-        }
-    }
 
     private fun safelyNotify(
         plugin: Plugin,
