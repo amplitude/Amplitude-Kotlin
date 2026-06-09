@@ -43,7 +43,6 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import java.io.File
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
 /**
@@ -60,7 +59,6 @@ open class Amplitude(
     val storageIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
 ) {
     val timeline: Timeline
-    private val reservedPlugins: ConcurrentHashMap<String, Plugin> = ConcurrentHashMap()
     val storage: Storage by lazy {
         configuration.storageProvider.getStorage(this)
     }
@@ -143,6 +141,7 @@ open class Amplitude(
     init {
         require(configuration.isValid()) { "invalid configuration" }
         timeline = this.createTimeline()
+        store.owner = this
         isBuilt = this.build()
         isBuilt.start()
     }
@@ -544,42 +543,17 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     fun add(plugin: Plugin): Amplitude {
-        val name = plugin.name
-        if (name != null && reservedPlugins.putIfAbsent(name, plugin) != null) {
-            logger.warn("Plugin \"$name\" is already registered; keeping the existing one.")
-            return this
-        }
-        try {
-            @Suppress("DEPRECATION")
-            when (plugin) {
-                is ObservePlugin -> store.add(plugin, this)
-                else -> timeline.add(plugin)
-            }
-        } catch (t: Throwable) {
-            if (name != null) reservedPlugins.remove(name, plugin)
-            throw t
-        }
+        timeline.add(plugin)
         return this
     }
 
     /**
-     * Find the first registered plugin assignable to [T], across both the timeline mediators
-     * and the observe store (store iteration is snapshotted under its lock).
+     * Find the first registered plugin assignable to [T] in the timeline mediators.
      */
-    inline fun <reified T : Plugin> findPlugin(): T? {
-        timeline.findPlugin<T>()?.let { return it }
-        @Suppress("DEPRECATION")
-        val observeSnapshot = synchronized(store.plugins) { store.plugins.toList() }
-        return observeSnapshot.firstOrNull { it is T } as? T
-    }
+    inline fun <reified T : Plugin> findPlugin(): T? = timeline.findPlugin<T>()
 
     fun remove(plugin: Plugin): Amplitude {
-        plugin.name?.let { reservedPlugins.remove(it, plugin) }
-        @Suppress("DEPRECATION")
-        when (plugin) {
-            is ObservePlugin -> store.remove(plugin)
-            else -> timeline.remove(plugin)
-        }
+        timeline.remove(plugin)
         return this
     }
 
@@ -603,7 +577,9 @@ open class Amplitude(
         pluginsSnapshot().forEach { safelyNotify(it, block) }
     }
 
-    private fun pluginsSnapshot(): List<Plugin> = timeline.pluginsSnapshot() + store.pluginsSnapshot()
+    private fun pluginsSnapshot(): List<Plugin> = timeline.pluginsSnapshot()
+
+    internal fun observePluginsSnapshot(): List<ObservePlugin> = timeline.pluginsSnapshot().filterIsInstance<ObservePlugin>()
 
     private fun safelyNotify(
         plugin: Plugin,

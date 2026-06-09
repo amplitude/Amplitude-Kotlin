@@ -10,12 +10,13 @@ import com.amplitude.core.platform.ObservePlugin
  * fan-out reaches every registered plugin. Mutate identity via [Amplitude.setUserId] /
  * [Amplitude.setDeviceId] / [Amplitude.reset], not these setters.
  *
- * The [ObservePlugin] registry below is **deprecated**. Now that every plugin receives the
- * identity/state callbacks through [Amplitude]'s fan-out, observe plugins no longer need a
- * dedicated registry here — register and remove them via [Amplitude.add] / [Amplitude.remove]
- * like any other plugin. The registry is retained for binary compatibility and will be removed
- * in the next major version, when observe plugins move fully into the
- * [com.amplitude.core.platform.Timeline].
+ * The observe-plugin registry below is **deprecated**. All plugins — including [ObservePlugin]s —
+ * are now registered and managed by the [com.amplitude.core.platform.Timeline]. These members
+ * delegate to [Amplitude] / [Timeline] for binary compatibility and will be removed in the
+ * next major version.
+ *
+ * A [State] is owned by a single [Amplitude]; sharing one instance across multiple [Amplitude]s is
+ * unsupported (the deprecated delegates resolve against the most recently constructed owner).
  */
 class State {
     @Volatile
@@ -24,11 +25,20 @@ class State {
     @Volatile
     var deviceId: String? = null
 
+    /** Back-reference set by [Amplitude] immediately after [Timeline] creation. */
+    internal var owner: Amplitude? = null
+
+    /**
+     * A detached snapshot of the observe plugins registered in the
+     * [com.amplitude.core.platform.Timeline]. Mutating the returned list has no effect —
+     * register/unregister via [Amplitude.add] / [Amplitude.remove].
+     */
     @Deprecated(
         "Observe plugins are managed by Amplitude/Timeline; this registry will be removed in the " +
             "next major version. Register via Amplitude.add(plugin).",
     )
-    val plugins: MutableList<ObservePlugin> = mutableListOf()
+    val plugins: MutableList<ObservePlugin>
+        get() = owner?.observePluginsSnapshot()?.toMutableList() ?: mutableListOf()
 
     @Deprecated(
         "Register observe plugins via Amplitude.add(plugin). State's registry will be removed in " +
@@ -39,12 +49,9 @@ class State {
         plugin: ObservePlugin,
         amplitude: Amplitude,
     ): Boolean {
-        // setup() runs outside the monitor — never hold a lock across plugin code.
-        plugin.setup(amplitude)
-        @Suppress("DEPRECATION")
-        return synchronized(plugins) {
-            plugins.add(plugin)
-        }
+        amplitude.add(plugin)
+        // Reflect the real outcome: first-wins name dedup may have skipped a duplicate.
+        return amplitude.observePluginsSnapshot().any { it === plugin }
     }
 
     @Deprecated(
@@ -52,19 +59,9 @@ class State {
             "the next major version.",
     )
     fun remove(plugin: ObservePlugin): Boolean {
-        @Suppress("DEPRECATION")
-        val removed =
-            synchronized(plugins) {
-                plugins.removeAll { it === plugin }
-            }
-        // teardown() runs outside the monitor — never hold a lock across plugin code.
-        if (removed) plugin.teardown()
-        return removed
+        val amplitude = owner ?: return false
+        val wasRegistered = amplitude.observePluginsSnapshot().any { it === plugin }
+        amplitude.remove(plugin)
+        return wasRegistered
     }
-
-    @Suppress("DEPRECATION")
-    internal fun pluginsSnapshot(): List<ObservePlugin> =
-        synchronized(plugins) {
-            plugins.toList()
-        }
 }
