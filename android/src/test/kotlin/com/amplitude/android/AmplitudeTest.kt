@@ -218,6 +218,32 @@ class AmplitudeTest {
         }
 
     @Test
+    fun `analytics connector identity is cleared and rotated on reset`() =
+        runTest {
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = createConfiguration(),
+                )
+            amplitude.isBuilt.await()
+
+            val connector = AnalyticsConnector.getInstance(INSTANCE_NAME)
+            amplitude.setUserId("user-before-reset")
+            amplitude.setDeviceId("device-before-reset")
+            advanceUntilIdle()
+
+            val deviceIdBeforeReset = connector.identityStore.getIdentity().deviceId
+
+            amplitude.reset()
+            advanceUntilIdle()
+
+            val identityAfterReset = connector.identityStore.getIdentity()
+            assertNull(identityAfterReset.userId)
+            assertNotNull(identityAfterReset.deviceId)
+            assertNotEquals(deviceIdBeforeReset, identityAfterReset.deviceId)
+        }
+
+    @Test
     fun amplitude_getDeviceId_should_return_not_null_after_isBuilt() =
         runTest {
             val amplitude =
