@@ -18,6 +18,13 @@ interface Plugin {
     val type: Type
     var amplitude: Amplitude
 
+    /**
+     * Optional stable plugin identifier. When non-null, adding another plugin
+     * with the same name is **skipped** — the first registration wins and is
+     * not torn down. A warning is logged for the duplicate.
+     */
+    val name: String? get() = null
+
     fun setup(amplitude: Amplitude) {
         this.amplitude = amplitude
     }
@@ -29,6 +36,29 @@ interface Plugin {
     fun teardown() {
         // Clean up any resources from setup if necessary
     }
+
+    /**
+     * State-change callbacks. Default no-ops so existing plugins are unaffected.
+     * Delivered to every registered plugin (timeline and observe store) by
+     * [com.amplitude.core.Amplitude]; each invocation is isolated so one plugin throwing an
+     * exception does not affect the others.
+     *
+     * Threading: callbacks are delivered **synchronously on the thread that triggers the
+     * change** — e.g. the caller's thread for [com.amplitude.core.Amplitude.setUserId] /
+     * [com.amplitude.core.Amplitude.setDeviceId], and a background (session/lifecycle) thread
+     * for [onSessionIdChanged]. No specific thread is guaranteed (in particular, not the main
+     * thread). Keep callbacks fast and non-blocking; identity values are read from `@Volatile`
+     * fields so individual reads are safe, but do not assume a stable thread across callbacks.
+     */
+    fun onUserIdChanged(userId: String?) {}
+
+    fun onDeviceIdChanged(deviceId: String?) {}
+
+    fun onSessionIdChanged(sessionId: Long) {}
+
+    fun onOptOutChanged(optOut: Boolean) {}
+
+    fun onReset() {}
 }
 
 interface EventPlugin : Plugin {
@@ -108,9 +138,9 @@ abstract class DestinationPlugin : EventPlugin {
 abstract class ObservePlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Observe
 
-    abstract fun onUserIdChanged(userId: String?)
+    abstract override fun onUserIdChanged(userId: String?)
 
-    abstract fun onDeviceIdChanged(deviceId: String?)
+    abstract override fun onDeviceIdChanged(deviceId: String?)
 
     final override fun execute(event: BaseEvent): BaseEvent? {
         return null

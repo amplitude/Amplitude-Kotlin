@@ -2,6 +2,7 @@ package com.amplitude.core.platform
 
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
+import java.util.concurrent.ConcurrentHashMap
 
 open class Timeline {
     internal val plugins: Map<Plugin.Type, Mediator> =
@@ -10,7 +11,9 @@ open class Timeline {
             Plugin.Type.Enrichment to Mediator(),
             Plugin.Type.Destination to Mediator(),
             Plugin.Type.Utility to Mediator(),
+            Plugin.Type.Observe to Mediator(),
         )
+    private val reservedNames = ConcurrentHashMap<String, Plugin>()
     lateinit var amplitude: Amplitude
 
     open fun process(incomingEvent: BaseEvent) {
@@ -29,8 +32,18 @@ open class Timeline {
     }
 
     fun add(plugin: Plugin) {
-        plugin.setup(amplitude)
-        plugins[plugin.type]?.add(plugin)
+        val name = plugin.name
+        if (name != null && reservedNames.putIfAbsent(name, plugin) != null) {
+            amplitude.logger.warn("Plugin \"$name\" is already registered; keeping the existing one.")
+            return
+        }
+        try {
+            plugin.setup(amplitude)
+            plugins[plugin.type]?.add(plugin)
+        } catch (t: Throwable) {
+            if (name != null) reservedNames.remove(name, plugin)
+            throw t
+        }
     }
 
     fun applyPlugins(
@@ -55,13 +68,22 @@ open class Timeline {
     }
 
     fun remove(plugin: Plugin) {
-        // remove all plugins with this name in every category
-        plugins.forEach { (_, list) ->
-            val wasRemoved = list.remove(plugin)
-            if (wasRemoved) {
-                plugin.teardown()
+        plugin.name?.let { reservedNames.remove(it, plugin) }
+        plugins.forEach { (_, mediator) ->
+            if (mediator.remove(plugin)) plugin.teardown()
+        }
+    }
+
+    internal fun pluginsSnapshot(): List<Plugin> = plugins.values.flatMap { it.snapshot() }
+
+    inline fun <reified T : Plugin> findPlugin(): T? {
+        var match: T? = null
+        applyClosure { plugin ->
+            if (match == null && plugin is T) {
+                match = plugin
             }
         }
+        return match
     }
 
     // Applies a closure on all registered plugins

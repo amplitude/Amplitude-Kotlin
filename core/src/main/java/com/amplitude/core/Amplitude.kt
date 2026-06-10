@@ -12,7 +12,6 @@ import com.amplitude.core.events.IdentifyEvent
 import com.amplitude.core.events.Revenue
 import com.amplitude.core.events.RevenueEvent
 import com.amplitude.core.platform.EventPlugin
-import com.amplitude.core.platform.ObservePlugin
 import com.amplitude.core.platform.Plugin
 import com.amplitude.core.platform.Signal
 import com.amplitude.core.platform.Timeline
@@ -127,12 +126,15 @@ open class Amplitude(
 
     /**
      * Whether events should be suppressed. Set this at runtime to opt the user in or out.
-     * Delegates to [Configuration.optOut] — mutating either is equivalent.
+     * Reads through to [Configuration.optOut]. Set via this property (not
+     * `configuration.optOut` directly) — only this setter notifies plugins via
+     * [Plugin.onOptOutChanged].
      */
     open var optOut: Boolean
         get() = configuration.optOut
         set(value) {
             configuration.optOut = value
+            notifyPlugins { it.onOptOutChanged(value) }
         }
 
     init {
@@ -307,6 +309,7 @@ open class Amplitude(
      */
     fun setUserId(userId: String?): Amplitude {
         identityCoordinator.setUserId(userId)
+        notifyPlugins { it.onUserIdChanged(store.userId) }
         return this
     }
 
@@ -327,6 +330,7 @@ open class Amplitude(
      */
     fun setDeviceId(deviceId: String): Amplitude {
         identityCoordinator.setDeviceId(deviceId)
+        notifyPlugins { it.onDeviceIdChanged(store.deviceId) }
         return this
     }
 
@@ -346,9 +350,29 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     open fun reset(): Amplitude {
-        setUserId(null)
-        setDeviceId(ContextPlugin.generateRandomDeviceId())
+        doResetWithDeviceId(ContextPlugin.generateRandomDeviceId())
         return this
+    }
+
+    /**
+     * Reset identity and fan the bundled change out to every plugin from a **single**
+     * snapshot: onUserIdChanged(null), then onDeviceIdChanged(newDeviceId), then onReset().
+     * The mutation commits under the identity lock before any callback runs (reentrancy-safe).
+     */
+    protected fun doResetWithDeviceId(newDeviceId: String) {
+        identityCoordinator.reset(newDeviceId)
+        val plugins = pluginsSnapshot()
+        plugins.forEach { safelyNotify(it) { plugin -> plugin.onUserIdChanged(store.userId) } }
+        plugins.forEach { safelyNotify(it) { plugin -> plugin.onDeviceIdChanged(store.deviceId) } }
+        plugins.forEach { safelyNotify(it) { plugin -> plugin.onReset() } }
+    }
+
+    /**
+     * Fan an arbitrary state-change callback out to every plugin (timeline + observe store).
+     * For platform SDKs (e.g. Android session-id changes); each invocation is isolated.
+     */
+    protected fun notifyAllPlugins(block: (Plugin) -> Unit) {
+        notifyPlugins(block)
     }
 
     /**
@@ -517,28 +541,17 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     fun add(plugin: Plugin): Amplitude {
-        when (plugin) {
-            is ObservePlugin -> {
-                this.store.add(plugin, this)
-            }
-            else -> {
-                this.timeline.add(plugin)
-            }
-        }
-
+        timeline.add(plugin)
         return this
     }
 
-    fun remove(plugin: Plugin): Amplitude {
-        when (plugin) {
-            is ObservePlugin -> {
-                this.store.remove(plugin)
-            }
-            else -> {
-                this.timeline.remove(plugin)
-            }
-        }
+    /**
+     * Find the first registered plugin assignable to [T] in the timeline mediators.
+     */
+    inline fun <reified T : Plugin> findPlugin(): T? = timeline.findPlugin<T>()
 
+    fun remove(plugin: Plugin): Amplitude {
+        timeline.remove(plugin)
         return this
     }
 
@@ -551,6 +564,36 @@ open class Amplitude(
             }
         }
     }
+
+    /**
+     * The single plugin fan-out path. Snapshots timeline + store once and isolates every
+     * invocation, so a plugin that throws an exception can't break the loop or the other
+     * plugins. Errors (e.g. OutOfMemoryError) are not caught and propagate to the caller.
+     * Never call while holding the identity lock (notify happens after it's released).
+     */
+    private fun notifyPlugins(block: (Plugin) -> Unit) {
+        pluginsSnapshot().forEach { safelyNotify(it, block) }
+    }
+
+    private fun pluginsSnapshot(): List<Plugin> = timeline.pluginsSnapshot()
+
+    private fun safelyNotify(
+        plugin: Plugin,
+        block: (Plugin) -> Unit,
+    ) {
+        try {
+            block(plugin)
+        } catch (e: Exception) {
+            logger.warn("Plugin '${plugin.identifier()}' threw during state callback: $e")
+        }
+    }
+
+    private fun Plugin.identifier(): String =
+        try {
+            name ?: this::class.java.name
+        } catch (_: Exception) {
+            this::class.java.name
+        }
 
     private fun convertPropertiesToIdentify(userProperties: Map<String, Any?>?): Identify {
         val identify = Identify()

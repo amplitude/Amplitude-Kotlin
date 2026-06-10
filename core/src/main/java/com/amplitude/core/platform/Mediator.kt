@@ -15,6 +15,8 @@ internal class Mediator(
 
     fun remove(plugin: Plugin) = plugins.removeAll { it === plugin }
 
+    fun snapshot(): List<Plugin> = plugins.toList()
+
     fun execute(event: BaseEvent): BaseEvent? {
         var result: BaseEvent? = event
 
