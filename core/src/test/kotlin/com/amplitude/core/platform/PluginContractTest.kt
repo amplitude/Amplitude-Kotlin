@@ -5,7 +5,6 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utils.FakeAmplitude
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -485,47 +484,6 @@ class PluginContractTest {
         assertEquals(1, received.size, "destination must receive the event")
         assertEquals("test-event", received[0].eventType)
         assertEquals(0, observeExecutions.get(), "Observe plugin execute() must never be called for tracked events")
-    }
-
-    @Test
-    fun `deprecated State delegate registers observe plugin through the Timeline`() {
-        val amplitude = FakeAmplitude()
-        val plugin = RecordingObservePlugin("state-delegate-obs")
-
-        @Suppress("DEPRECATION")
-        val addResult = amplitude.store.add(plugin, amplitude)
-
-        assertTrue(addResult, "State.add should return true")
-        assertNotNull(amplitude.findPlugin<RecordingObservePlugin>(), "plugin must be findable via Amplitude.findPlugin")
-
-        // Plugin must receive identity callbacks routed through the timeline.
-        amplitude.setUserId("state-delegate-user")
-        assertEquals(listOf("state-delegate-user"), plugin.userIds)
-
-        // State.getPlugins() must return it via the deprecated delegate.
-        @Suppress("DEPRECATION")
-        val statePlugins = amplitude.store.plugins
-        assertTrue(statePlugins.any { it === plugin }, "State.getPlugins() must include the plugin")
-
-        // First-wins: a duplicate name is skipped, and State.add reports the real outcome.
-        @Suppress("DEPRECATION")
-        assertFalse(
-            amplitude.store.add(RecordingObservePlugin("state-delegate-obs"), amplitude),
-            "State.add should return false when a duplicate name is skipped",
-        )
-
-        // State.remove() must unregister it from the timeline.
-        @Suppress("DEPRECATION")
-        val removeResult = amplitude.store.remove(plugin)
-        assertTrue(removeResult, "State.remove should return true when the plugin was registered")
-        assertNull(amplitude.findPlugin<RecordingObservePlugin>(), "plugin must no longer be findable after State.remove")
-
-        // Removing an unregistered plugin reports false.
-        @Suppress("DEPRECATION")
-        assertFalse(
-            amplitude.store.remove(plugin),
-            "State.remove should return false for an unregistered plugin",
-        )
     }
 
     @Test

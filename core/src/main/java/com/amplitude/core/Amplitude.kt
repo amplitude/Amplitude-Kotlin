@@ -12,7 +12,6 @@ import com.amplitude.core.events.IdentifyEvent
 import com.amplitude.core.events.Revenue
 import com.amplitude.core.events.RevenueEvent
 import com.amplitude.core.platform.EventPlugin
-import com.amplitude.core.platform.ObservePlugin
 import com.amplitude.core.platform.Plugin
 import com.amplitude.core.platform.Signal
 import com.amplitude.core.platform.Timeline
@@ -141,7 +140,6 @@ open class Amplitude(
     init {
         require(configuration.isValid()) { "invalid configuration" }
         timeline = this.createTimeline()
-        store.owner = this
         isBuilt = this.build()
         isBuilt.start()
     }
@@ -578,8 +576,6 @@ open class Amplitude(
     }
 
     private fun pluginsSnapshot(): List<Plugin> = timeline.pluginsSnapshot()
-
-    internal fun observePluginsSnapshot(): List<ObservePlugin> = timeline.pluginsSnapshot().filterIsInstance<ObservePlugin>()
 
     private fun safelyNotify(
         plugin: Plugin,
