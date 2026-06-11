@@ -1,3 +1,19 @@
+# [1.29.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.28.2...v1.29.0) (2026-06-11)
+
+
+### Features
+
+* plugin contract for blades - state callbacks, identity notifications ([#412](https://github.com/amplitude/Amplitude-Kotlin/issues/412)) ([d79ec5a](https://github.com/amplitude/Amplitude-Kotlin/commit/d79ec5a9251138e9c542c90bb1591ef6866b9977))
+* **android:** route session/reset changes through plugin fan-out (SDKA-6) ([788b0ef](https://github.com/amplitude/Amplitude-Kotlin/commit/788b0efca9adb7442a6581e1cfd1bf343556faaa))
+* **core:** add WaitForRemote delivery mode on RemoteConfigClient  ([#405](https://github.com/amplitude/Amplitude-Kotlin/issues/405)) ([ee87283](https://github.com/amplitude/Amplitude-Kotlin/commit/ee87283cf5fee89a7c5bfeb0dc2d42de8a19512c))
+* **core:** align RemoteConfigClient key model with iOS/Web ([#409](https://github.com/amplitude/Amplitude-Kotlin/issues/409)) ([f42fe8a](https://github.com/amplitude/Amplitude-Kotlin/commit/f42fe8aa296c5bf0eba4dddf8002c174da0e8e56)), closes [AmplitudeCore-Swift#17](https://github.com/AmplitudeCore-Swift/issues/17)
+* **core:** unified plugin contract for blades (SDKA-6) ([cbba794](https://github.com/amplitude/Amplitude-Kotlin/commit/cbba794ffacac934210680b8a11313a9f6844dd3))
+
+
+### Reverts
+
+* accidental push ([45ead59](https://github.com/amplitude/Amplitude-Kotlin/commit/45ead59d3acf1459c82bfc3718b67cc2066bedc3))
+
 ## [1.28.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.28.1...v1.28.2) (2026-05-05)
 
 
