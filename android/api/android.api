@@ -10,7 +10,7 @@ public class com/amplitude/android/Amplitude : com/amplitude/core/Amplitude {
 	public synthetic fun createTimeline ()Lcom/amplitude/core/platform/Timeline;
 	protected fun diagnosticsContextProvider ()Lcom/amplitude/core/diagnostics/DiagnosticsContextProvider;
 	protected fun diagnosticsStorageDirectory ()Ljava/io/File;
-	public final fun getSessionId ()J
+	public fun getSessionId ()J
 	public final fun onEnterForeground (J)V
 	public final fun onExitForeground (J)V
 	public fun reset ()Lcom/amplitude/android/Amplitude;

@@ -56,7 +56,20 @@ open class Amplitude(
     val amplitudeDispatcher: CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher(),
     val networkIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
     val storageIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
-) {
+) : AnalyticsClient {
+    override val identity: AnalyticsIdentity
+        get() =
+            object : AnalyticsIdentity {
+                override val userId: String? = store.userId
+                override val deviceId: String? = store.deviceId
+            }
+
+    /**
+     * Session id is Android-only. Core returns -1 by default; the Android
+     * subclass overrides this with the real value.
+     */
+    open override val sessionId: Long
+        get() = -1L
     val timeline: Timeline
     val storage: Storage by lazy {
         configuration.storageProvider.getStorage(this)
@@ -130,9 +143,10 @@ open class Amplitude(
      * `configuration.optOut` directly) — only this setter notifies plugins via
      * [Plugin.onOptOutChanged].
      */
-    open var optOut: Boolean
+    override var optOut: Boolean
         get() = configuration.optOut
         set(value) {
+            if (configuration.optOut == value) return
             configuration.optOut = value
             notifyPlugins { it.onOptOutChanged(value) }
         }
@@ -236,6 +250,17 @@ open class Amplitude(
     }
 
     /**
+     * Log event with the specified event type and optional event properties.
+     * Satisfies [AnalyticsClient.track].
+     */
+    override fun track(
+        eventType: String,
+        eventProperties: Map<String, Any?>?,
+    ) {
+        track(eventType, eventProperties, null)
+    }
+
+    /**
      * Log event with the specified event type, event properties, and optional event options.
      *
      * @param eventType the event type
@@ -310,6 +335,7 @@ open class Amplitude(
     fun setUserId(userId: String?): Amplitude {
         identityCoordinator.setUserId(userId)
         notifyPlugins { it.onUserIdChanged(store.userId) }
+        notifyPlugins { it.onIdentityChanged(identity) }
         return this
     }
 
@@ -331,6 +357,7 @@ open class Amplitude(
     fun setDeviceId(deviceId: String): Amplitude {
         identityCoordinator.setDeviceId(deviceId)
         notifyPlugins { it.onDeviceIdChanged(store.deviceId) }
+        notifyPlugins { it.onIdentityChanged(identity) }
         return this
     }
 
@@ -364,6 +391,8 @@ open class Amplitude(
         val plugins = pluginsSnapshot()
         plugins.forEach { safelyNotify(it) { plugin -> plugin.onUserIdChanged(store.userId) } }
         plugins.forEach { safelyNotify(it) { plugin -> plugin.onDeviceIdChanged(store.deviceId) } }
+        val snapshot = identity
+        plugins.forEach { safelyNotify(it) { plugin -> plugin.onIdentityChanged(snapshot) } }
         plugins.forEach { safelyNotify(it) { plugin -> plugin.onReset() } }
     }
 
