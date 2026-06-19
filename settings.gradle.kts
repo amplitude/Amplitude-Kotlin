@@ -40,8 +40,8 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "kotlin-sdk"
-include("core")
-project(":core").projectDir = file("core")
+include("analytics-core")
+project(":analytics-core").projectDir = file("analytics-core")
 include("android")
 project(":android").projectDir = file("android")
 include("samples:kotlin-android-app")
