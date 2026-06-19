@@ -7,6 +7,6 @@ interface AnalyticsClient {
 
     fun track(
         eventType: String,
-        eventProperties: Map<String, Any?>? = null,
+        eventProperties: Map<String, Any?>?,
     )
 }

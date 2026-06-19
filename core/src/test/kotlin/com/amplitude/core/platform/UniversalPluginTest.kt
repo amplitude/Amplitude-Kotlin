@@ -178,8 +178,7 @@ class UniversalPluginTest {
 
             a.reset()
 
-            // reset fires one userId + one deviceId notification → two onIdentityChanged calls.
-            // The last snapshot reflects the fully-reset state.
+            assertEquals(1, recorder.identitySnapshots.size)
             val last = recorder.identitySnapshots.last()
             assertNull(last.userId)
             assertNotNull(last.deviceId)
@@ -228,7 +227,7 @@ class UniversalPluginTest {
         fun `Amplitude track(eventType) satisfies AnalyticsClient contract`() {
             val client: AnalyticsClient = amplitude()
             // Just verify it doesn't throw — events are processed asynchronously.
-            client.track("test-event")
+            client.track("test-event", null)
             client.track("test-event", mapOf("key" to "value"))
         }
     }

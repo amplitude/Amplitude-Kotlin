@@ -68,7 +68,7 @@ open class Amplitude(
      * Session id is Android-only. Core returns -1 by default; the Android
      * subclass overrides this with the real value.
      */
-    override val sessionId: Long
+    open override val sessionId: Long
         get() = -1L
     val timeline: Timeline
     val storage: Storage by lazy {

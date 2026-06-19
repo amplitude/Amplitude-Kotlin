@@ -122,7 +122,6 @@ public abstract interface class com/amplitude/core/AnalyticsClient {
 	public abstract fun getOptOut ()Z
 	public abstract fun getSessionId ()J
 	public abstract fun track (Ljava/lang/String;Ljava/util/Map;)V
-	public static synthetic fun track$default (Lcom/amplitude/core/AnalyticsClient;Ljava/lang/String;Ljava/util/Map;ILjava/lang/Object;)V
 }
 
 public abstract interface class com/amplitude/core/AnalyticsIdentity {
