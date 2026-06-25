@@ -1,10 +1,3 @@
-## [1.29.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.29.0...v1.29.1) (2026-06-25)
-
-
-### Bug Fixes
-
-* **android:** initialize autocaptureManager in build() to prevent [#416](https://github.com/amplitude/Amplitude-Kotlin/issues/416) NPE ([#417](https://github.com/amplitude/Amplitude-Kotlin/issues/417)) ([ee39762](https://github.com/amplitude/Amplitude-Kotlin/commit/ee39762c884e62b542ff050bdc1bc6d52037c73e))
-
 # [1.29.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.28.2...v1.29.0) (2026-06-11)
 
 
