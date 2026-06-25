@@ -45,17 +45,6 @@ open class Amplitude internal constructor(
     ) {
     constructor(configuration: Configuration) : this(configuration, State())
 
-    internal val autocaptureManager: AutocaptureManager by lazy {
-        val androidConfig = configuration
-        AutocaptureManager(
-            initialAutocapture = androidConfig.autocapture,
-            initialInteractionsOptions = androidConfig.interactionsOptions,
-            remoteConfigClient = if (androidConfig.enableAutocaptureRemoteConfig) remoteConfigClient else null,
-            logger = logger,
-            diagnosticsClient = diagnosticsClient,
-        )
-    }
-
     val sessionId: Long
         get() {
             return (timeline as Timeline).sessionId
@@ -65,16 +54,27 @@ open class Amplitude internal constructor(
 
     private lateinit var androidContextPlugin: AndroidContextPlugin
 
+    internal lateinit var autocaptureManager: AutocaptureManager
+        private set
+
     /**
-     * The parent constructor calls this before child field initializers run.
-     * Properties used in [buildInternal] must be assigned here — not via
-     * field initializers, `by lazy`, or `init {}`, or they'll be null.
-     *
-     * See #247 and #373 for past incidents.
+     * Init-order trap: [CoreAmplitude]'s `init` calls [build] before this class's field
+     * initializers run, and [buildInternal] may already be on a background thread.
+     * Assign anything [buildInternal] or its plugins read here — never `by lazy`, field
+     * initializers, or `init {}`.
      */
     override fun build(): Deferred<Boolean> {
         activityLifecycleCallbacks = ActivityLifecycleObserver()
         androidContextPlugin = AndroidContextPlugin()
+        val androidConfig = configuration as Configuration
+        autocaptureManager =
+            AutocaptureManager(
+                initialAutocapture = androidConfig.autocapture,
+                initialInteractionsOptions = androidConfig.interactionsOptions,
+                remoteConfigClient = if (androidConfig.enableAutocaptureRemoteConfig) remoteConfigClient else null,
+                logger = logger,
+                diagnosticsClient = diagnosticsClient,
+            )
         return super.build()
     }
 
