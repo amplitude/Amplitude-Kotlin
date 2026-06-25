@@ -15,7 +15,9 @@ internal class Mediator(
 
     fun remove(plugin: Plugin) = plugins.removeAll { it === plugin }
 
-    fun snapshot(): List<Plugin> = plugins.toList()
+    // Iterator-based copy: Iterable.toList() uses elementAt() for size==1, which races with
+    // concurrent remove() on CopyOnWriteArrayList (ArrayIndexOutOfBoundsException).
+    fun snapshot(): List<Plugin> = plugins.toMutableList()
 
     fun execute(event: BaseEvent): BaseEvent? {
         var result: BaseEvent? = event
