@@ -224,11 +224,11 @@ class UniversalPluginTest {
         }
 
         @Test
-        fun `Amplitude track(eventType) satisfies AnalyticsClient contract`() {
+        fun `Amplitude trackEvent satisfies AnalyticsClient contract`() {
             val client: AnalyticsClient = amplitude()
             // Just verify it doesn't throw — events are processed asynchronously.
-            client.track("test-event", null)
-            client.track("test-event", mapOf("key" to "value"))
+            client.trackEvent("test-event", null)
+            client.trackEvent("test-event", mapOf("key" to "value"))
         }
     }
 }

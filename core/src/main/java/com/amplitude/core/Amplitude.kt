@@ -251,9 +251,9 @@ open class Amplitude(
 
     /**
      * Log event with the specified event type and optional event properties.
-     * Satisfies [AnalyticsClient.track].
+     * Satisfies [AnalyticsClient.trackEvent].
      */
-    override fun track(
+    override fun trackEvent(
         eventType: String,
         eventProperties: Map<String, Any?>?,
     ) {
@@ -334,8 +334,9 @@ open class Amplitude(
      */
     fun setUserId(userId: String?): Amplitude {
         identityCoordinator.setUserId(userId)
+        val snapshot = identity
         notifyPlugins { it.onUserIdChanged(store.userId) }
-        notifyPlugins { it.onIdentityChanged(identity) }
+        notifyPlugins { plugin -> plugin.onIdentityChanged(snapshot) }
         return this
     }
 
@@ -356,8 +357,9 @@ open class Amplitude(
      */
     fun setDeviceId(deviceId: String): Amplitude {
         identityCoordinator.setDeviceId(deviceId)
+        val snapshot = identity
         notifyPlugins { it.onDeviceIdChanged(store.deviceId) }
-        notifyPlugins { it.onIdentityChanged(identity) }
+        notifyPlugins { plugin -> plugin.onIdentityChanged(snapshot) }
         return this
     }
 

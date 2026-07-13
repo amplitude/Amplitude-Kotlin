@@ -5,7 +5,7 @@ interface AnalyticsClient {
     val sessionId: Long
     val optOut: Boolean
 
-    fun track(
+    fun trackEvent(
         eventType: String,
         eventProperties: Map<String, Any?>?,
     )

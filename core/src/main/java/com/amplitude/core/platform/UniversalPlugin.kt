@@ -13,6 +13,19 @@ import com.amplitude.core.events.BaseEvent
  *
  * [Plugin] extends [UniversalPlugin] for backward compatibility — all existing plugins
  * continue to work without modification.
+ *
+ * ## Registration model
+ *
+ * **Amplitude host:** register plugins via [com.amplitude.core.Amplitude.add]. [Plugin]
+ * extends [UniversalPlugin], so any existing [Plugin] continues to work without change.
+ * Amplitude calls [setup], [execute], and the state-change callbacks automatically as part
+ * of its internal lifecycle.
+ *
+ * **Third-party hosts (Segment, mParticle, etc.):** implement [AnalyticsClient] and manage
+ * the [UniversalPlugin] lifecycle yourself — call [setup] with the client reference when the
+ * plugin is registered, forward events through [execute], forward state changes to the
+ * appropriate callbacks, and call [teardown] when the plugin is removed. No
+ * [com.amplitude.core.Amplitude] instance is required.
  */
 interface UniversalPlugin {
     /**

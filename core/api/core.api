@@ -107,10 +107,10 @@ public class com/amplitude/core/Amplitude : com/amplitude/core/AnalyticsClient {
 	public final fun track (Lcom/amplitude/core/events/BaseEvent;Lcom/amplitude/core/events/EventOptions;Lkotlin/jvm/functions/Function3;)Lcom/amplitude/core/Amplitude;
 	public final fun track (Ljava/lang/String;)Lcom/amplitude/core/Amplitude;
 	public final fun track (Ljava/lang/String;Ljava/util/Map;)Lcom/amplitude/core/Amplitude;
-	public fun track (Ljava/lang/String;Ljava/util/Map;)V
 	public final fun track (Ljava/lang/String;Ljava/util/Map;Lcom/amplitude/core/events/EventOptions;)Lcom/amplitude/core/Amplitude;
 	public static synthetic fun track$default (Lcom/amplitude/core/Amplitude;Lcom/amplitude/core/events/BaseEvent;Lcom/amplitude/core/events/EventOptions;Lkotlin/jvm/functions/Function3;ILjava/lang/Object;)Lcom/amplitude/core/Amplitude;
 	public static synthetic fun track$default (Lcom/amplitude/core/Amplitude;Ljava/lang/String;Ljava/util/Map;Lcom/amplitude/core/events/EventOptions;ILjava/lang/Object;)Lcom/amplitude/core/Amplitude;
+	public fun trackEvent (Ljava/lang/String;Ljava/util/Map;)V
 }
 
 public final class com/amplitude/core/AmplitudeKt {
@@ -121,7 +121,7 @@ public abstract interface class com/amplitude/core/AnalyticsClient {
 	public abstract fun getIdentity ()Lcom/amplitude/core/AnalyticsIdentity;
 	public abstract fun getOptOut ()Z
 	public abstract fun getSessionId ()J
-	public abstract fun track (Ljava/lang/String;Ljava/util/Map;)V
+	public abstract fun trackEvent (Ljava/lang/String;Ljava/util/Map;)V
 }
 
 public abstract interface class com/amplitude/core/AnalyticsIdentity {
