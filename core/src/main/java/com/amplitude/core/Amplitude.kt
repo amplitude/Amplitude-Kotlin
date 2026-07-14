@@ -334,9 +334,9 @@ open class Amplitude(
      */
     fun setUserId(userId: String?): Amplitude {
         identityCoordinator.setUserId(userId)
-        val snapshot = identity
         val plugins = pluginsSnapshot()
         plugins.forEach { safelyNotify(it) { plugin -> plugin.onUserIdChanged(store.userId) } }
+        val snapshot = identity
         plugins.forEach { safelyNotify(it) { plugin -> plugin.onIdentityChanged(snapshot) } }
         return this
     }
@@ -358,9 +358,9 @@ open class Amplitude(
      */
     fun setDeviceId(deviceId: String): Amplitude {
         identityCoordinator.setDeviceId(deviceId)
-        val snapshot = identity
         val plugins = pluginsSnapshot()
         plugins.forEach { safelyNotify(it) { plugin -> plugin.onDeviceIdChanged(store.deviceId) } }
+        val snapshot = identity
         plugins.forEach { safelyNotify(it) { plugin -> plugin.onIdentityChanged(snapshot) } }
         return this
     }

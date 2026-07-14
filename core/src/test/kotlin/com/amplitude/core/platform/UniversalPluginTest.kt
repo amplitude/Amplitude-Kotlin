@@ -201,6 +201,31 @@ class UniversalPluginTest {
             assertEquals(listOf<String?>("legacy-user"), recorder.userIds)
             assertEquals(listOf<String?>("legacy-device"), recorder.deviceIds)
         }
+
+        @Test
+        fun `onIdentityChanged reflects re-entrant identity mutation from legacy callback`() {
+            val a = amplitude()
+            val recorder = RecordingPlugin()
+            val reentrant =
+                object : Plugin {
+                    override val type: Plugin.Type = Plugin.Type.Before
+                    override lateinit var amplitude: Amplitude
+
+                    override fun execute(event: BaseEvent): BaseEvent = event
+
+                    override fun onUserIdChanged(userId: String?) {
+                        amplitude.setDeviceId("reentrant-device")
+                    }
+                }
+            a.add(reentrant)
+            a.add(recorder)
+
+            a.setUserId("outer-user")
+
+            val last = recorder.identitySnapshots.last()
+            assertEquals("outer-user", last.userId)
+            assertEquals("reentrant-device", last.deviceId)
+        }
     }
 
     @Nested
