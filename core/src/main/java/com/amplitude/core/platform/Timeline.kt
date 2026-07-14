@@ -31,6 +31,8 @@ open class Timeline {
         applyPlugins(Plugin.Type.Destination, enrichmentResult)
     }
 
+    internal fun plugin(name: String): Plugin? = reservedNames[name]
+
     fun add(plugin: Plugin) {
         val name = plugin.name
         if (name != null && reservedNames.putIfAbsent(name, plugin) != null) {

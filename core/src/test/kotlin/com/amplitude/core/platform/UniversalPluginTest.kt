@@ -1,29 +1,51 @@
 package com.amplitude.core.platform
 
 import com.amplitude.core.Amplitude
+import com.amplitude.core.AmplitudeContext
 import com.amplitude.core.AnalyticsClient
 import com.amplitude.core.AnalyticsIdentity
+import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utils.FakeAmplitude
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertSame
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 
+@OptIn(RestrictedAmplitudeFeature::class)
 class UniversalPluginTest {
-    private fun amplitude(): Amplitude = FakeAmplitude()
+    private fun amplitude(): FakeAmplitude = FakeAmplitude()
 
-    // A minimal UniversalPlugin that is NOT a Plugin — has no Amplitude dependency.
-    private class RecordingUniversalPlugin : UniversalPlugin {
+    private class RecordingUniversalPlugin(
+        override val name: String? = null,
+    ) : UniversalPlugin {
+        var setupClient: AnalyticsClient? = null
+        var setupContext: AmplitudeContext? = null
+        var teardownCount = 0
+        val executedTypes = mutableListOf<String>()
         val identitySnapshots = mutableListOf<AnalyticsIdentity>()
         val sessionIds = mutableListOf<Long>()
         val optOuts = mutableListOf<Boolean>()
-        var setupClient: AnalyticsClient? = null
         var resets = 0
 
-        override fun setup(client: AnalyticsClient) {
+        override fun setup(
+            client: AnalyticsClient,
+            context: AmplitudeContext,
+        ) {
             setupClient = client
+            setupContext = context
+        }
+
+        override fun execute(event: BaseEvent): BaseEvent? {
+            executedTypes += event.eventType
+            return event
+        }
+
+        override fun teardown() {
+            teardownCount += 1
         }
 
         override fun onIdentityChanged(identity: AnalyticsIdentity) {
@@ -43,16 +65,27 @@ class UniversalPluginTest {
         }
     }
 
-    // A Plugin subclass that records both per-field and bundled identity callbacks.
     private class RecordingPlugin : Plugin {
         override val type: Plugin.Type = Plugin.Type.Before
         override lateinit var amplitude: Amplitude
 
+        var universalSetupCount = 0
+        var setupClient: AnalyticsClient? = null
+        var setupContext: AmplitudeContext? = null
         val userIds = mutableListOf<String?>()
         val deviceIds = mutableListOf<String?>()
         val identitySnapshots = mutableListOf<AnalyticsIdentity>()
         val optOuts = mutableListOf<Boolean>()
         var resets = 0
+
+        override fun setup(
+            client: AnalyticsClient,
+            context: AmplitudeContext,
+        ) {
+            universalSetupCount += 1
+            setupClient = client
+            setupContext = context
+        }
 
         override fun execute(event: BaseEvent): BaseEvent = event
 
@@ -82,13 +115,13 @@ class UniversalPluginTest {
         @Test
         fun `UniversalPlugin has no-op defaults for all callbacks`() {
             val plugin = object : UniversalPlugin {}
+            val amplitude = FakeAmplitude()
             val identity =
                 object : AnalyticsIdentity {
                     override val userId: String? = "u"
                     override val deviceId: String? = "d"
                 }
-            // None of these should throw.
-            plugin.setup(FakeAmplitude())
+            plugin.setup(amplitude, amplitude.amplitudeContext)
             plugin.onIdentityChanged(identity)
             plugin.onSessionIdChanged(1L)
             plugin.onOptOutChanged(true)
@@ -101,6 +134,113 @@ class UniversalPluginTest {
         fun `UniversalPlugin name defaults to null`() {
             val plugin = object : UniversalPlugin {}
             assertNull(plugin.name)
+        }
+
+        @Test
+        fun `AnalyticsIdentity userProperties defaults to empty map`() {
+            val identity =
+                object : AnalyticsIdentity {
+                    override val userId: String? = "u"
+                    override val deviceId: String? = "d"
+                }
+            assertTrue(identity.userProperties.isEmpty())
+        }
+    }
+
+    @Nested
+    inner class BareUniversalPluginHosting {
+        @Test
+        fun `bare UniversalPlugin receives setup with client and context`() {
+            val a = amplitude()
+            val blade = RecordingUniversalPlugin()
+
+            a.add(blade)
+
+            assertSame(a, blade.setupClient)
+            assertEquals("FAKE-API-KEY", blade.setupContext?.apiKey)
+        }
+
+        @Test
+        fun `bare UniversalPlugin defaults to Enrichment and executes events`() {
+            val a = amplitude()
+            val blade = RecordingUniversalPlugin("blade")
+
+            a.add(blade)
+            a.track("blade-event", null)
+
+            var enrichmentCount = 0
+            a.timeline.applyClosure { plugin ->
+                if (plugin is UniversalPluginAdapter && plugin.delegate === blade) {
+                    enrichmentCount += 1
+                    assertEquals(Plugin.Type.Enrichment, plugin.type)
+                }
+            }
+            assertEquals(1, enrichmentCount)
+            assertEquals(listOf("blade-event"), blade.executedTypes)
+        }
+
+        @Test
+        fun `bare UniversalPlugin receives lifecycle callbacks`() {
+            val a = amplitude()
+            val blade = RecordingUniversalPlugin()
+
+            a.add(blade)
+            a.setUserId("uid")
+            a.optOut = true
+            a.reset()
+
+            assertEquals(2, blade.identitySnapshots.size)
+            assertEquals("uid", blade.identitySnapshots.first().userId)
+            assertEquals(listOf(true), blade.optOuts)
+            assertEquals(1, blade.resets)
+        }
+
+        @Test
+        fun `PluginHost queries return the original delegate`() {
+            val a = amplitude()
+            val blade = RecordingUniversalPlugin("blade")
+
+            a.add(blade)
+
+            assertSame(blade, a.plugin("blade"))
+            assertEquals(listOf(blade), a.plugins<RecordingUniversalPlugin>())
+        }
+
+        @Test
+        fun `remove tears down bare UniversalPlugin exactly once`() {
+            val a = amplitude()
+            val blade = RecordingUniversalPlugin()
+
+            a.add(blade)
+            a.remove(blade)
+
+            assertEquals(1, blade.teardownCount)
+        }
+
+        @Test
+        fun `remove clears every registration of an unnamed UniversalPlugin`() {
+            val a = amplitude()
+            val blade = RecordingUniversalPlugin()
+            a.add(blade)
+            a.add(blade)
+
+            a.remove(blade)
+
+            assertTrue(a.plugins<RecordingUniversalPlugin>().isEmpty())
+            assertEquals(2, blade.teardownCount)
+        }
+
+        @Test
+        fun `named bare UniversalPlugin deduplicates on add`() {
+            val a = amplitude()
+            val first = RecordingUniversalPlugin("dedupe-blade")
+            val second = RecordingUniversalPlugin("dedupe-blade")
+
+            a.add(first)
+            a.add(second)
+
+            assertEquals(1, a.plugins<RecordingUniversalPlugin>().size)
+            assertSame(first, a.plugins<RecordingUniversalPlugin>().single())
         }
     }
 
@@ -139,9 +279,7 @@ class UniversalPluginTest {
             a.setUserId("snap-user")
             a.setDeviceId("snap-device")
 
-            // Two separate mutations → two onIdentityChanged calls.
             assertEquals(2, recorder.identitySnapshots.size)
-            // After the second mutation, the snapshot has both values.
             val last = recorder.identitySnapshots.last()
             assertEquals("snap-user", last.userId)
             assertEquals("snap-device", last.deviceId)
@@ -149,8 +287,6 @@ class UniversalPluginTest {
 
         @Test
         fun `per-field callbacks fire before onIdentityChanged`() {
-            // We verify ordering by checking that when onIdentityChanged fires,
-            // onUserIdChanged has already been called (order within same plugin).
             val a = amplitude()
             val callOrder = mutableListOf<String>()
             val ordered =
@@ -226,6 +362,19 @@ class UniversalPluginTest {
             assertEquals("outer-user", last.userId)
             assertEquals("reentrant-device", last.deviceId)
         }
+
+        @Test
+        fun `Plugin setup bridges to universal setup via super`() {
+            val a = amplitude()
+            val recorder = RecordingPlugin()
+
+            a.add(recorder)
+
+            assertEquals(1, recorder.universalSetupCount)
+            assertSame(a, recorder.amplitude)
+            assertSame(a, recorder.setupClient)
+            assertSame(a.amplitudeContext, recorder.setupContext)
+        }
     }
 
     @Nested
@@ -238,6 +387,7 @@ class UniversalPluginTest {
 
             assertEquals("id-user", a.identity.userId)
             assertEquals("id-device", a.identity.deviceId)
+            assertTrue(a.identity.userProperties.isEmpty())
         }
 
         @Test
@@ -254,19 +404,7 @@ class UniversalPluginTest {
         }
 
         @Test
-        fun `setting optOut to the same value is a no-op for plugins`() {
-            val a = amplitude()
-            val recorder = RecordingPlugin()
-            a.add(recorder)
-
-            a.optOut = false
-            a.optOut = false
-
-            assertEquals(emptyList<Boolean>(), recorder.optOuts)
-        }
-
-        @Test
-        fun `flipping optOut invokes onOptOutChanged exactly once per change`() {
+        fun `flipping optOut invokes onOptOutChanged exactly once per assignment`() {
             val a = amplitude()
             val recorder = RecordingPlugin()
             a.add(recorder)
@@ -279,9 +417,19 @@ class UniversalPluginTest {
         }
 
         @Test
+        fun `assigning the current optOut value still notifies plugins`() {
+            val a = amplitude()
+            val recorder = RecordingPlugin()
+            a.add(recorder)
+
+            a.optOut = false
+
+            assertEquals(listOf(false), recorder.optOuts)
+        }
+
+        @Test
         fun `Amplitude trackEvent satisfies AnalyticsClient contract`() {
             val client: AnalyticsClient = amplitude()
-            // Just verify it doesn't throw — events are processed asynchronously.
             client.trackEvent("test-event", null)
             client.trackEvent("test-event", mapOf("key" to "value"))
         }

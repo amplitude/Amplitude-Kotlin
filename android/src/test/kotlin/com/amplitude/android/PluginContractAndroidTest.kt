@@ -13,6 +13,7 @@ import com.amplitude.core.StorageProvider
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.ObservePlugin
 import com.amplitude.core.platform.Plugin
+import com.amplitude.core.platform.UniversalPlugin
 import com.amplitude.core.utilities.ConsoleLoggerProvider
 import com.amplitude.core.utilities.InMemoryStorage
 import com.amplitude.core.utilities.InMemoryStorageProvider
@@ -42,13 +43,15 @@ class PluginContractAndroidTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     @Test
-    fun `session callback fires for new and observe plugins`() =
+    fun `session callback fires for Plugin, UniversalPlugin, and ObservePlugin`() =
         runTest {
             val amplitude = createTestAmplitude()
             val timeline = SessionPlugin("timeline")
+            val universal = SessionUniversalPlugin()
             val observe = SessionObservePlugin("observe")
 
             amplitude.add(timeline)
+            amplitude.add(universal)
             amplitude.add(observe)
             amplitude.isBuilt.await()
             advanceUntilIdle()
@@ -56,6 +59,7 @@ class PluginContractAndroidTest {
             enterForeground(amplitude, 1_000L)
 
             assertEquals(listOf(amplitude.sessionId), timeline.sessionIds)
+            assertEquals(listOf(amplitude.sessionId), universal.sessionIds)
             assertEquals(listOf(amplitude.sessionId), observe.sessionIds)
         }
 
@@ -180,6 +184,14 @@ private class SessionPlugin(override val name: String) : Plugin {
     val sessionIds = mutableListOf<Long>()
 
     override fun execute(event: BaseEvent): BaseEvent = event
+
+    override fun onSessionIdChanged(sessionId: Long) {
+        sessionIds += sessionId
+    }
+}
+
+private class SessionUniversalPlugin : UniversalPlugin {
+    val sessionIds = mutableListOf<Long>()
 
     override fun onSessionIdChanged(sessionId: Long) {
         sessionIds += sessionId

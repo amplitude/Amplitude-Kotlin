@@ -13,8 +13,11 @@ import com.amplitude.core.events.Revenue
 import com.amplitude.core.events.RevenueEvent
 import com.amplitude.core.platform.EventPlugin
 import com.amplitude.core.platform.Plugin
+import com.amplitude.core.platform.PluginHost
 import com.amplitude.core.platform.Signal
 import com.amplitude.core.platform.Timeline
+import com.amplitude.core.platform.UniversalPlugin
+import com.amplitude.core.platform.UniversalPluginAdapter
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.ContextPlugin
 import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
@@ -56,7 +59,7 @@ open class Amplitude(
     val amplitudeDispatcher: CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher(),
     val networkIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
     val storageIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
-) : AnalyticsClient {
+) : AnalyticsClient, PluginHost {
     override val identity: AnalyticsIdentity
         get() =
             object : AnalyticsIdentity {
@@ -119,6 +122,19 @@ open class Amplitude(
         )
     }
 
+    val amplitudeContext: AmplitudeContext by lazy { buildAmplitudeContext() }
+
+    @OptIn(RestrictedAmplitudeFeature::class)
+    private fun buildAmplitudeContext(): AmplitudeContext =
+        AmplitudeContext(
+            apiKey = configuration.apiKey,
+            instanceName = configuration.instanceName,
+            serverZone = configuration.serverZone,
+            logger = logger,
+            remoteConfigClientProvider = { remoteConfigClient },
+            diagnosticsClientProvider = { diagnosticsClient },
+        )
+
     // Signal broadcasting - single shared flow for all plugins
     private val _signalFlow =
         MutableSharedFlow<Signal>(
@@ -146,7 +162,6 @@ open class Amplitude(
     override var optOut: Boolean
         get() = configuration.optOut
         set(value) {
-            if (configuration.optOut == value) return
             configuration.optOut = value
             notifyPlugins { it.onOptOutChanged(value) }
         }
@@ -579,12 +594,47 @@ open class Amplitude(
     }
 
     /**
+     * Add a [UniversalPlugin]. If the plugin is also a [Plugin], it is added directly.
+     * Otherwise it is hosted in the enrichment stage.
+     */
+    fun add(plugin: UniversalPlugin): Amplitude {
+        if (plugin is Plugin) return add(plugin)
+        return add(UniversalPluginAdapter(plugin))
+    }
+
+    /**
      * Find the first registered plugin assignable to [T] in the timeline mediators.
      */
     inline fun <reified T : Plugin> findPlugin(): T? = timeline.findPlugin<T>()
 
+    override fun plugin(name: String): UniversalPlugin? = unwrapUniversalPlugin(timeline.plugin(name))
+
+    override fun <T : UniversalPlugin> plugins(clazz: Class<T>): List<T> {
+        val matches = mutableListOf<T>()
+        pluginsSnapshot().forEach { plugin ->
+            val universal = unwrapUniversalPlugin(plugin) ?: return@forEach
+            if (clazz.isInstance(universal)) {
+                @Suppress("UNCHECKED_CAST")
+                matches.add(universal as T)
+            }
+        }
+        return matches
+    }
+
     fun remove(plugin: Plugin): Amplitude {
         timeline.remove(plugin)
+        return this
+    }
+
+    /**
+     * Remove a [UniversalPlugin], including a bare plugin hosted in the enrichment stage.
+     */
+    fun remove(plugin: UniversalPlugin): Amplitude {
+        if (plugin is Plugin) return remove(plugin)
+        pluginsSnapshot()
+            .filterIsInstance<UniversalPluginAdapter>()
+            .filter { it.delegate === plugin }
+            .forEach { remove(it) }
         return this
     }
 
@@ -609,6 +659,13 @@ open class Amplitude(
     }
 
     private fun pluginsSnapshot(): List<Plugin> = timeline.pluginsSnapshot()
+
+    private fun unwrapUniversalPlugin(plugin: Plugin?): UniversalPlugin? =
+        when (plugin) {
+            is UniversalPluginAdapter -> plugin.delegate
+            is UniversalPlugin -> plugin
+            else -> null
+        }
 
     private fun safelyNotify(
         plugin: Plugin,
