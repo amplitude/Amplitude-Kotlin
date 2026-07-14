@@ -25,7 +25,7 @@ implementation("com.amplitude:analytics-core:<latest-version>")
 When developing inside this repository you can depend on the module directly:
 
 ```kotlin
-implementation(project(":core"))
+implementation(project(":analytics-core"))
 ```
 
 To publish to your local Maven repository run:
@@ -38,5 +38,5 @@ To publish to your local Maven repository run:
 Execute:
 
 ```
-./gradlew :core:assemble
+./gradlew :analytics-core:assemble
 ```

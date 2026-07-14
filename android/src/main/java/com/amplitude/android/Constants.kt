@@ -4,7 +4,7 @@ package com.amplitude.android
  * Autocapture event-name and event-property constants for the Android SDK.
  *
  * These were previously hosted in `com.amplitude.core.Constants` but are only consumed by
- * `:android` (autocapture, network tracking, frustration interactions). Aliases in `:core`
+ * `:android` (autocapture, network tracking, frustration interactions). Aliases in `:analytics-core`
  * remain for binary compatibility — see [com.amplitude.core.Constants.EventTypes] and
  * [com.amplitude.core.Constants.EventProperties].
  */
