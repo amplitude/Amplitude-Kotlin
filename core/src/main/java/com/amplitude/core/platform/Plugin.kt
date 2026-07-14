@@ -1,12 +1,13 @@
 package com.amplitude.core.platform
 
 import com.amplitude.core.Amplitude
+import com.amplitude.core.AnalyticsClient
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.GroupIdentifyEvent
 import com.amplitude.core.events.IdentifyEvent
 import com.amplitude.core.events.RevenueEvent
 
-interface Plugin {
+interface Plugin : UniversalPlugin {
     enum class Type {
         Before,
         Enrichment,
@@ -23,17 +24,26 @@ interface Plugin {
      * with the same name is **skipped** — the first registration wins and is
      * not torn down. A warning is logged for the duplicate.
      */
-    val name: String? get() = null
+    override val name: String? get() = null
 
+    /**
+     * Called by [Amplitude.add] to wire this plugin into the host instance.
+     * The default implementation of [UniversalPlugin.setup] is a no-op for
+     * [Plugin] subclasses — callers always go through this typed overload.
+     */
     fun setup(amplitude: Amplitude) {
         this.amplitude = amplitude
     }
 
-    fun execute(event: BaseEvent): BaseEvent? {
+    override fun setup(client: AnalyticsClient) {
+        (client as? Amplitude)?.let { setup(it) }
+    }
+
+    override fun execute(event: BaseEvent): BaseEvent? {
         return event
     }
 
-    fun teardown() {
+    override fun teardown() {
         // Clean up any resources from setup if necessary
     }
 
@@ -54,11 +64,25 @@ interface Plugin {
 
     fun onDeviceIdChanged(deviceId: String?) {}
 
-    fun onSessionIdChanged(sessionId: Long) {}
+    /**
+     * Invoked when the session id changes on the Amplitude instance this plugin
+     * is registered with. Only fires for SDK builds that maintain a session id
+     * (e.g. the Android SDK).
+     */
+    override fun onSessionIdChanged(sessionId: Long) {}
 
-    fun onOptOutChanged(optOut: Boolean) {}
+    /**
+     * Invoked when the [Amplitude.optOut] flag flips on the Amplitude instance
+     * this plugin is registered with.
+     */
+    override fun onOptOutChanged(optOut: Boolean) {}
 
-    fun onReset() {}
+    /**
+     * Invoked when [Amplitude.reset] is called on the Amplitude instance this
+     * plugin is registered with. Delivered after [onUserIdChanged], [onDeviceIdChanged],
+     * and [onIdentityChanged] for that reset.
+     */
+    override fun onReset() {}
 }
 
 interface EventPlugin : Plugin {
