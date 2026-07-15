@@ -15,7 +15,7 @@ interface AnalyticsClient {
     val optOut: Boolean
 
     /** Tracks an event with the given type and optional properties. */
-    fun trackEvent(
+    fun track(
         eventType: String,
         eventProperties: Map<String, Any?>?,
     )

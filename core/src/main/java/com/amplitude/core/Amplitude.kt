@@ -59,8 +59,8 @@ open class Amplitude(
     val amplitudeDispatcher: CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher(),
     val networkIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
     val storageIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
-) : AnalyticsClient, PluginHost {
-    override val identity: AnalyticsIdentity
+) : PluginHost {
+    open val identity: AnalyticsIdentity
         get() =
             object : AnalyticsIdentity {
                 override val userId: String? = store.userId
@@ -71,7 +71,7 @@ open class Amplitude(
      * Session id is Android-only. Core returns -1 by default; the Android
      * subclass overrides this with the real value.
      */
-    open override val sessionId: Long
+    open val sessionId: Long
         get() = -1L
     val timeline: Timeline
     val storage: Storage by lazy {
@@ -159,12 +159,14 @@ open class Amplitude(
      * `configuration.optOut` directly) — only this setter notifies plugins via
      * [Plugin.onOptOutChanged].
      */
-    override var optOut: Boolean
+    open var optOut: Boolean
         get() = configuration.optOut
         set(value) {
             configuration.optOut = value
             notifyPlugins { it.onOptOutChanged(value) }
         }
+
+    internal val analyticsClient: AnalyticsClient by lazy { AmplitudeAnalyticsClient(this) }
 
     init {
         require(configuration.isValid()) { "invalid configuration" }
@@ -262,17 +264,6 @@ open class Amplitude(
         }
         process(event)
         return this
-    }
-
-    /**
-     * Log event with the specified event type and optional event properties.
-     * Satisfies [AnalyticsClient.trackEvent].
-     */
-    override fun trackEvent(
-        eventType: String,
-        eventProperties: Map<String, Any?>?,
-    ) {
-        track(eventType, eventProperties, null)
     }
 
     /**
@@ -691,6 +682,26 @@ open class Amplitude(
             property.value?.let { identify.set(property.key, it) }
         }
         return identify
+    }
+}
+
+private class AmplitudeAnalyticsClient(
+    private val amplitude: Amplitude,
+) : AnalyticsClient {
+    override val identity: AnalyticsIdentity
+        get() = amplitude.identity
+
+    override val sessionId: Long
+        get() = amplitude.sessionId
+
+    override val optOut: Boolean
+        get() = amplitude.optOut
+
+    override fun track(
+        eventType: String,
+        eventProperties: Map<String, Any?>?,
+    ) {
+        amplitude.track(eventType, eventProperties, null)
     }
 }
 

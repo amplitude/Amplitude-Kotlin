@@ -121,7 +121,7 @@ class UniversalPluginTest {
                     override val userId: String? = "u"
                     override val deviceId: String? = "d"
                 }
-            plugin.setup(amplitude, amplitude.amplitudeContext)
+            plugin.setup(amplitude.analyticsClient, amplitude.amplitudeContext)
             plugin.onIdentityChanged(identity)
             plugin.onSessionIdChanged(1L)
             plugin.onOptOutChanged(true)
@@ -156,7 +156,7 @@ class UniversalPluginTest {
 
             a.add(blade)
 
-            assertSame(a, blade.setupClient)
+            assertSame(a.analyticsClient, blade.setupClient)
             assertEquals("FAKE-API-KEY", blade.setupContext?.apiKey)
         }
 
@@ -372,7 +372,7 @@ class UniversalPluginTest {
 
             assertEquals(1, recorder.universalSetupCount)
             assertSame(a, recorder.amplitude)
-            assertSame(a, recorder.setupClient)
+            assertSame(a.analyticsClient, recorder.setupClient)
             assertSame(a.amplitudeContext, recorder.setupContext)
         }
     }
@@ -428,10 +428,23 @@ class UniversalPluginTest {
         }
 
         @Test
-        fun `Amplitude trackEvent satisfies AnalyticsClient contract`() {
-            val client: AnalyticsClient = amplitude()
-            client.trackEvent("test-event", null)
-            client.trackEvent("test-event", mapOf("key" to "value"))
+        fun `Amplitude analyticsClient satisfies AnalyticsClient contract`() {
+            val client: AnalyticsClient = amplitude().analyticsClient
+            client.track("test-event", null)
+            client.track("test-event", mapOf("key" to "value"))
+        }
+
+        @Test
+        fun `analyticsClient forwards host state changes live`() {
+            val a = amplitude()
+            val client: AnalyticsClient = a.analyticsClient
+
+            a.setUserId("u-123")
+            a.setDeviceId("d-456")
+            a.optOut = true
+
+            assertEquals("u-123", client.identity.userId)
+            assertEquals(true, client.optOut)
         }
     }
 }

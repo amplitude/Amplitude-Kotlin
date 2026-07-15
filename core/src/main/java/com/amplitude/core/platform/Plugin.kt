@@ -32,7 +32,7 @@ interface Plugin : UniversalPlugin {
      */
     fun setup(amplitude: Amplitude) {
         this.amplitude = amplitude
-        setup(amplitude, amplitude.amplitudeContext)
+        setup(amplitude.analyticsClient, amplitude.amplitudeContext)
     }
 
     /** Not used by [Plugin] implementations; they receive [setup] with the [Amplitude] instance instead. */
