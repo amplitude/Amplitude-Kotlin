@@ -17,7 +17,6 @@ import com.amplitude.core.platform.PluginHost
 import com.amplitude.core.platform.Signal
 import com.amplitude.core.platform.Timeline
 import com.amplitude.core.platform.UniversalPlugin
-import com.amplitude.core.platform.UniversalPluginAdapter
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.ContextPlugin
 import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
@@ -341,9 +340,9 @@ open class Amplitude(
     fun setUserId(userId: String?): Amplitude {
         identityCoordinator.setUserId(userId)
         val plugins = pluginsSnapshot()
-        plugins.forEach { safelyNotify(it) { plugin -> plugin.onUserIdChanged(store.userId) } }
+        plugins.filterIsInstance<Plugin>().forEach { safelyNotify(it) { p -> p.onUserIdChanged(store.userId) } }
         val snapshot = identity
-        plugins.forEach { safelyNotify(it) { plugin -> plugin.onIdentityChanged(snapshot) } }
+        plugins.forEach { safelyNotify(it) { p -> p.onIdentityChanged(snapshot) } }
         return this
     }
 
@@ -365,9 +364,9 @@ open class Amplitude(
     fun setDeviceId(deviceId: String): Amplitude {
         identityCoordinator.setDeviceId(deviceId)
         val plugins = pluginsSnapshot()
-        plugins.forEach { safelyNotify(it) { plugin -> plugin.onDeviceIdChanged(store.deviceId) } }
+        plugins.filterIsInstance<Plugin>().forEach { safelyNotify(it) { p -> p.onDeviceIdChanged(store.deviceId) } }
         val snapshot = identity
-        plugins.forEach { safelyNotify(it) { plugin -> plugin.onIdentityChanged(snapshot) } }
+        plugins.forEach { safelyNotify(it) { p -> p.onIdentityChanged(snapshot) } }
         return this
     }
 
@@ -399,18 +398,18 @@ open class Amplitude(
     protected fun doResetWithDeviceId(newDeviceId: String) {
         identityCoordinator.reset(newDeviceId)
         val plugins = pluginsSnapshot()
-        plugins.forEach { safelyNotify(it) { plugin -> plugin.onUserIdChanged(store.userId) } }
-        plugins.forEach { safelyNotify(it) { plugin -> plugin.onDeviceIdChanged(store.deviceId) } }
+        plugins.filterIsInstance<Plugin>().forEach { safelyNotify(it) { p -> p.onUserIdChanged(store.userId) } }
+        plugins.filterIsInstance<Plugin>().forEach { safelyNotify(it) { p -> p.onDeviceIdChanged(store.deviceId) } }
         val snapshot = identity
-        plugins.forEach { safelyNotify(it) { plugin -> plugin.onIdentityChanged(snapshot) } }
-        plugins.forEach { safelyNotify(it) { plugin -> plugin.onReset() } }
+        plugins.forEach { safelyNotify(it) { p -> p.onIdentityChanged(snapshot) } }
+        plugins.forEach { safelyNotify(it) { p -> p.onReset() } }
     }
 
     /**
      * Fan an arbitrary state-change callback out to every plugin (timeline + observe store).
      * For platform SDKs (e.g. Android session-id changes); each invocation is isolated.
      */
-    protected fun notifyAllPlugins(block: (Plugin) -> Unit) {
+    protected fun notifyAllPlugins(block: (UniversalPlugin) -> Unit) {
         notifyPlugins(block)
     }
 
@@ -589,8 +588,8 @@ open class Amplitude(
      * Otherwise it is hosted in the enrichment stage.
      */
     fun add(plugin: UniversalPlugin): Amplitude {
-        if (plugin is Plugin) return add(plugin)
-        return add(UniversalPluginAdapter(plugin))
+        timeline.add(plugin)
+        return this
     }
 
     /**
@@ -598,15 +597,14 @@ open class Amplitude(
      */
     inline fun <reified T : Plugin> findPlugin(): T? = timeline.findPlugin<T>()
 
-    override fun plugin(name: String): UniversalPlugin? = unwrapUniversalPlugin(timeline.plugin(name))
+    override fun plugin(name: String): UniversalPlugin? = timeline.plugin(name)
 
     override fun <T : UniversalPlugin> plugins(clazz: Class<T>): List<T> {
         val matches = mutableListOf<T>()
         pluginsSnapshot().forEach { plugin ->
-            val universal = unwrapUniversalPlugin(plugin) ?: return@forEach
-            if (clazz.isInstance(universal)) {
+            if (clazz.isInstance(plugin)) {
                 @Suppress("UNCHECKED_CAST")
-                matches.add(universal as T)
+                matches.add(plugin as T)
             }
         }
         return matches
@@ -621,11 +619,7 @@ open class Amplitude(
      * Remove a [UniversalPlugin], including a bare plugin hosted in the enrichment stage.
      */
     fun remove(plugin: UniversalPlugin): Amplitude {
-        if (plugin is Plugin) return remove(plugin)
-        pluginsSnapshot()
-            .filterIsInstance<UniversalPluginAdapter>()
-            .filter { it.delegate === plugin }
-            .forEach { remove(it) }
+        timeline.remove(plugin)
         return this
     }
 
@@ -645,22 +639,15 @@ open class Amplitude(
      * plugins. Errors (e.g. OutOfMemoryError) are not caught and propagate to the caller.
      * Never call while holding the identity lock (notify happens after it's released).
      */
-    private fun notifyPlugins(block: (Plugin) -> Unit) {
+    private fun notifyPlugins(block: (UniversalPlugin) -> Unit) {
         pluginsSnapshot().forEach { safelyNotify(it, block) }
     }
 
-    private fun pluginsSnapshot(): List<Plugin> = timeline.pluginsSnapshot()
+    private fun pluginsSnapshot(): List<UniversalPlugin> = timeline.pluginsSnapshot()
 
-    private fun unwrapUniversalPlugin(plugin: Plugin?): UniversalPlugin? =
-        when (plugin) {
-            is UniversalPluginAdapter -> plugin.delegate
-            is UniversalPlugin -> plugin
-            else -> null
-        }
-
-    private fun safelyNotify(
-        plugin: Plugin,
-        block: (Plugin) -> Unit,
+    private fun <T : Any> safelyNotify(
+        plugin: T,
+        block: (T) -> Unit,
     ) {
         try {
             block(plugin)
@@ -669,9 +656,9 @@ open class Amplitude(
         }
     }
 
-    private fun Plugin.identifier(): String =
+    private fun Any.identifier(): String =
         try {
-            name ?: this::class.java.name
+            (this as? UniversalPlugin)?.name ?: this::class.java.name
         } catch (_: Exception) {
             this::class.java.name
         }

@@ -13,7 +13,7 @@ open class Timeline {
             Plugin.Type.Utility to Mediator(),
             Plugin.Type.Observe to Mediator(),
         )
-    private val reservedNames = ConcurrentHashMap<String, Plugin>()
+    private val reservedNames = ConcurrentHashMap<String, UniversalPlugin>()
     lateinit var amplitude: Amplitude
 
     open fun process(incomingEvent: BaseEvent) {
@@ -31,17 +31,30 @@ open class Timeline {
         applyPlugins(Plugin.Type.Destination, enrichmentResult)
     }
 
-    internal fun plugin(name: String): Plugin? = reservedNames[name]
+    internal fun plugin(name: String): UniversalPlugin? = reservedNames[name]
 
     fun add(plugin: Plugin) {
+        register(plugin)
+    }
+
+    fun add(plugin: UniversalPlugin) {
+        register(plugin)
+    }
+
+    private fun register(plugin: UniversalPlugin) {
         val name = plugin.name
         if (name != null && reservedNames.putIfAbsent(name, plugin) != null) {
             amplitude.logger.warn("Plugin \"$name\" is already registered; keeping the existing one.")
             return
         }
         try {
-            plugin.setup(amplitude)
-            plugins[plugin.type]?.add(plugin)
+            if (plugin is Plugin) {
+                plugin.setup(amplitude)
+            } else {
+                plugin.setup(amplitude.analyticsClient, amplitude.amplitudeContext)
+            }
+            val type = (plugin as? Plugin)?.type ?: Plugin.Type.Enrichment
+            plugins[type]?.add(plugin)
         } catch (t: Throwable) {
             if (name != null) reservedNames.remove(name, plugin)
             throw t
@@ -70,13 +83,21 @@ open class Timeline {
     }
 
     fun remove(plugin: Plugin) {
+        unregister(plugin)
+    }
+
+    fun remove(plugin: UniversalPlugin) {
+        unregister(plugin)
+    }
+
+    private fun unregister(plugin: UniversalPlugin) {
         plugin.name?.let { reservedNames.remove(it, plugin) }
         plugins.forEach { (_, mediator) ->
             if (mediator.remove(plugin)) plugin.teardown()
         }
     }
 
-    internal fun pluginsSnapshot(): List<Plugin> = plugins.values.flatMap { it.snapshot() }
+    internal fun pluginsSnapshot(): List<UniversalPlugin> = plugins.values.flatMap { it.snapshot() }
 
     inline fun <reified T : Plugin> findPlugin(): T? {
         var match: T? = null
@@ -91,7 +112,7 @@ open class Timeline {
     // Applies a closure on all registered plugins
     fun applyClosure(closure: (Plugin) -> Unit) {
         plugins.forEach { (_, mediator) ->
-            mediator.applyClosure(closure)
+            mediator.applyClosure { if (it is Plugin) closure(it) }
         }
     }
 }

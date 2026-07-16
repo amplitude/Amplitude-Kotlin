@@ -7,17 +7,17 @@ import com.amplitude.core.events.RevenueEvent
 import java.util.concurrent.CopyOnWriteArrayList
 
 internal class Mediator(
-    private val plugins: CopyOnWriteArrayList<Plugin> = CopyOnWriteArrayList(),
+    private val plugins: CopyOnWriteArrayList<UniversalPlugin> = CopyOnWriteArrayList(),
 ) {
-    fun add(plugin: Plugin) {
+    fun add(plugin: UniversalPlugin) {
         plugins.add(plugin)
     }
 
-    fun remove(plugin: Plugin) = plugins.removeAll { it === plugin }
+    fun remove(plugin: UniversalPlugin) = plugins.removeAll { it === plugin }
 
     // Iterator-based copy: Iterable.toList() uses elementAt() for size==1, which races with
     // concurrent remove() on CopyOnWriteArrayList (ArrayIndexOutOfBoundsException).
-    fun snapshot(): List<Plugin> = plugins.toMutableList()
+    fun snapshot(): List<UniversalPlugin> = plugins.toMutableList()
 
     fun execute(event: BaseEvent): BaseEvent? {
         var result: BaseEvent? = event
@@ -58,7 +58,7 @@ internal class Mediator(
         return result
     }
 
-    fun applyClosure(closure: (Plugin) -> Unit) {
+    fun applyClosure(closure: (UniversalPlugin) -> Unit) {
         plugins.forEach {
             closure(it)
         }

@@ -4,10 +4,16 @@ import com.amplitude.core.Amplitude
 import com.amplitude.core.AmplitudeContext
 import com.amplitude.core.AnalyticsClient
 import com.amplitude.core.AnalyticsIdentity
+import com.amplitude.core.Configuration
 import com.amplitude.core.RestrictedAmplitudeFeature
+import com.amplitude.core.State
 import com.amplitude.core.events.AnalyticsEvent
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utils.FakeAmplitude
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestDispatcher
+import kotlinx.coroutines.test.TestScope
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
@@ -172,30 +178,62 @@ class UniversalPluginTest {
             a.track("blade-event", null)
 
             var enrichmentCount = 0
-            a.timeline.applyClosure { plugin ->
-                if (plugin is UniversalPluginAdapter && plugin.delegate === blade) {
+            a.timeline.plugins[Plugin.Type.Enrichment]?.applyClosure { plugin ->
+                if (plugin === blade) {
                     enrichmentCount += 1
-                    assertEquals(Plugin.Type.Enrichment, plugin.type)
                 }
             }
             assertEquals(1, enrichmentCount)
+            assertSame(blade, a.plugin("blade"))
             assertEquals(listOf("blade-event"), blade.executedTypes)
         }
 
         @Test
-        fun `bare UniversalPlugin receives lifecycle callbacks`() {
-            val a = amplitude()
+        fun `bare UniversalPlugin receives all UniversalPlugin lifecycle callbacks`() {
+            val a = SessionAwareAmplitude()
             val blade = RecordingUniversalPlugin()
 
             a.add(blade)
             a.setUserId("uid")
+            a.notifySessionIdChanged(42L)
             a.optOut = true
             a.reset()
 
             assertEquals(2, blade.identitySnapshots.size)
             assertEquals("uid", blade.identitySnapshots.first().userId)
+            assertEquals(listOf(42L), blade.sessionIds)
             assertEquals(listOf(true), blade.optOuts)
             assertEquals(1, blade.resets)
+        }
+
+        @Test
+        fun `Plugin keeps its declared type when added`() {
+            val a = amplitude()
+            val recorder = RecordingPlugin()
+
+            a.add(recorder)
+
+            var beforeCount = 0
+            a.timeline.plugins[Plugin.Type.Before]?.applyClosure { plugin ->
+                if (plugin === recorder) beforeCount += 1
+            }
+            assertEquals(1, beforeCount)
+        }
+
+        @Test
+        fun `bare UniversalPlugin does not receive Plugin-only identity callbacks`() {
+            val a = amplitude()
+            val blade = RecordingUniversalPlugin()
+            val recorder = RecordingPlugin()
+            a.add(blade)
+            a.add(recorder)
+
+            a.setUserId("uid")
+            a.setDeviceId("did")
+
+            assertEquals(listOf<String?>("uid"), recorder.userIds)
+            assertEquals(listOf<String?>("did"), recorder.deviceIds)
+            assertEquals(2, blade.identitySnapshots.size)
         }
 
         @Test
@@ -230,7 +268,7 @@ class UniversalPluginTest {
             a.remove(blade)
 
             assertTrue(a.plugins<RecordingUniversalPlugin>().isEmpty())
-            assertEquals(2, blade.teardownCount)
+            assertEquals(1, blade.teardownCount)
         }
 
         @Test
@@ -270,19 +308,20 @@ class UniversalPluginTest {
         }
 
         @Test
-        fun `bare UniversalPlugin returning null drops event through adapter`() {
+        fun `bare UniversalPlugin returning null drops event through timeline`() {
             val plugin =
                 object : UniversalPlugin {
                     override fun <T : AnalyticsEvent> execute(event: T): T? = null
                 }
-            val adapter = UniversalPluginAdapter(plugin)
+            val mediator = Mediator()
+            mediator.add(plugin)
             val event =
                 BaseEvent().also {
                     it.eventType = "drop-me"
                     it.deviceId = "device"
                 }
 
-            val result = adapter.execute(event)
+            val result = mediator.execute(event)
 
             assertNull(result)
         }
@@ -320,6 +359,22 @@ class UniversalPluginTest {
             assertTrue(routingPlugin.baseEventOverloadCalled)
             assertSame(event, result)
             assertEquals(mapOf("routed" to true), event.eventProperties)
+        }
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private class SessionAwareAmplitude(
+        testDispatcher: TestDispatcher = StandardTestDispatcher(),
+    ) : Amplitude(
+            Configuration("FAKE-API-KEY"),
+            State(),
+            TestScope(testDispatcher),
+            testDispatcher,
+            testDispatcher,
+            testDispatcher,
+        ) {
+        fun notifySessionIdChanged(sessionId: Long) {
+            notifyAllPlugins { it.onSessionIdChanged(sessionId) }
         }
     }
 
