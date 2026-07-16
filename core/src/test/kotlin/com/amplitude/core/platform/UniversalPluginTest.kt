@@ -5,6 +5,7 @@ import com.amplitude.core.AmplitudeContext
 import com.amplitude.core.AnalyticsClient
 import com.amplitude.core.AnalyticsIdentity
 import com.amplitude.core.RestrictedAmplitudeFeature
+import com.amplitude.core.events.AnalyticsEvent
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utils.FakeAmplitude
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -39,8 +40,10 @@ class UniversalPluginTest {
             setupContext = context
         }
 
-        override fun execute(event: BaseEvent): BaseEvent? {
-            executedTypes += event.eventType
+        override fun <T : AnalyticsEvent> execute(event: T): T? {
+            if (event is BaseEvent) {
+                executedTypes += event.eventType
+            }
             return event
         }
 
@@ -241,6 +244,94 @@ class UniversalPluginTest {
 
             assertEquals(1, a.plugins<RecordingUniversalPlugin>().size)
             assertSame(first, a.plugins<RecordingUniversalPlugin>().single())
+        }
+    }
+
+    @Nested
+    inner class AnalyticsEventExecute {
+        @Test
+        fun `bare UniversalPlugin mutates eventProperties in place`() {
+            val plugin =
+                object : UniversalPlugin {
+                    override fun <T : AnalyticsEvent> execute(event: T): T? {
+                        event.eventProperties = mutableMapOf("mutated" to true)
+                        return event
+                    }
+                }
+            val event =
+                BaseEvent().also {
+                    it.eventType = "mutate-me"
+                    it.deviceId = "device"
+                }
+
+            plugin.execute(event)
+
+            assertEquals(mapOf("mutated" to true), event.eventProperties)
+        }
+
+        @Test
+        fun `bare UniversalPlugin returning null drops event through adapter`() {
+            val plugin =
+                object : UniversalPlugin {
+                    override fun <T : AnalyticsEvent> execute(event: T): T? = null
+                }
+            val adapter = UniversalPluginAdapter(plugin)
+            val event =
+                BaseEvent().also {
+                    it.eventType = "drop-me"
+                    it.deviceId = "device"
+                }
+
+            val result = adapter.execute(event)
+
+            assertNull(result)
+        }
+
+        @Test
+        fun `custom AnalyticsEvent echoes through plugin execute`() {
+            val plugin = object : UniversalPlugin {}
+            val customEvent =
+                object : AnalyticsEvent {
+                    override var userId: String? = "user"
+                    override var deviceId: String? = "device"
+                    override var timestamp: Long? = 1L
+                    override var sessionId: Long? = 2L
+                    override var eventType: String = "custom"
+                    override var eventProperties: MutableMap<String, Any?>? = mutableMapOf("key" to "value")
+                }
+
+            val result = plugin.execute(customEvent)
+
+            assertSame(customEvent, result)
+        }
+
+        @Test
+        fun `Plugin invoked via UniversalPlugin reference routes to BaseEvent overload`() {
+            val routingPlugin = BaseEventRoutingPlugin()
+            val universal: UniversalPlugin = routingPlugin
+            val event =
+                BaseEvent().also {
+                    it.eventType = "routed"
+                    it.deviceId = "device"
+                }
+
+            val result = universal.execute(event)
+
+            assertTrue(routingPlugin.baseEventOverloadCalled)
+            assertSame(event, result)
+            assertEquals(mapOf("routed" to true), event.eventProperties)
+        }
+    }
+
+    private class BaseEventRoutingPlugin : Plugin {
+        override val type: Plugin.Type = Plugin.Type.Before
+        override lateinit var amplitude: Amplitude
+        var baseEventOverloadCalled = false
+
+        override fun execute(event: BaseEvent): BaseEvent? {
+            baseEventOverloadCalled = true
+            event.eventProperties = mutableMapOf("routed" to true)
+            return event
         }
     }
 

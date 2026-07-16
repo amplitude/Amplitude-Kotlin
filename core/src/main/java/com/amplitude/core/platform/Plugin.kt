@@ -3,6 +3,7 @@ package com.amplitude.core.platform
 import com.amplitude.core.Amplitude
 import com.amplitude.core.AmplitudeContext
 import com.amplitude.core.AnalyticsClient
+import com.amplitude.core.events.AnalyticsEvent
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.GroupIdentifyEvent
 import com.amplitude.core.events.IdentifyEvent
@@ -41,8 +42,13 @@ interface Plugin : UniversalPlugin {
         context: AmplitudeContext,
     ) {}
 
-    override fun execute(event: BaseEvent): BaseEvent? {
+    fun execute(event: BaseEvent): BaseEvent? {
         return event
+    }
+
+    override fun <T : AnalyticsEvent> execute(event: T): T? {
+        if (event !is BaseEvent) return event
+        return if (execute(event) == null) null else event
     }
 
     override fun teardown() {

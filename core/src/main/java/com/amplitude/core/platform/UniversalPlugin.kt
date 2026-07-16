@@ -3,7 +3,7 @@ package com.amplitude.core.platform
 import com.amplitude.core.AmplitudeContext
 import com.amplitude.core.AnalyticsClient
 import com.amplitude.core.AnalyticsIdentity
-import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.events.AnalyticsEvent
 
 /**
  * A plugin contract that depends only on `:analytics-core`, not on the full
@@ -36,10 +36,11 @@ interface UniversalPlugin {
     ) {}
 
     /**
-     * Processes an event as it flows through the pipeline. Return the event (optionally
-     * modified) to let it continue, or `null` to drop it.
+     * Processes an event as it flows through the pipeline. Plugins may read and mutate the
+     * event's fields and may drop it by returning `null`, but must return the same event
+     * instance (not a different concrete type).
      */
-    fun execute(event: BaseEvent): BaseEvent? = event
+    fun <T : AnalyticsEvent> execute(event: T): T? = event
 
     /** Releases any resources acquired in [setup]. */
     fun teardown() {}

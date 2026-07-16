@@ -415,17 +415,32 @@ public abstract interface class com/amplitude/core/diagnostics/DiagnosticsContex
 	public abstract fun getContextInfo ()Lcom/amplitude/core/diagnostics/DiagnosticsContextInfo;
 }
 
-public class com/amplitude/core/events/BaseEvent : com/amplitude/core/events/EventOptions {
+public abstract interface class com/amplitude/core/events/AnalyticsEvent {
+	public abstract fun getDeviceId ()Ljava/lang/String;
+	public abstract fun getEventProperties ()Ljava/util/Map;
+	public abstract fun getEventType ()Ljava/lang/String;
+	public abstract fun getSessionId ()Ljava/lang/Long;
+	public abstract fun getTimestamp ()Ljava/lang/Long;
+	public abstract fun getUserId ()Ljava/lang/String;
+	public abstract fun setDeviceId (Ljava/lang/String;)V
+	public abstract fun setEventProperties (Ljava/util/Map;)V
+	public abstract fun setEventType (Ljava/lang/String;)V
+	public abstract fun setSessionId (Ljava/lang/Long;)V
+	public abstract fun setTimestamp (Ljava/lang/Long;)V
+	public abstract fun setUserId (Ljava/lang/String;)V
+}
+
+public class com/amplitude/core/events/BaseEvent : com/amplitude/core/events/EventOptions, com/amplitude/core/events/AnalyticsEvent {
 	public field eventType Ljava/lang/String;
 	public fun <init> ()V
-	public final fun getEventProperties ()Ljava/util/Map;
+	public fun getEventProperties ()Ljava/util/Map;
 	public fun getEventType ()Ljava/lang/String;
 	public final fun getGroupProperties ()Ljava/util/Map;
 	public final fun getGroups ()Ljava/util/Map;
 	public final fun getUserProperties ()Ljava/util/Map;
 	public fun isValid ()Z
 	public final fun mergeEventOptions (Lcom/amplitude/core/events/EventOptions;)V
-	public final fun setEventProperties (Ljava/util/Map;)V
+	public fun setEventProperties (Ljava/util/Map;)V
 	public fun setEventType (Ljava/lang/String;)V
 	public final fun setGroupProperties (Ljava/util/Map;)V
 	public final fun setGroups (Ljava/util/Map;)V
@@ -833,6 +848,7 @@ public abstract class com/amplitude/core/platform/ObservePlugin : com/amplitude/
 }
 
 public abstract interface class com/amplitude/core/platform/Plugin : com/amplitude/core/platform/UniversalPlugin {
+	public fun execute (Lcom/amplitude/core/events/AnalyticsEvent;)Lcom/amplitude/core/events/AnalyticsEvent;
 	public fun execute (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
 	public abstract fun getAmplitude ()Lcom/amplitude/core/Amplitude;
 	public fun getName ()Ljava/lang/String;
@@ -888,7 +904,7 @@ public class com/amplitude/core/platform/Timeline {
 }
 
 public abstract interface class com/amplitude/core/platform/UniversalPlugin {
-	public fun execute (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
+	public fun execute (Lcom/amplitude/core/events/AnalyticsEvent;)Lcom/amplitude/core/events/AnalyticsEvent;
 	public fun getName ()Ljava/lang/String;
 	public fun onIdentityChanged (Lcom/amplitude/core/AnalyticsIdentity;)V
 	public fun onOptOutChanged (Z)V

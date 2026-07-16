@@ -3,9 +3,9 @@ package com.amplitude.core.events
 /**
  * BaseEvent for SDK
  */
-open class BaseEvent : EventOptions() {
-    open lateinit var eventType: String
-    var eventProperties: MutableMap<String, Any?>? = null
+open class BaseEvent : EventOptions(), AnalyticsEvent {
+    open override lateinit var eventType: String
+    override var eventProperties: MutableMap<String, Any?>? = null
     var userProperties: MutableMap<String, Any?>? = null
     var groups: MutableMap<String, Any?>? = null
     var groupProperties: MutableMap<String, Any?>? = null
