@@ -49,7 +49,12 @@ internal class Mediator(
                             }
                         }
                     }
+                    is Plugin -> {
+                        // Binds to Plugin.execute(BaseEvent), which may return a replacement event.
+                        result = plugin.execute(result as BaseEvent)
+                    }
                     else -> {
+                        // Bare UniversalPlugin: the generic hook may mutate or drop, not replace.
                         result = plugin.execute(result as BaseEvent)
                     }
                 }

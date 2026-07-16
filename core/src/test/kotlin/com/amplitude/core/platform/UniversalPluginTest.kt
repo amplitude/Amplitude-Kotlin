@@ -345,6 +345,25 @@ class UniversalPluginTest {
         }
 
         @Test
+        fun `Mediator preserves a replacement event returned by a plain Plugin`() {
+            val replacement = BaseEvent().also { it.eventType = "replacement" }
+            val replacingPlugin =
+                object : Plugin {
+                    override val type: Plugin.Type = Plugin.Type.Enrichment
+                    override lateinit var amplitude: Amplitude
+
+                    override fun execute(event: BaseEvent): BaseEvent? = replacement
+                }
+            val mediator = Mediator()
+            mediator.add(replacingPlugin)
+            val original = BaseEvent().also { it.eventType = "original" }
+
+            val result = mediator.execute(original)
+
+            assertSame(replacement, result)
+        }
+
+        @Test
         fun `Plugin invoked via UniversalPlugin reference routes to BaseEvent overload`() {
             val routingPlugin = BaseEventRoutingPlugin()
             val universal: UniversalPlugin = routingPlugin
