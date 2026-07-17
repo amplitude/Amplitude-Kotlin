@@ -33,15 +33,7 @@ open class Timeline {
 
     internal fun plugin(name: String): UniversalPlugin? = reservedNames[name]
 
-    fun add(plugin: Plugin) {
-        register(plugin)
-    }
-
     fun add(plugin: UniversalPlugin) {
-        register(plugin)
-    }
-
-    private fun register(plugin: UniversalPlugin) {
         val name = plugin.name
         if (name != null && reservedNames.putIfAbsent(name, plugin) != null) {
             amplitude.logger.warn("Plugin \"$name\" is already registered; keeping the existing one.")
@@ -82,15 +74,7 @@ open class Timeline {
         return result
     }
 
-    fun remove(plugin: Plugin) {
-        unregister(plugin)
-    }
-
     fun remove(plugin: UniversalPlugin) {
-        unregister(plugin)
-    }
-
-    private fun unregister(plugin: UniversalPlugin) {
         plugin.name?.let { reservedNames.remove(it, plugin) }
         plugins.forEach { (_, mediator) ->
             if (mediator.remove(plugin)) plugin.teardown()

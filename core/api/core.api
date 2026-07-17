@@ -894,13 +894,11 @@ public abstract interface class com/amplitude/core/platform/SignalProvider {
 public class com/amplitude/core/platform/Timeline {
 	public field amplitude Lcom/amplitude/core/Amplitude;
 	public fun <init> ()V
-	public final fun add (Lcom/amplitude/core/platform/Plugin;)V
 	public final fun add (Lcom/amplitude/core/platform/UniversalPlugin;)V
 	public final fun applyClosure (Lkotlin/jvm/functions/Function1;)V
 	public final fun applyPlugins (Lcom/amplitude/core/platform/Plugin$Type;Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
 	public final fun getAmplitude ()Lcom/amplitude/core/Amplitude;
 	public fun process (Lcom/amplitude/core/events/BaseEvent;)V
-	public final fun remove (Lcom/amplitude/core/platform/Plugin;)V
 	public final fun remove (Lcom/amplitude/core/platform/UniversalPlugin;)V
 	public final fun setAmplitude (Lcom/amplitude/core/Amplitude;)V
 }
