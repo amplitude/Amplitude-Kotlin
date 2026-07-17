@@ -45,7 +45,7 @@ open class Amplitude internal constructor(
     ) {
     constructor(configuration: Configuration) : this(configuration, State())
 
-    val sessionId: Long
+    override val sessionId: Long
         get() {
             return (timeline as Timeline).sessionId
         }

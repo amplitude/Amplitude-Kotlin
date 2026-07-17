@@ -13,8 +13,10 @@ import com.amplitude.core.events.Revenue
 import com.amplitude.core.events.RevenueEvent
 import com.amplitude.core.platform.EventPlugin
 import com.amplitude.core.platform.Plugin
+import com.amplitude.core.platform.PluginHost
 import com.amplitude.core.platform.Signal
 import com.amplitude.core.platform.Timeline
+import com.amplitude.core.platform.UniversalPlugin
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.ContextPlugin
 import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
@@ -56,7 +58,20 @@ open class Amplitude(
     val amplitudeDispatcher: CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher(),
     val networkIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
     val storageIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
-) {
+) : PluginHost {
+    open val identity: AnalyticsIdentity
+        get() =
+            object : AnalyticsIdentity {
+                override val userId: String? = store.userId
+                override val deviceId: String? = store.deviceId
+            }
+
+    /**
+     * Session id is Android-only. Core returns -1 by default; the Android
+     * subclass overrides this with the real value.
+     */
+    open val sessionId: Long
+        get() = -1L
     val timeline: Timeline
     val storage: Storage by lazy {
         configuration.storageProvider.getStorage(this)
@@ -106,6 +121,19 @@ open class Amplitude(
         )
     }
 
+    val amplitudeContext: AmplitudeContext by lazy { buildAmplitudeContext() }
+
+    @OptIn(RestrictedAmplitudeFeature::class)
+    private fun buildAmplitudeContext(): AmplitudeContext =
+        AmplitudeContext(
+            apiKey = configuration.apiKey,
+            instanceName = configuration.instanceName,
+            serverZone = configuration.serverZone,
+            logger = logger,
+            remoteConfigClientProvider = { remoteConfigClient },
+            diagnosticsClientProvider = { diagnosticsClient },
+        )
+
     // Signal broadcasting - single shared flow for all plugins
     private val _signalFlow =
         MutableSharedFlow<Signal>(
@@ -136,6 +164,8 @@ open class Amplitude(
             configuration.optOut = value
             notifyPlugins { it.onOptOutChanged(value) }
         }
+
+    internal val analyticsClient: AnalyticsClient by lazy { AmplitudeAnalyticsClient(this) }
 
     init {
         require(configuration.isValid()) { "invalid configuration" }
@@ -309,7 +339,10 @@ open class Amplitude(
      */
     fun setUserId(userId: String?): Amplitude {
         identityCoordinator.setUserId(userId)
-        notifyPlugins { it.onUserIdChanged(store.userId) }
+        val plugins = pluginsSnapshot()
+        plugins.filterIsInstance<Plugin>().forEach { safelyNotify(it) { p -> p.onUserIdChanged(store.userId) } }
+        val snapshot = identity
+        plugins.forEach { safelyNotify(it) { p -> p.onIdentityChanged(snapshot) } }
         return this
     }
 
@@ -330,7 +363,10 @@ open class Amplitude(
      */
     fun setDeviceId(deviceId: String): Amplitude {
         identityCoordinator.setDeviceId(deviceId)
-        notifyPlugins { it.onDeviceIdChanged(store.deviceId) }
+        val plugins = pluginsSnapshot()
+        plugins.filterIsInstance<Plugin>().forEach { safelyNotify(it) { p -> p.onDeviceIdChanged(store.deviceId) } }
+        val snapshot = identity
+        plugins.forEach { safelyNotify(it) { p -> p.onIdentityChanged(snapshot) } }
         return this
     }
 
@@ -362,16 +398,18 @@ open class Amplitude(
     protected fun doResetWithDeviceId(newDeviceId: String) {
         identityCoordinator.reset(newDeviceId)
         val plugins = pluginsSnapshot()
-        plugins.forEach { safelyNotify(it) { plugin -> plugin.onUserIdChanged(store.userId) } }
-        plugins.forEach { safelyNotify(it) { plugin -> plugin.onDeviceIdChanged(store.deviceId) } }
-        plugins.forEach { safelyNotify(it) { plugin -> plugin.onReset() } }
+        plugins.filterIsInstance<Plugin>().forEach { safelyNotify(it) { p -> p.onUserIdChanged(store.userId) } }
+        plugins.filterIsInstance<Plugin>().forEach { safelyNotify(it) { p -> p.onDeviceIdChanged(store.deviceId) } }
+        val snapshot = identity
+        plugins.forEach { safelyNotify(it) { p -> p.onIdentityChanged(snapshot) } }
+        plugins.forEach { safelyNotify(it) { p -> p.onReset() } }
     }
 
     /**
      * Fan an arbitrary state-change callback out to every plugin (timeline + observe store).
      * For platform SDKs (e.g. Android session-id changes); each invocation is isolated.
      */
-    protected fun notifyAllPlugins(block: (Plugin) -> Unit) {
+    protected fun notifyAllPlugins(block: (UniversalPlugin) -> Unit) {
         notifyPlugins(block)
     }
 
@@ -546,11 +584,41 @@ open class Amplitude(
     }
 
     /**
+     * Add a [UniversalPlugin]. If the plugin is also a [Plugin], it is added directly.
+     * Otherwise it is hosted in the enrichment stage.
+     */
+    fun add(plugin: UniversalPlugin): Amplitude {
+        timeline.add(plugin)
+        return this
+    }
+
+    /**
      * Find the first registered plugin assignable to [T] in the timeline mediators.
      */
     inline fun <reified T : Plugin> findPlugin(): T? = timeline.findPlugin<T>()
 
+    override fun plugin(name: String): UniversalPlugin? = timeline.plugin(name)
+
+    override fun <T : UniversalPlugin> plugins(clazz: Class<T>): List<T> {
+        val matches = mutableListOf<T>()
+        pluginsSnapshot().forEach { plugin ->
+            if (clazz.isInstance(plugin)) {
+                @Suppress("UNCHECKED_CAST")
+                matches.add(plugin as T)
+            }
+        }
+        return matches
+    }
+
     fun remove(plugin: Plugin): Amplitude {
+        timeline.remove(plugin)
+        return this
+    }
+
+    /**
+     * Remove a [UniversalPlugin], including a bare plugin hosted in the enrichment stage.
+     */
+    fun remove(plugin: UniversalPlugin): Amplitude {
         timeline.remove(plugin)
         return this
     }
@@ -571,15 +639,15 @@ open class Amplitude(
      * plugins. Errors (e.g. OutOfMemoryError) are not caught and propagate to the caller.
      * Never call while holding the identity lock (notify happens after it's released).
      */
-    private fun notifyPlugins(block: (Plugin) -> Unit) {
+    private fun notifyPlugins(block: (UniversalPlugin) -> Unit) {
         pluginsSnapshot().forEach { safelyNotify(it, block) }
     }
 
-    private fun pluginsSnapshot(): List<Plugin> = timeline.pluginsSnapshot()
+    private fun pluginsSnapshot(): List<UniversalPlugin> = timeline.pluginsSnapshot()
 
-    private fun safelyNotify(
-        plugin: Plugin,
-        block: (Plugin) -> Unit,
+    private fun <T : Any> safelyNotify(
+        plugin: T,
+        block: (T) -> Unit,
     ) {
         try {
             block(plugin)
@@ -588,9 +656,9 @@ open class Amplitude(
         }
     }
 
-    private fun Plugin.identifier(): String =
+    private fun Any.identifier(): String =
         try {
-            name ?: this::class.java.name
+            (this as? UniversalPlugin)?.name ?: this::class.java.name
         } catch (_: Exception) {
             this::class.java.name
         }
@@ -601,6 +669,26 @@ open class Amplitude(
             property.value?.let { identify.set(property.key, it) }
         }
         return identify
+    }
+}
+
+private class AmplitudeAnalyticsClient(
+    private val amplitude: Amplitude,
+) : AnalyticsClient {
+    override val identity: AnalyticsIdentity
+        get() = amplitude.identity
+
+    override val sessionId: Long
+        get() = amplitude.sessionId
+
+    override val optOut: Boolean
+        get() = amplitude.optOut
+
+    override fun track(
+        eventType: String,
+        eventProperties: Map<String, Any?>?,
+    ) {
+        amplitude.track(eventType, eventProperties, null)
     }
 }
 

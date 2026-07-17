@@ -1,12 +1,15 @@
 package com.amplitude.core.platform
 
 import com.amplitude.core.Amplitude
+import com.amplitude.core.AmplitudeContext
+import com.amplitude.core.AnalyticsClient
+import com.amplitude.core.events.AnalyticsEvent
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.GroupIdentifyEvent
 import com.amplitude.core.events.IdentifyEvent
 import com.amplitude.core.events.RevenueEvent
 
-interface Plugin {
+interface Plugin : UniversalPlugin {
     enum class Type {
         Before,
         Enrichment,
@@ -19,46 +22,62 @@ interface Plugin {
     var amplitude: Amplitude
 
     /**
-     * Optional stable plugin identifier. When non-null, adding another plugin
-     * with the same name is **skipped** — the first registration wins and is
-     * not torn down. A warning is logged for the duplicate.
+     * Optional stable identifier. When non-null, registering another plugin with the same
+     * name is ignored — the first one wins.
      */
-    val name: String? get() = null
+    override val name: String? get() = null
 
+    /**
+     * Called when the plugin is registered with an [Amplitude] instance. Override to
+     * initialize the plugin, and call `super.setup(amplitude)` to keep the default wiring.
+     */
     fun setup(amplitude: Amplitude) {
         this.amplitude = amplitude
+        setup(amplitude.analyticsClient, amplitude.amplitudeContext)
     }
+
+    /** Not used by [Plugin] implementations; they receive [setup] with the [Amplitude] instance instead. */
+    override fun setup(
+        client: AnalyticsClient,
+        context: AmplitudeContext,
+    ) {}
 
     fun execute(event: BaseEvent): BaseEvent? {
         return event
     }
 
-    fun teardown() {
+    override fun <T : AnalyticsEvent> execute(event: T): T? {
+        if (event !is BaseEvent) return event
+        return if (execute(event) == null) null else event
+    }
+
+    override fun teardown() {
         // Clean up any resources from setup if necessary
     }
 
     /**
-     * State-change callbacks. Default no-ops so existing plugins are unaffected.
-     * Delivered to every registered plugin (timeline and observe store) by
-     * [com.amplitude.core.Amplitude]; each invocation is isolated so one plugin throwing an
-     * exception does not affect the others.
+     * Called when the user id or device id changes.
      *
-     * Threading: callbacks are delivered **synchronously on the thread that triggers the
-     * change** — e.g. the caller's thread for [com.amplitude.core.Amplitude.setUserId] /
-     * [com.amplitude.core.Amplitude.setDeviceId], and a background (session/lifecycle) thread
-     * for [onSessionIdChanged]. No specific thread is guaranteed (in particular, not the main
-     * thread). Keep callbacks fast and non-blocking; identity values are read from `@Volatile`
-     * fields so individual reads are safe, but do not assume a stable thread across callbacks.
+     * Callbacks run synchronously on the thread that triggered the change, which is not
+     * guaranteed to be the main thread, so keep them fast and non-blocking. An exception
+     * thrown by one plugin does not prevent the others from being notified.
      */
     fun onUserIdChanged(userId: String?) {}
 
+    /** Called when the device id changes. Shares the threading contract of [onUserIdChanged]. */
     fun onDeviceIdChanged(deviceId: String?) {}
 
-    fun onSessionIdChanged(sessionId: Long) {}
+    /** Called when the session id changes. Only fires on SDK builds that track sessions. */
+    override fun onSessionIdChanged(sessionId: Long) {}
 
-    fun onOptOutChanged(optOut: Boolean) {}
+    /** Called when the [Amplitude.optOut] setting changes. */
+    override fun onOptOutChanged(optOut: Boolean) {}
 
-    fun onReset() {}
+    /**
+     * Called when [Amplitude.reset] is invoked, after the [onUserIdChanged],
+     * [onDeviceIdChanged], and [onIdentityChanged] callbacks for that reset.
+     */
+    override fun onReset() {}
 }
 
 interface EventPlugin : Plugin {
