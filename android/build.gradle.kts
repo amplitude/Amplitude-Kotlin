@@ -73,7 +73,7 @@ mavenPublishing {
 }
 
 dependencies {
-    api(project(":core"))
+    api(project(":analytics-core"))
     implementation(libs.coroutines.core)
     implementation(libs.coroutines.android)
     implementation(libs.analytics.connector)
@@ -85,7 +85,7 @@ dependencies {
     compileOnly(libs.compose.ui)
 
     testImplementation(libs.mockk)
-    testImplementation(project(":core"))
+    testImplementation(project(":analytics-core"))
     testImplementation(libs.coroutines.test)
     testImplementation(libs.mockwebserver)
 
