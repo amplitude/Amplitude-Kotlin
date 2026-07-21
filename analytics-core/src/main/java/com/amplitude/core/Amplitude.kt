@@ -93,6 +93,7 @@ open class Amplitude(
     internal val identityCoordinator = IdentityCoordinator(store)
 
     private val shutdownState = AtomicBoolean(false)
+    private val performShutdownState = AtomicBoolean(false)
 
     /** Whether [shutdown] has been invoked. Readable by platform subclasses. */
     protected fun isShutdown(): Boolean = shutdownState.get()
@@ -679,6 +680,10 @@ open class Amplitude(
      * overrides must call `super.performShutdown()`.
      */
     protected open fun performShutdown() {
+        if (!performShutdownState.compareAndSet(false, true)) {
+            return
+        }
+
         try {
             timeline.stop()
         } catch (e: Exception) {

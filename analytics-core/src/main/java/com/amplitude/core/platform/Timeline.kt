@@ -88,7 +88,7 @@ open class Timeline {
      * throwing doesn't prevent the others from being cleaned up.
      */
     open fun stop() {
-        applyClosure { plugin ->
+        pluginsSnapshot().forEach { plugin ->
             try {
                 plugin.teardown()
             } catch (e: Exception) {
