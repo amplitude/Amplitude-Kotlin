@@ -16,6 +16,18 @@ class EventBridgeContainer {
                 }
             }
         }
+
+        /** Removes the container for [instanceName], but only if it is still [expected]. */
+        internal fun remove(
+            instanceName: String,
+            expected: EventBridgeContainer,
+        ) {
+            synchronized(instancesLock) {
+                if (instances[instanceName] === expected) {
+                    instances.remove(instanceName)
+                }
+            }
+        }
     }
 
     val eventBridge: EventBridge = EventBridgeImpl()

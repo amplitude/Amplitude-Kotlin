@@ -17,6 +17,9 @@ import com.amplitude.core.utils.FakeAmplitude
 import com.amplitude.core.utils.StubPlugin
 import com.amplitude.core.utils.StubUniversalPlugin
 import com.amplitude.core.utils.TestRunPlugin
+import com.amplitude.eventbridge.Event
+import com.amplitude.eventbridge.EventBridgeContainer
+import com.amplitude.eventbridge.EventChannel
 import io.mockk.every
 import io.mockk.slot
 import io.mockk.spyk
@@ -756,6 +759,34 @@ internal class AmplitudeTest {
             assertTrue(errors.isEmpty(), "Expected no errors but got: $errors")
             assertEquals(1, teardownCount.get())
             assertFalse(amplitude.amplitudeScope.isActive)
+        }
+
+        @Test
+        fun `after shutdown, a same-named rebuild registers its own EventBridge receiver`() {
+            val instanceName = "reused-instance-name"
+
+            fun newConfiguration() =
+                Configuration(
+                    "test-key",
+                    instanceName = instanceName,
+                    serverUrl = server.url("/").toString(),
+                )
+
+            val first = FakeAmplitude(newConfiguration(), testDispatcher = UnconfinedTestDispatcher())
+            first.shutdown()
+
+            val second = FakeAmplitude(newConfiguration(), testDispatcher = UnconfinedTestDispatcher())
+            val mockPlugin = spyk(StubPlugin())
+            second.add(mockPlugin)
+
+            val bridge = EventBridgeContainer.getInstance(instanceName).eventBridge
+            bridge.sendEvent(EventChannel.EVENT, Event("bridged_event"))
+
+            val track = slot<BaseEvent>()
+            verify { mockPlugin.track(capture(track)) }
+            assertEquals("bridged_event", track.captured.eventType)
+
+            second.shutdown()
         }
 
         @Test

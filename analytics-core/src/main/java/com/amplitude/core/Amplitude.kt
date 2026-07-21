@@ -97,6 +97,9 @@ open class Amplitude(
     /** Whether [shutdown] has been invoked. Readable by platform subclasses. */
     protected fun isShutdown(): Boolean = shutdownState.get()
 
+    // The EventBridge container this instance registered on; freed (ownership-checked) on shutdown.
+    @Volatile private var eventBridgeContainer: EventBridgeContainer? = null
+
     @RestrictedAmplitudeFeature
     val diagnosticsClient: DiagnosticsClient by lazy {
         DiagnosticsClientImpl(
@@ -228,9 +231,9 @@ open class Amplitude(
 
     protected open suspend fun buildInternal(identityConfiguration: IdentityConfiguration) {
         createIdentityContainer(identityConfiguration)
-        EventBridgeContainer.getInstance(
-            configuration.instanceName,
-        ).eventBridge.setEventReceiver(EventChannel.EVENT, AnalyticsEventReceiver(this))
+        val eventBridgeContainer = EventBridgeContainer.getInstance(configuration.instanceName)
+        this.eventBridgeContainer = eventBridgeContainer
+        eventBridgeContainer.eventBridge.setEventReceiver(EventChannel.EVENT, AnalyticsEventReceiver(this))
         add(ContextPlugin())
         add(GetAmpliExtrasPlugin())
         add(AmplitudeDestination())
@@ -690,6 +693,9 @@ open class Amplitude(
             // finally, so an Error from a plugin's teardown() still cancels the scope.
             amplitudeScope.cancel()
         }
+
+        // Free the instanceName slot (ownership-checked) so a same-named rebuild gets its own receiver.
+        eventBridgeContainer?.let { EventBridgeContainer.remove(configuration.instanceName, it) }
 
         // Graceful close (no join — shutdown() may run on the main thread; a join risks an ANR).
         (amplitudeDispatcher as? ExecutorCoroutineDispatcher)?.close()
