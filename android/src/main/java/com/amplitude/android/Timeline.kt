@@ -59,7 +59,8 @@ class Timeline(
         }
     }
 
-    internal fun stop() {
+    override fun stop() {
+        super.stop()
         this.eventMessageChannel.cancel()
     }
 

@@ -1,5 +1,6 @@
 package com.amplitude.android
 
+import android.app.Activity
 import android.app.Application
 import android.content.Context
 import android.net.ConnectivityManager
@@ -18,10 +19,13 @@ import com.amplitude.id.IMIdentityStorageProvider
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -443,6 +447,150 @@ class AmplitudeTest {
             assertNull(event.userId)
             assertNotEquals("old-device", event.deviceId)
             assertNotNull(event.deviceId)
+        }
+
+    @Test
+    fun shutdown_unregisters_activityLifecycleCallbacks() =
+        runTest {
+            val configuration = createConfiguration()
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = configuration,
+                )
+            amplitude.isBuilt.await()
+            advanceUntilIdle()
+
+            val application = configuration.context as Application
+            val registeredSlot = slot<Application.ActivityLifecycleCallbacks>()
+            verify { application.registerActivityLifecycleCallbacks(capture(registeredSlot)) }
+
+            amplitude.shutdown()
+
+            val unregisteredSlot = slot<Application.ActivityLifecycleCallbacks>()
+            verify { application.unregisterActivityLifecycleCallbacks(capture(unregisteredSlot)) }
+            assertEquals(registeredSlot.captured, unregisteredSlot.captured)
+        }
+
+    @Test
+    fun no_autocapture_events_after_shutdown() =
+        runTest {
+            val configuration = createConfiguration().apply { autocapture = setOf(AutocaptureOption.SCREEN_VIEWS) }
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = configuration,
+                )
+            val fakeEventPlugin = FakeEventPlugin()
+            amplitude.add(fakeEventPlugin)
+            amplitude.isBuilt.await()
+            advanceUntilIdle()
+
+            val application = configuration.context as Application
+            val registeredSlot = slot<Application.ActivityLifecycleCallbacks>()
+            verify { application.registerActivityLifecycleCallbacks(capture(registeredSlot)) }
+            val lifecycleCallbacks = registeredSlot.captured
+
+            amplitude.shutdown()
+            advanceUntilIdle()
+
+            // Drive an activity lifecycle transition that would normally trigger a screen-viewed
+            // event; teardown should have stopped autocapture from processing it.
+            val activity = mockk<Activity>(relaxed = true)
+            lifecycleCallbacks.onActivityCreated(activity, null)
+            lifecycleCallbacks.onActivityStarted(activity)
+            advanceUntilIdle()
+
+            assertTrue(fakeEventPlugin.trackedEvents.isEmpty())
+        }
+
+    @Test
+    fun shutdown_removes_runtime_shutdown_hook() =
+        runTest {
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = createConfiguration(),
+                )
+            amplitude.isBuilt.await()
+            advanceUntilIdle()
+
+            val hookThread = amplitude.shutdownHookThread
+            assertNotNull(hookThread)
+
+            amplitude.shutdown()
+
+            assertNull(amplitude.shutdownHookThread)
+            // The hook is no longer registered, so removing it again is a no-op, not a crash.
+            assertFalse(Runtime.getRuntime().removeShutdownHook(hookThread!!))
+        }
+
+    @Test
+    fun shutdown_is_idempotent() =
+        runTest {
+            val configuration = createConfiguration()
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = configuration,
+                )
+            amplitude.isBuilt.await()
+            advanceUntilIdle()
+
+            amplitude.shutdown()
+            amplitude.shutdown()
+
+            // A second call must be a genuine no-op: teardown work like unregistering the
+            // activity lifecycle callbacks should only happen once.
+            val application = configuration.context as Application
+            verify(exactly = 1) { application.unregisterActivityLifecycleCallbacks(any()) }
+        }
+
+    @Test
+    fun shutdown_immediately_after_construction_fully_tears_down_after_build_catches_up() =
+        runTest {
+            val configuration = createConfiguration()
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = configuration,
+                )
+
+            amplitude.shutdown()
+            advanceUntilIdle()
+
+            assertTrue(amplitude.isBuilt.isCompleted)
+            assertFalse(amplitude.amplitudeScope.isActive)
+
+            val application = configuration.context as Application
+            verify { application.unregisterActivityLifecycleCallbacks(any()) }
+
+            val fakeEventPlugin = FakeEventPlugin()
+            amplitude.add(fakeEventPlugin)
+            amplitude.track("test_event")
+            advanceUntilIdle()
+
+            assertTrue(fakeEventPlugin.trackedEvents.isEmpty())
+        }
+
+    @Test
+    fun track_after_shutdown_does_not_crash() =
+        runTest {
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = createConfiguration(),
+                )
+            val fakeEventPlugin = FakeEventPlugin()
+            amplitude.add(fakeEventPlugin)
+            amplitude.isBuilt.await()
+            advanceUntilIdle()
+
+            amplitude.shutdown()
+            amplitude.track("test_event")
+            advanceUntilIdle()
+
+            assertTrue(fakeEventPlugin.trackedEvents.isEmpty())
         }
 
     companion object {

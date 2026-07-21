@@ -35,9 +35,11 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.ExecutorCoroutineDispatcher
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -45,6 +47,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * <h1>Amplitude</h1>
@@ -88,6 +91,11 @@ open class Amplitude(
     val isBuilt: Deferred<Boolean>
     val diagnostics = Diagnostics()
     internal val identityCoordinator = IdentityCoordinator(store)
+
+    private val shutdownState = AtomicBoolean(false)
+
+    /** Whether [shutdown] has been invoked. Readable by platform subclasses. */
+    protected fun isShutdown(): Boolean = shutdownState.get()
 
     @RestrictedAmplitudeFeature
     val diagnosticsClient: DiagnosticsClient by lazy {
@@ -226,6 +234,12 @@ open class Amplitude(
         add(ContextPlugin())
         add(GetAmpliExtrasPlugin())
         add(AmplitudeDestination())
+
+        // Tear down if shutdown() raced this async build. Keep no suspension point between the
+        // last add() above and this check, or a racing scope cancel could leak those plugins.
+        if (shutdownState.get()) {
+            performShutdown()
+        }
     }
 
     protected open fun diagnosticsContextProvider(): DiagnosticsContextProvider? {
@@ -551,6 +565,11 @@ open class Amplitude(
     }
 
     private fun process(event: BaseEvent) {
+        if (shutdownState.get()) {
+            logger.info("SDK is shut down; dropping event.")
+            return
+        }
+
         if (optOut) {
             logger.info("Skip event for opt out config.")
             return
@@ -579,6 +598,11 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     fun add(plugin: Plugin): Amplitude {
+        if (isShutdown()) {
+            logger.debug("SDK is shut down; ignoring add().")
+            safelyTeardown(plugin)
+            return this
+        }
         timeline.add(plugin)
         return this
     }
@@ -588,6 +612,11 @@ open class Amplitude(
      * Otherwise it is hosted in the enrichment stage.
      */
     fun add(plugin: UniversalPlugin): Amplitude {
+        if (isShutdown()) {
+            logger.debug("SDK is shut down; ignoring add().")
+            safelyTeardown(plugin)
+            return this
+        }
         timeline.add(plugin)
         return this
     }
@@ -624,6 +653,11 @@ open class Amplitude(
     }
 
     fun flush() {
+        if (shutdownState.get()) {
+            logger.info("SDK is shut down; dropping event.")
+            return
+        }
+
         amplitudeScope.launch(amplitudeDispatcher) {
             isBuilt.await()
 
@@ -631,6 +665,36 @@ open class Amplitude(
                 (it as? EventPlugin)?.flush()
             }
         }
+    }
+
+    /**
+     * Permanently shuts down this instance: stops autocapture, tears down all plugins, and stops
+     * background work. [track] and [flush] no-op afterwards. Idempotent. Discard your reference
+     * to the instance after calling this.
+     */
+    open fun shutdown() {
+        if (shutdownState.compareAndSet(false, true)) {
+            performShutdown()
+        }
+    }
+
+    /** Teardown steps; platform SDKs may override to add their own (call `super`). Idempotent. */
+    @Synchronized
+    protected open fun performShutdown() {
+        // Serialized: shutdown() and the buildInternal tail-check can both call this off different threads.
+        try {
+            timeline.stop()
+        } catch (e: Exception) {
+            logger.warn("timeline stop failed: $e")
+        } finally {
+            // finally, so an Error from a plugin's teardown() still cancels the scope.
+            amplitudeScope.cancel()
+        }
+
+        // Graceful close (no join — shutdown() may run on the main thread; a join risks an ANR).
+        (amplitudeDispatcher as? ExecutorCoroutineDispatcher)?.close()
+        (networkIODispatcher as? ExecutorCoroutineDispatcher)?.close()
+        (storageIODispatcher as? ExecutorCoroutineDispatcher)?.close()
     }
 
     /**
@@ -653,6 +717,18 @@ open class Amplitude(
             block(plugin)
         } catch (e: Exception) {
             logger.warn("Plugin '${plugin.identifier()}' threw during state callback: $e")
+        }
+    }
+
+    /**
+     * Tears down a plugin that was rejected by [add] because the SDK is already shut down.
+     * The plugin was never registered with the timeline, so this is the only teardown it'll get.
+     */
+    private fun safelyTeardown(plugin: UniversalPlugin) {
+        try {
+            plugin.teardown()
+        } catch (e: Exception) {
+            logger.warn("Plugin '${plugin.identifier()}' threw during teardown: $e")
         }
     }
 

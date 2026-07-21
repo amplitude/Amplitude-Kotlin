@@ -42,6 +42,11 @@ class AndroidLifecyclePlugin(
     private var frustrationInteractionsDetector: FrustrationInteractionsDetector? = null
     private var windowCallbackManager: WindowCallbackManager? = null
 
+    // Guards `created`, `fragmentTrackingActivities`, `started`, and `processedDeepLinkIntents`.
+    // These are normally only ever mutated on the main thread (via eventJob), but `teardown()`
+    // can be invoked from an arbitrary thread by `shutdown()`, which can race an in-flight
+    // lifecycle callback and corrupt these plain collections.
+    private val lifecycleStateLock = Any()
     private val created: MutableMap<Int, WeakReference<Activity>> = mutableMapOf()
     private val fragmentTrackingActivities: MutableSet<Int> = mutableSetOf()
     private val started: MutableSet<Int> = mutableSetOf()
@@ -117,7 +122,9 @@ class AndroidLifecyclePlugin(
         activity: Activity,
         bundle: Bundle?,
     ) {
-        created[activity.hashCode()] = WeakReference(activity)
+        synchronized(lifecycleStateLock) {
+            created[activity.hashCode()] = WeakReference(activity)
+        }
 
         if (autocaptureState.screenViews) {
             registerFragmentTracking(activity)
@@ -125,24 +132,30 @@ class AndroidLifecyclePlugin(
     }
 
     override fun onActivityStarted(activity: Activity) {
-        if (!created.containsKey(activity.hashCode())) {
+        val alreadyCreated = synchronized(lifecycleStateLock) { created.containsKey(activity.hashCode()) }
+        if (!alreadyCreated) {
             // We check for On Create in case if sdk was initialised in Main Activity
             onActivityCreated(activity, activity.intent?.extras)
         }
 
-        if (started.isEmpty()) {
+        val wasEmptyBeforeStart = synchronized(lifecycleStateLock) { started.isEmpty() }
+        if (wasEmptyBeforeStart) {
             androidAmplitude.onEnterForeground(System.currentTimeMillis())
         }
 
-        started.add(activity.hashCode())
+        val startedCount =
+            synchronized(lifecycleStateLock) {
+                started.add(activity.hashCode())
+                started.size
+            }
 
-        if (autocaptureState.appLifecycles && started.size == 1) {
+        if (autocaptureState.appLifecycles && startedCount == 1) {
             DefaultEventUtils(androidAmplitude).trackAppOpenedEvent(
                 packageInfo = packageInfo,
                 isFromBackground = appInBackground,
             )
         }
-        if (started.size == 1) {
+        if (startedCount == 1) {
             appInBackground = false
         }
 
@@ -166,13 +179,17 @@ class AndroidLifecyclePlugin(
     override fun onActivityPaused(activity: Activity) = Unit
 
     override fun onActivityStopped(activity: Activity) {
-        started.remove(activity.hashCode())
+        val isEmptyAfterStop =
+            synchronized(lifecycleStateLock) {
+                started.remove(activity.hashCode())
+                started.isEmpty()
+            }
 
-        if (autocaptureState.appLifecycles && started.isEmpty()) {
+        if (autocaptureState.appLifecycles && isEmptyAfterStop) {
             DefaultEventUtils(androidAmplitude).trackAppBackgroundedEvent()
         }
 
-        if (started.isEmpty()) {
+        if (isEmptyAfterStop) {
             appInBackground = true
             with(androidAmplitude) {
                 onExitForeground(System.currentTimeMillis())
@@ -191,9 +208,11 @@ class AndroidLifecyclePlugin(
 
     override fun onActivityDestroyed(activity: Activity) {
         val hash = activity.hashCode()
-        created.remove(hash)
-        fragmentTrackingActivities.remove(hash)
-        processedDeepLinkIntents.remove(hash)
+        synchronized(lifecycleStateLock) {
+            created.remove(hash)
+            fragmentTrackingActivities.remove(hash)
+            processedDeepLinkIntents.remove(hash)
+        }
 
         // Always unregister — screenViews may have been disabled by remote config since
         // callbacks were registered, so we cannot gate this on current state.
@@ -210,11 +229,17 @@ class AndroidLifecyclePlugin(
         val intentIdentity = System.identityHashCode(intent)
         val activityHash = activity.hashCode()
 
-        if (processedDeepLinkIntents[activityHash] == intentIdentity) {
-            return
-        }
+        val isNewIntent =
+            synchronized(lifecycleStateLock) {
+                if (processedDeepLinkIntents[activityHash] == intentIdentity) {
+                    false
+                } else {
+                    processedDeepLinkIntents[activityHash] = intentIdentity
+                    true
+                }
+            }
+        if (!isNewIntent) return
 
-        processedDeepLinkIntents[activityHash] = intentIdentity
         DefaultEventUtils(androidAmplitude).trackDeepLinkOpenedEvent(activity)
     }
 
@@ -224,8 +249,17 @@ class AndroidLifecyclePlugin(
      */
     private fun registerFragmentTracking(activity: Activity) {
         val hash = activity.hashCode()
-        if (hash in fragmentTrackingActivities) return
-        fragmentTrackingActivities.add(hash)
+        val alreadyTracked =
+            synchronized(lifecycleStateLock) {
+                if (hash in fragmentTrackingActivities) {
+                    true
+                } else {
+                    fragmentTrackingActivities.add(hash)
+                    false
+                }
+            }
+        if (alreadyTracked) return
+
         DefaultEventUtils(androidAmplitude).startFragmentViewedEventTracking(
             activity,
             screenViewsEnabled = { autocaptureState.screenViews },
@@ -268,7 +302,8 @@ class AndroidLifecyclePlugin(
      */
     private fun startFragmentTrackingIfNeeded() {
         if (!autocaptureState.screenViews) return
-        for ((_, ref) in created) {
+        val createdActivities = synchronized(lifecycleStateLock) { created.values.toList() }
+        for (ref in createdActivities) {
             val activity = ref.get() ?: continue
             registerFragmentTracking(activity)
         }
@@ -326,5 +361,21 @@ class AndroidLifecyclePlugin(
         eventJob?.cancel()
         windowCallbackManager?.stop()
         frustrationInteractionsDetector?.stop()
+
+        // Stop fragment tracking on still-alive activities so it doesn't outlive the plugin.
+        // Snapshot + clear under the lock (teardown may run off the main thread), then call out.
+        val activitiesToStopTracking =
+            synchronized(lifecycleStateLock) {
+                val activities = fragmentTrackingActivities.mapNotNull { hash -> created[hash]?.get() }
+                created.clear()
+                fragmentTrackingActivities.clear()
+                started.clear()
+                processedDeepLinkIntents.clear()
+                activities
+            }
+
+        for (activity in activitiesToStopTracking) {
+            DefaultEventUtils(androidAmplitude).stopFragmentViewedEventTracking(activity)
+        }
     }
 }

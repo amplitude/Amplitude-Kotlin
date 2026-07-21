@@ -42,7 +42,7 @@ interface UniversalPlugin {
      */
     fun <T : AnalyticsEvent> execute(event: T): T? = event
 
-    /** Releases any resources acquired in [setup]. */
+    /** Releases resources acquired in [setup]. Must be idempotent (may be called more than once). */
     fun teardown() {}
 
     /** Called when the user id or device id changes. */

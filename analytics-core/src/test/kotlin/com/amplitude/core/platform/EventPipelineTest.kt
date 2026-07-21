@@ -33,6 +33,9 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.json.JSONObject
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 
 @ExperimentalCoroutinesApi
@@ -253,5 +256,20 @@ class EventPipelineTest {
             // this is because the InMemoryStorage will clear the buffer and the second call to
             // readEventsContent() will return an empty list and will stop the processing
             verify(exactly = 1) { retryUploadHandler.reset() }
+        }
+
+    @Test
+    fun `stop removes the runtime shutdown hook`() =
+        runTest(testDispatcher) {
+            amplitude.isBuilt.await()
+            val eventPipeline = EventPipeline(amplitude)
+            val hookThread = eventPipeline.shutdownHookThread
+            assertNotNull(hookThread)
+
+            eventPipeline.stop()
+
+            assertNull(eventPipeline.shutdownHookThread)
+            // The hook is no longer registered, so removing it again is a no-op, not a crash.
+            assertFalse(Runtime.getRuntime().removeShutdownHook(hookThread!!))
         }
 }

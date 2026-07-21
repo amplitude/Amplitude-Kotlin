@@ -120,6 +120,12 @@ open class Amplitude internal constructor(
         add(AmplitudeDestination())
 
         (timeline as Timeline).start()
+
+        // Tear down if shutdown() raced this async build. Keep no suspension point between the
+        // last add() above and this check, or a racing scope cancel could leak those plugins.
+        if (isShutdown()) {
+            performShutdown()
+        }
     }
 
     override fun diagnosticsContextProvider(): DiagnosticsContextProvider? {
@@ -158,21 +164,48 @@ open class Amplitude internal constructor(
         (timeline as Timeline).onExitForeground(timestamp)
     }
 
+    /**
+     * Only visible for testing.
+     */
+    @Volatile
+    internal var shutdownHookThread: Thread? = null
+
     private fun registerShutdownHook() {
         // close the stream if the app shuts down
         try {
-            Runtime.getRuntime().addShutdownHook(
+            val thread =
                 object : Thread() {
                     override fun run() {
                         (this@Amplitude.timeline as Timeline).stop()
                     }
-                },
-            )
+                }
+            Runtime.getRuntime().addShutdownHook(thread)
+            shutdownHookThread = thread
         } catch (e: IllegalStateException) {
             // Once the shutdown sequence has begun it is impossible to register a shutdown hook,
             // so we just ignore the IllegalStateException that's thrown.
             // https://developer.android.com/reference/java/lang/Runtime#addShutdownHook(java.lang.Thread)
         }
+    }
+
+    private fun removeShutdownHook() {
+        val thread = shutdownHookThread ?: return
+        try {
+            Runtime.getRuntime().removeShutdownHook(thread)
+        } catch (e: IllegalStateException) {
+            // The JVM is already shutting down; hooks can no longer be removed at that point.
+            // https://developer.android.com/reference/java/lang/Runtime#removeShutdownHook(java.lang.Thread)
+        }
+        shutdownHookThread = null
+    }
+
+    // Unregister lifecycle callbacks (stops autocapture) + remove the shutdown hook, then core teardown.
+    @Synchronized
+    override fun performShutdown() {
+        val context = (configuration as Configuration).context
+        (context as? Application)?.unregisterActivityLifecycleCallbacks(activityLifecycleCallbacks)
+        removeShutdownHook()
+        super.performShutdown()
     }
 
     companion object {

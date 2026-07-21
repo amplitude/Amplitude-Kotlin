@@ -7,11 +7,15 @@ import com.amplitude.core.events.IdentifyEvent
 import com.amplitude.core.events.RevenueEvent
 import com.amplitude.core.platform.EventPlugin
 import com.amplitude.core.platform.Plugin
+import com.amplitude.core.platform.UniversalPlugin
 
 open class StubPlugin : EventPlugin {
     override val type: Plugin.Type = Plugin.Type.Before
     override lateinit var amplitude: Amplitude
 }
+
+/** A bare [UniversalPlugin] (not a [Plugin]) — registered into the Enrichment mediator. */
+open class StubUniversalPlugin : UniversalPlugin
 
 class TestRunPlugin(var closure: (BaseEvent?) -> Unit) : EventPlugin {
     override val type: Plugin.Type = Plugin.Type.Before
