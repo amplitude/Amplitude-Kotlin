@@ -35,9 +35,11 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.ExecutorCoroutineDispatcher
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -45,6 +47,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * <h1>Amplitude</h1>
@@ -88,6 +91,11 @@ open class Amplitude(
     val isBuilt: Deferred<Boolean>
     val diagnostics = Diagnostics()
     internal val identityCoordinator = IdentityCoordinator(store)
+
+    private val shutdownState = AtomicBoolean(false)
+
+    /** Whether [shutdown] has been invoked. Readable by platform subclasses. */
+    protected fun isShutdown(): Boolean = shutdownState.get()
 
     @RestrictedAmplitudeFeature
     val diagnosticsClient: DiagnosticsClient by lazy {
@@ -226,6 +234,13 @@ open class Amplitude(
         add(ContextPlugin())
         add(GetAmpliExtrasPlugin())
         add(AmplitudeDestination())
+
+        // shutdown() may have already run while this async build was in flight (e.g. calling
+        // shutdown() immediately after construction). Without this check, the plugins added
+        // above would be left registered and never torn down.
+        if (shutdownState.get()) {
+            performShutdown()
+        }
     }
 
     protected open fun diagnosticsContextProvider(): DiagnosticsContextProvider? {
@@ -551,6 +566,11 @@ open class Amplitude(
     }
 
     private fun process(event: BaseEvent) {
+        if (shutdownState.get()) {
+            logger.info("SDK is shut down; dropping event.")
+            return
+        }
+
         if (optOut) {
             logger.info("Skip event for opt out config.")
             return
@@ -624,6 +644,11 @@ open class Amplitude(
     }
 
     fun flush() {
+        if (shutdownState.get()) {
+            logger.info("SDK is shut down; dropping event.")
+            return
+        }
+
         amplitudeScope.launch(amplitudeDispatcher) {
             isBuilt.await()
 
@@ -631,6 +656,48 @@ open class Amplitude(
                 (it as? EventPlugin)?.flush()
             }
         }
+    }
+
+    /**
+     * Permanently tears down this SDK instance: stops the event timeline (tearing down every
+     * registered plugin, e.g. unwinding autocapture listeners) and cancels [amplitudeScope].
+     * After this call, [track]/[flush] become no-ops. Idempotent — safe to call more than once,
+     * even concurrently.
+     *
+     * This does not remove the instance itself; discard your reference to it afterwards.
+     */
+    open fun shutdown() {
+        if (shutdownState.compareAndSet(false, true)) {
+            performShutdown()
+        }
+    }
+
+    /**
+     * The actual teardown work, extracted so it can be re-triggered from [buildInternal] if
+     * [shutdown] raced an in-flight async [build] (see the check there). Every step here must
+     * stay idempotent. Overridden by platform SDKs (e.g. Android) to add their own teardown;
+     * overrides must call `super.performShutdown()`.
+     */
+    protected open fun performShutdown() {
+        try {
+            timeline.stop()
+        } catch (e: Exception) {
+            logger.warn("timeline stop failed: $e")
+        } finally {
+            // An Error escaping timeline.stop() (e.g. thrown by a misbehaving plugin) must not
+            // skip cancelling the scope, so this lives in `finally`, not after the try/catch.
+            amplitudeScope.cancel()
+        }
+
+        // ExecutorCoroutineDispatcher.close() calls the underlying ExecutorService's shutdown(),
+        // a graceful stop that lets in-flight tasks finish and does not interrupt threads.
+        // Coroutines dispatched afterward hit a RejectedExecutionException, which the
+        // dispatch() machinery catches and falls back to Dispatchers.IO for — so this is safe
+        // even if a stray coroutine is still in flight. Do NOT add a blocking join/awaitTermination
+        // here: shutdown() can run on the main thread and that risks an ANR.
+        (amplitudeDispatcher as? ExecutorCoroutineDispatcher)?.close()
+        (networkIODispatcher as? ExecutorCoroutineDispatcher)?.close()
+        (storageIODispatcher as? ExecutorCoroutineDispatcher)?.close()
     }
 
     /**

@@ -16,15 +16,19 @@ import com.amplitude.core.utilities.JSONUtil
 import com.amplitude.core.utils.FakeAmplitude
 import com.amplitude.core.utils.StubPlugin
 import com.amplitude.core.utils.TestRunPlugin
+import io.mockk.every
 import io.mockk.slot
 import io.mockk.spyk
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNotSame
 import org.junit.jupiter.api.Assertions.assertNull
@@ -603,6 +607,111 @@ internal class AmplitudeTest {
                 assertEquals(null, it.userId)
                 assertNotEquals("old-device", it.deviceId)
             }
+        }
+    }
+
+    @Nested
+    inner class TestShutdown {
+        @Test
+        fun `shutdown cancels amplitudeScope`() {
+            assertTrue(amplitude.amplitudeScope.isActive)
+            amplitude.shutdown()
+            assertFalse(amplitude.amplitudeScope.isActive)
+        }
+
+        @Test
+        fun `track after shutdown is a no-op`() {
+            val mockPlugin = spyk(StubPlugin())
+            amplitude.add(mockPlugin)
+
+            amplitude.shutdown()
+            amplitude.track("test event")
+
+            verify(exactly = 0) { mockPlugin.track(any()) }
+        }
+
+        @Test
+        fun `flush after shutdown is a no-op`() {
+            val mockPlugin = spyk(StubPlugin())
+            amplitude.add(mockPlugin)
+
+            amplitude.shutdown()
+            amplitude.flush()
+
+            verify(exactly = 0) { mockPlugin.flush() }
+        }
+
+        @Test
+        fun `shutdown is idempotent`() {
+            val mockPlugin = spyk(StubPlugin())
+            amplitude.add(mockPlugin)
+
+            amplitude.shutdown()
+            amplitude.shutdown()
+
+            verify(exactly = 1) { mockPlugin.teardown() }
+        }
+
+        @Test
+        fun `concurrent shutdown from multiple threads only tears down once`() {
+            val mockPlugin = spyk(StubPlugin())
+            amplitude.add(mockPlugin)
+
+            val threadCount = 20
+            val ready = CountDownLatch(threadCount)
+            val go = CountDownLatch(1)
+            val done = CountDownLatch(threadCount)
+            repeat(threadCount) {
+                thread {
+                    ready.countDown()
+                    go.await()
+                    amplitude.shutdown()
+                    done.countDown()
+                }
+            }
+            ready.await()
+            go.countDown()
+            assertTrue(done.await(5, TimeUnit.SECONDS))
+
+            verify(exactly = 1) { mockPlugin.teardown() }
+            assertFalse(amplitude.amplitudeScope.isActive)
+        }
+
+        @Test
+        fun `plugin teardown throwing still cancels scope and tears down other plugins`() {
+            val throwingPlugin = spyk(StubPlugin())
+            every { throwingPlugin.teardown() } throws RuntimeException("boom")
+            val otherPlugin = spyk(StubPlugin())
+            amplitude.add(throwingPlugin)
+            amplitude.add(otherPlugin)
+
+            amplitude.shutdown()
+
+            verify(exactly = 1) { throwingPlugin.teardown() }
+            verify(exactly = 1) { otherPlugin.teardown() }
+            assertFalse(amplitude.amplitudeScope.isActive)
+        }
+
+        @Test
+        fun `shutdown immediately after construction fully tears down once the async build catches up`() {
+            val testDispatcher = StandardTestDispatcher()
+            val earlyShutdownAmplitude =
+                FakeAmplitude(
+                    Configuration("test-key", serverUrl = server.url("/").toString()),
+                    testDispatcher = testDispatcher,
+                )
+
+            earlyShutdownAmplitude.shutdown()
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            assertTrue(earlyShutdownAmplitude.isBuilt.isCompleted)
+            assertFalse(earlyShutdownAmplitude.amplitudeScope.isActive)
+
+            val mockPlugin = spyk(StubPlugin())
+            earlyShutdownAmplitude.add(mockPlugin)
+            earlyShutdownAmplitude.track("test_event")
+
+            verify(exactly = 0) { mockPlugin.track(any()) }
         }
     }
 }

@@ -83,6 +83,20 @@ open class Timeline {
 
     internal fun pluginsSnapshot(): List<UniversalPlugin> = plugins.values.flatMap { it.snapshot() }
 
+    /**
+     * Tears down every registered plugin. Each plugin's [Plugin.teardown] is isolated so one
+     * throwing doesn't prevent the others from being cleaned up.
+     */
+    open fun stop() {
+        applyClosure { plugin ->
+            try {
+                plugin.teardown()
+            } catch (e: Exception) {
+                amplitude.logger.warn("Plugin '${plugin.name ?: plugin::class.java.name}' threw during teardown: $e")
+            }
+        }
+    }
+
     inline fun <reified T : Plugin> findPlugin(): T? {
         var match: T? = null
         applyClosure { plugin ->

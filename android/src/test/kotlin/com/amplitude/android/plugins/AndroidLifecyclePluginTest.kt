@@ -11,12 +11,15 @@ import android.net.Uri
 import com.amplitude.android.Amplitude
 import com.amplitude.android.AutocaptureManager
 import com.amplitude.android.AutocaptureOption
+import com.amplitude.android.AutocaptureState
 import com.amplitude.android.Configuration
 import com.amplitude.android.Constants.EventTypes
+import com.amplitude.android.FrustrationInteractionsDetector
 import com.amplitude.android.InteractionsOptions
 import com.amplitude.android.internal.fragments.FragmentActivityHandler
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.registerFragmentLifecycleCallbacks
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.unregisterFragmentLifecycleCallbacks
+import com.amplitude.android.internal.gestures.WindowCallbackManager
 import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.Storage
@@ -816,6 +819,55 @@ class AndroidLifecyclePluginTest {
             }
 
             close()
+        }
+
+    @Test
+    fun `test teardown cancels jobs and stops interaction detectors`() =
+        runTest {
+            mockAutocapture(emptySet())
+            every { mockedAmplitude.amplitudeScope } returns this
+
+            plugin.setup(mockedAmplitude)
+            advanceUntilIdle()
+
+            // Inject spies for the detectors directly (bypassing the lazy creation path in
+            // startInteractionTrackingIfNeeded, which requires a real Main-thread event loop)
+            // so we can verify `stop()` is called by `teardown()`.
+            val spiedFrustrationDetector =
+                spyk(
+                    FrustrationInteractionsDetector(
+                        amplitude = mockedAmplitude,
+                        logger = mockk(relaxed = true),
+                        density = 1f,
+                        autocaptureStateProvider = { AutocaptureState() },
+                    ),
+                )
+            val spiedWindowCallbackManager =
+                spyk(
+                    WindowCallbackManager(
+                        track = { _, _ -> },
+                        frustrationDetector = spiedFrustrationDetector,
+                        autocaptureStateProvider = { AutocaptureState() },
+                        logger = mockk(relaxed = true),
+                    ),
+                )
+
+            val windowCallbackManagerField =
+                AndroidLifecyclePlugin::class.java.getDeclaredField("windowCallbackManager")
+                    .apply { isAccessible = true }
+            val frustrationDetectorField =
+                AndroidLifecyclePlugin::class.java.getDeclaredField("frustrationInteractionsDetector")
+                    .apply { isAccessible = true }
+            windowCallbackManagerField.set(plugin, spiedWindowCallbackManager)
+            frustrationDetectorField.set(plugin, spiedFrustrationDetector)
+
+            plugin.teardown()
+
+            verify(exactly = 1) { spiedWindowCallbackManager.stop() }
+            verify(exactly = 1) { spiedFrustrationDetector.stop() }
+            assert(plugin.eventJob?.isCancelled == true) { "eventJob should be cancelled after teardown" }
+
+            observer.eventChannel.close()
         }
 
     private fun mockAutocapture(options: Set<AutocaptureOption>) {

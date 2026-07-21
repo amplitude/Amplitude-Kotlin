@@ -326,5 +326,18 @@ class AndroidLifecyclePlugin(
         eventJob?.cancel()
         windowCallbackManager?.stop()
         frustrationInteractionsDetector?.stop()
+
+        // Mirror onActivityDestroyed's cleanup for every activity that's still alive and
+        // fragment-tracked, so shutdown() actually stops fragment-viewed autocapture instead of
+        // leaving FragmentLifecycleCallbacks registered on activities that outlive the plugin.
+        for (hash in fragmentTrackingActivities) {
+            created[hash]?.get()?.let { activity ->
+                DefaultEventUtils(androidAmplitude).stopFragmentViewedEventTracking(activity)
+            }
+        }
+        created.clear()
+        fragmentTrackingActivities.clear()
+        started.clear()
+        processedDeepLinkIntents.clear()
     }
 }
