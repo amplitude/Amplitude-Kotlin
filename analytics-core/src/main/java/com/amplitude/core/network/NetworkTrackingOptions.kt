@@ -13,13 +13,13 @@ private const val STAR_WILDCARD = "*"
             "com.amplitude.android.network.NetworkTrackingOptions",
         ),
 )
-data class NetworkTrackingOptions(
+public data class NetworkTrackingOptions(
     val captureRules: List<CaptureRule>,
     val ignoreHosts: List<String> = emptyList(),
     val ignoreAmplitudeRequests: Boolean = true,
 ) {
-    companion object {
-        val DEFAULT by lazy {
+    public companion object {
+        public val DEFAULT: NetworkTrackingOptions by lazy {
             NetworkTrackingOptions(
                 captureRules =
                     listOf(
@@ -31,13 +31,13 @@ data class NetworkTrackingOptions(
         }
     }
 
-    data class CaptureRule(
+    public data class CaptureRule(
         val hosts: List<String>,
         val statusCodeRange: List<Int> = (500..599).toList(),
     ) {
         private val hostMatcher = HostMatcher(hosts)
 
-        fun matches(host: String): Boolean {
+        public fun matches(host: String): Boolean {
             return hostMatcher.matches(host)
         }
     }
@@ -53,7 +53,7 @@ data class NetworkTrackingOptions(
 
     private val ignoreHostMatcher = HostMatcher(ignoreHosts)
 
-    fun shouldIgnore(host: String): Boolean {
+    public fun shouldIgnore(host: String): Boolean {
         return ignoreHostMatcher.matches(host)
     }
 }
@@ -94,7 +94,7 @@ private class HostMatcher(hosts: List<String>) {
  * @param host The host of the request URL.
  * @param responseCode The status code of the response, or null if it's an error.
  */
-fun List<CaptureRule>.matches(
+public fun List<CaptureRule>.matches(
     host: String,
     responseCode: Int,
 ): Boolean {

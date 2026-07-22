@@ -51,15 +51,15 @@ import java.util.concurrent.Executors
  * This is the SDK instance class that contains all of the SDK functionality.<br><br>
  * Many of the SDK functions return the SDK instance back, allowing you to chain multiple methods calls together.
  */
-open class Amplitude(
-    val configuration: Configuration,
-    val store: State,
-    val amplitudeScope: CoroutineScope = CoroutineScope(SupervisorJob()),
-    val amplitudeDispatcher: CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher(),
-    val networkIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
-    val storageIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
+public open class Amplitude(
+    public val configuration: Configuration,
+    public val store: State,
+    public val amplitudeScope: CoroutineScope = CoroutineScope(SupervisorJob()),
+    public val amplitudeDispatcher: CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher(),
+    public val networkIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
+    public val storageIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
 ) : PluginHost {
-    open val identity: AnalyticsIdentity
+    public open val identity: AnalyticsIdentity
         get() =
             object : AnalyticsIdentity {
                 override val userId: String? = store.userId
@@ -70,27 +70,27 @@ open class Amplitude(
      * Session id is Android-only. Core returns -1 by default; the Android
      * subclass overrides this with the real value.
      */
-    open val sessionId: Long
+    public open val sessionId: Long
         get() = -1L
-    val timeline: Timeline
-    val storage: Storage by lazy {
+    public val timeline: Timeline
+    public val storage: Storage by lazy {
         configuration.storageProvider.getStorage(this)
     }
-    lateinit var identifyInterceptStorage: Storage
+    public lateinit var identifyInterceptStorage: Storage
         private set
-    lateinit var identityStorage: IdentityStorage
+    public lateinit var identityStorage: IdentityStorage
         private set
-    val logger: Logger by lazy {
+    public val logger: Logger by lazy {
         configuration.loggerProvider.getLogger(this)
     }
-    lateinit var idContainer: IdentityContainer
+    public lateinit var idContainer: IdentityContainer
         private set
-    val isBuilt: Deferred<Boolean>
-    val diagnostics = Diagnostics()
+    public val isBuilt: Deferred<Boolean>
+    public val diagnostics: Diagnostics = Diagnostics()
     internal val identityCoordinator = IdentityCoordinator(store)
 
     @RestrictedAmplitudeFeature
-    val diagnosticsClient: DiagnosticsClient by lazy {
+    public val diagnosticsClient: DiagnosticsClient by lazy {
         DiagnosticsClientImpl(
             apiKey = configuration.apiKey,
             serverZone = configuration.serverZone,
@@ -108,7 +108,7 @@ open class Amplitude(
     }
 
     @RestrictedAmplitudeFeature
-    val remoteConfigClient: RemoteConfigClient by lazy {
+    public val remoteConfigClient: RemoteConfigClient by lazy {
         RemoteConfigClientImpl(
             apiKey = configuration.apiKey,
             serverZone = configuration.serverZone,
@@ -121,7 +121,7 @@ open class Amplitude(
         )
     }
 
-    val amplitudeContext: AmplitudeContext by lazy { buildAmplitudeContext() }
+    public val amplitudeContext: AmplitudeContext by lazy { buildAmplitudeContext() }
 
     @OptIn(RestrictedAmplitudeFeature::class)
     private fun buildAmplitudeContext(): AmplitudeContext =
@@ -142,7 +142,7 @@ open class Amplitude(
             extraBufferCapacity = 1_000,
             onBufferOverflow = DROP_OLDEST,
         )
-    val signalFlow: SharedFlow<Signal> = _signalFlow.asSharedFlow()
+    public val signalFlow: SharedFlow<Signal> = _signalFlow.asSharedFlow()
 
     /**
      * Emit a signal to the shared signal flow.
@@ -158,7 +158,7 @@ open class Amplitude(
      * `configuration.optOut` directly) — only this setter notifies plugins via
      * [Plugin.onOptOutChanged].
      */
-    open var optOut: Boolean
+    public open var optOut: Boolean
         get() = configuration.optOut
         set(value) {
             configuration.optOut = value
@@ -177,9 +177,9 @@ open class Amplitude(
     /**
      * Public Constructor.
      */
-    constructor(configuration: Configuration) : this(configuration, State())
+    public constructor(configuration: Configuration) : this(configuration, State())
 
-    open fun createTimeline(): Timeline {
+    public open fun createTimeline(): Timeline {
         return Timeline().also { it.amplitude = this }
     }
 
@@ -237,7 +237,7 @@ open class Amplitude(
     }
 
     @Deprecated("Please use 'track' instead.", ReplaceWith("track"))
-    fun logEvent(event: BaseEvent): Amplitude {
+    public fun logEvent(event: BaseEvent): Amplitude {
         return track(event)
     }
 
@@ -250,7 +250,7 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     @JvmOverloads
-    fun track(
+    public fun track(
         event: BaseEvent,
         options: EventOptions? = null,
         callback: EventCallBack? = null,
@@ -274,7 +274,7 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     @JvmOverloads
-    fun track(
+    public fun track(
         eventType: String,
         eventProperties: Map<String, Any?>? = null,
         options: EventOptions? = null,
@@ -298,7 +298,7 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     @JvmOverloads
-    fun identify(
+    public fun identify(
         userProperties: Map<String, Any?>?,
         options: EventOptions? = null,
     ): Amplitude {
@@ -314,7 +314,7 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     @JvmOverloads
-    fun identify(
+    public fun identify(
         identify: Identify,
         options: EventOptions? = null,
     ): Amplitude {
@@ -337,7 +337,7 @@ open class Amplitude(
      * @param userId custom user id
      * @return the Amplitude instance
      */
-    fun setUserId(userId: String?): Amplitude {
+    public fun setUserId(userId: String?): Amplitude {
         identityCoordinator.setUserId(userId)
         val plugins = pluginsSnapshot()
         plugins.filterIsInstance<Plugin>().forEach { safelyNotify(it) { p -> p.onUserIdChanged(store.userId) } }
@@ -351,7 +351,7 @@ open class Amplitude(
      *
      * @return User id.
      */
-    fun getUserId(): String? {
+    public fun getUserId(): String? {
         return store.userId
     }
 
@@ -361,7 +361,7 @@ open class Amplitude(
      * @param deviceId custom device id
      * @return the Amplitude instance
      */
-    fun setDeviceId(deviceId: String): Amplitude {
+    public fun setDeviceId(deviceId: String): Amplitude {
         identityCoordinator.setDeviceId(deviceId)
         val plugins = pluginsSnapshot()
         plugins.filterIsInstance<Plugin>().forEach { safelyNotify(it) { p -> p.onDeviceIdChanged(store.deviceId) } }
@@ -375,7 +375,7 @@ open class Amplitude(
      *
      * @return Device id.
      */
-    fun getDeviceId(): String? {
+    public fun getDeviceId(): String? {
         return store.deviceId
     }
 
@@ -385,7 +385,7 @@ open class Amplitude(
      *  - reset deviceId to random UUID
      * @return the Amplitude instance
      */
-    open fun reset(): Amplitude {
+    public open fun reset(): Amplitude {
         doResetWithDeviceId(ContextPlugin.generateRandomDeviceId())
         return this
     }
@@ -423,7 +423,7 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     @JvmOverloads
-    fun groupIdentify(
+    public fun groupIdentify(
         groupType: String,
         groupName: String,
         groupProperties: Map<String, Any?>?,
@@ -442,7 +442,7 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     @JvmOverloads
-    fun groupIdentify(
+    public fun groupIdentify(
         groupType: String,
         groupName: String,
         identify: Identify,
@@ -469,7 +469,7 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     @JvmOverloads
-    fun setGroup(
+    public fun setGroup(
         groupType: String,
         groupName: String,
         options: EventOptions? = null,
@@ -493,7 +493,7 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     @JvmOverloads
-    fun setGroup(
+    public fun setGroup(
         groupType: String,
         groupName: Array<String>,
         options: EventOptions? = null,
@@ -509,7 +509,7 @@ open class Amplitude(
     }
 
     @Deprecated("Please use 'revenue' instead.", ReplaceWith("revenue"))
-    fun logRevenue(revenue: Revenue): Amplitude {
+    public fun logRevenue(revenue: Revenue): Amplitude {
         revenue(revenue)
         return this
     }
@@ -523,7 +523,7 @@ open class Amplitude(
      * @return the Amplitude instance
      */
     @JvmOverloads
-    fun revenue(
+    public fun revenue(
         revenue: Revenue,
         options: EventOptions? = null,
     ): Amplitude {
@@ -545,7 +545,7 @@ open class Amplitude(
      * @param event the revenue event
      * @return the Amplitude instance
      */
-    fun revenue(event: RevenueEvent): Amplitude {
+    public fun revenue(event: RevenueEvent): Amplitude {
         process(event)
         return this
     }
@@ -578,7 +578,7 @@ open class Amplitude(
      * @param plugin the plugin
      * @return the Amplitude instance
      */
-    fun add(plugin: Plugin): Amplitude {
+    public fun add(plugin: Plugin): Amplitude {
         timeline.add(plugin)
         return this
     }
@@ -587,7 +587,7 @@ open class Amplitude(
      * Add a [UniversalPlugin]. If the plugin is also a [Plugin], it is added directly.
      * Otherwise it is hosted in the enrichment stage.
      */
-    fun add(plugin: UniversalPlugin): Amplitude {
+    public fun add(plugin: UniversalPlugin): Amplitude {
         timeline.add(plugin)
         return this
     }
@@ -595,7 +595,7 @@ open class Amplitude(
     /**
      * Find the first registered plugin assignable to [T] in the timeline mediators.
      */
-    inline fun <reified T : Plugin> findPlugin(): T? = timeline.findPlugin<T>()
+    public inline fun <reified T : Plugin> findPlugin(): T? = timeline.findPlugin<T>()
 
     override fun plugin(name: String): UniversalPlugin? = timeline.plugin(name)
 
@@ -610,7 +610,7 @@ open class Amplitude(
         return matches
     }
 
-    fun remove(plugin: Plugin): Amplitude {
+    public fun remove(plugin: Plugin): Amplitude {
         timeline.remove(plugin)
         return this
     }
@@ -618,12 +618,12 @@ open class Amplitude(
     /**
      * Remove a [UniversalPlugin], including a bare plugin hosted in the enrichment stage.
      */
-    fun remove(plugin: UniversalPlugin): Amplitude {
+    public fun remove(plugin: UniversalPlugin): Amplitude {
         timeline.remove(plugin)
         return this
     }
 
-    fun flush() {
+    public fun flush() {
         amplitudeScope.launch(amplitudeDispatcher) {
             isBuilt.await()
 
@@ -705,7 +705,7 @@ private class AmplitudeAnalyticsClient(
  *
  * NOTE: this method should only be used for JVM application.
  */
-fun Amplitude(
+public fun Amplitude(
     apiKey: String,
     configs: ConfigurationBuilder.() -> Unit,
 ): Amplitude {

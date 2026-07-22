@@ -24,13 +24,13 @@ import com.amplitude.core.utilities.InMemoryStorageProvider
  * Amplitude amplitude = new Amplitude(builder.build());
  * ```
  */
-class ConfigurationBuilder(
+public class ConfigurationBuilder(
     apiKey: String,
 ) : Configuration(apiKey) {
     override var storageProvider: StorageProvider = InMemoryStorageProvider()
     override var loggerProvider: LoggerProvider = ConsoleLoggerProvider()
 
-    fun build(): Configuration =
+    public fun build(): Configuration =
         Configuration(
             apiKey = apiKey,
             flushQueueSize = flushQueueSize,

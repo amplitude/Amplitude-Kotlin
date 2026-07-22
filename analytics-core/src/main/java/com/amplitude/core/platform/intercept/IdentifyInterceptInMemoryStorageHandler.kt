@@ -5,7 +5,7 @@ import com.amplitude.core.events.IdentifyOperation
 import com.amplitude.core.platform.intercept.IdentifyInterceptorUtil.filterNonNullValues
 import com.amplitude.core.utilities.InMemoryStorage
 
-class IdentifyInterceptInMemoryStorageHandler(
+public class IdentifyInterceptInMemoryStorageHandler(
     private val storage: InMemoryStorage,
 ) : IdentifyInterceptStorageHandler {
     override suspend fun getTransferIdentifyEvent(): BaseEvent? {

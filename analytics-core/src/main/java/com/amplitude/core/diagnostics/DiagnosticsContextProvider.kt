@@ -1,6 +1,6 @@
 package com.amplitude.core.diagnostics
 
-data class DiagnosticsContextInfo(
+public data class DiagnosticsContextInfo(
     val manufacturer: String,
     val model: String,
     val osName: String,
@@ -9,6 +9,6 @@ data class DiagnosticsContextInfo(
     val appVersion: String?,
 )
 
-fun interface DiagnosticsContextProvider {
-    fun getContextInfo(): DiagnosticsContextInfo
+public fun interface DiagnosticsContextProvider {
+    public fun getContextInfo(): DiagnosticsContextInfo
 }

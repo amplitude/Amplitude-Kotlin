@@ -1,3 +1,3 @@
 package com.amplitude.common
 
-interface ContextProvider
+public interface ContextProvider

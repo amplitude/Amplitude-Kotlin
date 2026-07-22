@@ -14,11 +14,11 @@ import kotlinx.coroutines.CoroutineScope
 import java.util.concurrent.ConcurrentHashMap
 
 @OptIn(RestrictedAmplitudeFeature::class)
-class InMemoryStorage
+public class InMemoryStorage
     internal constructor(
         private val diagnosticsClientProvider: DiagnosticsClientProvider? = null,
     ) : Storage {
-        constructor() : this(null)
+        public constructor() : this(null)
 
         private val eventsBuffer: MutableList<BaseEvent> = mutableListOf()
         private val eventsListLock = Any()
@@ -78,7 +78,7 @@ class InMemoryStorage
             )
         }
 
-        fun removeEvents() {
+        public fun removeEvents() {
             synchronized(eventsListLock) {
                 eventsBuffer.clear()
             }
@@ -86,7 +86,7 @@ class InMemoryStorage
     }
 
 @OptIn(RestrictedAmplitudeFeature::class)
-class InMemoryStorageProvider : StorageProvider {
+public class InMemoryStorageProvider : StorageProvider {
     override fun getStorage(
         amplitude: Amplitude,
         prefix: String?,

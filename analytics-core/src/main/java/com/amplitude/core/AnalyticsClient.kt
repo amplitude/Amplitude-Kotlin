@@ -9,13 +9,13 @@ package com.amplitude.core
  * @property sessionId the current session id.
  * @property optOut whether event tracking is currently opted out.
  */
-interface AnalyticsClient {
-    val identity: AnalyticsIdentity
-    val sessionId: Long
-    val optOut: Boolean
+public interface AnalyticsClient {
+    public val identity: AnalyticsIdentity
+    public val sessionId: Long
+    public val optOut: Boolean
 
     /** Tracks an event with the given type and optional properties. */
-    fun track(
+    public fun track(
         eventType: String,
         eventProperties: Map<String, Any?>?,
     )

@@ -8,8 +8,8 @@ import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 
-object JSONUtil {
-    fun eventToJsonObject(event: BaseEvent): JSONObject {
+public object JSONUtil {
+    public fun eventToJsonObject(event: BaseEvent): JSONObject {
         val eventJSON = JSONObject()
         eventJSON.put("event_type", event.eventType)
         eventJSON.addValue("user_id", event.userId)
@@ -61,11 +61,11 @@ object JSONUtil {
         return eventJSON
     }
 
-    fun eventToString(event: BaseEvent): String {
+    public fun eventToString(event: BaseEvent): String {
         return eventToJsonObject(event).toString()
     }
 
-    fun eventsToString(events: List<BaseEvent>): String {
+    public fun eventsToString(events: List<BaseEvent>): String {
         if (events.isEmpty()) {
             return ""
         }
@@ -105,7 +105,7 @@ object JSONUtil {
     }
 
     @Throws(JSONException::class)
-    fun truncate(array: JSONArray?): JSONArray {
+    public fun truncate(array: JSONArray?): JSONArray {
         if (array == null) {
             return JSONArray()
         }
@@ -165,7 +165,7 @@ internal fun JSONArray.toIntArray(): IntArray {
     return intArray
 }
 
-fun JSONObject.toBaseEvent(): BaseEvent {
+public fun JSONObject.toBaseEvent(): BaseEvent {
     val event = BaseEvent()
     event.eventType = this.getString("event_type")
     event.userId = this.optionalString("user_id", null)
@@ -219,7 +219,7 @@ fun JSONObject.toBaseEvent(): BaseEvent {
     return event
 }
 
-fun JSONArray.toEvents(): List<BaseEvent> {
+public fun JSONArray.toEvents(): List<BaseEvent> {
     val events = mutableListOf<BaseEvent>()
     (0 until this.length()).forEach {
         events.add((this.getJSONObject(it)).toBaseEvent())
@@ -258,7 +258,7 @@ internal fun JSONObject.addValue(
     }
 }
 
-fun JSONObject.optionalJSONObject(
+public fun JSONObject.optionalJSONObject(
     key: String,
     defaultValue: JSONObject?,
 ): JSONObject? {
@@ -268,7 +268,7 @@ fun JSONObject.optionalJSONObject(
     return defaultValue
 }
 
-fun JSONObject.optionalString(
+public fun JSONObject.optionalString(
     key: String,
     defaultValue: String?,
 ): String? {

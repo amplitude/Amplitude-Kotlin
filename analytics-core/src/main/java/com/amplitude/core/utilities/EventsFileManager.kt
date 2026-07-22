@@ -18,7 +18,7 @@ import java.util.Collections
 import java.util.Random
 import java.util.concurrent.ConcurrentHashMap
 
-class EventsFileManager(
+public class EventsFileManager(
     private val directory: File,
     private val storageKey: String,
     private val kvs: KeyValueStore,
@@ -30,12 +30,12 @@ class EventsFileManager(
     private val filePathSet: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap())
     private val curFile: MutableMap<String, File> = ConcurrentHashMap<String, File>()
 
-    companion object {
-        const val MAX_FILE_SIZE = 975_000 // 975KB
+    public companion object {
+        public const val MAX_FILE_SIZE: Int = 975_000 // 975KB
         private const val DELIMITER_CHAR: Char = '\u0000' // null character as delimiter
-        const val DELIMITER: String = DELIMITER_CHAR.toString()
-        val writeMutexMap = ConcurrentHashMap<String, Mutex>()
-        val readMutexMap = ConcurrentHashMap<String, Mutex>()
+        public const val DELIMITER: String = DELIMITER_CHAR.toString()
+        public val writeMutexMap: ConcurrentHashMap<String, Mutex> = ConcurrentHashMap<String, Mutex>()
+        public val readMutexMap: ConcurrentHashMap<String, Mutex> = ConcurrentHashMap<String, Mutex>()
 
         private const val FILE_NAME_DESIRED_PADDED_LENGTH = 10
     }
@@ -55,7 +55,7 @@ class EventsFileManager(
      * opens a new file, if current file is full or uncreated
      * stores the event
      */
-    suspend fun storeEvent(event: String) =
+    public suspend fun storeEvent(event: String): Unit =
         writeMutex.withLock {
             if (!guardDirectory()) {
                 return@withLock
@@ -100,7 +100,7 @@ class EventsFileManager(
     /**
      * Returns a sorted list of file paths that are not yet uploaded
      */
-    fun read(): List<String> {
+    public fun read(): List<String> {
         // we need to filter out .temp file, since it's operating on the writing thread
         val fileList = listStorageFiles { !it.endsWith(".tmp") && !it.endsWith(".properties") }
 
@@ -123,7 +123,7 @@ class EventsFileManager(
             }
     }
 
-    fun remove(filePath: String): Boolean {
+    public fun remove(filePath: String): Boolean {
         filePathSet.remove(filePath)
         return File(filePath).delete()
     }
@@ -132,7 +132,7 @@ class EventsFileManager(
      * closes current file, and increase the index
      * so next write go to a new file
      */
-    suspend fun rollover() =
+    public suspend fun rollover(): Unit =
         writeMutex.withLock {
             val file = currentFile()
             if (file.exists() && file.length() > 0) {
@@ -144,7 +144,7 @@ class EventsFileManager(
      * Split one file to two smaller file
      * This is used to handle payload too large error response
      */
-    fun splitFile(
+    public fun splitFile(
         filePath: String,
         events: JSONArray,
     ) {
@@ -172,7 +172,7 @@ class EventsFileManager(
      * File format: events are separated by a null character ([DELIMITER]).
      * Legacy files (pre-delimiter format) are detected and handled via [handleLegacyFormat].
      */
-    suspend fun getEventString(filePath: String): String =
+    public suspend fun getEventString(filePath: String): String =
         readMutex.withLock {
             // Prevent duplicate reads - if this file was already read, skip it
             if (filePathSet.contains(filePath)) {
@@ -256,11 +256,11 @@ class EventsFileManager(
         }
     }
 
-    fun release(filePath: String) {
+    public fun release(filePath: String) {
         filePathSet.remove(filePath)
     }
 
-    fun cleanupMetadata() {
+    public fun cleanupMetadata() {
         kvs.deleteKey(fileIndexKey)
         kvs.deleteKey(storageVersionKey)
     }

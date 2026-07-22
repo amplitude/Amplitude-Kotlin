@@ -1,15 +1,15 @@
 package com.amplitude.id
 
-interface IdentityStorage {
-    fun load(): Identity
+public interface IdentityStorage {
+    public fun load(): Identity
 
-    fun saveUserId(userId: String?)
+    public fun saveUserId(userId: String?)
 
-    fun saveDeviceId(deviceId: String?)
+    public fun saveDeviceId(deviceId: String?)
 
-    fun delete()
+    public fun delete()
 }
 
-interface IdentityStorageProvider {
-    fun getIdentityStorage(configuration: IdentityConfiguration): IdentityStorage
+public interface IdentityStorageProvider {
+    public fun getIdentityStorage(configuration: IdentityConfiguration): IdentityStorage
 }
