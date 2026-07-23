@@ -21,21 +21,21 @@ import com.amplitude.id.IdentityConfiguration
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.asCoroutineDispatcher
 import java.io.File
 import java.lang.ref.WeakReference
-import java.util.concurrent.Executors
 import com.amplitude.core.Amplitude as CoreAmplitude
 
-@OptIn(RestrictedAmplitudeFeature::class)
+@OptIn(ExperimentalCoroutinesApi::class, RestrictedAmplitudeFeature::class)
 open class Amplitude internal constructor(
     configuration: Configuration,
     state: State,
     amplitudeScope: CoroutineScope = CoroutineScope(SupervisorJob()),
-    amplitudeDispatcher: CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher(),
-    networkIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
-    storageIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
+    amplitudeDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    networkIODispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1),
+    storageIODispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1),
 ) : CoreAmplitude(
         configuration = configuration,
         store = state,

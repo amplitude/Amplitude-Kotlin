@@ -35,8 +35,9 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -44,20 +45,20 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import java.io.File
-import java.util.concurrent.Executors
 
 /**
  * <h1>Amplitude</h1>
  * This is the SDK instance class that contains all of the SDK functionality.<br><br>
  * Many of the SDK functions return the SDK instance back, allowing you to chain multiple methods calls together.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 public open class Amplitude(
     public val configuration: Configuration,
     public val store: State,
     public val amplitudeScope: CoroutineScope = CoroutineScope(SupervisorJob()),
-    public val amplitudeDispatcher: CoroutineDispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher(),
-    public val networkIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
-    public val storageIODispatcher: CoroutineDispatcher = Executors.newSingleThreadExecutor().asCoroutineDispatcher(),
+    public val amplitudeDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    public val networkIODispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1),
+    public val storageIODispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1),
 ) : PluginHost {
     public open val identity: AnalyticsIdentity
         get() =
