@@ -9,6 +9,7 @@ import com.amplitude.core.utilities.http.HttpStatus.SUCCESS
 import com.amplitude.core.utilities.http.HttpStatus.TIMEOUT
 import com.amplitude.core.utilities.http.HttpStatus.TOO_MANY_REQUESTS
 import com.amplitude.core.utilities.toIntArray
+import com.amplitude.core.utilities.toKeySet
 import org.json.JSONObject
 
 public sealed class AnalyticsResponse(public val status: HttpStatus) {
@@ -107,20 +108,20 @@ public class TooManyRequestsResponse(response: JSONObject) :
 
     init {
         if (response.has("exceeded_daily_quota_users")) {
-            exceededDailyQuotaUsers = response.getJSONObject("exceeded_daily_quota_users").keySet()
+            exceededDailyQuotaUsers = response.getJSONObject("exceeded_daily_quota_users").toKeySet()
         }
         if (response.has("exceeded_daily_quota_devices")) {
             exceededDailyQuotaDevices =
-                response.getJSONObject("exceeded_daily_quota_devices").keySet()
+                response.getJSONObject("exceeded_daily_quota_devices").toKeySet()
         }
         if (response.has("throttled_events")) {
             throttledEvents = response.getJSONArray("throttled_events").toIntArray().toSet()
         }
         if (response.has("throttled_users")) {
-            throttledUsers = response.getJSONObject("throttled_users").keySet()
+            throttledUsers = response.getJSONObject("throttled_users").toKeySet()
         }
         if (response.has("throttled_devices")) {
-            throttledDevices = response.getJSONObject("throttled_devices").keySet()
+            throttledDevices = response.getJSONObject("throttled_devices").toKeySet()
         }
     }
 

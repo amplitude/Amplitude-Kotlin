@@ -1,7 +1,10 @@
 package com.amplitude.core.utilities.http
 
+import com.amplitude.core.events.BaseEvent
+import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
@@ -26,6 +29,29 @@ class AnalyticsResponseTest {
         assertTrue(response is PayloadTooLargeResponse)
         assertEquals(HttpStatus.PAYLOAD_TOO_LARGE, response.status)
         assertEquals("Payload too large", (response as PayloadTooLargeResponse).error)
+    }
+
+    @Test
+    fun `test create too many requests response parses quota and throttle fields`() {
+        val responseBody =
+            JSONObject().apply {
+                put("error", "Too many requests")
+                put("exceeded_daily_quota_users", JSONObject().put("user-1", 1))
+                put("exceeded_daily_quota_devices", JSONObject().put("device-1", 1))
+                put("throttled_users", JSONObject().put("user-2", 10))
+                put("throttled_devices", JSONObject().put("device-2", 10))
+                put("throttled_events", JSONArray().put(0).put(2))
+            }.toString()
+
+        val response = AnalyticsResponse.create(429, responseBody)
+        assertTrue(response is TooManyRequestsResponse)
+        response as TooManyRequestsResponse
+        assertEquals(HttpStatus.TOO_MANY_REQUESTS, response.status)
+        assertEquals("Too many requests", response.error)
+        assertEquals(setOf(0, 2), response.throttledEvents)
+        assertTrue(response.isEventExceedDailyQuota(BaseEvent().apply { userId = "user-1" }))
+        assertTrue(response.isEventExceedDailyQuota(BaseEvent().apply { deviceId = "device-1" }))
+        assertFalse(response.isEventExceedDailyQuota(BaseEvent().apply { userId = "user-2" }))
     }
 
     @Test
