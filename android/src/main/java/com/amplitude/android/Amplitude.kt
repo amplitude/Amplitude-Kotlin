@@ -24,6 +24,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
 import java.io.File
+import java.lang.ref.WeakReference
 import java.util.concurrent.Executors
 import com.amplitude.core.Amplitude as CoreAmplitude
 
@@ -161,10 +162,11 @@ open class Amplitude internal constructor(
     private fun registerShutdownHook() {
         // close the stream if the app shuts down
         try {
+            val weakRef = WeakReference(this)
             Runtime.getRuntime().addShutdownHook(
                 object : Thread() {
                     override fun run() {
-                        (this@Amplitude.timeline as Timeline).stop()
+                        (weakRef.get()?.timeline as? Timeline)?.stop()
                     }
                 },
             )

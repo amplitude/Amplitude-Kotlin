@@ -17,6 +17,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.FileNotFoundException
+import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.AtomicInteger
 
 class EventPipeline(
@@ -184,10 +185,11 @@ class EventPipeline(
     private fun registerShutdownHook() {
         // close the stream if the app shuts down
         try {
+            val weakRef = WeakReference(this)
             Runtime.getRuntime().addShutdownHook(
                 object : Thread() {
                     override fun run() {
-                        this@EventPipeline.stop()
+                        weakRef.get()?.stop()
                     }
                 },
             )
