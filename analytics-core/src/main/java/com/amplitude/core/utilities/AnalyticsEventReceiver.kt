@@ -5,12 +5,16 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.eventbridge.Event
 import com.amplitude.eventbridge.EventChannel
 import com.amplitude.eventbridge.EventReceiver
+import java.lang.ref.WeakReference
 
-internal class AnalyticsEventReceiver(val amplitude: Amplitude) : EventReceiver {
+internal class AnalyticsEventReceiver(amplitude: Amplitude) : EventReceiver {
+    private val amplitudeRef = WeakReference(amplitude)
+
     override fun receive(
         channel: EventChannel,
         event: Event,
     ) {
+        val amplitude = amplitudeRef.get() ?: return
         amplitude.logger.debug("Receive event from event bridge ${event.eventType}")
         amplitude.track(event.toBaseEvent())
     }

@@ -92,21 +92,35 @@ class AndroidLifecyclePlugin(
                 }
             }
 
+        // The observer is registered on the Application (process-lifetime) and its channel
+        // roots this consumer coroutine. Hold the plugin weakly so that chain can't pin the
+        // Amplitude instance after the app drops its reference.
+        val eventChannel = activityLifecycleObserver.eventChannel
+        val observer = activityLifecycleObserver
+        val weakPlugin = WeakReference(this)
         eventJob =
             amplitude.amplitudeScope.launch(Dispatchers.Main) {
-                for (event in activityLifecycleObserver.eventChannel) {
+                for (event in eventChannel) {
+                    val plugin = weakPlugin.get()
+                    if (plugin == null) {
+                        // The plugin has been collected; unregister the observer and cancel
+                        // its channel so the abandoned instance leaves nothing behind.
+                        application.unregisterActivityLifecycleCallbacks(observer)
+                        eventChannel.cancel()
+                        break
+                    }
                     event.activity.get()?.let { activity ->
                         when (event.type) {
                             ActivityCallbackType.Created ->
-                                onActivityCreated(
+                                plugin.onActivityCreated(
                                     activity,
                                     activity.intent?.extras,
                                 )
-                            ActivityCallbackType.Started -> onActivityStarted(activity)
-                            ActivityCallbackType.Resumed -> onActivityResumed(activity)
-                            ActivityCallbackType.Paused -> onActivityPaused(activity)
-                            ActivityCallbackType.Stopped -> onActivityStopped(activity)
-                            ActivityCallbackType.Destroyed -> onActivityDestroyed(activity)
+                            ActivityCallbackType.Started -> plugin.onActivityStarted(activity)
+                            ActivityCallbackType.Resumed -> plugin.onActivityResumed(activity)
+                            ActivityCallbackType.Paused -> plugin.onActivityPaused(activity)
+                            ActivityCallbackType.Stopped -> plugin.onActivityStopped(activity)
+                            ActivityCallbackType.Destroyed -> plugin.onActivityDestroyed(activity)
                         }
                     }
                 }

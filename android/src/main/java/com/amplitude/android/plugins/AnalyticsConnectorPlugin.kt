@@ -5,6 +5,7 @@ import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
 import java.lang.ClassCastException
+import java.lang.ref.WeakReference
 
 internal class AnalyticsConnectorPlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Before
@@ -17,12 +18,15 @@ internal class AnalyticsConnectorPlugin : Plugin {
         connector = AnalyticsConnector.getInstance(instanceName)
 
         // set up listener to core package to receive exposure events from Experiment
+        val amplitudeRef = WeakReference(amplitude)
         connector.eventBridge.setEventReceiver { (eventType, eventProperties, userProperties) ->
-            val event = BaseEvent()
-            event.eventType = eventType
-            event.eventProperties = eventProperties?.toMutableMap()
-            event.userProperties = userProperties?.toMutableMap()
-            amplitude.track(event)
+            amplitudeRef.get()?.let { amplitude ->
+                val event = BaseEvent()
+                event.eventType = eventType
+                event.eventProperties = eventProperties?.toMutableMap()
+                event.userProperties = userProperties?.toMutableMap()
+                amplitude.track(event)
+            }
         }
     }
 
