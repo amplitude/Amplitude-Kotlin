@@ -9,23 +9,23 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 
-interface IdentityListener {
-    fun onUserIdChange(userId: String?)
+public interface IdentityListener {
+    public fun onUserIdChange(userId: String?)
 
-    fun onDeviceIdChange(deviceId: String?)
+    public fun onDeviceIdChange(deviceId: String?)
 
-    fun onIdentityChanged(
+    public fun onIdentityChanged(
         identity: Identity,
         updateType: IdentityUpdateType,
     )
 }
 
-data class Identity(
+public data class Identity(
     val userId: String? = null,
     val deviceId: String? = null,
 )
 
-enum class IdentityUpdateType {
+public enum class IdentityUpdateType {
     Initialized,
     Updated,
 }
@@ -34,29 +34,29 @@ enum class IdentityUpdateType {
  * Identity Manager manages the identity for certain instance.
  *
  */
-interface IdentityManager {
-    interface Editor {
-        fun setUserId(userId: String?): Editor
+public interface IdentityManager {
+    public interface Editor {
+        public fun setUserId(userId: String?): Editor
 
-        fun setDeviceId(deviceId: String?): Editor
+        public fun setDeviceId(deviceId: String?): Editor
 
-        fun commit()
+        public fun commit()
     }
 
-    fun editIdentity(): Editor
+    public fun editIdentity(): Editor
 
-    fun setIdentity(
+    public fun setIdentity(
         identity: Identity,
         updateType: IdentityUpdateType = IdentityUpdateType.Updated,
     )
 
-    fun getIdentity(): Identity
+    public fun getIdentity(): Identity
 
-    fun addIdentityListener(listener: IdentityListener)
+    public fun addIdentityListener(listener: IdentityListener)
 
-    fun removeIdentityListener(listener: IdentityListener)
+    public fun removeIdentityListener(listener: IdentityListener)
 
-    fun isInitialized(): Boolean
+    public fun isInitialized(): Boolean
 }
 
 internal class IdentityManagerImpl(

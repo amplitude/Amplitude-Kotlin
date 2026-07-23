@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * IdentifyInterceptor
  * This is the internal class for handling identify events intercept and  optimize identify volumes.
  */
-class IdentifyInterceptor(
+public class IdentifyInterceptor(
     private val storage: Storage,
     private val amplitude: Amplitude,
     private val logger: Logger,
@@ -43,7 +43,7 @@ class IdentifyInterceptor(
      * @param event full event data after plugins run
      * @return event with potentially more information or null if intercepted
      */
-    suspend fun intercept(event: BaseEvent): BaseEvent? {
+    public suspend fun intercept(event: BaseEvent): BaseEvent? {
         if (storageHandler == null) {
             // no-op to prevent custom storage errors
             return event
@@ -88,7 +88,7 @@ class IdentifyInterceptor(
         storageHandler!!.clearIdentifyIntercepts()
     }
 
-    suspend fun transferInterceptedIdentify() {
+    public suspend fun transferInterceptedIdentify() {
         val event = getTransferIdentifyEvent()
         event?.let {
             plugin.enqueuePipeline(it)

@@ -2,29 +2,29 @@ package com.amplitude.core.utilities
 
 import java.util.Collections
 
-class Diagnostics() {
+public class Diagnostics() {
     private var malformedEvents: MutableList<String>? = null
     private var errorLogs: MutableSet<String> = Collections.synchronizedSet(mutableSetOf())
 
-    companion object {
+    public companion object {
         private const val MAX_ERROR_LOGS = 10
     }
 
-    fun addMalformedEvent(event: String) {
+    public fun addMalformedEvent(event: String) {
         if (malformedEvents == null) {
             malformedEvents = Collections.synchronizedList(mutableListOf())
         }
         malformedEvents?.add(event)
     }
 
-    fun addErrorLog(log: String) {
+    public fun addErrorLog(log: String) {
         errorLogs.add(log)
         while (errorLogs.size > MAX_ERROR_LOGS) {
             errorLogs.remove(errorLogs.first())
         }
     }
 
-    fun hasDiagnostics(): Boolean {
+    public fun hasDiagnostics(): Boolean {
         return (malformedEvents != null && malformedEvents!!.isNotEmpty()) || errorLogs.isNotEmpty()
     }
 
@@ -32,7 +32,7 @@ class Diagnostics() {
      * Extracts the diagnostics as a JSON string.
      * @return JSON string of diagnostics or empty if no diagnostics are present.
      */
-    fun extractDiagnostics(): String? {
+    public fun extractDiagnostics(): String? {
         if (!hasDiagnostics()) {
             return null
         }

@@ -10,7 +10,7 @@ import com.amplitude.id.IdentityUpdateType
         "Identity state is now managed by IdentityCoordinator. " +
             "This listener is no longer functional and will be removed in a future major version.",
 )
-class AnalyticsIdentityListener(private val state: State) : IdentityListener {
+public class AnalyticsIdentityListener(private val state: State) : IdentityListener {
     override fun onUserIdChange(userId: String?) {
         // No-op: State is written directly by Amplitude.setUserId()
     }

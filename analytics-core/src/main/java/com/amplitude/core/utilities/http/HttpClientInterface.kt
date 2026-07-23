@@ -1,7 +1,7 @@
 package com.amplitude.core.utilities.http
 
-interface HttpClientInterface {
-    fun upload(
+public interface HttpClientInterface {
+    public fun upload(
         events: String,
         diagnostics: String? = null,
     ): AnalyticsResponse

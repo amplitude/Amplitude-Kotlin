@@ -8,10 +8,10 @@ package com.amplitude.core
  * @property userProperties the current user properties, or an empty map when the host does
  * not maintain a user-property map.
  */
-interface AnalyticsIdentity {
-    val userId: String?
-    val deviceId: String?
+public interface AnalyticsIdentity {
+    public val userId: String?
+    public val deviceId: String?
 
-    val userProperties: Map<String, Any?>
+    public val userProperties: Map<String, Any?>
         get() = emptyMap()
 }

@@ -9,8 +9,8 @@ import com.amplitude.core.events.GroupIdentifyEvent
 import com.amplitude.core.events.IdentifyEvent
 import com.amplitude.core.events.RevenueEvent
 
-interface Plugin : UniversalPlugin {
-    enum class Type {
+public interface Plugin : UniversalPlugin {
+    public enum class Type {
         Before,
         Enrichment,
         Destination,
@@ -18,8 +18,8 @@ interface Plugin : UniversalPlugin {
         Observe,
     }
 
-    val type: Type
-    var amplitude: Amplitude
+    public val type: Type
+    public var amplitude: Amplitude
 
     /**
      * Optional stable identifier. When non-null, registering another plugin with the same
@@ -31,7 +31,7 @@ interface Plugin : UniversalPlugin {
      * Called when the plugin is registered with an [Amplitude] instance. Override to
      * initialize the plugin, and call `super.setup(amplitude)` to keep the default wiring.
      */
-    fun setup(amplitude: Amplitude) {
+    public fun setup(amplitude: Amplitude) {
         this.amplitude = amplitude
         setup(amplitude.analyticsClient, amplitude.amplitudeContext)
     }
@@ -42,7 +42,7 @@ interface Plugin : UniversalPlugin {
         context: AmplitudeContext,
     ) {}
 
-    fun execute(event: BaseEvent): BaseEvent? {
+    public fun execute(event: BaseEvent): BaseEvent? {
         return event
     }
 
@@ -62,10 +62,10 @@ interface Plugin : UniversalPlugin {
      * guaranteed to be the main thread, so keep them fast and non-blocking. An exception
      * thrown by one plugin does not prevent the others from being notified.
      */
-    fun onUserIdChanged(userId: String?) {}
+    public fun onUserIdChanged(userId: String?) {}
 
     /** Called when the device id changes. Shares the threading contract of [onUserIdChanged]. */
-    fun onDeviceIdChanged(deviceId: String?) {}
+    public fun onDeviceIdChanged(deviceId: String?) {}
 
     /** Called when the session id changes. Only fires on SDK builds that track sessions. */
     override fun onSessionIdChanged(sessionId: Long) {}
@@ -80,27 +80,27 @@ interface Plugin : UniversalPlugin {
     override fun onReset() {}
 }
 
-interface EventPlugin : Plugin {
-    fun track(payload: BaseEvent): BaseEvent? {
+public interface EventPlugin : Plugin {
+    public fun track(payload: BaseEvent): BaseEvent? {
         return payload
     }
 
-    fun identify(payload: IdentifyEvent): IdentifyEvent? {
+    public fun identify(payload: IdentifyEvent): IdentifyEvent? {
         return payload
     }
 
-    fun groupIdentify(payload: GroupIdentifyEvent): GroupIdentifyEvent? {
+    public fun groupIdentify(payload: GroupIdentifyEvent): GroupIdentifyEvent? {
         return payload
     }
 
-    fun revenue(payload: RevenueEvent): RevenueEvent? {
+    public fun revenue(payload: RevenueEvent): RevenueEvent? {
         return payload
     }
 
-    open fun flush() {}
+    public open fun flush() {}
 }
 
-abstract class DestinationPlugin : EventPlugin {
+public abstract class DestinationPlugin : EventPlugin {
     override val type: Plugin.Type = Plugin.Type.Destination
     private val timeline: Timeline = Timeline()
     override lateinit var amplitude: Amplitude
@@ -111,16 +111,16 @@ abstract class DestinationPlugin : EventPlugin {
         timeline.amplitude = amplitude
     }
 
-    fun add(plugin: Plugin) {
+    public fun add(plugin: Plugin) {
         plugin.amplitude = this.amplitude
         timeline.add(plugin)
     }
 
-    fun remove(plugin: Plugin) {
+    public fun remove(plugin: Plugin) {
         timeline.remove(plugin)
     }
 
-    fun process(event: BaseEvent?): BaseEvent? {
+    public fun process(event: BaseEvent?): BaseEvent? {
         // Skip this destination if it is disabled via settings
         if (!enabled) {
             return null
@@ -154,7 +154,7 @@ abstract class DestinationPlugin : EventPlugin {
     }
 }
 
-abstract class ObservePlugin : Plugin {
+public abstract class ObservePlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Observe
 
     abstract override fun onUserIdChanged(userId: String?)

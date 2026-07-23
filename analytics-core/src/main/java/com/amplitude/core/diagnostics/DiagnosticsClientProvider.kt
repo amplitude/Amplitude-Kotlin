@@ -11,10 +11,10 @@ import com.amplitude.core.RestrictedAmplitudeFeature
  * storage initialization. By using a provider, the access is deferred until actually needed.
  */
 @RestrictedAmplitudeFeature
-fun interface DiagnosticsClientProvider {
+public fun interface DiagnosticsClientProvider {
     /**
      * Returns the [DiagnosticsClient] instance.
      * This method should only be called after the SDK is fully initialized.
      */
-    fun get(): DiagnosticsClient
+    public fun get(): DiagnosticsClient
 }

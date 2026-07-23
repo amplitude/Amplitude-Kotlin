@@ -5,7 +5,7 @@ import com.amplitude.common.Logger
 /**
  * Console logger
  */
-class ConsoleLogger() : Logger {
+public class ConsoleLogger() : Logger {
     override var logMode: Logger.LogMode = Logger.LogMode.INFO
 
     override fun debug(message: String) {
@@ -33,7 +33,7 @@ class ConsoleLogger() : Logger {
         }
     }
 
-    companion object {
-        val logger = ConsoleLogger()
+    public companion object {
+        public val logger: ConsoleLogger = ConsoleLogger()
     }
 }

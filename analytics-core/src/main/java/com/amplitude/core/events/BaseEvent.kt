@@ -3,14 +3,14 @@ package com.amplitude.core.events
 /**
  * BaseEvent for SDK
  */
-open class BaseEvent : EventOptions(), AnalyticsEvent {
+public open class BaseEvent : EventOptions(), AnalyticsEvent {
     open override lateinit var eventType: String
     override var eventProperties: MutableMap<String, Any?>? = null
-    var userProperties: MutableMap<String, Any?>? = null
-    var groups: MutableMap<String, Any?>? = null
-    var groupProperties: MutableMap<String, Any?>? = null
+    public var userProperties: MutableMap<String, Any?>? = null
+    public var groups: MutableMap<String, Any?>? = null
+    public var groupProperties: MutableMap<String, Any?>? = null
 
-    fun mergeEventOptions(options: EventOptions) {
+    public fun mergeEventOptions(options: EventOptions) {
         options.userId?.let { userId = it }
         options.deviceId?.let { deviceId = it }
         options.timestamp?.let { timestamp = it }
@@ -56,7 +56,7 @@ open class BaseEvent : EventOptions(), AnalyticsEvent {
     /**
      * Check if event is valid
      */
-    open fun isValid(): Boolean {
+    public open fun isValid(): Boolean {
         return userId != null || deviceId != null
     }
 }

@@ -5,12 +5,12 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.IngestionMetadata
 import com.amplitude.core.platform.Plugin
 
-class GetAmpliExtrasPlugin : Plugin {
+public class GetAmpliExtrasPlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Enrichment
     override lateinit var amplitude: Amplitude
 
-    companion object {
-        const val AMP_AMPLI = "ampli"
+    public companion object {
+        public const val AMP_AMPLI: String = "ampli"
     }
 
     override fun setup(amplitude: Amplitude) {

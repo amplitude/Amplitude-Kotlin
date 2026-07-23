@@ -2,7 +2,7 @@ package com.amplitude.eventbridge
 
 import java.util.concurrent.ArrayBlockingQueue
 
-data class Event(
+public data class Event(
     val eventType: String,
     val eventProperties: Map<String, Any?>? = null,
     val userProperties: Map<String, Any?>? = null,
@@ -10,13 +10,13 @@ data class Event(
     var groupProperties: Map<String, Any?>? = null,
 )
 
-enum class EventChannel {
+public enum class EventChannel {
     EVENT,
     IDENTIFY,
 }
 
-interface EventReceiver {
-    fun receive(
+public interface EventReceiver {
+    public fun receive(
         channel: EventChannel,
         event: Event,
     )
@@ -25,13 +25,13 @@ interface EventReceiver {
 /**
  * Bridges to transfer data between modules, like analytics and experiment
  */
-interface EventBridge {
-    fun sendEvent(
+public interface EventBridge {
+    public fun sendEvent(
         channel: EventChannel,
         event: Event,
     )
 
-    fun setEventReceiver(
+    public fun setEventReceiver(
         channel: EventChannel,
         receiver: EventReceiver,
     )

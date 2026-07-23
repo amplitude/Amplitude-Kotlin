@@ -10,7 +10,7 @@ import com.amplitude.core.platform.EventPipeline
 import com.amplitude.core.platform.intercept.IdentifyInterceptor
 import kotlinx.coroutines.launch
 
-class AmplitudeDestination : DestinationPlugin() {
+public class AmplitudeDestination : DestinationPlugin() {
     private lateinit var pipeline: EventPipeline
     private lateinit var identifyInterceptor: IdentifyInterceptor
 
@@ -58,7 +58,7 @@ class AmplitudeDestination : DestinationPlugin() {
         }
     }
 
-    fun enqueuePipeline(event: BaseEvent) {
+    public fun enqueuePipeline(event: BaseEvent) {
         pipeline.put(event)
     }
 

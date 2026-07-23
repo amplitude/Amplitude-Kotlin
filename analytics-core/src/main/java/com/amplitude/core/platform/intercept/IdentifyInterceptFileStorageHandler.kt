@@ -11,7 +11,7 @@ import kotlinx.coroutines.launch
 import org.json.JSONArray
 import java.io.FileNotFoundException
 
-class IdentifyInterceptFileStorageHandler(
+public class IdentifyInterceptFileStorageHandler(
     private val storage: EventsFileStorage,
     private val logger: Logger,
     private val amplitude: Amplitude,

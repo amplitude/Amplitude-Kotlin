@@ -6,15 +6,15 @@ package com.amplitude.id
  *
  * @property configuration IdentityConfiguration for instance
  */
-class IdentityContainer private constructor(val configuration: IdentityConfiguration) {
-    val identityManager: IdentityManager
+public class IdentityContainer private constructor(public val configuration: IdentityConfiguration) {
+    public val identityManager: IdentityManager
 
-    companion object {
+    public companion object {
         private val instancesLock = Any()
         private val instances = mutableMapOf<String, IdentityContainer>()
 
         @JvmStatic
-        fun getInstance(configuration: IdentityConfiguration): IdentityContainer {
+        public fun getInstance(configuration: IdentityConfiguration): IdentityContainer {
             return synchronized(instancesLock) {
                 instances.getOrPut(configuration.instanceName) {
                     IdentityContainer(configuration)
@@ -23,7 +23,7 @@ class IdentityContainer private constructor(val configuration: IdentityConfigura
         }
 
         @JvmStatic
-        fun clearInstanceCache() {
+        public fun clearInstanceCache() {
             instances.clear()
         }
     }

@@ -17,25 +17,25 @@ import com.amplitude.core.platform.ObservePlugin
  * in the next major version, when observe plugins move fully into the
  * [com.amplitude.core.platform.Timeline].
  */
-class State {
+public class State {
     @Volatile
-    var userId: String? = null
+    public var userId: String? = null
 
     @Volatile
-    var deviceId: String? = null
+    public var deviceId: String? = null
 
     @Deprecated(
         "Observe plugins are managed by Amplitude/Timeline; this registry will be removed in the " +
             "next major version. Register via Amplitude.add(plugin).",
     )
-    val plugins: MutableList<ObservePlugin> = mutableListOf()
+    public val plugins: MutableList<ObservePlugin> = mutableListOf()
 
     @Deprecated(
         "Register observe plugins via Amplitude.add(plugin). State's registry will be removed in " +
             "the next major version.",
         ReplaceWith("amplitude.add(plugin)"),
     )
-    fun add(
+    public fun add(
         plugin: ObservePlugin,
         amplitude: Amplitude,
     ): Boolean {
@@ -51,7 +51,7 @@ class State {
         "Remove observe plugins via Amplitude.remove(plugin). State's registry will be removed in " +
             "the next major version.",
     )
-    fun remove(plugin: ObservePlugin): Boolean {
+    public fun remove(plugin: ObservePlugin): Boolean {
         @Suppress("DEPRECATION")
         val removed =
             synchronized(plugins) {

@@ -1,10 +1,10 @@
 package com.amplitude.core.events
 
-open class Revenue {
+public open class Revenue {
     /**
      * The Product ID field.
      */
-    var productId: String? = null
+    public var productId: String? = null
         set(value) {
             if (!value.isNullOrEmpty()) {
                 field = value
@@ -14,7 +14,7 @@ open class Revenue {
     /**
      * The Quantity field (defaults to 1).
      */
-    var quantity: Int = 1
+    public var quantity: Int = 1
         set(value) {
             if (value > 0) {
                 field = value
@@ -24,7 +24,7 @@ open class Revenue {
     /**
      * The Price field (required).
      */
-    var price: Double? = null
+    public var price: Double? = null
         set(value) {
             value?.let {
                 field = value
@@ -34,39 +34,39 @@ open class Revenue {
     /**
      * The Revenue Type field (optional).
      */
-    var revenueType: String? = null
+    public var revenueType: String? = null
 
     /**
      * The 3 letter currency code (optional).
      */
-    var currency: String? = null
+    public var currency: String? = null
 
     /**
      * The Receipt field (required if you want to verify the revenue event).
      */
-    var receipt: String? = null
+    public var receipt: String? = null
 
     /**
      * The Receipt Signature field (required if you want to verify the revenue event).
      */
-    var receiptSig: String? = null
+    public var receiptSig: String? = null
 
     /**
      * The Revenue Event Properties field with (optional).
      */
-    var properties: MutableMap<String, Any?>? = null
+    public var properties: MutableMap<String, Any?>? = null
 
     /**
      * The revenue amount
      */
-    var revenue: Double? = null
+    public var revenue: Double? = null
         set(value) {
             value?.let {
                 field = value
             }
         }
 
-    companion object {
+    public companion object {
         internal const val REVENUE_PRODUCT_ID = "\$productId"
         internal const val REVENUE_QUANTITY = "\$quantity"
         internal const val REVENUE_PRICE = "\$price"
@@ -80,7 +80,7 @@ open class Revenue {
     /**
      * Set the receipt and receipt signature. Both fields are required to verify the revenue event.
      */
-    fun setReceipt(
+    public fun setReceipt(
         receipt: String,
         receiptSignature: String,
     ): Revenue {
@@ -92,14 +92,14 @@ open class Revenue {
     /**
      * Verifies that revenue object is valid and contains the required fields
      */
-    fun isValid(): Boolean {
+    public fun isValid(): Boolean {
         if (price == null) {
             return false
         }
         return true
     }
 
-    fun toRevenueEvent(): RevenueEvent {
+    public fun toRevenueEvent(): RevenueEvent {
         val event = RevenueEvent()
         val eventProperties = properties ?: mutableMapOf<String, Any?>()
         productId?.let { eventProperties.put(REVENUE_PRODUCT_ID, it) }

@@ -4,13 +4,13 @@ import com.amplitude.common.jvm.ConsoleLogger
 import org.json.JSONException
 import org.json.JSONObject
 
-open class Plan
+public open class Plan
     @JvmOverloads
     constructor(
-        val branch: String? = null,
-        val source: String? = null,
-        val version: String? = null,
-        val versionId: String? = null,
+        public val branch: String? = null,
+        public val source: String? = null,
+        public val version: String? = null,
+        public val versionId: String? = null,
     ) {
         /**
          * Get JSONObject of current tracking plan
@@ -40,17 +40,17 @@ open class Plan
         /**
          * Get a cloned Plan object, to isolate the potentially value changes
          */
-        fun clone(): Plan {
+        public fun clone(): Plan {
             return Plan(branch, source, version, versionId)
         }
 
-        companion object {
-            const val AMP_PLAN_BRANCH = "branch"
-            const val AMP_PLAN_SOURCE = "source"
-            const val AMP_PLAN_VERSION = "version"
-            const val AMP_PLAN_VERSION_ID = "versionId"
+        public companion object {
+            public const val AMP_PLAN_BRANCH: String = "branch"
+            public const val AMP_PLAN_SOURCE: String = "source"
+            public const val AMP_PLAN_VERSION: String = "version"
+            public const val AMP_PLAN_VERSION_ID: String = "versionId"
 
-            fun fromJSONObject(jsonObject: JSONObject): Plan {
+            public fun fromJSONObject(jsonObject: JSONObject): Plan {
                 val branch = jsonObject.optString(AMP_PLAN_BRANCH, null)
                 val source = jsonObject.optString(AMP_PLAN_SOURCE, null)
                 val version = jsonObject.optString(AMP_PLAN_VERSION, null)
