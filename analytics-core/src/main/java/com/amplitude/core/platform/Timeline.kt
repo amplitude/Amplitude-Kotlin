@@ -83,6 +83,21 @@ open class Timeline {
 
     internal fun pluginsSnapshot(): List<UniversalPlugin> = plugins.values.flatMap { it.snapshot() }
 
+    /** Tears down every registered plugin, isolating each so one throwing can't skip the rest. */
+    open fun stop() {
+        // Iterate mediators directly (not applyClosure, which is Plugin-only) so bare
+        // UniversalPlugins are torn down too. Does not cascade into a DestinationPlugin's Timeline.
+        plugins.forEach { (_, mediator) ->
+            mediator.applyClosure { plugin ->
+                try {
+                    plugin.teardown()
+                } catch (e: Exception) {
+                    amplitude.logger.warn("Plugin '${plugin.name ?: plugin::class.java.name}' threw during teardown: $e")
+                }
+            }
+        }
+    }
+
     inline fun <reified T : Plugin> findPlugin(): T? {
         var match: T? = null
         applyClosure { plugin ->

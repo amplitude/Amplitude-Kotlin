@@ -86,9 +86,11 @@ public class com/amplitude/core/Amplitude : com/amplitude/core/platform/PluginHo
 	public static synthetic fun identify$default (Lcom/amplitude/core/Amplitude;Lcom/amplitude/core/events/Identify;Lcom/amplitude/core/events/EventOptions;ILjava/lang/Object;)Lcom/amplitude/core/Amplitude;
 	public static synthetic fun identify$default (Lcom/amplitude/core/Amplitude;Ljava/util/Map;Lcom/amplitude/core/events/EventOptions;ILjava/lang/Object;)Lcom/amplitude/core/Amplitude;
 	public final fun isBuilt ()Lkotlinx/coroutines/Deferred;
+	protected final fun isShutdown ()Z
 	public final fun logEvent (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/Amplitude;
 	public final fun logRevenue (Lcom/amplitude/core/events/Revenue;)Lcom/amplitude/core/Amplitude;
 	protected final fun notifyAllPlugins (Lkotlin/jvm/functions/Function1;)V
+	protected fun performShutdown ()V
 	public fun plugin (Ljava/lang/String;)Lcom/amplitude/core/platform/UniversalPlugin;
 	public fun plugins (Ljava/lang/Class;)Ljava/util/List;
 	public final fun remove (Lcom/amplitude/core/platform/Plugin;)Lcom/amplitude/core/Amplitude;
@@ -107,6 +109,7 @@ public class com/amplitude/core/Amplitude : com/amplitude/core/platform/PluginHo
 	public static synthetic fun setGroup$default (Lcom/amplitude/core/Amplitude;Ljava/lang/String;[Ljava/lang/String;Lcom/amplitude/core/events/EventOptions;ILjava/lang/Object;)Lcom/amplitude/core/Amplitude;
 	public fun setOptOut (Z)V
 	public final fun setUserId (Ljava/lang/String;)Lcom/amplitude/core/Amplitude;
+	public fun shutdown ()V
 	public final fun track (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/Amplitude;
 	public final fun track (Lcom/amplitude/core/events/BaseEvent;Lcom/amplitude/core/events/EventOptions;)Lcom/amplitude/core/Amplitude;
 	public final fun track (Lcom/amplitude/core/events/BaseEvent;Lcom/amplitude/core/events/EventOptions;Lkotlin/jvm/functions/Function3;)Lcom/amplitude/core/Amplitude;
@@ -901,6 +904,7 @@ public class com/amplitude/core/platform/Timeline {
 	public fun process (Lcom/amplitude/core/events/BaseEvent;)V
 	public final fun remove (Lcom/amplitude/core/platform/UniversalPlugin;)V
 	public final fun setAmplitude (Lcom/amplitude/core/Amplitude;)V
+	public fun stop ()V
 }
 
 public abstract interface class com/amplitude/core/platform/UniversalPlugin {
@@ -977,6 +981,7 @@ public final class com/amplitude/core/platform/plugins/AmplitudeDestination : co
 	public fun identify (Lcom/amplitude/core/events/IdentifyEvent;)Lcom/amplitude/core/events/IdentifyEvent;
 	public fun revenue (Lcom/amplitude/core/events/RevenueEvent;)Lcom/amplitude/core/events/RevenueEvent;
 	public fun setup (Lcom/amplitude/core/Amplitude;)V
+	public fun teardown ()V
 	public fun track (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
 }
 

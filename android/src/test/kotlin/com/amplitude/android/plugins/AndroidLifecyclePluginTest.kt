@@ -11,12 +11,15 @@ import android.net.Uri
 import com.amplitude.android.Amplitude
 import com.amplitude.android.AutocaptureManager
 import com.amplitude.android.AutocaptureOption
+import com.amplitude.android.AutocaptureState
 import com.amplitude.android.Configuration
 import com.amplitude.android.Constants.EventTypes
+import com.amplitude.android.FrustrationInteractionsDetector
 import com.amplitude.android.InteractionsOptions
 import com.amplitude.android.internal.fragments.FragmentActivityHandler
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.registerFragmentLifecycleCallbacks
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.unregisterFragmentLifecycleCallbacks
+import com.amplitude.android.internal.gestures.WindowCallbackManager
 import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.Storage
@@ -817,6 +820,115 @@ class AndroidLifecyclePluginTest {
 
             close()
         }
+
+    @Test
+    fun `test teardown cancels jobs and stops interaction detectors`() =
+        runTest {
+            mockAutocapture(emptySet())
+            every { mockedAmplitude.amplitudeScope } returns this
+
+            plugin.setup(mockedAmplitude)
+            advanceUntilIdle()
+
+            // Inject spies for the detectors directly (bypassing the lazy creation path in
+            // startInteractionTrackingIfNeeded, which requires a real Main-thread event loop)
+            // so we can verify `stop()` is called by `teardown()`.
+            val spiedFrustrationDetector =
+                spyk(
+                    FrustrationInteractionsDetector(
+                        amplitude = mockedAmplitude,
+                        logger = mockk(relaxed = true),
+                        density = 1f,
+                        autocaptureStateProvider = { AutocaptureState() },
+                    ),
+                )
+            val spiedWindowCallbackManager =
+                spyk(
+                    WindowCallbackManager(
+                        track = { _, _ -> },
+                        frustrationDetector = spiedFrustrationDetector,
+                        autocaptureStateProvider = { AutocaptureState() },
+                        logger = mockk(relaxed = true),
+                    ),
+                )
+
+            val windowCallbackManagerField =
+                AndroidLifecyclePlugin::class.java.getDeclaredField("windowCallbackManager")
+                    .apply { isAccessible = true }
+            val frustrationDetectorField =
+                AndroidLifecyclePlugin::class.java.getDeclaredField("frustrationInteractionsDetector")
+                    .apply { isAccessible = true }
+            windowCallbackManagerField.set(plugin, spiedWindowCallbackManager)
+            frustrationDetectorField.set(plugin, spiedFrustrationDetector)
+
+            plugin.teardown()
+
+            verify(exactly = 1) { spiedWindowCallbackManager.stop() }
+            verify(exactly = 1) { spiedFrustrationDetector.stop() }
+            assert(plugin.eventJob?.isCancelled == true) { "eventJob should be cancelled after teardown" }
+
+            observer.eventChannel.close()
+        }
+
+    @Test
+    fun `test teardown clears lifecycle collections and unregisters fragment callbacks`() =
+        runTest {
+            mockAutocapture(
+                setOf(
+                    AutocaptureOption.APP_LIFECYCLES,
+                    AutocaptureOption.SCREEN_VIEWS,
+                    AutocaptureOption.DEEP_LINKS,
+                ),
+            )
+            every { mockedAmplitude.amplitudeScope } returns this
+
+            val activity = mockk<Activity>(relaxed = true)
+            every { activity.intent } returns Intent()
+
+            plugin.setup(mockedAmplitude)
+
+            every { activity.registerFragmentLifecycleCallbacks(any(), any(), any()) } returns Unit
+            every { activity.unregisterFragmentLifecycleCallbacks(any()) } returns Unit
+
+            // Drive create + start (but not destroy) so created/fragmentTrackingActivities/
+            // started/processedDeepLinkIntents are all populated when teardown() runs.
+            observer.onActivityCreated(activity, mockk())
+            observer.onActivityStarted(activity)
+
+            advanceUntilIdle()
+
+            assert(fieldValue<Map<Int, *>>("created").isNotEmpty()) { "created should be populated before teardown" }
+            assert(
+                fieldValue<Set<Int>>("fragmentTrackingActivities").isNotEmpty(),
+            ) { "fragmentTrackingActivities should be populated before teardown" }
+            assert(fieldValue<Set<Int>>("started").isNotEmpty()) { "started should be populated before teardown" }
+            assert(
+                fieldValue<Map<Int, Int>>("processedDeepLinkIntents").isNotEmpty(),
+            ) { "processedDeepLinkIntents should be populated before teardown" }
+
+            plugin.teardown()
+
+            verify(exactly = 1) {
+                activity.unregisterFragmentLifecycleCallbacks(any())
+            }
+
+            assert(fieldValue<Map<Int, *>>("created").isEmpty()) { "created should be cleared after teardown" }
+            assert(
+                fieldValue<Set<Int>>("fragmentTrackingActivities").isEmpty(),
+            ) { "fragmentTrackingActivities should be cleared after teardown" }
+            assert(fieldValue<Set<Int>>("started").isEmpty()) { "started should be cleared after teardown" }
+            assert(
+                fieldValue<Map<Int, Int>>("processedDeepLinkIntents").isEmpty(),
+            ) { "processedDeepLinkIntents should be cleared after teardown" }
+
+            observer.eventChannel.close()
+        }
+
+    private fun <T> fieldValue(name: String): T {
+        val field = AndroidLifecyclePlugin::class.java.getDeclaredField(name).apply { isAccessible = true }
+        @Suppress("UNCHECKED_CAST")
+        return field.get(plugin) as T
+    }
 
     private fun mockAutocapture(options: Set<AutocaptureOption>) {
         every { mockedConfig.autocapture } returns options

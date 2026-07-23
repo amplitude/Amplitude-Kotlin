@@ -41,6 +41,10 @@ class AmplitudeDestination : DestinationPlugin() {
         }
     }
 
+    override fun teardown() {
+        if (::pipeline.isInitialized) pipeline.stop()
+    }
+
     private fun enqueue(payload: BaseEvent?) {
         payload?.let { event ->
             if (!event.isValid()) {

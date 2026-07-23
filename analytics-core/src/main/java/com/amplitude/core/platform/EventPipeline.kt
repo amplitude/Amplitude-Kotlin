@@ -39,6 +39,12 @@ class EventPipeline(
     private var scheduled: Boolean
     var flushSizeDivider: AtomicInteger = AtomicInteger(1)
 
+    /**
+     * Only visible for testing.
+     */
+    @Volatile
+    internal var shutdownHookThread: Thread? = null
+
     private val responseHandler by lazy {
         overrideResponseHandler ?: storage.getResponseHandler(
             this@EventPipeline,
@@ -79,6 +85,7 @@ class EventPipeline(
         uploadChannel.cancel()
         writeChannel.cancel()
         running = false
+        removeShutdownHook()
     }
 
     private fun write() =
@@ -184,18 +191,30 @@ class EventPipeline(
     private fun registerShutdownHook() {
         // close the stream if the app shuts down
         try {
-            Runtime.getRuntime().addShutdownHook(
+            val thread =
                 object : Thread() {
                     override fun run() {
                         this@EventPipeline.stop()
                     }
-                },
-            )
+                }
+            Runtime.getRuntime().addShutdownHook(thread)
+            shutdownHookThread = thread
         } catch (_: IllegalStateException) {
             // Once the shutdown sequence has begun it is impossible to register a shutdown hook,
             // so we just ignore the IllegalStateException that's thrown.
             // https://developer.android.com/reference/java/lang/Runtime#addShutdownHook(java.lang.Thread)
         }
+    }
+
+    private fun removeShutdownHook() {
+        val thread = shutdownHookThread ?: return
+        try {
+            Runtime.getRuntime().removeShutdownHook(thread)
+        } catch (_: IllegalStateException) {
+            // The JVM is already shutting down; hooks can no longer be removed at that point.
+            // https://developer.android.com/reference/java/lang/Runtime#removeShutdownHook(java.lang.Thread)
+        }
+        shutdownHookThread = null
     }
 }
 

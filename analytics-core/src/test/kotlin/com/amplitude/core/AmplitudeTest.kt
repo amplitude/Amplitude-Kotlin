@@ -15,16 +15,21 @@ import com.amplitude.core.platform.Plugin
 import com.amplitude.core.utilities.JSONUtil
 import com.amplitude.core.utils.FakeAmplitude
 import com.amplitude.core.utils.StubPlugin
+import com.amplitude.core.utils.StubUniversalPlugin
 import com.amplitude.core.utils.TestRunPlugin
+import io.mockk.every
 import io.mockk.slot
 import io.mockk.spyk
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNotSame
 import org.junit.jupiter.api.Assertions.assertNull
@@ -37,6 +42,7 @@ import org.junit.jupiter.api.TestInstance
 import java.util.Collections
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -603,6 +609,175 @@ internal class AmplitudeTest {
                 assertEquals(null, it.userId)
                 assertNotEquals("old-device", it.deviceId)
             }
+        }
+    }
+
+    @Nested
+    inner class TestShutdown {
+        @Test
+        fun `shutdown cancels amplitudeScope`() {
+            assertTrue(amplitude.amplitudeScope.isActive)
+            amplitude.shutdown()
+            assertFalse(amplitude.amplitudeScope.isActive)
+        }
+
+        @Test
+        fun `track after shutdown is a no-op`() {
+            val mockPlugin = spyk(StubPlugin())
+            amplitude.add(mockPlugin)
+
+            amplitude.shutdown()
+            amplitude.track("test event")
+
+            verify(exactly = 0) { mockPlugin.track(any()) }
+        }
+
+        @Test
+        fun `flush after shutdown is a no-op`() {
+            val mockPlugin = spyk(StubPlugin())
+            amplitude.add(mockPlugin)
+
+            amplitude.shutdown()
+            amplitude.flush()
+
+            verify(exactly = 0) { mockPlugin.flush() }
+        }
+
+        @Test
+        fun `shutdown is idempotent`() {
+            val mockPlugin = spyk(StubPlugin())
+            amplitude.add(mockPlugin)
+
+            amplitude.shutdown()
+            amplitude.shutdown()
+
+            verify(exactly = 1) { mockPlugin.teardown() }
+        }
+
+        @Test
+        fun `concurrent shutdown from multiple threads only tears down once`() {
+            val mockPlugin = spyk(StubPlugin())
+            amplitude.add(mockPlugin)
+
+            val threadCount = 20
+            val ready = CountDownLatch(threadCount)
+            val go = CountDownLatch(1)
+            val done = CountDownLatch(threadCount)
+            repeat(threadCount) {
+                thread {
+                    ready.countDown()
+                    go.await()
+                    amplitude.shutdown()
+                    done.countDown()
+                }
+            }
+            ready.await()
+            go.countDown()
+            assertTrue(done.await(5, TimeUnit.SECONDS))
+
+            verify(exactly = 1) { mockPlugin.teardown() }
+            assertFalse(amplitude.amplitudeScope.isActive)
+        }
+
+        @Test
+        fun `shutdown tears down bare UniversalPlugins too, not just Plugins`() {
+            val universalPlugin = spyk(StubUniversalPlugin())
+            amplitude.add(universalPlugin)
+
+            amplitude.shutdown()
+
+            verify(exactly = 1) { universalPlugin.teardown() }
+        }
+
+        @Test
+        fun `plugin teardown throwing still cancels scope and tears down other plugins`() {
+            val throwingPlugin = spyk(StubPlugin())
+            every { throwingPlugin.teardown() } throws RuntimeException("boom")
+            val otherPlugin = spyk(StubPlugin())
+            amplitude.add(throwingPlugin)
+            amplitude.add(otherPlugin)
+
+            amplitude.shutdown()
+
+            verify(exactly = 1) { throwingPlugin.teardown() }
+            verify(exactly = 1) { otherPlugin.teardown() }
+            assertFalse(amplitude.amplitudeScope.isActive)
+        }
+
+        @Test
+        fun `real threads contending on a blocking teardown still tear down exactly once`() {
+            // The "concurrent shutdown from multiple threads" test above completes almost
+            // instantly, so losing threads typically short-circuit on the AtomicBoolean CAS
+            // before the winner's performShutdown() call is even underway — it doesn't exercise
+            // real contention on the @Synchronized monitor that also guards the buildInternal
+            // tail-check's re-entry into performShutdown(). Widening the window with a plugin
+            // whose teardown() blocks makes the other threads genuinely queue up instead.
+            val teardownCount = AtomicInteger(0)
+            val teardownStarted = CountDownLatch(1)
+            val releaseTeardown = CountDownLatch(1)
+            val blockingPlugin =
+                object : StubPlugin() {
+                    override fun teardown() {
+                        teardownCount.incrementAndGet()
+                        teardownStarted.countDown()
+                        releaseTeardown.await(2, TimeUnit.SECONDS)
+                    }
+                }
+            amplitude.add(blockingPlugin)
+
+            val threadCount = 10
+            val errors = Collections.synchronizedList(mutableListOf<Throwable>())
+            val ready = CountDownLatch(threadCount)
+            val go = CountDownLatch(1)
+            val done = CountDownLatch(threadCount)
+            repeat(threadCount) {
+                thread {
+                    ready.countDown()
+                    go.await()
+                    try {
+                        amplitude.shutdown()
+                    } catch (e: Throwable) {
+                        errors.add(e)
+                    } finally {
+                        done.countDown()
+                    }
+                }
+            }
+            ready.await()
+            go.countDown()
+
+            // Let the winning thread reach the blocking teardown() before releasing it, so the
+            // other threads pile up instead of short-circuiting on an already-false CAS.
+            assertTrue(teardownStarted.await(2, TimeUnit.SECONDS))
+            releaseTeardown.countDown()
+
+            assertTrue(done.await(5, TimeUnit.SECONDS))
+
+            assertTrue(errors.isEmpty(), "Expected no errors but got: $errors")
+            assertEquals(1, teardownCount.get())
+            assertFalse(amplitude.amplitudeScope.isActive)
+        }
+
+        @Test
+        fun `shutdown immediately after construction fully tears down once the async build catches up`() {
+            val testDispatcher = StandardTestDispatcher()
+            val earlyShutdownAmplitude =
+                FakeAmplitude(
+                    Configuration("test-key", serverUrl = server.url("/").toString()),
+                    testDispatcher = testDispatcher,
+                )
+
+            earlyShutdownAmplitude.shutdown()
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            assertTrue(earlyShutdownAmplitude.isBuilt.isCompleted)
+            assertFalse(earlyShutdownAmplitude.amplitudeScope.isActive)
+
+            val mockPlugin = spyk(StubPlugin())
+            earlyShutdownAmplitude.add(mockPlugin)
+            earlyShutdownAmplitude.track("test_event")
+
+            verify(exactly = 0) { mockPlugin.track(any()) }
         }
     }
 }

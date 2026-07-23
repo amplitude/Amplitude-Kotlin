@@ -13,6 +13,7 @@ public class com/amplitude/android/Amplitude : com/amplitude/core/Amplitude {
 	public fun getSessionId ()J
 	public final fun onEnterForeground (J)V
 	public final fun onExitForeground (J)V
+	protected fun performShutdown ()V
 	public fun reset ()Lcom/amplitude/android/Amplitude;
 	public synthetic fun reset ()Lcom/amplitude/core/Amplitude;
 }
@@ -478,6 +479,7 @@ public final class com/amplitude/android/Timeline : com/amplitude/core/platform/
 	public synthetic fun <init> (Ljava/lang/Long;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun getSessionId ()J
 	public fun process (Lcom/amplitude/core/events/BaseEvent;)V
+	public fun stop ()V
 }
 
 public final class com/amplitude/android/TrackingOptions {
