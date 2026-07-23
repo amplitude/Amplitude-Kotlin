@@ -80,29 +80,14 @@ class EventsFileManager(
     }
 
     /**
-     * Lists this storage's files, applying [matches] to the file name.
-     * Returns an empty array if the directory can't be enumerated.
-     */
-    private fun listStorageFiles(matches: (name: String) -> Boolean): Array<File> =
-        directory.listFiles { _, name -> matchesStorageFile(name, matches) } ?: emptyArray()
-
-    /**
-     * True if [name] belongs to this storage and satisfies [matches].
-     *
-     * [name] is nullable because the platform can hand a null entry to the
-     * [java.io.FilenameFilter] callback on some devices/filesystems (SDK-176).
-     */
-    internal fun matchesStorageFile(
-        name: String?,
-        matches: (name: String) -> Boolean,
-    ): Boolean = name != null && name.contains(storageKey) && matches(name)
-
-    /**
      * Returns a sorted list of file paths that are not yet uploaded
      */
     fun read(): List<String> {
         // we need to filter out .temp file, since it's operating on the writing thread
-        val fileList = listStorageFiles { !it.endsWith(".tmp") && !it.endsWith(".properties") }
+        val fileList =
+            directory.listFiles { _, name ->
+                name.contains(storageKey) && !name.endsWith(".tmp") && !name.endsWith(".properties")
+            } ?: emptyArray()
 
         return fileList
             .sortedBy { file ->
@@ -294,7 +279,10 @@ class EventsFileManager(
         val file =
             curFile[storageKey] ?: run {
                 // check leftover tmp file
-                val fileList = listStorageFiles { it.endsWith(".tmp") }
+                val fileList =
+                    directory.listFiles { _, name ->
+                        name.contains(storageKey) && name.endsWith(".tmp")
+                    } ?: emptyArray()
 
                 fileList.getOrNull(0)
             }
@@ -381,7 +369,10 @@ class EventsFileManager(
             if (kvs.getLong(storageVersionKey, 1L) > 1L) {
                 return@withLock
             }
-            val unFinishedFiles = listStorageFiles { !it.endsWith(".properties") }
+            val unFinishedFiles =
+                directory.listFiles { _, name ->
+                    name.contains(storageKey) && !name.endsWith(".properties")
+                } ?: emptyArray()
             unFinishedFiles
                 .filter { it.exists() }
                 .forEach {

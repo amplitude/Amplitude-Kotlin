@@ -8,9 +8,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
@@ -480,32 +478,6 @@ class EventsFileManagerTest {
             }
             assertEquals(101 * 11, eventsCount)
         }
-
-    @Nested
-    inner class MatchesStorageFile {
-        @Test
-        fun `should not throw when platform passes a null file name`() {
-            // SDK-176: File.listFiles can hand the FilenameFilter callback a null name
-            assertFalse(eventsFileManager.matchesStorageFile(null) { true })
-        }
-
-        @Test
-        fun `should match files for this storage key that satisfy the predicate`() {
-            assertTrue(eventsFileManager.matchesStorageFile("$STORAGE_KEY-0") { true })
-        }
-
-        @Test
-        fun `should reject files for a different storage key`() {
-            assertFalse(eventsFileManager.matchesStorageFile("other-key-0") { true })
-        }
-
-        @Test
-        fun `should reject files that fail the predicate`() {
-            assertFalse(
-                eventsFileManager.matchesStorageFile("$STORAGE_KEY-0.tmp") { !it.endsWith(".tmp") },
-            )
-        }
-    }
 
     private fun createEarlierVersionEventFiles() {
         val file0 = File(tempDir, "$STORAGE_KEY-0")
