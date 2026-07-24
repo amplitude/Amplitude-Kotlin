@@ -5,56 +5,33 @@ import android.app.Application.ActivityLifecycleCallbacks
 import android.os.Bundle
 import kotlinx.coroutines.channels.Channel
 import java.lang.ref.WeakReference
+import java.util.concurrent.atomic.AtomicBoolean
 
 class ActivityLifecycleObserver : ActivityLifecycleCallbacks {
     internal val eventChannel = Channel<ActivityCallbackEvent>(Channel.UNLIMITED)
+    private val active = AtomicBoolean(true)
 
     override fun onActivityCreated(
         activity: Activity,
         savedInstanceState: Bundle?,
     ) {
-        eventChannel.trySend(
-            ActivityCallbackEvent(
-                WeakReference(activity),
-                ActivityCallbackType.Created,
-            ),
-        )
+        send(activity, ActivityCallbackType.Created)
     }
 
     override fun onActivityStarted(activity: Activity) {
-        eventChannel.trySend(
-            ActivityCallbackEvent(
-                WeakReference(activity),
-                ActivityCallbackType.Started,
-            ),
-        )
+        send(activity, ActivityCallbackType.Started)
     }
 
     override fun onActivityResumed(activity: Activity) {
-        eventChannel.trySend(
-            ActivityCallbackEvent(
-                WeakReference(activity),
-                ActivityCallbackType.Resumed,
-            ),
-        )
+        send(activity, ActivityCallbackType.Resumed)
     }
 
     override fun onActivityPaused(activity: Activity) {
-        eventChannel.trySend(
-            ActivityCallbackEvent(
-                WeakReference(activity),
-                ActivityCallbackType.Paused,
-            ),
-        )
+        send(activity, ActivityCallbackType.Paused)
     }
 
     override fun onActivityStopped(activity: Activity) {
-        eventChannel.trySend(
-            ActivityCallbackEvent(
-                WeakReference(activity),
-                ActivityCallbackType.Stopped,
-            ),
-        )
+        send(activity, ActivityCallbackType.Stopped)
     }
 
     override fun onActivitySaveInstanceState(
@@ -64,10 +41,26 @@ class ActivityLifecycleObserver : ActivityLifecycleCallbacks {
     }
 
     override fun onActivityDestroyed(activity: Activity) {
+        send(activity, ActivityCallbackType.Destroyed)
+    }
+
+    internal fun stop() {
+        if (active.compareAndSet(true, false)) {
+            eventChannel.cancel()
+        }
+    }
+
+    private fun send(
+        activity: Activity,
+        type: ActivityCallbackType,
+    ) {
+        if (!active.get()) {
+            return
+        }
         eventChannel.trySend(
             ActivityCallbackEvent(
                 WeakReference(activity),
-                ActivityCallbackType.Destroyed,
+                type,
             ),
         )
     }

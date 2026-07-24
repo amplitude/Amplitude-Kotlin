@@ -2,6 +2,7 @@ package com.amplitude.android
 
 import android.app.Application
 import android.content.Context
+import com.amplitude.analytics.connector.AnalyticsConnector
 import com.amplitude.android.diagnostics.AndroidDiagnosticsContextProvider
 import com.amplitude.android.migration.MigrationManager
 import com.amplitude.android.plugins.AnalyticsConnectorIdentityPlugin
@@ -14,17 +15,24 @@ import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.State
 import com.amplitude.core.diagnostics.DiagnosticsContextProvider
+import com.amplitude.core.platform.UniversalPlugin
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.ContextPlugin
 import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
 import com.amplitude.id.IdentityConfiguration
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.ExecutorCoroutineDispatcher
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
 import java.io.File
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 import com.amplitude.core.Amplitude as CoreAmplitude
 
 @OptIn(RestrictedAmplitudeFeature::class)
@@ -57,6 +65,19 @@ open class Amplitude internal constructor(
     internal lateinit var autocaptureManager: AutocaptureManager
         private set
 
+    internal lateinit var replacementInstanceName: String
+        private set
+
+    internal lateinit var replacementApplication: Application
+        private set
+    private lateinit var replacementBuildGate: CompletableDeferred<Unit>
+    private val replacementLifecycleLock = Any()
+    private val active = AtomicBoolean(true)
+    private val cleanupStarted = AtomicBoolean(false)
+    private var lifecycleCallbacksRegistered = false
+    private var shutdownHook: Thread? = null
+    private var androidLifecyclePlugin: AndroidLifecyclePlugin? = null
+
     /**
      * Init-order trap: [CoreAmplitude]'s `init` calls [build] before this class's field
      * initializers run, and [buildInternal] may already be on a background thread.
@@ -67,6 +88,9 @@ open class Amplitude internal constructor(
         activityLifecycleCallbacks = ActivityLifecycleObserver()
         androidContextPlugin = AndroidContextPlugin()
         val androidConfig = configuration as Configuration
+        replacementApplication = androidConfig.context as Application
+        replacementInstanceName = androidConfig.instanceName
+        replacementBuildGate = CompletableDeferred()
         autocaptureManager =
             AutocaptureManager(
                 initialAutocapture = androidConfig.autocapture,
@@ -75,14 +99,22 @@ open class Amplitude internal constructor(
                 logger = logger,
                 diagnosticsClient = diagnosticsClient,
             )
-        return super.build()
+        val build = super.build()
+        return amplitudeScope.async(amplitudeDispatcher, CoroutineStart.LAZY) {
+            replacementBuildGate.await()
+            build.await()
+        }
     }
 
     init {
-        registerShutdownHook()
-
-        with(configuration.context as Application) {
-            registerActivityLifecycleCallbacks(activityLifecycleCallbacks)
+        try {
+            ActiveAmplitudeInstances.install(this)
+        } finally {
+            if (active.get()) {
+                replacementBuildGate.complete(Unit)
+            } else {
+                replacementBuildGate.cancel()
+            }
         }
     }
 
@@ -107,19 +139,27 @@ open class Amplitude internal constructor(
         val migrationManager = MigrationManager(this)
         migrationManager.migrateOldStorage()
 
-        this.createIdentityContainer(identityConfiguration)
+        synchronized(replacementLifecycleLock) {
+            if (!active.get()) {
+                return
+            }
 
-        if (this.configuration.offline != AndroidNetworkConnectivityCheckerPlugin.Disabled) {
-            add(AndroidNetworkConnectivityCheckerPlugin())
+            this.createIdentityContainer(identityConfiguration)
+
+            if (this.configuration.offline != AndroidNetworkConnectivityCheckerPlugin.Disabled) {
+                add(AndroidNetworkConnectivityCheckerPlugin())
+            }
+            add(androidContextPlugin)
+            add(GetAmpliExtrasPlugin())
+            val lifecyclePlugin = AndroidLifecyclePlugin(activityLifecycleCallbacks)
+            add(lifecyclePlugin)
+            androidLifecyclePlugin = lifecyclePlugin
+            add(AnalyticsConnectorIdentityPlugin())
+            add(AnalyticsConnectorPlugin())
+            add(AmplitudeDestination())
+
+            (timeline as Timeline).start()
         }
-        add(androidContextPlugin)
-        add(GetAmpliExtrasPlugin())
-        add(AndroidLifecyclePlugin(activityLifecycleCallbacks))
-        add(AnalyticsConnectorIdentityPlugin())
-        add(AnalyticsConnectorPlugin())
-        add(AmplitudeDestination())
-
-        (timeline as Timeline).start()
     }
 
     override fun diagnosticsContextProvider(): DiagnosticsContextProvider? {
@@ -158,20 +198,126 @@ open class Amplitude internal constructor(
         (timeline as Timeline).onExitForeground(timestamp)
     }
 
+    internal fun activateForReplacement() {
+        synchronized(replacementLifecycleLock) {
+            check(active.get()) { "Cannot activate a retired Amplitude instance." }
+            try {
+                replacementApplication.registerActivityLifecycleCallbacks(activityLifecycleCallbacks)
+                lifecycleCallbacksRegistered = true
+                registerShutdownHook()
+            } catch (e: Exception) {
+                active.set(false)
+                cleanupSafely("roll back lifecycle callback registration") {
+                    unregisterLifecycleCallbacks()
+                }
+                cleanupSafely("roll back the runtime shutdown hook") {
+                    removeShutdownHook()
+                }
+                cleanupSafely("stop lifecycle observation") {
+                    activityLifecycleCallbacks.stop()
+                }
+                cleanupSafely("stop event processing") {
+                    (timeline as Timeline).stop()
+                }
+                amplitudeScope.cancel()
+                throw e
+            }
+        }
+    }
+
+    internal fun deactivateForReplacement() {
+        synchronized(replacementLifecycleLock) {
+            if (!active.compareAndSet(true, false)) {
+                return
+            }
+
+            cleanupSafely("unregister lifecycle callbacks") {
+                unregisterLifecycleCallbacks()
+            }
+            cleanupSafely("stop lifecycle observation") {
+                activityLifecycleCallbacks.stop()
+            }
+            cleanupSafely("stop Android autocapture") {
+                androidLifecyclePlugin?.stopAutocapture()
+            }
+            cleanupSafely("stop event processing") {
+                (timeline as Timeline).stop()
+            }
+            cleanupSafely("detach Analytics Connector") {
+                AnalyticsConnector.getInstance(replacementInstanceName).eventBridge.setEventReceiver(null)
+            }
+            cleanupSafely("remove the runtime shutdown hook") {
+                removeShutdownHook()
+            }
+            amplitudeScope.cancel()
+        }
+    }
+
+    internal fun finishReplacementCleanup() {
+        if (!cleanupStarted.compareAndSet(false, true)) {
+            return
+        }
+
+        plugins(UniversalPlugin::class.java).forEach { plugin ->
+            cleanupSafely("tear down plugin '${plugin.name ?: plugin::class.java.name}'") {
+                plugin.teardown()
+            }
+        }
+
+        setOf(amplitudeDispatcher, networkIODispatcher, storageIODispatcher).forEach { dispatcher ->
+            cleanupSafely("close an SDK dispatcher") {
+                (dispatcher as? ExecutorCoroutineDispatcher)?.close()
+            }
+        }
+    }
+
+    internal fun isActiveForReplacement(): Boolean = active.get()
+
     private fun registerShutdownHook() {
-        // close the stream if the app shuts down
+        val hook =
+            object : Thread() {
+                override fun run() {
+                    (this@Amplitude.timeline as Timeline).stop()
+                }
+            }
         try {
-            Runtime.getRuntime().addShutdownHook(
-                object : Thread() {
-                    override fun run() {
-                        (this@Amplitude.timeline as Timeline).stop()
-                    }
-                },
-            )
+            Runtime.getRuntime().addShutdownHook(hook)
+            shutdownHook = hook
         } catch (e: IllegalStateException) {
             // Once the shutdown sequence has begun it is impossible to register a shutdown hook,
             // so we just ignore the IllegalStateException that's thrown.
             // https://developer.android.com/reference/java/lang/Runtime#addShutdownHook(java.lang.Thread)
+        }
+    }
+
+    private fun removeShutdownHook() {
+        val hook = shutdownHook ?: return
+        shutdownHook = null
+        try {
+            Runtime.getRuntime().removeShutdownHook(hook)
+        } catch (_: IllegalStateException) {
+            // The runtime is already shutting down.
+        } catch (_: SecurityException) {
+            // The runtime does not allow shutdown-hook removal.
+        }
+    }
+
+    private fun unregisterLifecycleCallbacks() {
+        if (!lifecycleCallbacksRegistered) {
+            return
+        }
+        replacementApplication.unregisterActivityLifecycleCallbacks(activityLifecycleCallbacks)
+        lifecycleCallbacksRegistered = false
+    }
+
+    private inline fun cleanupSafely(
+        operation: String,
+        cleanup: () -> Unit,
+    ) {
+        try {
+            cleanup()
+        } catch (e: Exception) {
+            logger.warn("Failed to $operation while replacing Amplitude instance '$replacementInstanceName': $e")
         }
     }
 

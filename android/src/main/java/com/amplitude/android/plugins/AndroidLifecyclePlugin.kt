@@ -5,6 +5,8 @@ import android.app.Application
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.annotation.VisibleForTesting
 import com.amplitude.android.AutocaptureState
 import com.amplitude.android.Configuration
@@ -25,6 +27,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.lang.ref.WeakReference
+import java.util.concurrent.atomic.AtomicBoolean
 import com.amplitude.android.Amplitude as AndroidAmplitude
 
 @OptIn(GuardedAmplitudeFeature::class, RestrictedAmplitudeFeature::class)
@@ -59,6 +62,8 @@ class AndroidLifecyclePlugin(
 
     @VisibleForTesting
     internal var eventJob: Job? = null
+
+    private val stopped = AtomicBoolean(false)
 
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
@@ -320,11 +325,42 @@ class AndroidLifecyclePlugin(
         }
     }
 
-    override fun teardown() {
-        super.teardown()
+    internal fun stopAutocapture() {
+        if (!stopped.compareAndSet(false, true)) {
+            return
+        }
+
         stateObserverJob?.cancel()
         eventJob?.cancel()
+        activityLifecycleObserver.stop()
         windowCallbackManager?.stop()
         frustrationInteractionsDetector?.stop()
+        clearActivityTracking()
+    }
+
+    override fun teardown() {
+        stopAutocapture()
+        super.teardown()
+    }
+
+    private fun clearActivityTracking() {
+        val cleanup =
+            Runnable {
+                created.values.forEach { activity ->
+                    activity.get()?.let {
+                        DefaultEventUtils(androidAmplitude).stopFragmentViewedEventTracking(it)
+                    }
+                }
+                created.clear()
+                fragmentTrackingActivities.clear()
+                started.clear()
+                processedDeepLinkIntents.clear()
+            }
+
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            cleanup.run()
+        } else {
+            Handler(Looper.getMainLooper()).post(cleanup)
+        }
     }
 }

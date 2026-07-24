@@ -9,6 +9,7 @@ import com.amplitude.core.utilities.http.HttpClientInterface
 import com.amplitude.core.utilities.http.ResponseHandler
 import com.amplitude.core.utilities.logWithStackTrace
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
 import kotlinx.coroutines.channels.consumeEach
@@ -17,6 +18,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.FileNotFoundException
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 
 class EventPipeline(
@@ -37,6 +39,8 @@ class EventPipeline(
 ) {
     private var running: Boolean
     private var scheduled: Boolean
+    private val stopped = AtomicBoolean(false)
+    private var shutdownHook: Thread? = null
     var flushSizeDivider: AtomicInteger = AtomicInteger(1)
 
     private val responseHandler by lazy {
@@ -58,6 +62,9 @@ class EventPipeline(
         scheduled = false
 
         registerShutdownHook()
+        scope.coroutineContext[Job]?.invokeOnCompletion {
+            stop()
+        }
     }
 
     fun put(event: BaseEvent) {
@@ -70,15 +77,22 @@ class EventPipeline(
     }
 
     fun start() {
+        if (stopped.get()) {
+            return
+        }
         running = true
         write()
         upload()
     }
 
     fun stop() {
+        if (!stopped.compareAndSet(false, true)) {
+            return
+        }
         uploadChannel.cancel()
         writeChannel.cancel()
         running = false
+        removeShutdownHook()
     }
 
     private fun write() =
@@ -183,18 +197,31 @@ class EventPipeline(
 
     private fun registerShutdownHook() {
         // close the stream if the app shuts down
+        val hook =
+            object : Thread() {
+                override fun run() {
+                    this@EventPipeline.stop()
+                }
+            }
         try {
-            Runtime.getRuntime().addShutdownHook(
-                object : Thread() {
-                    override fun run() {
-                        this@EventPipeline.stop()
-                    }
-                },
-            )
+            Runtime.getRuntime().addShutdownHook(hook)
+            shutdownHook = hook
         } catch (_: IllegalStateException) {
             // Once the shutdown sequence has begun it is impossible to register a shutdown hook,
             // so we just ignore the IllegalStateException that's thrown.
             // https://developer.android.com/reference/java/lang/Runtime#addShutdownHook(java.lang.Thread)
+        }
+    }
+
+    private fun removeShutdownHook() {
+        val hook = shutdownHook ?: return
+        shutdownHook = null
+        try {
+            Runtime.getRuntime().removeShutdownHook(hook)
+        } catch (_: IllegalStateException) {
+            // The runtime is already shutting down.
+        } catch (_: SecurityException) {
+            // The runtime does not allow shutdown-hook removal.
         }
     }
 }
