@@ -31,6 +31,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -225,6 +226,40 @@ class AmplitudeReplacementTest {
         }
 
     @Test
+    fun `failed replacement activation keeps previous instance active`() =
+        runTest {
+            val application = TestApplication()
+            val instanceName = "replacement-activation-failure"
+            val first =
+                track(
+                    FakeAndroidAmplitude(
+                        configuration = configuration(application, instanceName),
+                        androidTestDispatcher = StandardTestDispatcher(testScheduler),
+                    ),
+                )
+            val firstEvents = FakeEventPlugin()
+            val teardownPlugin = RecordingTeardownPlugin()
+            first.add(firstEvents)
+            first.add(teardownPlugin)
+            first.isBuilt.await()
+
+            application.failRegistration = true
+            assertThrows(IllegalStateException::class.java) {
+                Amplitude(configuration(application, instanceName))
+            }
+            application.failRegistration = false
+
+            first.track("after failed replacement")
+            advanceUntilIdle()
+
+            assertTrue(first.isActiveForReplacement())
+            assertSame(first, ActiveAmplitudeInstances.activeInstance(application, instanceName))
+            assertFalse(teardownPlugin.tornDown)
+            assertEquals(listOf("after failed replacement"), firstEvents.trackedEvents.map { it.eventType })
+            assertEquals(1, application.registeredCallbacks.size)
+        }
+
+    @Test
     fun `an in-flight build cannot install after replacement`() {
         val application = TestApplication()
         val instanceName = "replacement-in-flight"
@@ -246,9 +281,15 @@ class AmplitudeReplacementTest {
             assertTrue(buildEntered.await(5, TimeUnit.SECONDS))
 
             val second = track(Amplitude(configuration(application, instanceName)))
+            val additionalCleanupFinished = CountDownLatch(1)
+            first.finishReplacementCleanup {
+                additionalCleanupFinished.countDown()
+            }
             assertFalse(second.isBuilt.isCompleted)
+            assertFalse(additionalCleanupFinished.await(100, TimeUnit.MILLISECONDS))
 
             releaseBuild.countDown()
+            assertTrue(additionalCleanupFinished.await(5, TimeUnit.SECONDS))
             runBlocking {
                 withTimeout(5_000) {
                     second.isBuilt.await()
@@ -341,12 +382,16 @@ class AmplitudeReplacementTest {
     private class TestApplication : Application() {
         val registeredCallbacks = CopyOnWriteArrayList<Application.ActivityLifecycleCallbacks>()
         val unregisteredCallbacks = CopyOnWriteArrayList<Application.ActivityLifecycleCallbacks>()
+        var failRegistration = false
 
         init {
             attachBaseContext(ApplicationProvider.getApplicationContext())
         }
 
         override fun registerActivityLifecycleCallbacks(callback: ActivityLifecycleCallbacks) {
+            if (failRegistration) {
+                throw IllegalStateException("expected registration failure")
+            }
             registeredCallbacks += callback
         }
 

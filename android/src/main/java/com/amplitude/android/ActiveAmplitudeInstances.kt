@@ -44,23 +44,25 @@ internal object ActiveAmplitudeInstances {
                     .getOrPut(ApplicationKey(amplitude.replacementApplication)) { mutableMapOf() }
                     .getOrPut(amplitude.replacementInstanceName) { Slot() }
             }
-        var previous: Amplitude? = null
-
-        try {
-            synchronized(slot) {
-                previous = slot.activeInstance?.get()?.takeUnless { it === amplitude }
-                previous?.deactivateForReplacement()
-                amplitude.activateForReplacement()
-                slot.activeInstance = WeakReference(amplitude)
-            }
-        } finally {
-            val previousInstance = previous
-            if (previousInstance == null) {
-                amplitude.startAfterReplacementCleanup()
-            } else {
-                previousInstance.finishReplacementCleanup {
-                    amplitude.startAfterReplacementCleanup()
+        val previous =
+            try {
+                synchronized(slot) {
+                    val activeInstance = slot.activeInstance?.get()?.takeUnless { it === amplitude }
+                    amplitude.activateForReplacement()
+                    activeInstance?.deactivateForReplacement()
+                    slot.activeInstance = WeakReference(amplitude)
+                    activeInstance
                 }
+            } catch (error: Exception) {
+                amplitude.finishReplacementCleanup()
+                throw error
+            }
+
+        if (previous == null) {
+            amplitude.startAfterReplacementCleanup()
+        } else {
+            previous.finishReplacementCleanup {
+                amplitude.startAfterReplacementCleanup()
             }
         }
     }

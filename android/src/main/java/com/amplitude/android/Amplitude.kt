@@ -75,6 +75,7 @@ open class Amplitude internal constructor(
     private val replacementLifecycleLock = Any()
     private val active = AtomicBoolean(true)
     private val cleanupStarted = AtomicBoolean(false)
+    private val cleanupFinished = CompletableDeferred<Unit>()
     private var lifecycleCallbacksRegistered = false
     private var shutdownHook: Thread? = null
     private var androidLifecyclePlugin: AndroidLifecyclePlugin? = null
@@ -247,8 +248,10 @@ open class Amplitude internal constructor(
     }
 
     internal fun finishReplacementCleanup(onFinished: () -> Unit = {}) {
-        if (!cleanupStarted.compareAndSet(false, true)) {
+        cleanupFinished.invokeOnCompletion {
             onFinished()
+        }
+        if (!cleanupStarted.compareAndSet(false, true)) {
             return
         }
 
@@ -266,7 +269,7 @@ open class Amplitude internal constructor(
                     }
                 }
             } finally {
-                onFinished()
+                cleanupFinished.complete(Unit)
             }
         }
     }
