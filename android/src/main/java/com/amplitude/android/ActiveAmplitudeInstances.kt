@@ -54,7 +54,14 @@ internal object ActiveAmplitudeInstances {
                 slot.activeInstance = WeakReference(amplitude)
             }
         } finally {
-            previous?.finishReplacementCleanup()
+            val previousInstance = previous
+            if (previousInstance == null) {
+                amplitude.startAfterReplacementCleanup()
+            } else {
+                previousInstance.finishReplacementCleanup {
+                    amplitude.startAfterReplacementCleanup()
+                }
+            }
         }
     }
 

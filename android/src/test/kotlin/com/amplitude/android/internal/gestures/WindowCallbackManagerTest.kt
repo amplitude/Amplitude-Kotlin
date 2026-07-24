@@ -13,6 +13,7 @@ import com.amplitude.common.Logger
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import org.junit.Assert.assertSame
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -139,9 +140,13 @@ class WindowCallbackManagerTest {
         val window = mockk<Window>(relaxed = true)
         val decorView = mockk<View>(relaxed = true)
         val originalCallback = mockk<Window.Callback>(relaxed = true)
+        var currentCallback = originalCallback
 
         every { window.context } returns activity
-        every { window.callback } returns originalCallback
+        every { window.callback } answers { currentCallback }
+        every { window.callback = any() } answers {
+            currentCallback = firstArg()
+        }
         every { decorView.context } returns appContext
 
         val sut =
@@ -158,12 +163,57 @@ class WindowCallbackManagerTest {
         // Wrap
         sut.wrapWindowForTesting(window, decorView)
 
-        // Simulate that window.callback returns our wrapper now
-        every { window.callback } returns mockk<AutocaptureWindowCallback>(relaxed = true)
-
         // Unwrap
         sut.unwrapWindowForTesting(window)
 
-        verify { window.callback = originalCallback }
+        assertSame(originalCallback, currentCallback)
+    }
+
+    @Test
+    fun `stopping one manager preserves another manager's callback`() {
+        val activity = mockk<Activity>(relaxed = true)
+        val window = mockk<Window>(relaxed = true)
+        val decorView = mockk<View>(relaxed = true)
+        val originalCallback = mockk<Window.Callback>(relaxed = true)
+        var currentCallback: Window.Callback = originalCallback
+
+        every { window.context } returns activity
+        every { window.callback } answers { currentCallback }
+        every { window.callback = any() } answers {
+            currentCallback = firstArg()
+        }
+        every { decorView.context } returns appContext
+
+        val firstManager =
+            WindowCallbackManager(
+                track = track,
+                frustrationDetector = null,
+                autocaptureStateProvider = { autocaptureState },
+                logger = logger,
+            )
+        val secondManager =
+            WindowCallbackManager(
+                track = mockk(relaxed = true),
+                frustrationDetector = null,
+                autocaptureStateProvider = { autocaptureState },
+                logger = logger,
+            )
+
+        firstManager.start()
+        secondManager.start()
+        shadowOf(Looper.getMainLooper()).idle()
+
+        firstManager.wrapWindowForTesting(window, decorView)
+        secondManager.wrapWindowForTesting(window, decorView)
+        val secondCallback = currentCallback as AutocaptureWindowCallback
+
+        firstManager.unwrapWindowForTesting(window)
+
+        assertSame(secondCallback, currentCallback)
+        assertSame(originalCallback, secondCallback.delegate)
+
+        secondManager.unwrapWindowForTesting(window)
+
+        assertSame(originalCallback, currentCallback)
     }
 }

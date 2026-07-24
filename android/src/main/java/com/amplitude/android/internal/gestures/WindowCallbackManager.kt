@@ -32,7 +32,7 @@ internal class WindowCallbackManager(
     private val autocaptureStateProvider: () -> AutocaptureState,
     private val logger: Logger,
 ) {
-    private val wrappedWindows = mutableMapOf<Window, Window.Callback?>()
+    private val wrappedWindows = mutableMapOf<Window, AutocaptureWindowCallback>()
     private var started = false
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -107,9 +107,6 @@ internal class WindowCallbackManager(
 
         val originalCallback = window.callback ?: NoCaptureWindowCallback()
 
-        // Store original callback before wrapping
-        wrappedWindows[window] = window.callback
-
         val wrappedCallback =
             if (frustrationDetector != null) {
                 FrustrationAwareWindowCallback(
@@ -134,23 +131,44 @@ internal class WindowCallbackManager(
                 )
             }
 
+        wrappedWindows[window] = wrappedCallback
         window.callback = wrappedCallback
 
         logger.debug("Wrapped window callback for $activityName")
     }
 
     private fun unwrapWindow(window: Window) {
-        if (!wrappedWindows.containsKey(window)) return
-        val originalCallback = wrappedWindows.remove(window)
-
-        // Only unwrap if the current callback is our wrapper
-        val currentCallback = window.callback
-        if (currentCallback is AutocaptureWindowCallback) {
-            // Restore original callback, or null if it was NoCaptureWindowCallback
-            window.callback = originalCallback.takeUnless { it is NoCaptureWindowCallback }
-            logger.debug("Unwrapped window callback")
+        val wrappedCallback = wrappedWindows.remove(window) ?: return
+        val currentCallback = window.callback ?: return
+        val result = currentCallback.removeFromChain(wrappedCallback)
+        if (!result.removed) {
+            return
         }
+
+        if (result.callback !== currentCallback) {
+            window.callback = result.callback.takeUnless { it is NoCaptureWindowCallback }
+        }
+        logger.debug("Unwrapped window callback")
     }
+
+    private fun Window.Callback.removeFromChain(target: AutocaptureWindowCallback): CallbackRemoval {
+        if (this === target) {
+            return CallbackRemoval(target.delegate, true)
+        }
+        if (this is WindowCallbackAdapter) {
+            val nestedResult = delegate.removeFromChain(target)
+            if (nestedResult.removed) {
+                delegate = nestedResult.callback
+                return CallbackRemoval(this, true)
+            }
+        }
+        return CallbackRemoval(this, false)
+    }
+
+    private data class CallbackRemoval(
+        val callback: Window.Callback,
+        val removed: Boolean,
+    )
 
     /**
      * Traverses the context chain to find the Activity.

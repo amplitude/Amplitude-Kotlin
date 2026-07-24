@@ -8,7 +8,7 @@ import java.util.WeakHashMap
 
 internal object FragmentActivityHandler {
     private val callbacksMap =
-        WeakHashMap<FragmentActivity, MutableList<AutocaptureFragmentLifecycleCallbacks>>()
+        WeakHashMap<FragmentActivity, MutableMap<TrackFunction, AutocaptureFragmentLifecycleCallbacks>>()
 
     fun Activity.registerFragmentLifecycleCallbacks(
         track: TrackFunction,
@@ -16,17 +16,27 @@ internal object FragmentActivityHandler {
         screenViewsEnabled: () -> Boolean = { true },
     ) {
         (this as? FragmentActivity)?.apply {
+            val callbacks = callbacksMap.getOrPut(this) { mutableMapOf() }
+            if (track in callbacks) {
+                return
+            }
             val callback = AutocaptureFragmentLifecycleCallbacks(track, logger, screenViewsEnabled)
             supportFragmentManager.registerFragmentLifecycleCallbacks(callback, true)
-            callbacksMap.getOrPut(this) { mutableListOf() }.add(callback)
+            callbacks[track] = callback
         } ?: logger.debug("Activity is not a FragmentActivity")
     }
 
-    fun Activity.unregisterFragmentLifecycleCallbacks(logger: Logger) {
+    fun Activity.unregisterFragmentLifecycleCallbacks(
+        track: TrackFunction,
+        logger: Logger,
+    ) {
         (this as? FragmentActivity)?.apply {
-            callbacksMap.remove(this)?.let { callbacks ->
-                for (callback in callbacks) {
+            callbacksMap[this]?.let { callbacks ->
+                callbacks.remove(track)?.let { callback ->
                     supportFragmentManager.unregisterFragmentLifecycleCallbacks(callback)
+                }
+                if (callbacks.isEmpty()) {
+                    callbacksMap.remove(this)
                 }
             }
         } ?: logger.debug("Activity is not a FragmentActivity")

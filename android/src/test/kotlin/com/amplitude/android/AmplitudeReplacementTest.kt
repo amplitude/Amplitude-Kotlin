@@ -22,9 +22,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -244,7 +246,14 @@ class AmplitudeReplacementTest {
             assertTrue(buildEntered.await(5, TimeUnit.SECONDS))
 
             val second = track(Amplitude(configuration(application, instanceName)))
+            assertFalse(second.isBuilt.isCompleted)
+
             releaseBuild.countDown()
+            runBlocking {
+                withTimeout(5_000) {
+                    second.isBuilt.await()
+                }
+            }
 
             assertFalse(first.isActiveForReplacement())
             assertTrue(second.isActiveForReplacement())

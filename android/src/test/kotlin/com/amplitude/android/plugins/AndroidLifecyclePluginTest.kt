@@ -272,7 +272,7 @@ class AndroidLifecyclePluginTest {
             plugin.setup(mockedAmplitude)
 
             every { activity.registerFragmentLifecycleCallbacks(any(), any(), any()) } returns Unit
-            every { activity.unregisterFragmentLifecycleCallbacks(any()) } returns Unit
+            every { activity.unregisterFragmentLifecycleCallbacks(any(), any()) } returns Unit
 
             observer.onActivityCreated(activity, mockk())
             observer.onActivityDestroyed(activity)
@@ -284,7 +284,7 @@ class AndroidLifecyclePluginTest {
             }
 
             verify(exactly = 1) {
-                activity.unregisterFragmentLifecycleCallbacks(any())
+                activity.unregisterFragmentLifecycleCallbacks(any(), any())
             }
 
             close()
@@ -306,7 +306,7 @@ class AndroidLifecyclePluginTest {
             plugin.setup(mockedAmplitude)
 
             every { activity.registerFragmentLifecycleCallbacks(any(), any(), any()) } returns Unit
-            every { activity.unregisterFragmentLifecycleCallbacks(any()) } returns Unit
+            every { activity.unregisterFragmentLifecycleCallbacks(any(), any()) } returns Unit
 
             observer.onActivityCreated(activity, mockk())
             observer.onActivityDestroyed(activity)
@@ -319,7 +319,7 @@ class AndroidLifecyclePluginTest {
             // unregister is always called in onActivityDestroyed for safe cleanup,
             // even when screen views are disabled (it's a no-op with no registered callbacks).
             verify(exactly = 1) {
-                activity.unregisterFragmentLifecycleCallbacks(any())
+                activity.unregisterFragmentLifecycleCallbacks(any(), any())
             }
 
             close()
@@ -337,7 +337,7 @@ class AndroidLifecyclePluginTest {
             plugin.setup(mockedAmplitude)
 
             every { activity.registerFragmentLifecycleCallbacks(any(), any(), any()) } returns Unit
-            every { activity.unregisterFragmentLifecycleCallbacks(any()) } returns Unit
+            every { activity.unregisterFragmentLifecycleCallbacks(any(), any()) } returns Unit
 
             observer.onActivityCreated(activity, mockk())
             observer.onActivityDestroyed(activity)
@@ -350,7 +350,7 @@ class AndroidLifecyclePluginTest {
             }
 
             verify(exactly = 1) {
-                activity.unregisterFragmentLifecycleCallbacks(any())
+                activity.unregisterFragmentLifecycleCallbacks(any(), any())
             }
 
             close()
@@ -794,7 +794,7 @@ class AndroidLifecyclePluginTest {
             plugin.setup(mockedAmplitude)
 
             every { activity.registerFragmentLifecycleCallbacks(any(), any(), any()) } returns Unit
-            every { activity.unregisterFragmentLifecycleCallbacks(any()) } returns Unit
+            every { activity.unregisterFragmentLifecycleCallbacks(any(), any()) } returns Unit
 
             // Simulate activity lifecycle
             observer.onActivityCreated(activity, mockk())

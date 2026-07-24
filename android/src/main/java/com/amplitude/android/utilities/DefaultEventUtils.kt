@@ -121,7 +121,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
 
     fun stopFragmentViewedEventTracking(activity: Activity) {
         if (isFragmentActivityAvailable) {
-            activity.unregisterFragmentLifecycleCallbacks(amplitude.logger)
+            activity.unregisterFragmentLifecycleCallbacks(amplitude::track, amplitude.logger)
         }
     }
 

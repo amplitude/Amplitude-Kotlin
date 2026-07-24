@@ -71,6 +71,7 @@ open class Amplitude internal constructor(
     internal lateinit var replacementApplication: Application
         private set
     private lateinit var replacementBuildGate: CompletableDeferred<Unit>
+    private lateinit var internalBuild: Deferred<Boolean>
     private val replacementLifecycleLock = Any()
     private val active = AtomicBoolean(true)
     private val cleanupStarted = AtomicBoolean(false)
@@ -99,23 +100,15 @@ open class Amplitude internal constructor(
                 logger = logger,
                 diagnosticsClient = diagnosticsClient,
             )
-        val build = super.build()
+        internalBuild = super.build()
         return amplitudeScope.async(amplitudeDispatcher, CoroutineStart.LAZY) {
             replacementBuildGate.await()
-            build.await()
+            internalBuild.await()
         }
     }
 
     init {
-        try {
-            ActiveAmplitudeInstances.install(this)
-        } finally {
-            if (active.get()) {
-                replacementBuildGate.complete(Unit)
-            } else {
-                replacementBuildGate.cancel()
-            }
-        }
+        ActiveAmplitudeInstances.install(this)
     }
 
     override fun createTimeline(): Timeline {
@@ -253,21 +246,36 @@ open class Amplitude internal constructor(
         }
     }
 
-    internal fun finishReplacementCleanup() {
+    internal fun finishReplacementCleanup(onFinished: () -> Unit = {}) {
         if (!cleanupStarted.compareAndSet(false, true)) {
+            onFinished()
             return
         }
 
-        plugins(UniversalPlugin::class.java).forEach { plugin ->
-            cleanupSafely("tear down plugin '${plugin.name ?: plugin::class.java.name}'") {
-                plugin.teardown()
+        internalBuild.invokeOnCompletion {
+            try {
+                plugins(UniversalPlugin::class.java).forEach { plugin ->
+                    cleanupSafely("tear down plugin '${plugin.name ?: plugin::class.java.name}'") {
+                        plugin.teardown()
+                    }
+                }
+
+                setOf(amplitudeDispatcher, networkIODispatcher, storageIODispatcher).forEach { dispatcher ->
+                    cleanupSafely("close an SDK dispatcher") {
+                        (dispatcher as? ExecutorCoroutineDispatcher)?.close()
+                    }
+                }
+            } finally {
+                onFinished()
             }
         }
+    }
 
-        setOf(amplitudeDispatcher, networkIODispatcher, storageIODispatcher).forEach { dispatcher ->
-            cleanupSafely("close an SDK dispatcher") {
-                (dispatcher as? ExecutorCoroutineDispatcher)?.close()
-            }
+    internal fun startAfterReplacementCleanup() {
+        if (active.get()) {
+            replacementBuildGate.complete(Unit)
+        } else {
+            replacementBuildGate.cancel()
         }
     }
 
