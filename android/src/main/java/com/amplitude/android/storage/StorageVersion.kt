@@ -1,5 +1,5 @@
 package com.amplitude.android.storage
 
-enum class StorageVersion(val rawValue: Int) {
+public enum class StorageVersion(public val rawValue: Int) {
     V3(3),
 }

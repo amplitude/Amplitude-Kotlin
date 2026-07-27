@@ -16,7 +16,7 @@ package com.amplitude.android
  * )
  * ```
  */
-data class InteractionsOptions(
+public data class InteractionsOptions(
     val rageClick: RageClickOptions = RageClickOptions(),
     val deadClick: DeadClickOptions = DeadClickOptions(),
 )
@@ -27,7 +27,7 @@ data class InteractionsOptions(
  * Rage clicks occur when a user rapidly clicks the same element multiple times
  * within a short time window, indicating frustration.
  */
-data class RageClickOptions(
+public data class RageClickOptions(
     val enabled: Boolean = true,
 )
 
@@ -37,6 +37,6 @@ data class RageClickOptions(
  * Dead clicks occur when a user clicks an element but no UI change is detected,
  * suggesting the click had no effect or the UI is unresponsive.
  */
-data class DeadClickOptions(
+public data class DeadClickOptions(
     val enabled: Boolean = true,
 )

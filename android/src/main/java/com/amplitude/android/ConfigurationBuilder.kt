@@ -24,7 +24,7 @@ import android.content.Context
  * Amplitude amplitude = new Amplitude(builder.build());
  * ```
  */
-class ConfigurationBuilder(
+public class ConfigurationBuilder(
     apiKey: String,
     context: Context,
 ) : Configuration(
@@ -32,7 +32,7 @@ class ConfigurationBuilder(
         context = context,
         autocapture = setOf(AutocaptureOption.SESSIONS),
     ) {
-    fun build(): Configuration =
+    public fun build(): Configuration =
         Configuration(
             apiKey = apiKey,
             context = context,

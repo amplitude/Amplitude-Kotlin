@@ -18,7 +18,7 @@ import java.lang.ref.WeakReference
  * @property resourceName the resource name of the view.
  * @property tag the tag of the view.
  */
-data class ViewTarget(
+public data class ViewTarget(
     private val _view: Any?,
     val className: String?,
     val resourceName: String?,
@@ -41,14 +41,14 @@ data class ViewTarget(
     val view: Any?
         get() = viewRef.get()
 
-    enum class Type { Clickable }
+    public enum class Type { Clickable }
 }
 
 /**
  * Builds the base properties for ELEMENT_INTERACTED events.
  * This is the foundation used by both standard element tracking and frustration analytics.
  */
-fun buildElementInteractedProperties(
+public fun buildElementInteractedProperties(
     target: ViewTarget,
     activityName: String,
 ): Map<String, Any?> =

@@ -20,21 +20,21 @@ import com.amplitude.common.Logger
 /**
  * [ACCESS_NETWORK_STATE] permission should be added manually by users to enable this feature.
  */
-class AndroidNetworkListener(
+public class AndroidNetworkListener(
     private val context: Context,
     private val logger: Logger,
     private val networkCallback: NetworkChangeCallback,
 ) {
     private var networkCallbackForApiLevel21Plus: NetworkCallback? = null
 
-    interface NetworkChangeCallback {
-        fun onNetworkAvailable()
+    public interface NetworkChangeCallback {
+        public fun onNetworkAvailable()
 
-        fun onNetworkUnavailable()
+        public fun onNetworkUnavailable()
     }
 
     @SuppressLint("MissingPermission")
-    fun startListening() {
+    public fun startListening() {
         if (!hasNetworkPermission(context)) {
             logger.debug(
                 "ACCESS_NETWORK_STATE permission not granted, skipping network listener setup",
@@ -124,7 +124,7 @@ class AndroidNetworkListener(
             }
     }
 
-    fun stopListening() {
+    public fun stopListening() {
         try {
             val connectivityManager =
                 context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager

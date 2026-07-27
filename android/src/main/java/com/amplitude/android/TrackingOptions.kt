@@ -1,167 +1,167 @@
 package com.amplitude.android
 
-class TrackingOptions {
-    var disabledFields: MutableSet<String> = HashSet()
+public class TrackingOptions {
+    public var disabledFields: MutableSet<String> = HashSet()
 
-    fun disableAdid(): TrackingOptions {
+    public fun disableAdid(): TrackingOptions {
         disableTrackingField(AMP_TRACKING_OPTION_ADID)
         return this
     }
 
-    fun shouldTrackAdid(): Boolean {
+    public fun shouldTrackAdid(): Boolean {
         return shouldTrackField(AMP_TRACKING_OPTION_ADID)
     }
 
-    fun disableAppSetId(): TrackingOptions {
+    public fun disableAppSetId(): TrackingOptions {
         disableTrackingField(AMP_TRACKING_OPTION_APP_SET_ID)
         return this
     }
 
-    fun shouldTrackAppSetId(): Boolean {
+    public fun shouldTrackAppSetId(): Boolean {
         return shouldTrackField(AMP_TRACKING_OPTION_APP_SET_ID)
     }
 
-    fun disableCarrier(): TrackingOptions {
+    public fun disableCarrier(): TrackingOptions {
         disableTrackingField(AMP_TRACKING_OPTION_CARRIER)
         return this
     }
 
-    fun shouldTrackCarrier(): Boolean {
+    public fun shouldTrackCarrier(): Boolean {
         return shouldTrackField(AMP_TRACKING_OPTION_CARRIER)
     }
 
-    fun disableCity(): TrackingOptions {
+    public fun disableCity(): TrackingOptions {
         disableTrackingField(AMP_TRACKING_OPTION_CITY)
         return this
     }
 
-    fun shouldTrackCity(): Boolean {
+    public fun shouldTrackCity(): Boolean {
         return shouldTrackField(AMP_TRACKING_OPTION_CITY)
     }
 
-    fun disableCountry(): TrackingOptions {
+    public fun disableCountry(): TrackingOptions {
         disableTrackingField(AMP_TRACKING_OPTION_COUNTRY)
         return this
     }
 
-    fun shouldTrackCountry(): Boolean {
+    public fun shouldTrackCountry(): Boolean {
         return shouldTrackField(AMP_TRACKING_OPTION_COUNTRY)
     }
 
-    fun disableDeviceBrand(): TrackingOptions {
+    public fun disableDeviceBrand(): TrackingOptions {
         disableTrackingField(AMP_TRACKING_OPTION_DEVICE_BRAND)
         return this
     }
 
-    fun shouldTrackDeviceBrand(): Boolean {
+    public fun shouldTrackDeviceBrand(): Boolean {
         return shouldTrackField(AMP_TRACKING_OPTION_DEVICE_BRAND)
     }
 
-    fun disableDeviceManufacturer(): TrackingOptions {
+    public fun disableDeviceManufacturer(): TrackingOptions {
         disableTrackingField(AMP_TRACKING_OPTION_DEVICE_MANUFACTURER)
         return this
     }
 
-    fun shouldTrackDeviceManufacturer(): Boolean {
+    public fun shouldTrackDeviceManufacturer(): Boolean {
         return shouldTrackField(AMP_TRACKING_OPTION_DEVICE_MANUFACTURER)
     }
 
-    fun disableDeviceModel(): TrackingOptions {
+    public fun disableDeviceModel(): TrackingOptions {
         disableTrackingField(AMP_TRACKING_OPTION_DEVICE_MODEL)
         return this
     }
 
-    fun shouldTrackDeviceModel(): Boolean {
+    public fun shouldTrackDeviceModel(): Boolean {
         return shouldTrackField(AMP_TRACKING_OPTION_DEVICE_MODEL)
     }
 
-    fun disableDma(): TrackingOptions {
+    public fun disableDma(): TrackingOptions {
         disableTrackingField(AMP_TRACKING_OPTION_DMA)
         return this
     }
 
-    fun shouldTrackDma(): Boolean {
+    public fun shouldTrackDma(): Boolean {
         return shouldTrackField(AMP_TRACKING_OPTION_DMA)
     }
 
-    fun disableIpAddress(): TrackingOptions {
+    public fun disableIpAddress(): TrackingOptions {
         disableTrackingField(AMP_TRACKING_OPTION_IP_ADDRESS)
         return this
     }
 
-    fun shouldTrackIpAddress(): Boolean {
+    public fun shouldTrackIpAddress(): Boolean {
         return shouldTrackField(AMP_TRACKING_OPTION_IP_ADDRESS)
     }
 
-    fun disableLanguage(): TrackingOptions {
+    public fun disableLanguage(): TrackingOptions {
         disableTrackingField(AMP_TRACKING_OPTION_LANGUAGE)
         return this
     }
 
-    fun shouldTrackLanguage(): Boolean {
+    public fun shouldTrackLanguage(): Boolean {
         return shouldTrackField(AMP_TRACKING_OPTION_LANGUAGE)
     }
 
-    fun disableLatLng(): TrackingOptions {
+    public fun disableLatLng(): TrackingOptions {
         disableTrackingField(AMP_TRACKING_OPTION_LAT_LNG)
         return this
     }
 
-    fun shouldTrackLatLng(): Boolean {
+    public fun shouldTrackLatLng(): Boolean {
         return shouldTrackField(AMP_TRACKING_OPTION_LAT_LNG)
     }
 
-    fun disableOsName(): TrackingOptions {
+    public fun disableOsName(): TrackingOptions {
         disableTrackingField(AMP_TRACKING_OPTION_OS_NAME)
         return this
     }
 
-    fun shouldTrackOsName(): Boolean {
+    public fun shouldTrackOsName(): Boolean {
         return shouldTrackField(AMP_TRACKING_OPTION_OS_NAME)
     }
 
-    fun disableOsVersion(): TrackingOptions {
+    public fun disableOsVersion(): TrackingOptions {
         disableTrackingField(AMP_TRACKING_OPTION_OS_VERSION)
         return this
     }
 
-    fun shouldTrackOsVersion(): Boolean {
+    public fun shouldTrackOsVersion(): Boolean {
         return shouldTrackField(AMP_TRACKING_OPTION_OS_VERSION)
     }
 
-    fun disableApiLevel(): TrackingOptions {
+    public fun disableApiLevel(): TrackingOptions {
         disableTrackingField(AMP_TRACKING_OPTION_API_LEVEL)
         return this
     }
 
-    fun shouldTrackApiLevel(): Boolean {
+    public fun shouldTrackApiLevel(): Boolean {
         return shouldTrackField(AMP_TRACKING_OPTION_API_LEVEL)
     }
 
-    fun disablePlatform(): TrackingOptions {
+    public fun disablePlatform(): TrackingOptions {
         disableTrackingField(AMP_TRACKING_OPTION_PLATFORM)
         return this
     }
 
-    fun shouldTrackPlatform(): Boolean {
+    public fun shouldTrackPlatform(): Boolean {
         return shouldTrackField(AMP_TRACKING_OPTION_PLATFORM)
     }
 
-    fun disableRegion(): TrackingOptions {
+    public fun disableRegion(): TrackingOptions {
         disableTrackingField(AMP_TRACKING_OPTION_REGION)
         return this
     }
 
-    fun shouldTrackRegion(): Boolean {
+    public fun shouldTrackRegion(): Boolean {
         return shouldTrackField(AMP_TRACKING_OPTION_REGION)
     }
 
-    fun disableVersionName(): TrackingOptions {
+    public fun disableVersionName(): TrackingOptions {
         disableTrackingField(AMP_TRACKING_OPTION_VERSION_NAME)
         return this
     }
 
-    fun shouldTrackVersionName(): Boolean {
+    public fun shouldTrackVersionName(): Boolean {
         return shouldTrackField(AMP_TRACKING_OPTION_VERSION_NAME)
     }
 
@@ -173,7 +173,7 @@ class TrackingOptions {
         return !disabledFields.contains(field)
     }
 
-    fun mergeIn(other: TrackingOptions): TrackingOptions {
+    public fun mergeIn(other: TrackingOptions): TrackingOptions {
         for (key in other.disabledFields) {
             disableTrackingField(key)
         }
@@ -194,26 +194,26 @@ class TrackingOptions {
         return options.disabledFields == disabledFields
     }
 
-    companion object {
+    public companion object {
         private val TAG = TrackingOptions::class.java.name
-        const val AMP_TRACKING_OPTION_ADID = "adid"
-        const val AMP_TRACKING_OPTION_APP_SET_ID = "app_set_id"
-        const val AMP_TRACKING_OPTION_CARRIER = "carrier"
-        const val AMP_TRACKING_OPTION_CITY = "city"
-        const val AMP_TRACKING_OPTION_COUNTRY = "country"
-        const val AMP_TRACKING_OPTION_DEVICE_BRAND = "device_brand"
-        const val AMP_TRACKING_OPTION_DEVICE_MANUFACTURER = "device_manufacturer"
-        const val AMP_TRACKING_OPTION_DEVICE_MODEL = "device_model"
-        const val AMP_TRACKING_OPTION_DMA = "dma"
-        const val AMP_TRACKING_OPTION_IP_ADDRESS = "ip_address"
-        const val AMP_TRACKING_OPTION_LANGUAGE = "language"
-        const val AMP_TRACKING_OPTION_LAT_LNG = "lat_lng"
-        const val AMP_TRACKING_OPTION_OS_NAME = "os_name"
-        const val AMP_TRACKING_OPTION_OS_VERSION = "os_version"
-        const val AMP_TRACKING_OPTION_API_LEVEL = "api_level"
-        const val AMP_TRACKING_OPTION_PLATFORM = "platform"
-        const val AMP_TRACKING_OPTION_REGION = "region"
-        const val AMP_TRACKING_OPTION_VERSION_NAME = "version_name"
+        public const val AMP_TRACKING_OPTION_ADID: String = "adid"
+        public const val AMP_TRACKING_OPTION_APP_SET_ID: String = "app_set_id"
+        public const val AMP_TRACKING_OPTION_CARRIER: String = "carrier"
+        public const val AMP_TRACKING_OPTION_CITY: String = "city"
+        public const val AMP_TRACKING_OPTION_COUNTRY: String = "country"
+        public const val AMP_TRACKING_OPTION_DEVICE_BRAND: String = "device_brand"
+        public const val AMP_TRACKING_OPTION_DEVICE_MANUFACTURER: String = "device_manufacturer"
+        public const val AMP_TRACKING_OPTION_DEVICE_MODEL: String = "device_model"
+        public const val AMP_TRACKING_OPTION_DMA: String = "dma"
+        public const val AMP_TRACKING_OPTION_IP_ADDRESS: String = "ip_address"
+        public const val AMP_TRACKING_OPTION_LANGUAGE: String = "language"
+        public const val AMP_TRACKING_OPTION_LAT_LNG: String = "lat_lng"
+        public const val AMP_TRACKING_OPTION_OS_NAME: String = "os_name"
+        public const val AMP_TRACKING_OPTION_OS_VERSION: String = "os_version"
+        public const val AMP_TRACKING_OPTION_API_LEVEL: String = "api_level"
+        public const val AMP_TRACKING_OPTION_PLATFORM: String = "platform"
+        public const val AMP_TRACKING_OPTION_REGION: String = "region"
+        public const val AMP_TRACKING_OPTION_VERSION_NAME: String = "version_name"
         private val SERVER_SIDE_PROPERTIES =
             arrayOf<String>(
                 AMP_TRACKING_OPTION_CITY,
@@ -231,7 +231,7 @@ class TrackingOptions {
                 AMP_TRACKING_OPTION_LAT_LNG,
             )
 
-        fun copyOf(other: TrackingOptions): TrackingOptions {
+        public fun copyOf(other: TrackingOptions): TrackingOptions {
             val trackingOptions = TrackingOptions()
             for (key in other.disabledFields) {
                 trackingOptions.disableTrackingField(key)
@@ -239,7 +239,7 @@ class TrackingOptions {
             return trackingOptions
         }
 
-        fun forCoppaControl(): TrackingOptions {
+        public fun forCoppaControl(): TrackingOptions {
             val trackingOptions = TrackingOptions()
             for (key in COPPA_CONTROL_PROPERTIES) {
                 trackingOptions.disableTrackingField(key)

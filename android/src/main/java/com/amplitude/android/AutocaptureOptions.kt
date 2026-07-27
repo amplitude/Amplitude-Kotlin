@@ -3,7 +3,7 @@ package com.amplitude.android
 /**
  * Autocapture options to enable or disable specific types of autocapture events.
  */
-enum class AutocaptureOption {
+public enum class AutocaptureOption {
     /**
      * Enable session tracking.
      */
@@ -36,7 +36,7 @@ enum class AutocaptureOption {
 
     ;
 
-    companion object {
+    public companion object {
         /**
          * Set containing all available autocapture options.
          *
@@ -48,7 +48,7 @@ enum class AutocaptureOption {
          * - ELEMENT_INTERACTIONS
          * - FRUSTRATION_INTERACTIONS
          */
-        val ALL =
+        public val ALL: Set<AutocaptureOption> =
             setOf(
                 SESSIONS,
                 APP_LIFECYCLES,
@@ -60,28 +60,28 @@ enum class AutocaptureOption {
     }
 }
 
-class AutocaptureOptionsBuilder {
+public class AutocaptureOptionsBuilder {
     private val options = mutableSetOf<AutocaptureOption>()
 
-    operator fun AutocaptureOption.unaryPlus() {
+    public operator fun AutocaptureOption.unaryPlus() {
         options.add(this)
     }
 
     /**
      * Adds all autocapture options when invoked with unary plus operator.
      */
-    fun addAll() {
+    public fun addAll() {
         options.addAll(AutocaptureOption.ALL)
     }
 
-    val sessions = AutocaptureOption.SESSIONS
-    val appLifecycles = AutocaptureOption.APP_LIFECYCLES
-    val deepLinks = AutocaptureOption.DEEP_LINKS
-    val screenViews = AutocaptureOption.SCREEN_VIEWS
-    val elementInteractions = AutocaptureOption.ELEMENT_INTERACTIONS
-    val frustrationInteractions = AutocaptureOption.FRUSTRATION_INTERACTIONS
+    public val sessions: AutocaptureOption = AutocaptureOption.SESSIONS
+    public val appLifecycles: AutocaptureOption = AutocaptureOption.APP_LIFECYCLES
+    public val deepLinks: AutocaptureOption = AutocaptureOption.DEEP_LINKS
+    public val screenViews: AutocaptureOption = AutocaptureOption.SCREEN_VIEWS
+    public val elementInteractions: AutocaptureOption = AutocaptureOption.ELEMENT_INTERACTIONS
+    public val frustrationInteractions: AutocaptureOption = AutocaptureOption.FRUSTRATION_INTERACTIONS
 
-    fun build(): Set<AutocaptureOption> = options.toSet()
+    public fun build(): Set<AutocaptureOption> = options.toSet()
 }
 
 /**
@@ -111,4 +111,5 @@ class AutocaptureOptionsBuilder {
  * @param init Function to build the set of autocapture options.
  * @return Set of autocapture options.
  */
-fun autocaptureOptions(init: AutocaptureOptionsBuilder.() -> Unit): Set<AutocaptureOption> = AutocaptureOptionsBuilder().apply(init).build()
+public fun autocaptureOptions(init: AutocaptureOptionsBuilder.() -> Unit): Set<AutocaptureOption> =
+    AutocaptureOptionsBuilder().apply(init).build()

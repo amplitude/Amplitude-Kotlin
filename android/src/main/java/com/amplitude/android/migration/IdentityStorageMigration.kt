@@ -3,12 +3,12 @@ package com.amplitude.android.migration
 import com.amplitude.common.Logger
 import com.amplitude.id.IdentityStorage
 
-class IdentityStorageMigration(
+public class IdentityStorageMigration(
     private val source: IdentityStorage,
     private val destination: IdentityStorage,
     private val logger: Logger,
 ) {
-    fun execute() {
+    public fun execute() {
         try {
             val identity = source.load()
             logger.debug("Loaded old identity: $identity")

@@ -20,16 +20,16 @@ import kotlinx.coroutines.CoroutineScope
 import org.json.JSONArray
 
 @OptIn(RestrictedAmplitudeFeature::class)
-class AndroidStorage
+public class AndroidStorage
     internal constructor(
         context: Context,
-        val storageKey: String,
+        public val storageKey: String,
         logger: Logger,
         internal val prefix: String?,
         diagnostics: Diagnostics,
         diagnosticsClient: DiagnosticsClient?,
     ) : Storage, EventsFileStorage {
-        constructor(
+        public constructor(
             context: Context,
             storageKey: String,
             logger: Logger,
@@ -37,11 +37,11 @@ class AndroidStorage
             diagnostics: Diagnostics,
         ) : this(context, storageKey, logger, prefix, diagnostics, null)
 
-        companion object {
-            const val STORAGE_PREFIX = "amplitude-android"
+        public companion object {
+            public const val STORAGE_PREFIX: String = "amplitude-android"
         }
 
-        val sharedPreferences: SharedPreferences
+        public val sharedPreferences: SharedPreferences
         internal val storageV2: AndroidStorageV2
 
         init {

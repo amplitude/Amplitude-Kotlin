@@ -30,7 +30,7 @@ import java.util.concurrent.ConcurrentHashMap
  * active subscription to UI change signals to function correctly. If `start()` is not called,
  * dead click events will not be tracked and a warning will be logged.
  */
-class FrustrationInteractionsDetector(
+public class FrustrationInteractionsDetector(
     private val amplitude: Amplitude,
     private val logger: Logger,
     density: Float,
@@ -39,7 +39,7 @@ class FrustrationInteractionsDetector(
     private val autocaptureState: AutocaptureState
         get() = autocaptureStateProvider()
 
-    companion object {
+    public companion object {
         /**
          * multiplier for density-independent pixels (dp)
          */
@@ -65,12 +65,12 @@ class FrustrationInteractionsDetector(
      * Starts the detector and begins subscribing to UI change signals.
      * This is required for proper dead click detection.
      */
-    fun start() {
+    public fun start() {
         startUiChangeCollection()
         logger.debug("FrustrationInteractionsDetector started - UI change collection is now active")
     }
 
-    fun stop() {
+    public fun stop() {
         lastUiChangeTime = 0L
         uiChangeCollectionJob?.cancel()
         // Cancel all pending dead click jobs to prevent resource leaks
@@ -83,7 +83,7 @@ class FrustrationInteractionsDetector(
     /**
      * Processes a click event for both rage click and dead click detection.
      */
-    fun processClick(
+    public fun processClick(
         clickInfo: ClickInfo,
         targetInfo: TargetInfo,
         target: ViewTarget,
@@ -305,7 +305,7 @@ class FrustrationInteractionsDetector(
     /**
      * Information about a click event (platform-agnostic)
      */
-    data class ClickInfo(
+    public data class ClickInfo(
         val x: Float,
         val y: Float,
         val timestamp: Long = System.currentTimeMillis(),
@@ -314,7 +314,7 @@ class FrustrationInteractionsDetector(
     /**
      * Information about the target element (platform-agnostic)
      */
-    data class TargetInfo(
+    public data class TargetInfo(
         val className: String?,
         val resourceName: String?,
         val tag: String?,

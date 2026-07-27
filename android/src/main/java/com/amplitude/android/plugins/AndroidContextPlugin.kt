@@ -13,7 +13,7 @@ import com.amplitude.core.platform.plugins.ContextPlugin
 import java.util.UUID
 
 @OptIn(RestrictedAmplitudeFeature::class)
-open class AndroidContextPlugin : Plugin {
+public open class AndroidContextPlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Before
     override lateinit var amplitude: Amplitude
     private lateinit var contextProvider: AndroidContextProvider
@@ -56,7 +56,7 @@ open class AndroidContextPlugin : Plugin {
         return event
     }
 
-    fun initializeDeviceId(
+    public fun initializeDeviceId(
         configuration: Configuration,
         forceRegenerate: Boolean = false,
     ) {
@@ -201,15 +201,15 @@ open class AndroidContextPlugin : Plugin {
         amplitude.setDeviceId(deviceId)
     }
 
-    companion object {
-        const val PLATFORM = "Android"
+    public companion object {
+        public const val PLATFORM: String = "Android"
         private const val APP_SET_DEVICE_ID_SUFFIX = "S"
-        const val SDK_LIBRARY = "amplitude-analytics-android"
-        const val SDK_VERSION = BuildConfig.AMPLITUDE_VERSION
+        public const val SDK_LIBRARY: String = "amplitude-analytics-android"
+        public const val SDK_VERSION: String = BuildConfig.AMPLITUDE_VERSION
         private val INVALID_DEVICE_IDS =
             setOf("", "9774d56d682e549c", "unknown", "000000000000000", "Android", "DEFACE", "00000000-0000-0000-0000-000000000000")
 
-        fun validDeviceId(deviceId: String): Boolean {
+        public fun validDeviceId(deviceId: String): Boolean {
             return !(deviceId.isEmpty() || INVALID_DEVICE_IDS.contains(deviceId))
         }
     }

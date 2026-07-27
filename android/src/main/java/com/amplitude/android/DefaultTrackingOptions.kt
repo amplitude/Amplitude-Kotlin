@@ -2,7 +2,7 @@ package com.amplitude.android
 
 @Suppress("DEPRECATION")
 @Deprecated("Use AutocaptureOption instead")
-open class DefaultTrackingOptions
+public open class DefaultTrackingOptions
     @JvmOverloads
     constructor(
         sessions: Boolean = true,
@@ -11,10 +11,10 @@ open class DefaultTrackingOptions
         screenViews: Boolean = false,
     ) {
         // Prebuilt options for easier usage
-        companion object {
+        public companion object {
             @JvmField
             @Deprecated("Use AutocaptureOption instead.")
-            val ALL =
+            public val ALL: DefaultTrackingOptions =
                 DefaultTrackingOptions(
                     sessions = true,
                     appLifecycles = true,
@@ -24,7 +24,7 @@ open class DefaultTrackingOptions
 
             @JvmField
             @Deprecated("Use AutocaptureOption instead.")
-            val NONE =
+            public val NONE: DefaultTrackingOptions =
                 DefaultTrackingOptions(
                     sessions = false,
                     appLifecycles = false,
@@ -33,25 +33,25 @@ open class DefaultTrackingOptions
                 )
         }
 
-        var sessions: Boolean = sessions
+        public var sessions: Boolean = sessions
             set(value) {
                 field = value
                 notifyChanged()
             }
 
-        var appLifecycles: Boolean = appLifecycles
+        public var appLifecycles: Boolean = appLifecycles
             set(value) {
                 field = value
                 notifyChanged()
             }
 
-        var deepLinks: Boolean = deepLinks
+        public var deepLinks: Boolean = deepLinks
             set(value) {
                 field = value
                 notifyChanged()
             }
 
-        var screenViews: Boolean = screenViews
+        public var screenViews: Boolean = screenViews
             set(value) {
                 field = value
                 notifyChanged()

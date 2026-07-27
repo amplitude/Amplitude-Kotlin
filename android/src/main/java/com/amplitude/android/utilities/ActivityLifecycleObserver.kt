@@ -6,7 +6,7 @@ import android.os.Bundle
 import kotlinx.coroutines.channels.Channel
 import java.lang.ref.WeakReference
 
-class ActivityLifecycleObserver : ActivityLifecycleCallbacks {
+public class ActivityLifecycleObserver : ActivityLifecycleCallbacks {
     internal val eventChannel = Channel<ActivityCallbackEvent>(Channel.UNLIMITED)
 
     override fun onActivityCreated(
@@ -73,7 +73,7 @@ class ActivityLifecycleObserver : ActivityLifecycleCallbacks {
     }
 }
 
-enum class ActivityCallbackType {
+public enum class ActivityCallbackType {
     Created,
     Started,
     Resumed,
@@ -82,7 +82,7 @@ enum class ActivityCallbackType {
     Destroyed,
 }
 
-data class ActivityCallbackEvent(
+public data class ActivityCallbackEvent(
     val activity: WeakReference<Activity>,
     val type: ActivityCallbackType,
 )

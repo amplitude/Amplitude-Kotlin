@@ -6,12 +6,12 @@ import com.amplitude.core.Storage
 import com.amplitude.core.utilities.toEvents
 import org.json.JSONArray
 
-class AndroidStorageMigration(
+public class AndroidStorageMigration(
     private val source: AndroidStorageV2,
     private val destination: AndroidStorageV2,
     private val logger: Logger,
 ) {
-    suspend fun execute() {
+    public suspend fun execute() {
         moveEventsToDestination()
         moveSimpleValues()
     }

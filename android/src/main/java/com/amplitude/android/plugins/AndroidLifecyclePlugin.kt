@@ -28,7 +28,7 @@ import java.lang.ref.WeakReference
 import com.amplitude.android.Amplitude as AndroidAmplitude
 
 @OptIn(GuardedAmplitudeFeature::class, RestrictedAmplitudeFeature::class)
-class AndroidLifecyclePlugin(
+public class AndroidLifecyclePlugin(
     private val activityLifecycleObserver: ActivityLifecycleObserver,
 ) : Application.ActivityLifecycleCallbacks,
     Plugin {
@@ -177,7 +177,7 @@ class AndroidLifecyclePlugin(
         }
     }
 
-    override fun onActivityPaused(activity: Activity) = Unit
+    override fun onActivityPaused(activity: Activity): Unit = Unit
 
     override fun onActivityStopped(activity: Activity) {
         started.remove(activity.hashCode())

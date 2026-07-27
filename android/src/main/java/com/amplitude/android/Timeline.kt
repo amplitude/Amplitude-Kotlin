@@ -17,14 +17,14 @@ import java.util.concurrent.atomic.AtomicLong
 private const val DEFAULT_SESSION_ID = -1L
 private const val DEFAULT_EVENT_ID_OR_TIME = 0L
 
-class Timeline(
+public class Timeline(
     private val initialSessionId: Long? = null,
 ) : Timeline() {
     private val eventMessageChannel: Channel<EventQueueMessage> = Channel(Channel.UNLIMITED)
 
     private val _sessionId = AtomicLong(initialSessionId ?: DEFAULT_SESSION_ID)
     private val foreground = AtomicBoolean(false)
-    val sessionId: Long
+    public val sessionId: Long
         get() {
             return _sessionId.get()
         }
@@ -219,10 +219,10 @@ class Timeline(
     }
 }
 
-sealed class EventQueueMessage {
-    data class Event(val event: BaseEvent) : EventQueueMessage()
+public sealed class EventQueueMessage {
+    public data class Event(val event: BaseEvent) : EventQueueMessage()
 
-    data class EnterForeground(val timestamp: Long) : EventQueueMessage()
+    public data class EnterForeground(val timestamp: Long) : EventQueueMessage()
 
-    data class ExitForeground(val timestamp: Long) : EventQueueMessage()
+    public data class ExitForeground(val timestamp: Long) : EventQueueMessage()
 }

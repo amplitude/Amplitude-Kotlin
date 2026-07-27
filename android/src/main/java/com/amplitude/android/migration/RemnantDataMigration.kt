@@ -15,16 +15,16 @@ import org.json.JSONObject
  *      4. deletes data from sqlite table
  */
 
-class RemnantDataMigration(val amplitude: Amplitude, private val databaseStorage: DatabaseStorage) {
-    companion object {
-        const val DEVICE_ID_KEY = "device_id"
-        const val USER_ID_KEY = "user_id"
-        const val LAST_EVENT_TIME_KEY = "last_event_time"
-        const val LAST_EVENT_ID_KEY = "last_event_id"
-        const val PREVIOUS_SESSION_ID_KEY = "previous_session_id"
+public class RemnantDataMigration(public val amplitude: Amplitude, private val databaseStorage: DatabaseStorage) {
+    public companion object {
+        public const val DEVICE_ID_KEY: String = "device_id"
+        public const val USER_ID_KEY: String = "user_id"
+        public const val LAST_EVENT_TIME_KEY: String = "last_event_time"
+        public const val LAST_EVENT_ID_KEY: String = "last_event_id"
+        public const val PREVIOUS_SESSION_ID_KEY: String = "previous_session_id"
     }
 
-    suspend fun execute() {
+    public suspend fun execute() {
         val firstRunSinceUpgrade = amplitude.storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLongOrNull() == null
 
         moveDeviceAndUserId()

@@ -5,7 +5,7 @@ import android.os.Build
 import com.amplitude.core.diagnostics.DiagnosticsContextInfo
 import com.amplitude.core.diagnostics.DiagnosticsContextProvider
 
-class AndroidDiagnosticsContextProvider(
+public class AndroidDiagnosticsContextProvider(
     private val context: Context,
 ) : DiagnosticsContextProvider {
     override fun getContextInfo(): DiagnosticsContextInfo {
