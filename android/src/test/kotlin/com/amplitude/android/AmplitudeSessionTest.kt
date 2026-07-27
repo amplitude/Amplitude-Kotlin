@@ -36,6 +36,7 @@ class AmplitudeSessionTest {
     private fun createConfiguration(
         storageProvider: StorageProvider? = null,
         shouldTrackSessions: Boolean = true,
+        optOut: Boolean = false,
     ): Configuration {
         setupMockAndroidContext()
         val context = mockk<Application>(relaxed = true)
@@ -51,6 +52,7 @@ class AmplitudeSessionTest {
             context = context,
             instanceName = "testInstance",
             minTimeBetweenSessionsMillis = 100,
+            optOut = optOut,
             storageProvider = storageProvider ?: InMemoryStorageProvider(),
             autocapture =
                 autocaptureOptions {
@@ -724,6 +726,162 @@ class AmplitudeSessionTest {
                 mockedPlugin.track(capture(tracks))
             }
             assertEquals(1, tracks.count())
+        }
+
+    @Test
+    fun amplitude_optInAfterForegroundWhileOptedOutShouldStartSession() =
+        runTest {
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = createConfiguration(optOut = true),
+                )
+
+            val fakeEventPlugin = FakeEventPlugin()
+            amplitude.add(fakeEventPlugin)
+
+            amplitude.isBuilt.await()
+
+            // The app foregrounds while opted out, so no session is started. Regression guard for
+            // issue #154: the foreground signal must still leave the timeline able to open a session
+            // once the user opts in, even though it produced nothing at the time.
+            enterForeground(amplitude, 1000L)
+            amplitude.track(createEvent(1050L, "opted out event"))
+
+            advanceUntilIdle()
+            Thread.sleep(100)
+
+            assertEquals(0, fakeEventPlugin.trackedEvents.count())
+            assertEquals(-1L, amplitude.sessionId)
+
+            amplitude.optOut = false
+            amplitude.track(createEvent(2000L, "opted in event"))
+
+            advanceUntilIdle()
+            Thread.sleep(100)
+
+            val trackedEvents = fakeEventPlugin.trackedEvents
+
+            trackedEvents.sortBy { event -> event.eventId }
+
+            assertEquals(2, trackedEvents.count())
+
+            var event = trackedEvents[0]
+            assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
+            assertEquals(2000L, event.sessionId)
+            assertEquals(2000L, event.timestamp)
+
+            event = trackedEvents[1]
+            assertEquals("opted in event", event.eventType)
+            assertEquals(2000L, event.sessionId)
+            assertEquals(2000L, event.timestamp)
+
+            assertEquals(2000L, amplitude.sessionId)
+        }
+
+    @Test
+    fun amplitude_optInAfterForegroundWhileOptedOutShouldRotateSessionNormally() =
+        runTest {
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = createConfiguration(optOut = true),
+                )
+
+            val fakeEventPlugin = FakeEventPlugin()
+            amplitude.add(fakeEventPlugin)
+
+            amplitude.isBuilt.await()
+
+            enterForeground(amplitude, 1000L)
+            amplitude.optOut = false
+            amplitude.track(createEvent(2000L, "test event 1"))
+            exitForeground(amplitude, 2100L)
+            amplitude.track(createEvent(5000L, "test event 2"))
+
+            advanceUntilIdle()
+            Thread.sleep(100)
+
+            val trackedEvents = fakeEventPlugin.trackedEvents
+
+            trackedEvents.sortBy { event -> event.eventId }
+
+            // The session recovered on opt-in behaves like any other: it times out in the
+            // background and rotates.
+            assertEquals(5, trackedEvents.count())
+
+            var event = trackedEvents[0]
+            assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
+            assertEquals(2000L, event.sessionId)
+            assertEquals(2000L, event.timestamp)
+
+            event = trackedEvents[1]
+            assertEquals("test event 1", event.eventType)
+            assertEquals(2000L, event.sessionId)
+            assertEquals(2000L, event.timestamp)
+
+            event = trackedEvents[2]
+            assertEquals(Amplitude.END_SESSION_EVENT, event.eventType)
+            assertEquals(2000L, event.sessionId)
+            assertEquals(2100L, event.timestamp)
+
+            event = trackedEvents[3]
+            assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
+            assertEquals(5000L, event.sessionId)
+            assertEquals(5000L, event.timestamp)
+
+            event = trackedEvents[4]
+            assertEquals("test event 2", event.eventType)
+            assertEquals(5000L, event.sessionId)
+            assertEquals(5000L, event.timestamp)
+        }
+
+    @Test
+    fun amplitude_optOutMidSessionShouldPreserveSessionId() =
+        runTest {
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = createConfiguration(),
+                )
+
+            val fakeEventPlugin = FakeEventPlugin()
+            amplitude.add(fakeEventPlugin)
+
+            amplitude.isBuilt.await()
+
+            enterForeground(amplitude, 1000L)
+            amplitude.track(createEvent(1050L, "test event 1"))
+            amplitude.optOut = true
+            amplitude.track(createEvent(1100L, "opted out event"))
+            amplitude.optOut = false
+            amplitude.track(createEvent(1150L, "test event 2"))
+
+            advanceUntilIdle()
+            Thread.sleep(100)
+
+            val trackedEvents = fakeEventPlugin.trackedEvents
+
+            trackedEvents.sortBy { event -> event.eventId }
+
+            // Opting out drops the event but leaves the live session intact, so opting back in
+            // resumes the same session rather than starting a new one.
+            assertEquals(3, trackedEvents.count())
+
+            var event = trackedEvents[0]
+            assertEquals(Amplitude.START_SESSION_EVENT, event.eventType)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(1000L, event.timestamp)
+
+            event = trackedEvents[1]
+            assertEquals("test event 1", event.eventType)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(1050L, event.timestamp)
+
+            event = trackedEvents[2]
+            assertEquals("test event 2", event.eventType)
+            assertEquals(1000L, event.sessionId)
+            assertEquals(1150L, event.timestamp)
         }
 
     private fun createEvent(
