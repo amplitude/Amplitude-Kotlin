@@ -10,21 +10,21 @@ import com.amplitude.core.events.Plan
 import com.amplitude.core.events.Revenue
 import com.amplitude.core.events.RevenueEvent
 
-open class BaseEvent : BaseEvent()
+public open class BaseEvent : BaseEvent()
 
-open class IdentifyEvent : IdentifyEvent()
+public open class IdentifyEvent : IdentifyEvent()
 
-open class GroupIdentifyEvent : GroupIdentifyEvent()
+public open class GroupIdentifyEvent : GroupIdentifyEvent()
 
-open class EventOptions : EventOptions()
+public open class EventOptions : EventOptions()
 
-open class Identify : Identify()
+public open class Identify : Identify()
 
-open class Revenue : Revenue()
+public open class Revenue : Revenue()
 
-open class RevenueEvent : RevenueEvent()
+public open class RevenueEvent : RevenueEvent()
 
-open class Plan
+public open class Plan
     @JvmOverloads
     constructor(
         branch: String? = null,
@@ -33,7 +33,7 @@ open class Plan
         versionId: String? = null,
     ) : Plan(branch, source, version, versionId)
 
-open class IngestionMetadata
+public open class IngestionMetadata
     @JvmOverloads
     constructor(
         sourceName: String? = null,

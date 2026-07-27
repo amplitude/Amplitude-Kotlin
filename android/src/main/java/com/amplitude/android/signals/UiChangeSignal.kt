@@ -9,4 +9,4 @@ import java.util.Date
  *
  * @property timestamp The time when the UI change occurred.
  */
-data class UiChangeSignal(val timestamp: Date) : Signal
+public data class UiChangeSignal(val timestamp: Date) : Signal

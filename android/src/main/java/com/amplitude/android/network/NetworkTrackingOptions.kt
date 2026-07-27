@@ -69,18 +69,18 @@ internal val BLOCK_HEADERS: Set<String> =
         "proxy-authorization",
     )
 
-class NetworkTrackingOptions(
+public class NetworkTrackingOptions(
     captureRules: List<CaptureRule>,
     ignoreHosts: List<String> = emptyList(),
-    val ignoreAmplitudeRequests: Boolean = true,
-    val enabled: Boolean = true,
-    val enableRemoteConfig: Boolean = true,
+    public val ignoreAmplitudeRequests: Boolean = true,
+    public val enabled: Boolean = true,
+    public val enableRemoteConfig: Boolean = true,
 ) {
-    val captureRules: List<CaptureRule> = captureRules.toList()
-    val ignoreHosts: List<String> = ignoreHosts.toList()
+    public val captureRules: List<CaptureRule> = captureRules.toList()
+    public val ignoreHosts: List<String> = ignoreHosts.toList()
 
-    companion object {
-        val DEFAULT by lazy {
+    public companion object {
+        public val DEFAULT: NetworkTrackingOptions by lazy {
             NetworkTrackingOptions(
                 captureRules =
                     listOf(
@@ -92,11 +92,11 @@ class NetworkTrackingOptions(
         }
     }
 
-    class CaptureHeader(
+    public class CaptureHeader(
         allowlist: List<String> = emptyList(),
-        val captureSafeHeaders: Boolean = true,
+        public val captureSafeHeaders: Boolean = true,
     ) {
-        val allowlist: List<String> = allowlist.toList()
+        public val allowlist: List<String> = allowlist.toList()
 
         internal fun filterHeaders(headers: Headers): Map<String, Any>? {
             val combinedAllowSet =
@@ -124,12 +124,12 @@ class NetworkTrackingOptions(
         }
     }
 
-    class CaptureBody(
+    public class CaptureBody(
         allowlist: List<String>,
         excludelist: List<String> = emptyList(),
     ) {
-        val allowlist: List<String> = allowlist.toList()
-        val excludelist: List<String> = excludelist.toList()
+        public val allowlist: List<String> = allowlist.toList()
+        public val excludelist: List<String> = excludelist.toList()
         private val objectFilter = ObjectFilter(this.allowlist, this.excludelist)
 
         internal fun filterBodyBytes(bodyBytes: ByteArray?): String? {
@@ -154,31 +154,31 @@ class NetworkTrackingOptions(
         }
     }
 
-    sealed class URLPattern {
-        data class Exact(val url: String) : URLPattern()
+    public sealed class URLPattern {
+        public data class Exact(val url: String) : URLPattern()
 
-        data class Regex(val pattern: String) : URLPattern()
+        public data class Regex(val pattern: String) : URLPattern()
     }
 
-    class CaptureRule internal constructor(
+    public class CaptureRule internal constructor(
         hosts: List<String>,
         urls: List<URLPattern>,
         methods: List<String>,
         statusCodeRange: List<Int>,
-        val requestHeaders: CaptureHeader?,
-        val responseHeaders: CaptureHeader?,
-        val requestBody: CaptureBody?,
-        val responseBody: CaptureBody?,
+        public val requestHeaders: CaptureHeader?,
+        public val responseHeaders: CaptureHeader?,
+        public val requestBody: CaptureBody?,
+        public val responseBody: CaptureBody?,
     ) {
-        val hosts: List<String> = hosts.toList()
-        val urls: List<URLPattern> = urls.toList()
-        val methods: List<String> = methods.toList()
-        val statusCodeRange: List<Int> = statusCodeRange.toList()
+        public val hosts: List<String> = hosts.toList()
+        public val urls: List<URLPattern> = urls.toList()
+        public val methods: List<String> = methods.toList()
+        public val statusCodeRange: List<Int> = statusCodeRange.toList()
 
         /**
          * Creates a rule that matches requests by host patterns.
          */
-        constructor(
+        public constructor(
             hosts: List<String>,
             statusCodeRange: List<Int> = (500..599).toList(),
         ) : this(
@@ -195,7 +195,7 @@ class NetworkTrackingOptions(
         /**
          * Creates a rule that matches requests by URL patterns (exact or regex).
          */
-        constructor(
+        public constructor(
             urls: List<URLPattern>,
             methods: List<String> = emptyList(),
             statusCodeRange: List<Int> = (500..599).toList(),

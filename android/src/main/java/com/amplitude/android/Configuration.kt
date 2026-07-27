@@ -18,9 +18,9 @@ import java.io.File
  * When adding new constructor parameters, also update [ConfigurationBuilder.build] to pass the
  * new value through.
  */
-open class Configuration(
+public open class Configuration(
     apiKey: String,
-    val context: Context,
+    public val context: Context,
     override var flushQueueSize: Int = FLUSH_QUEUE_SIZE,
     override var flushIntervalMillis: Int = FLUSH_INTERVAL_MILLIS,
     override var instanceName: String = DEFAULT_INSTANCE,
@@ -36,27 +36,27 @@ open class Configuration(
     override var serverUrl: String? = null,
     override var plan: Plan? = null,
     override var ingestionMetadata: IngestionMetadata? = null,
-    var useAdvertisingIdForDeviceId: Boolean = false,
-    var useAppSetIdForDeviceId: Boolean = false,
-    var newDeviceIdPerInstall: Boolean = false,
-    var trackingOptions: TrackingOptions = TrackingOptions(),
-    var enableCoppaControl: Boolean = false,
-    var locationListening: Boolean = false,
-    var flushEventsOnClose: Boolean = true,
-    var minTimeBetweenSessionsMillis: Long = MIN_TIME_BETWEEN_SESSIONS_MILLIS,
+    public var useAdvertisingIdForDeviceId: Boolean = false,
+    public var useAppSetIdForDeviceId: Boolean = false,
+    public var newDeviceIdPerInstall: Boolean = false,
+    public var trackingOptions: TrackingOptions = TrackingOptions(),
+    public var enableCoppaControl: Boolean = false,
+    public var locationListening: Boolean = false,
+    public var flushEventsOnClose: Boolean = true,
+    public var minTimeBetweenSessionsMillis: Long = MIN_TIME_BETWEEN_SESSIONS_MILLIS,
     autocapture: Set<AutocaptureOption> = setOf(AutocaptureOption.SESSIONS),
     override var identifyBatchIntervalMillis: Long = IDENTIFY_BATCH_INTERVAL_MILLIS,
     override var identifyInterceptStorageProvider: StorageProvider = AndroidStorageContextV3.identifyInterceptStorageProvider,
     override var identityStorageProvider: IdentityStorageProvider = AndroidStorageContextV3.identityStorageProvider,
-    var migrateLegacyData: Boolean = true,
+    public var migrateLegacyData: Boolean = true,
     override var offline: Boolean? = false,
     override var deviceId: String? = null,
     override var sessionId: Long? = null,
     override var httpClient: HttpClientInterface? = null,
-    var interactionsOptions: InteractionsOptions = InteractionsOptions(),
+    public var interactionsOptions: InteractionsOptions = InteractionsOptions(),
     override var enableDiagnostics: Boolean = true,
     override var enableRequestBodyCompression: Boolean = false,
-    var enableAutocaptureRemoteConfig: Boolean = true,
+    public var enableAutocaptureRemoteConfig: Boolean = true,
 ) : Configuration(
         apiKey,
         flushQueueSize,
@@ -84,13 +84,13 @@ open class Configuration(
         enableDiagnostics = enableDiagnostics,
         enableRequestBodyCompression = enableRequestBodyCompression,
     ) {
-    companion object {
-        const val MIN_TIME_BETWEEN_SESSIONS_MILLIS: Long = 300000
+    public companion object {
+        public const val MIN_TIME_BETWEEN_SESSIONS_MILLIS: Long = 300000
     }
 
     @Deprecated("Please use the 'autocapture' parameter instead.")
     @JvmOverloads
-    constructor(
+    public constructor(
         apiKey: String,
         context: Context,
         flushQueueSize: Int = FLUSH_QUEUE_SIZE,
@@ -172,14 +172,14 @@ open class Configuration(
     // A backing property to store the autocapture options. Any changes to `trackingSessionEvents`
     // or the `defaultTracking` options will be reflected in this property.
     private var _autocapture: MutableSet<AutocaptureOption> = autocapture.toMutableSet()
-    var autocapture: Set<AutocaptureOption>
+    public var autocapture: Set<AutocaptureOption>
         get() = _autocapture
         set(value) {
             _autocapture = value.toMutableSet()
         }
 
     @Deprecated("Please use 'autocapture' instead and set 'AutocaptureOptions.SESSIONS' to enable the option.")
-    var trackingSessionEvents: Boolean
+    public var trackingSessionEvents: Boolean
         get() = AutocaptureOption.SESSIONS in _autocapture
         set(value) {
             if (value) {
@@ -192,7 +192,7 @@ open class Configuration(
     // Any changes to the default tracking options replace the recent autocapture options entirely.
     @Suppress("DEPRECATION")
     @Deprecated("Please use 'autocapture' instead", ReplaceWith("autocapture"))
-    var defaultTracking: DefaultTrackingOptions = DefaultTrackingOptions { updateAutocaptureOnPropertyChange() }
+    public var defaultTracking: DefaultTrackingOptions = DefaultTrackingOptions { updateAutocaptureOnPropertyChange() }
         set(value) {
             field = value
             _autocapture = value.autocaptureOptions

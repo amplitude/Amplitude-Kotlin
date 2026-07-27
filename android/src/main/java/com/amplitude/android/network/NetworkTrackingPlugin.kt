@@ -34,7 +34,7 @@ import okio.Buffer
 import okio.ByteString.Companion.toByteString
 import okio.IOException
 
-class NetworkTrackingPlugin(
+public class NetworkTrackingPlugin(
     options: NetworkTrackingOptions = NetworkTrackingOptions.DEFAULT,
 ) : Interceptor, Plugin {
     override val type: Type = Utility
@@ -270,7 +270,7 @@ class NetworkTrackingPlugin(
             .toString()
     }
 
-    companion object {
+    public companion object {
         private const val LOCAL_ERROR_STATUS_CODE = 0
         private const val MAX_BODY_PEEK_BYTES = 1L * 1024 * 1024 // 1 MB
     }

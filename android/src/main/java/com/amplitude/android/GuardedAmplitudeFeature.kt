@@ -6,4 +6,4 @@ package com.amplitude.android
             "It is not intended for public use and may change without notice.",
 )
 @Retention(AnnotationRetention.BINARY)
-annotation class GuardedAmplitudeFeature
+public annotation class GuardedAmplitudeFeature

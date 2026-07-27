@@ -7,13 +7,13 @@ import com.amplitude.core.Amplitude
 import com.amplitude.core.platform.Plugin
 import kotlinx.coroutines.launch
 
-class AndroidNetworkConnectivityCheckerPlugin : Plugin {
+public class AndroidNetworkConnectivityCheckerPlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Before
     override lateinit var amplitude: Amplitude
     internal lateinit var networkListener: AndroidNetworkListener
 
-    companion object {
-        val Disabled = null
+    public companion object {
+        public val Disabled: Nothing? = null
     }
 
     override fun setup(amplitude: Amplitude) {

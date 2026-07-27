@@ -52,6 +52,10 @@ android {
     }
 }
 
+kotlin {
+    explicitApi()
+}
+
 mavenPublishing {
     coordinates(artifactId = "analytics-android")
 

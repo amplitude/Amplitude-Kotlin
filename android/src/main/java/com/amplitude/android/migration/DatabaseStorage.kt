@@ -18,29 +18,29 @@ import java.util.Locale
  * Store the database related constants.
  * Align with com/amplitude/api/DatabaseHelper.java in previous SDK.
  */
-object DatabaseConstants {
-    const val DATABASE_NAME = "com.amplitude.api"
-    const val DATABASE_VERSION = 4
+public object DatabaseConstants {
+    public const val DATABASE_NAME: String = "com.amplitude.api"
+    public const val DATABASE_VERSION: Int = 4
 
-    const val EVENT_TABLE_NAME = "events"
-    const val IDENTIFY_TABLE_NAME = "identifys"
-    const val IDENTIFY_INTERCEPTOR_TABLE_NAME = "identify_interceptor"
-    const val ID_FIELD = "id"
-    const val EVENT_FIELD = "event"
+    public const val EVENT_TABLE_NAME: String = "events"
+    public const val IDENTIFY_TABLE_NAME: String = "identifys"
+    public const val IDENTIFY_INTERCEPTOR_TABLE_NAME: String = "identify_interceptor"
+    public const val ID_FIELD: String = "id"
+    public const val EVENT_FIELD: String = "event"
 
-    const val LONG_STORE_TABLE_NAME = "long_store"
-    const val STORE_TABLE_NAME = "store"
-    const val KEY_FIELD = "key"
-    const val VALUE_FIELD = "value"
+    public const val LONG_STORE_TABLE_NAME: String = "long_store"
+    public const val STORE_TABLE_NAME: String = "store"
+    public const val KEY_FIELD: String = "key"
+    public const val VALUE_FIELD: String = "value"
 
-    const val ROW_ID_FIELD = "\$rowId"
+    public const val ROW_ID_FIELD: String = "\$rowId"
 }
 
 /**
  * The SDK doesn't need to write/read from local sqlite database.
  * This storage class is used for migrating events only.
  */
-class DatabaseStorage(
+public class DatabaseStorage(
     context: Context,
     databaseName: String,
     private val logger: Logger,
@@ -52,7 +52,7 @@ class DatabaseStorage(
     ) {
     private var file: File = context.getDatabasePath(databaseName)
     private var isValidDatabaseFile = true
-    var currentDbVersion: Int = DatabaseConstants.DATABASE_VERSION
+    public var currentDbVersion: Int = DatabaseConstants.DATABASE_VERSION
         private set
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -111,17 +111,17 @@ class DatabaseStorage(
     }
 
     @Synchronized
-    fun readEventsContent(): List<JSONObject> {
+    public fun readEventsContent(): List<JSONObject> {
         return readEventsFromTable(DatabaseConstants.EVENT_TABLE_NAME)
     }
 
     @Synchronized
-    fun readIdentifiesContent(): List<JSONObject> {
+    public fun readIdentifiesContent(): List<JSONObject> {
         return readEventsFromTable(DatabaseConstants.IDENTIFY_TABLE_NAME)
     }
 
     @Synchronized
-    fun readInterceptedIdentifiesContent(): List<JSONObject> {
+    public fun readInterceptedIdentifiesContent(): List<JSONObject> {
         if (currentDbVersion < 4) {
             return listOf()
         }
@@ -183,17 +183,17 @@ class DatabaseStorage(
     }
 
     @Synchronized
-    fun removeEvent(rowId: Long) {
+    public fun removeEvent(rowId: Long) {
         removeEventFromTable(DatabaseConstants.EVENT_TABLE_NAME, rowId)
     }
 
     @Synchronized
-    fun removeIdentify(rowId: Long) {
+    public fun removeIdentify(rowId: Long) {
         removeEventFromTable(DatabaseConstants.IDENTIFY_TABLE_NAME, rowId)
     }
 
     @Synchronized
-    fun removeInterceptedIdentify(rowId: Long) {
+    public fun removeInterceptedIdentify(rowId: Long) {
         if (currentDbVersion < 4) {
             return
         }
@@ -227,12 +227,12 @@ class DatabaseStorage(
     }
 
     @Synchronized
-    fun getValue(key: String): String? {
+    public fun getValue(key: String): String? {
         return getValueFromTable(DatabaseConstants.STORE_TABLE_NAME, key) as String?
     }
 
     @Synchronized
-    fun getLongValue(key: String): Long? {
+    public fun getLongValue(key: String): Long? {
         return getValueFromTable(DatabaseConstants.LONG_STORE_TABLE_NAME, key) as Long?
     }
 
@@ -294,12 +294,12 @@ class DatabaseStorage(
     }
 
     @Synchronized
-    fun removeValue(key: String) {
+    public fun removeValue(key: String) {
         removeValueFromTable(DatabaseConstants.STORE_TABLE_NAME, key)
     }
 
     @Synchronized
-    fun removeLongValue(key: String) {
+    public fun removeLongValue(key: String) {
         removeValueFromTable(DatabaseConstants.LONG_STORE_TABLE_NAME, key)
     }
 
@@ -330,13 +330,13 @@ class DatabaseStorage(
     }
 }
 
-class CursorWindowAllocationException(description: String?) :
+public class CursorWindowAllocationException(description: String?) :
     java.lang.RuntimeException(description)
 
-object DatabaseStorageProvider {
+public object DatabaseStorageProvider {
     private val instances: MutableMap<String, DatabaseStorage> = mutableMapOf()
 
-    fun getStorage(amplitude: Amplitude): DatabaseStorage {
+    public fun getStorage(amplitude: Amplitude): DatabaseStorage {
         val configuration = amplitude.configuration as com.amplitude.android.Configuration
         val databaseName = getDatabaseName(configuration.instanceName)
         var storage = instances[databaseName]

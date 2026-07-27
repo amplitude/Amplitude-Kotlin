@@ -3,7 +3,7 @@ package com.amplitude.android.utilities
 import com.amplitude.common.Logger
 
 /** An Adapter for making Class.forName testable  */
-object LoadClass {
+public object LoadClass {
     /**
      * Try to load a class via reflection
      *
@@ -27,7 +27,7 @@ object LoadClass {
         return null
     }
 
-    fun isClassAvailable(
+    public fun isClassAvailable(
         clazz: String,
         logger: Logger?,
     ): Boolean {

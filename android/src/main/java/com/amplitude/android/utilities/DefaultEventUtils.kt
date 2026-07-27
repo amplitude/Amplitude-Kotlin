@@ -16,9 +16,9 @@ import com.amplitude.android.Constants.EventProperties as ConstantsEventProperti
 import com.amplitude.android.Constants.EventTypes as ConstantsEventTypes
 
 @Deprecated("This class is deprecated and will be removed in future releases.")
-class DefaultEventUtils(private val amplitude: Amplitude) {
+public class DefaultEventUtils(private val amplitude: Amplitude) {
     /** Superseded by [com.amplitude.android.plugins.AndroidLifecyclePlugin]; no-op after SDK init. */
-    fun trackAppUpdatedInstalledEvent(packageInfo: PackageInfo) {
+    public fun trackAppUpdatedInstalledEvent(packageInfo: PackageInfo) {
         val storage = amplitude.storage
         trackAppUpdatedInstalledEvent(
             currentVersion = packageInfo.versionName ?: "Unknown",
@@ -55,7 +55,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         }
     }
 
-    fun trackAppOpenedEvent(
+    public fun trackAppOpenedEvent(
         packageInfo: PackageInfo,
         isFromBackground: Boolean,
     ) {
@@ -72,11 +72,11 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         )
     }
 
-    fun trackAppBackgroundedEvent() {
+    public fun trackAppBackgroundedEvent() {
         amplitude.track(ConstantsEventTypes.APPLICATION_BACKGROUNDED)
     }
 
-    fun trackDeepLinkOpenedEvent(activity: Activity) {
+    public fun trackDeepLinkOpenedEvent(activity: Activity) {
         val intent = activity.intent
         intent?.let {
             val referrer = getReferrer(activity)?.toString()
@@ -93,7 +93,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         }
     }
 
-    fun trackScreenViewedEvent(activity: Activity) {
+    public fun trackScreenViewedEvent(activity: Activity) {
         try {
             amplitude.track(
                 ConstantsEventTypes.SCREEN_VIEWED,
@@ -110,7 +110,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         LoadClass.isClassAvailable(FRAGMENT_ACTIVITY_CLASS_NAME, amplitude.logger)
     }
 
-    fun startFragmentViewedEventTracking(
+    public fun startFragmentViewedEventTracking(
         activity: Activity,
         screenViewsEnabled: () -> Boolean = { true },
     ) {
@@ -119,13 +119,13 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
         }
     }
 
-    fun stopFragmentViewedEventTracking(activity: Activity) {
+    public fun stopFragmentViewedEventTracking(activity: Activity) {
         if (isFragmentActivityAvailable) {
             activity.unregisterFragmentLifecycleCallbacks(amplitude.logger)
         }
     }
 
-    companion object {
+    public companion object {
         private const val FRAGMENT_ACTIVITY_CLASS_NAME = "androidx.fragment.app.FragmentActivity"
         internal val Activity.screenName: String
             get() {
@@ -185,7 +185,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
     }
 
     @Deprecated("This object is deprecated. Use Constants.EventTypes.* instead.")
-    object EventTypes {
+    public object EventTypes {
         @Deprecated(
             "Use Constants.EventTypes.APPLICATION_INSTALLED instead",
             ReplaceWith(
@@ -193,7 +193,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 "com.amplitude.android.Constants.EventTypes.APPLICATION_INSTALLED",
             ),
         )
-        const val APPLICATION_INSTALLED = Constants.EventTypes.APPLICATION_INSTALLED
+        public const val APPLICATION_INSTALLED: String = Constants.EventTypes.APPLICATION_INSTALLED
 
         @Deprecated(
             "Use Constants.EventTypes.APPLICATION_UPDATED instead",
@@ -202,7 +202,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 "com.amplitude.android.Constants.EventTypes.APPLICATION_UPDATED",
             ),
         )
-        const val APPLICATION_UPDATED = Constants.EventTypes.APPLICATION_UPDATED
+        public const val APPLICATION_UPDATED: String = Constants.EventTypes.APPLICATION_UPDATED
 
         @Deprecated(
             "Use Constants.EventTypes.APPLICATION_OPENED instead",
@@ -211,7 +211,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 "com.amplitude.android.Constants.EventTypes.APPLICATION_OPENED",
             ),
         )
-        const val APPLICATION_OPENED = Constants.EventTypes.APPLICATION_OPENED
+        public const val APPLICATION_OPENED: String = Constants.EventTypes.APPLICATION_OPENED
 
         @Deprecated(
             "Use Constants.EventTypes.APPLICATION_BACKGROUNDED instead",
@@ -220,7 +220,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 "com.amplitude.android.Constants.EventTypes.APPLICATION_BACKGROUNDED",
             ),
         )
-        const val APPLICATION_BACKGROUNDED = Constants.EventTypes.APPLICATION_BACKGROUNDED
+        public const val APPLICATION_BACKGROUNDED: String = Constants.EventTypes.APPLICATION_BACKGROUNDED
 
         @Deprecated(
             "Use Constants.EventTypes.DEEP_LINK_OPENED instead",
@@ -229,7 +229,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 "com.amplitude.android.Constants.EventTypes.DEEP_LINK_OPENED",
             ),
         )
-        const val DEEP_LINK_OPENED = Constants.EventTypes.DEEP_LINK_OPENED
+        public const val DEEP_LINK_OPENED: String = Constants.EventTypes.DEEP_LINK_OPENED
 
         @Deprecated(
             "Use Constants.EventTypes.SCREEN_VIEWED instead",
@@ -238,7 +238,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 "com.amplitude.android.Constants.EventTypes.SCREEN_VIEWED",
             ),
         )
-        const val SCREEN_VIEWED = Constants.EventTypes.SCREEN_VIEWED
+        public const val SCREEN_VIEWED: String = Constants.EventTypes.SCREEN_VIEWED
 
         @Deprecated(
             "Use Constants.EventTypes.FRAGMENT_VIEWED instead",
@@ -247,7 +247,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 "com.amplitude.android.Constants.EventTypes.FRAGMENT_VIEWED",
             ),
         )
-        const val FRAGMENT_VIEWED = Constants.EventTypes.FRAGMENT_VIEWED
+        public const val FRAGMENT_VIEWED: String = Constants.EventTypes.FRAGMENT_VIEWED
 
         @Deprecated(
             "Use Constants.EventTypes.ELEMENT_INTERACTED instead",
@@ -256,11 +256,11 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 "com.amplitude.android.Constants.EventTypes.ELEMENT_INTERACTED",
             ),
         )
-        const val ELEMENT_INTERACTED = Constants.EventTypes.ELEMENT_INTERACTED
+        public const val ELEMENT_INTERACTED: String = Constants.EventTypes.ELEMENT_INTERACTED
     }
 
     @Deprecated("This object is deprecated. Use Constants.EventProperties.* instead.")
-    object EventProperties {
+    public object EventProperties {
         @Deprecated(
             "Use Constants.EventProperties.VERSION instead",
             ReplaceWith(
@@ -268,7 +268,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 "com.amplitude.android.Constants.EventProperties.VERSION",
             ),
         )
-        const val VERSION = Constants.EventProperties.VERSION
+        public const val VERSION: String = Constants.EventProperties.VERSION
 
         @Deprecated(
             "Use Constants.EventProperties.BUILD instead",
@@ -277,7 +277,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 "com.amplitude.android.Constants.EventProperties.BUILD",
             ),
         )
-        const val BUILD = Constants.EventProperties.BUILD
+        public const val BUILD: String = Constants.EventProperties.BUILD
 
         @Deprecated(
             "Use Constants.EventProperties.PREVIOUS_VERSION instead",
@@ -286,7 +286,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 "com.amplitude.android.Constants.EventProperties.PREVIOUS_VERSION",
             ),
         )
-        const val PREVIOUS_VERSION = Constants.EventProperties.PREVIOUS_VERSION
+        public const val PREVIOUS_VERSION: String = Constants.EventProperties.PREVIOUS_VERSION
 
         @Deprecated(
             "Use Constants.EventProperties.PREVIOUS_BUILD instead",
@@ -295,7 +295,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 "com.amplitude.android.Constants.EventProperties.PREVIOUS_BUILD",
             ),
         )
-        const val PREVIOUS_BUILD = Constants.EventProperties.PREVIOUS_BUILD
+        public const val PREVIOUS_BUILD: String = Constants.EventProperties.PREVIOUS_BUILD
 
         @Deprecated(
             "Use Constants.EventProperties.FROM_BACKGROUND instead",
@@ -304,7 +304,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 "com.amplitude.android.Constants.EventProperties.FROM_BACKGROUND",
             ),
         )
-        const val FROM_BACKGROUND = Constants.EventProperties.FROM_BACKGROUND
+        public const val FROM_BACKGROUND: String = Constants.EventProperties.FROM_BACKGROUND
 
         @Deprecated(
             "Use Constants.EventProperties.LINK_URL instead",
@@ -313,7 +313,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 "com.amplitude.android.Constants.EventProperties.LINK_URL",
             ),
         )
-        const val LINK_URL = Constants.EventProperties.LINK_URL
+        public const val LINK_URL: String = Constants.EventProperties.LINK_URL
 
         @Deprecated(
             "Use Constants.EventProperties.LINK_REFERRER instead",
@@ -322,7 +322,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 "com.amplitude.android.Constants.EventProperties.LINK_REFERRER",
             ),
         )
-        const val LINK_REFERRER = Constants.EventProperties.LINK_REFERRER
+        public const val LINK_REFERRER: String = Constants.EventProperties.LINK_REFERRER
 
         @Deprecated(
             "Use Constants.EventProperties.SCREEN_NAME instead",
@@ -331,7 +331,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 "com.amplitude.android.Constants.EventProperties.SCREEN_NAME",
             ),
         )
-        const val SCREEN_NAME = Constants.EventProperties.SCREEN_NAME
+        public const val SCREEN_NAME: String = Constants.EventProperties.SCREEN_NAME
 
         @Deprecated(
             "Use Constants.EventProperties.FRAGMENT_CLASS instead",
@@ -340,7 +340,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 "com.amplitude.android.Constants.EventProperties.FRAGMENT_CLASS",
             ),
         )
-        const val FRAGMENT_CLASS = Constants.EventProperties.FRAGMENT_CLASS
+        public const val FRAGMENT_CLASS: String = Constants.EventProperties.FRAGMENT_CLASS
 
         @Deprecated(
             "Use Constants.EventProperties.FRAGMENT_IDENTIFIER instead",
@@ -349,7 +349,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 "com.amplitude.android.Constants.EventProperties.FRAGMENT_IDENTIFIER",
             ),
         )
-        const val FRAGMENT_IDENTIFIER = Constants.EventProperties.FRAGMENT_IDENTIFIER
+        public const val FRAGMENT_IDENTIFIER: String = Constants.EventProperties.FRAGMENT_IDENTIFIER
 
         @Deprecated(
             "Use Constants.EventProperties.FRAGMENT_TAG instead",
@@ -358,7 +358,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 "com.amplitude.android.Constants.EventProperties.FRAGMENT_TAG",
             ),
         )
-        const val FRAGMENT_TAG = Constants.EventProperties.FRAGMENT_TAG
+        public const val FRAGMENT_TAG: String = Constants.EventProperties.FRAGMENT_TAG
 
         @Deprecated(
             "Use Constants.EventProperties.ACTION instead",
@@ -367,7 +367,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 "com.amplitude.android.Constants.EventProperties.ACTION",
             ),
         )
-        const val ACTION = Constants.EventProperties.ACTION
+        public const val ACTION: String = Constants.EventProperties.ACTION
 
         @Deprecated(
             "Use Constants.EventProperties.TARGET_CLASS instead",
@@ -376,7 +376,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 "com.amplitude.android.Constants.EventProperties.TARGET_CLASS",
             ),
         )
-        const val TARGET_CLASS = Constants.EventProperties.TARGET_CLASS
+        public const val TARGET_CLASS: String = Constants.EventProperties.TARGET_CLASS
 
         @Deprecated(
             "Use Constants.EventProperties.TARGET_RESOURCE instead",
@@ -385,7 +385,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 "com.amplitude.android.Constants.EventProperties.TARGET_RESOURCE",
             ),
         )
-        const val TARGET_RESOURCE = Constants.EventProperties.TARGET_RESOURCE
+        public const val TARGET_RESOURCE: String = Constants.EventProperties.TARGET_RESOURCE
 
         @Deprecated(
             "Use Constants.EventProperties.TARGET_TAG instead",
@@ -394,7 +394,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 "com.amplitude.android.Constants.EventProperties.TARGET_TAG",
             ),
         )
-        const val TARGET_TAG = Constants.EventProperties.TARGET_TAG
+        public const val TARGET_TAG: String = Constants.EventProperties.TARGET_TAG
 
         @Deprecated(
             "Use Constants.EventProperties.TARGET_TEXT instead",
@@ -403,7 +403,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 "com.amplitude.android.Constants.EventProperties.TARGET_TEXT",
             ),
         )
-        const val TARGET_TEXT = Constants.EventProperties.TARGET_TEXT
+        public const val TARGET_TEXT: String = Constants.EventProperties.TARGET_TEXT
 
         @Deprecated(
             "Use Constants.EventProperties.TARGET_SOURCE instead",
@@ -412,7 +412,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 "com.amplitude.android.Constants.EventProperties.TARGET_SOURCE",
             ),
         )
-        const val TARGET_SOURCE = Constants.EventProperties.TARGET_SOURCE
+        public const val TARGET_SOURCE: String = Constants.EventProperties.TARGET_SOURCE
 
         @Deprecated(
             "Use Constants.EventProperties.HIERARCHY instead",
@@ -421,7 +421,7 @@ class DefaultEventUtils(private val amplitude: Amplitude) {
                 "com.amplitude.android.Constants.EventProperties.HIERARCHY",
             ),
         )
-        const val HIERARCHY = Constants.EventProperties.HIERARCHY
+        public const val HIERARCHY: String = Constants.EventProperties.HIERARCHY
     }
 }
 

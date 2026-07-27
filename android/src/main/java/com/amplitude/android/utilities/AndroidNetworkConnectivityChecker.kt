@@ -14,8 +14,8 @@ import com.amplitude.common.Logger
 /**
  * Checks whether the Android device has [TRANSPORT_WIFI] or [TRANSPORT_CELLULAR] capability.
  */
-class AndroidNetworkConnectivityChecker(private val context: Context, private val logger: Logger) {
-    companion object {
+public class AndroidNetworkConnectivityChecker(private val context: Context, private val logger: Logger) {
+    public companion object {
         internal fun hasNetworkPermission(context: Context): Boolean {
             return context.checkCallingOrSelfPermission(ACCESS_NETWORK_STATE) == PERMISSION_GRANTED
         }
@@ -35,7 +35,7 @@ class AndroidNetworkConnectivityChecker(private val context: Context, private va
      * @return true if the device has Wi-Fi or Cellular transport, or there is no permission to check network state.
      */
     @SuppressLint("MissingPermission")
-    fun isConnected(): Boolean {
+    public fun isConnected(): Boolean {
         // Assume connection and proceed.
         // Events will be treated like online
         // regardless network connectivity

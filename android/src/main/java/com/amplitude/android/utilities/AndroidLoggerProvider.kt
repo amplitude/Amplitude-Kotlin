@@ -5,7 +5,7 @@ import com.amplitude.common.android.LogcatLogger
 import com.amplitude.core.Amplitude
 import com.amplitude.core.LoggerProvider
 
-class AndroidLoggerProvider() : LoggerProvider {
+public class AndroidLoggerProvider() : LoggerProvider {
     private val logger: Logger by lazy {
         LogcatLogger()
     }

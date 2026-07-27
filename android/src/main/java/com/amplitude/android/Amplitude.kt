@@ -29,7 +29,7 @@ import java.lang.ref.WeakReference
 import com.amplitude.core.Amplitude as CoreAmplitude
 
 @OptIn(ExperimentalCoroutinesApi::class, RestrictedAmplitudeFeature::class)
-open class Amplitude internal constructor(
+public open class Amplitude internal constructor(
     configuration: Configuration,
     state: State,
     amplitudeScope: CoroutineScope = CoroutineScope(SupervisorJob()),
@@ -44,7 +44,7 @@ open class Amplitude internal constructor(
         networkIODispatcher = networkIODispatcher,
         storageIODispatcher = storageIODispatcher,
     ) {
-    constructor(configuration: Configuration) : this(configuration, State())
+    public constructor(configuration: Configuration) : this(configuration, State())
 
     override val sessionId: Long
         get() {
@@ -150,12 +150,12 @@ open class Amplitude internal constructor(
     }
 
     @GuardedAmplitudeFeature
-    fun onEnterForeground(timestamp: Long) {
+    public fun onEnterForeground(timestamp: Long) {
         (timeline as Timeline).onEnterForeground(timestamp)
     }
 
     @GuardedAmplitudeFeature
-    fun onExitForeground(timestamp: Long) {
+    public fun onExitForeground(timestamp: Long) {
         (timeline as Timeline).onExitForeground(timestamp)
     }
 
@@ -177,16 +177,16 @@ open class Amplitude internal constructor(
         }
     }
 
-    companion object {
+    public companion object {
         /**
          * The event type for start session events.
          */
-        const val START_SESSION_EVENT = "session_start"
+        public const val START_SESSION_EVENT: String = "session_start"
 
         /**
          * The event type for end session events.
          */
-        const val END_SESSION_EVENT = "session_end"
+        public const val END_SESSION_EVENT: String = "session_end"
     }
 }
 
@@ -201,7 +201,7 @@ open class Amplitude internal constructor(
  * }
  * ```
  */
-fun Amplitude(
+public fun Amplitude(
     apiKey: String,
     context: Context,
     configs: ConfigurationBuilder.() -> Unit,

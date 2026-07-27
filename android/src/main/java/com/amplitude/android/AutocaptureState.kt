@@ -14,7 +14,7 @@ import com.amplitude.android.AutocaptureOption.SESSIONS
  *
  * @suppress This is an internal implementation detail and should not be used directly.
  */
-data class AutocaptureState(
+public data class AutocaptureState(
     val sessions: Boolean = false,
     val appLifecycles: Boolean = false,
     val screenViews: Boolean = false,
@@ -34,11 +34,11 @@ data class AutocaptureState(
         return if (options.isEmpty()) "none" else options.joinToString(",")
     }
 
-    companion object {
+    public companion object {
         /**
          * Builds [AutocaptureState] from autocapture options and interactions configuration.
          */
-        fun from(
+        public fun from(
             autocapture: Set<AutocaptureOption>,
             interactionsOptions: InteractionsOptions,
         ): AutocaptureState {
@@ -71,19 +71,19 @@ data class AutocaptureState(
 /**
  * Types of user interaction tracking.
  */
-sealed class InteractionType {
+public sealed class InteractionType {
     /**
      * Standard element interaction events (ELEMENT_INTERACTED).
      */
-    data object ElementInteraction : InteractionType()
+    public data object ElementInteraction : InteractionType()
 
     /**
      * Rage click [FRUSTRATION_INTERACTIONS] events (RAGE_CLICK).
      */
-    data object RageClick : InteractionType()
+    public data object RageClick : InteractionType()
 
     /**
      * Dead click [FRUSTRATION_INTERACTIONS] events (DEAD_CLICK).
      */
-    data object DeadClick : InteractionType()
+    public data object DeadClick : InteractionType()
 }

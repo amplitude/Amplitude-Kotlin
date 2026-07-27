@@ -18,7 +18,7 @@ import java.io.IOException
 import java.lang.reflect.InvocationTargetException
 import java.util.Locale
 
-class AndroidContextProvider(
+public class AndroidContextProvider(
     private val context: Context,
     private val locationListening: Boolean,
     private val shouldTrackAdid: Boolean,
@@ -29,20 +29,20 @@ class AndroidContextProvider(
     /**
      * Internal class serves as a cache
      */
-    inner class CachedInfo {
-        val advertisingId: String?
-        val country: String?
-        val versionName: String?
-        val osName: String
-        val osVersion: String
-        val brand: String
-        val manufacturer: String
-        val model: String
-        val carrier: String?
-        val language: String
-        var limitAdTrackingEnabled: Boolean = true
-        val gpsEnabled: Boolean
-        val appSetId: String?
+    public inner class CachedInfo {
+        public val advertisingId: String?
+        public val country: String?
+        public val versionName: String?
+        public val osName: String
+        public val osVersion: String
+        public val brand: String
+        public val manufacturer: String
+        public val model: String
+        public val carrier: String?
+        public val language: String
+        public var limitAdTrackingEnabled: Boolean = true
+        public val gpsEnabled: Boolean
+        public val appSetId: String?
 
         init {
             osName = OS_NAME
@@ -293,41 +293,41 @@ class AndroidContextProvider(
         }
     }
 
-    fun isGooglePlayServicesEnabled(): Boolean {
+    public fun isGooglePlayServicesEnabled(): Boolean {
         return cachedInfo.gpsEnabled
     }
 
-    fun isLimitAdTrackingEnabled(): Boolean {
+    public fun isLimitAdTrackingEnabled(): Boolean {
         return cachedInfo.limitAdTrackingEnabled
     }
 
-    val versionName: String?
+    public val versionName: String?
         get() = cachedInfo.versionName
-    val osName: String
+    public val osName: String
         get() = cachedInfo.osName
-    val osVersion: String
+    public val osVersion: String
         get() = cachedInfo.osVersion
-    val brand: String
+    public val brand: String
         get() = cachedInfo.brand
-    val manufacturer: String
+    public val manufacturer: String
         get() = cachedInfo.manufacturer
-    val model: String
+    public val model: String
         get() = cachedInfo.model
-    val carrier: String?
+    public val carrier: String?
         get() = cachedInfo.carrier
-    val country: String?
+    public val country: String?
         get() = cachedInfo.country
-    val language: String
+    public val language: String
         get() = cachedInfo.language
-    val advertisingId: String?
+    public val advertisingId: String?
         get() = cachedInfo.advertisingId
-    val appSetId: String?
+    public val appSetId: String?
         get() = cachedInfo.appSetId // other causes// failed to get providers list
     // Don't crash if the device does not have location services.
 
     // It's possible that the location service is running out of process
     // and the remote getProviders call fails. Handle null provider lists.
-    val mostRecentLocation: Location?
+    public val mostRecentLocation: Location?
         @SuppressLint("MissingPermission")
         get() {
             if (!locationListening) {
@@ -394,9 +394,9 @@ class AndroidContextProvider(
     private val geocoder: Geocoder
         get() = Geocoder(context, Locale.ENGLISH)
 
-    companion object {
-        const val OS_NAME = "android"
-        const val SETTING_LIMIT_AD_TRACKING = "limit_ad_tracking"
-        const val SETTING_ADVERTISING_ID = "advertising_id"
+    public companion object {
+        public const val OS_NAME: String = "android"
+        public const val SETTING_LIMIT_AD_TRACKING: String = "limit_ad_tracking"
+        public const val SETTING_ADVERTISING_ID: String = "advertising_id"
     }
 }

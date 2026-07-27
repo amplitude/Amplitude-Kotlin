@@ -16,7 +16,7 @@ import com.amplitude.common.Logger
 import java.lang.ref.WeakReference
 
 @VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)
-class AutocaptureGestureListener(
+public class AutocaptureGestureListener(
     decorView: View,
     private val activityName: String,
     private val track: TrackFunction,

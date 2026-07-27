@@ -26,7 +26,7 @@ import org.json.JSONArray
 import java.io.File
 
 @OptIn(RestrictedAmplitudeFeature::class)
-class AndroidStorageV2
+public class AndroidStorageV2
     internal constructor(
         /**
          * A generic key to differentiate multiple storage instances.
@@ -36,7 +36,7 @@ class AndroidStorageV2
         /**
          * A place where the storage stores some metadata to manage this storage
          */
-        val sharedPreferences: SharedPreferences,
+        public val sharedPreferences: SharedPreferences,
         /**
          * A directory where the storage stores the actual data. This should not be shared with other
          * storage instances
@@ -45,7 +45,7 @@ class AndroidStorageV2
         diagnostics: Diagnostics,
         private val diagnosticsClientProvider: DiagnosticsClientProvider? = null,
     ) : Storage, EventsFileStorage {
-        constructor(
+        public constructor(
             storageKey: String,
             logger: Logger,
             sharedPreferences: SharedPreferences,
@@ -143,13 +143,13 @@ class AndroidStorageV2
             eventsFile.splitFile(filePath, events)
         }
 
-        fun cleanupMetadata() {
+        public fun cleanupMetadata() {
             eventsFile.cleanupMetadata()
         }
     }
 
 @OptIn(RestrictedAmplitudeFeature::class)
-class AndroidEventsStorageProviderV2 : StorageProvider {
+public class AndroidEventsStorageProviderV2 : StorageProvider {
     override fun getStorage(
         amplitude: Amplitude,
         prefix: String?,
@@ -170,7 +170,7 @@ class AndroidEventsStorageProviderV2 : StorageProvider {
 }
 
 @OptIn(RestrictedAmplitudeFeature::class)
-class AndroidIdentifyInterceptStorageProviderV2 : StorageProvider {
+public class AndroidIdentifyInterceptStorageProviderV2 : StorageProvider {
     override fun getStorage(
         amplitude: Amplitude,
         prefix: String?,
