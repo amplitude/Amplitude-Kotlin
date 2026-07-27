@@ -5,7 +5,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
-data class AnalyticsRequest(
+public data class AnalyticsRequest(
     val apiKey: String,
     val events: String,
     val minIdLength: Int? = null,
@@ -17,7 +17,7 @@ data class AnalyticsRequest(
             timeZone = TimeZone.getTimeZone("UTC")
         }
 
-    fun getBodyStr(): String {
+    public fun getBodyStr(): String {
         return buildString {
             append("{\"api_key\":\"$apiKey\",\"client_upload_time\":\"${getClientUploadTime()}\",\"events\":$events")
             if (minIdLength != null) {

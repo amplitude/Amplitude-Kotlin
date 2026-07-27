@@ -1,7 +1,7 @@
 package com.amplitude.common
 
-interface Logger {
-    enum class LogMode(i: Int) {
+public interface Logger {
+    public enum class LogMode(i: Int) {
         DEBUG(1),
         INFO(2),
         WARN(3),
@@ -9,13 +9,13 @@ interface Logger {
         OFF(5),
     }
 
-    var logMode: LogMode
+    public var logMode: LogMode
 
-    fun debug(message: String)
+    public fun debug(message: String)
 
-    fun error(message: String)
+    public fun error(message: String)
 
-    fun info(message: String)
+    public fun info(message: String)
 
-    fun warn(message: String)
+    public fun warn(message: String)
 }

@@ -19,7 +19,7 @@ import org.json.JSONArray
 import java.io.File
 
 @OptIn(RestrictedAmplitudeFeature::class)
-class FileStorage
+public class FileStorage
     internal constructor(
         storageKey: String,
         private val logger: Logger,
@@ -27,15 +27,15 @@ class FileStorage
         diagnostics: Diagnostics,
         private val diagnosticsClientProvider: DiagnosticsClientProvider? = null,
     ) : Storage, EventsFileStorage {
-        constructor(
+        public constructor(
             storageKey: String,
             logger: Logger,
             prefix: String?,
             diagnostics: Diagnostics,
         ) : this(storageKey, logger, prefix, diagnostics, null)
 
-        companion object {
-            const val STORAGE_PREFIX = "amplitude-kotlin"
+        public companion object {
+            public const val STORAGE_PREFIX: String = "amplitude-kotlin"
         }
 
         private val storageDirectory = File("/tmp/${getPrefix()}/$storageKey")
@@ -145,7 +145,7 @@ class FileStorage
     }
 
 @OptIn(RestrictedAmplitudeFeature::class)
-class FileStorageProvider : StorageProvider {
+public class FileStorageProvider : StorageProvider {
     override fun getStorage(
         amplitude: Amplitude,
         prefix: String?,
@@ -160,31 +160,31 @@ class FileStorageProvider : StorageProvider {
     }
 }
 
-interface EventsFileStorage {
+public interface EventsFileStorage {
     /**
      * Deletes the file at the given [filePath].
      */
-    fun removeFile(filePath: String): Boolean
+    public fun removeFile(filePath: String): Boolean
 
     /**
      * Get the [EventCallBack] for the given [insertId].
      *
      * @param insertId A random [java.util.UUID] associated with an event.
      */
-    fun getEventCallback(insertId: String): EventCallBack?
+    public fun getEventCallback(insertId: String): EventCallBack?
 
     /**
      * Remove the [EventCallBack] for the given [insertId].
      *
      * @param insertId A random [java.util.UUID] associated with an event.
      */
-    fun removeEventCallback(insertId: String)
+    public fun removeEventCallback(insertId: String)
 
     /**
      * Split the file at the given [filePath] into two files.
      * This is used to handle [HttpStatus.PAYLOAD_TOO_LARGE] response.
      */
-    fun splitEventFile(
+    public fun splitEventFile(
         filePath: String,
         events: JSONArray,
     )
@@ -194,24 +194,24 @@ interface EventsFileStorage {
      *
      * NOTE: this function is shared with [Storage]
      */
-    fun readEventsContent(): List<Any>
+    public fun readEventsContent(): List<Any>
 
     /**
      * Releases the file at the given [filePath], this marks the end of a file read.
      */
-    fun releaseFile(filePath: String)
+    public fun releaseFile(filePath: String)
 
     /**
      * Returns the Events JSON string content of the file at the given [filePath].
      *
      * NOTE: this function is shared with [Storage]
      */
-    suspend fun getEventsString(filePath: Any): String
+    public suspend fun getEventsString(filePath: Any): String
 
     /**
      * Closes the current file and increases the file index so the next write goes to a new file.
      *
      * NOTE: this function is shared with [Storage]
      */
-    suspend fun rollover()
+    public suspend fun rollover()
 }

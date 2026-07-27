@@ -11,6 +11,10 @@ java {
     targetCompatibility = JavaConfig.JAVA_VERSION
 }
 
+kotlin {
+    explicitApi()
+}
+
 mavenPublishing {
     coordinates(artifactId = "analytics-core")
 

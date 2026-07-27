@@ -21,7 +21,7 @@ import org.json.JSONArray
 import org.json.JSONException
 
 @OptIn(RestrictedAmplitudeFeature::class)
-class FileResponseHandler
+public class FileResponseHandler
     constructor(
         private val storage: EventsFileStorage,
         private val eventPipeline: EventPipeline,
@@ -31,7 +31,7 @@ class FileResponseHandler
         private val logger: Logger?,
         private val diagnosticsClient: DiagnosticsClient?,
     ) : ResponseHandler {
-        constructor(
+        public constructor(
             storage: EventsFileStorage,
             eventPipeline: EventPipeline,
             configuration: Configuration,

@@ -6,7 +6,7 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.util.Properties
 
-class PropertiesFile(
+public class PropertiesFile(
     directory: File,
     fileNameWithoutExtension: String,
     private val logger: Logger?,
@@ -18,7 +18,7 @@ class PropertiesFile(
     /**
      * Check if underlying file exists, and load properties if true
      */
-    fun load() {
+    public fun load() {
         if (propertiesFile.exists()) {
             try {
                 FileInputStream(propertiesFile).use {
@@ -73,7 +73,7 @@ class PropertiesFile(
         save()
     }
 
-    fun putString(
+    public fun putString(
         key: String,
         value: String,
     ): Boolean {
@@ -82,18 +82,18 @@ class PropertiesFile(
         return true
     }
 
-    fun getString(
+    public fun getString(
         key: String,
         defaultVal: String?,
     ): String? = underlyingProperties.getProperty(key, defaultVal)
 
-    fun remove(key: String): Boolean {
+    public fun remove(key: String): Boolean {
         underlyingProperties.remove(key)
         save()
         return true
     }
 
-    fun remove(keys: List<String>): Boolean {
+    public fun remove(keys: List<String>): Boolean {
         keys.forEach {
             underlyingProperties.remove(it)
         }
@@ -101,7 +101,7 @@ class PropertiesFile(
         return true
     }
 
-    fun deletePropertiesFile() {
+    public fun deletePropertiesFile() {
         propertiesFile.delete()
     }
 }
@@ -109,16 +109,16 @@ class PropertiesFile(
 /**
  * Key-value store interface
  */
-interface KeyValueStore {
-    fun getLong(
+public interface KeyValueStore {
+    public fun getLong(
         key: String,
         defaultVal: Long,
     ): Long
 
-    fun putLong(
+    public fun putLong(
         key: String,
         value: Long,
     ): Boolean
 
-    fun deleteKey(key: String)
+    public fun deleteKey(key: String)
 }

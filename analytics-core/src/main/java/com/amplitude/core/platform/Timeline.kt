@@ -4,7 +4,7 @@ import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import java.util.concurrent.ConcurrentHashMap
 
-open class Timeline {
+public open class Timeline {
     internal val plugins: Map<Plugin.Type, Mediator> =
         mapOf(
             Plugin.Type.Before to Mediator(),
@@ -14,9 +14,9 @@ open class Timeline {
             Plugin.Type.Observe to Mediator(),
         )
     private val reservedNames = ConcurrentHashMap<String, UniversalPlugin>()
-    lateinit var amplitude: Amplitude
+    public lateinit var amplitude: Amplitude
 
-    open fun process(incomingEvent: BaseEvent) {
+    public open fun process(incomingEvent: BaseEvent) {
         // Note for future reference:
         // Checking for opt out within the timeline processing since events can be added to the
         // timeline from various sources. For example, the session start and end events are fired
@@ -33,7 +33,7 @@ open class Timeline {
 
     internal fun plugin(name: String): UniversalPlugin? = reservedNames[name]
 
-    fun add(plugin: UniversalPlugin) {
+    public fun add(plugin: UniversalPlugin) {
         val name = plugin.name
         if (name != null && reservedNames.putIfAbsent(name, plugin) != null) {
             amplitude.logger.warn("Plugin \"$name\" is already registered; keeping the existing one.")
@@ -53,7 +53,7 @@ open class Timeline {
         }
     }
 
-    fun applyPlugins(
+    public fun applyPlugins(
         type: Plugin.Type,
         event: BaseEvent?,
     ): BaseEvent? {
@@ -74,7 +74,7 @@ open class Timeline {
         return result
     }
 
-    fun remove(plugin: UniversalPlugin) {
+    public fun remove(plugin: UniversalPlugin) {
         plugin.name?.let { reservedNames.remove(it, plugin) }
         plugins.forEach { (_, mediator) ->
             if (mediator.remove(plugin)) plugin.teardown()
@@ -83,7 +83,7 @@ open class Timeline {
 
     internal fun pluginsSnapshot(): List<UniversalPlugin> = plugins.values.flatMap { it.snapshot() }
 
-    inline fun <reified T : Plugin> findPlugin(): T? {
+    public inline fun <reified T : Plugin> findPlugin(): T? {
         var match: T? = null
         applyClosure { plugin ->
             if (match == null && plugin is T) {
@@ -94,7 +94,7 @@ open class Timeline {
     }
 
     // Applies a closure on all registered plugins
-    fun applyClosure(closure: (Plugin) -> Unit) {
+    public fun applyClosure(closure: (Plugin) -> Unit) {
         plugins.forEach { (_, mediator) ->
             mediator.applyClosure { if (it is Plugin) closure(it) }
         }

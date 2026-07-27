@@ -18,19 +18,19 @@ import com.amplitude.core.events.AnalyticsEvent
  * forward events through [execute] and state changes to the callbacks, and call [teardown] on
  * removal.
  */
-interface UniversalPlugin {
+public interface UniversalPlugin {
     /**
      * Optional unique identifier used to deduplicate plugins. When non-null, registering a
      * second plugin with the same name is ignored.
      */
-    val name: String? get() = null
+    public val name: String? get() = null
 
     /**
      * Called when the plugin is registered with a host. [client] exposes live identity,
      * session, and opt-out state; [context] carries shared configuration such as the API key,
      * server zone, and logger.
      */
-    fun setup(
+    public fun setup(
         client: AnalyticsClient,
         context: AmplitudeContext,
     ) {}
@@ -40,20 +40,20 @@ interface UniversalPlugin {
      * event's fields and may drop it by returning `null`, but must return the same event
      * instance (not a different concrete type).
      */
-    fun <T : AnalyticsEvent> execute(event: T): T? = event
+    public fun <T : AnalyticsEvent> execute(event: T): T? = event
 
     /** Releases any resources acquired in [setup]. */
-    fun teardown() {}
+    public fun teardown() {}
 
     /** Called when the user id or device id changes. */
-    fun onIdentityChanged(identity: AnalyticsIdentity) {}
+    public fun onIdentityChanged(identity: AnalyticsIdentity) {}
 
     /** Called when the session id changes. */
-    fun onSessionIdChanged(sessionId: Long) {}
+    public fun onSessionIdChanged(sessionId: Long) {}
 
     /** Called when the opt-out setting changes. */
-    fun onOptOutChanged(optOut: Boolean) {}
+    public fun onOptOutChanged(optOut: Boolean) {}
 
     /** Called when the host is reset: the user id is cleared and the device id is regenerated. */
-    fun onReset() {}
+    public fun onReset() {}
 }

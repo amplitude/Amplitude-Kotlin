@@ -14,18 +14,18 @@ import com.amplitude.core.remoteconfig.RemoteConfigClient
  * @property serverZone the server zone events are sent to.
  * @property logger the host's logger.
  */
-open class AmplitudeContext
+public open class AmplitudeContext
     @RestrictedAmplitudeFeature
     internal constructor(
-        val apiKey: String,
-        val instanceName: String,
-        val serverZone: ServerZone,
-        val logger: Logger,
+        public val apiKey: String,
+        public val instanceName: String,
+        public val serverZone: ServerZone,
+        public val logger: Logger,
         remoteConfigClientProvider: () -> RemoteConfigClient,
         diagnosticsClientProvider: () -> DiagnosticsClient,
     ) {
         @RestrictedAmplitudeFeature
-        constructor(
+        public constructor(
             apiKey: String,
             instanceName: String,
             serverZone: ServerZone,
@@ -42,8 +42,8 @@ open class AmplitudeContext
         )
 
         @RestrictedAmplitudeFeature
-        val remoteConfigClient: RemoteConfigClient by lazy(remoteConfigClientProvider)
+        public val remoteConfigClient: RemoteConfigClient by lazy(remoteConfigClientProvider)
 
         @RestrictedAmplitudeFeature
-        val diagnosticsClient: DiagnosticsClient by lazy(diagnosticsClientProvider)
+        public val diagnosticsClient: DiagnosticsClient by lazy(diagnosticsClientProvider)
     }

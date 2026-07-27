@@ -11,9 +11,9 @@ import com.amplitude.core.utilities.http.HttpStatus.TOO_MANY_REQUESTS
 import com.amplitude.core.utilities.toIntArray
 import org.json.JSONObject
 
-sealed class AnalyticsResponse(val status: HttpStatus) {
-    companion object {
-        fun create(
+public sealed class AnalyticsResponse(public val status: HttpStatus) {
+    public companion object {
+        public fun create(
             responseCode: Int,
             responseBody: String?,
         ): AnalyticsResponse {
@@ -41,10 +41,10 @@ sealed class AnalyticsResponse(val status: HttpStatus) {
     }
 }
 
-class SuccessResponse : AnalyticsResponse(SUCCESS)
+public class SuccessResponse : AnalyticsResponse(SUCCESS)
 
-class BadRequestResponse(response: JSONObject) : AnalyticsResponse(BAD_REQUEST) {
-    val error: String = response.getStringWithDefault("error", "")
+public class BadRequestResponse(response: JSONObject) : AnalyticsResponse(BAD_REQUEST) {
+    public val error: String = response.getStringWithDefault("error", "")
     private var eventsWithInvalidFields: Set<Int> = setOf()
     private var eventsWithMissingFields: Set<Int> = setOf()
     private var silencedEvents: Set<Int> = setOf()
@@ -67,7 +67,7 @@ class BadRequestResponse(response: JSONObject) : AnalyticsResponse(BAD_REQUEST) 
         }
     }
 
-    fun getEventIndicesToDrop(): MutableSet<Int> {
+    public fun getEventIndicesToDrop(): MutableSet<Int> {
         val dropIndexes = mutableSetOf<Int>()
         dropIndexes.addAll(eventsWithInvalidFields)
         dropIndexes.addAll(eventsWithMissingFields)
@@ -75,7 +75,7 @@ class BadRequestResponse(response: JSONObject) : AnalyticsResponse(BAD_REQUEST) 
         return dropIndexes
     }
 
-    fun isEventSilenced(event: BaseEvent): Boolean {
+    public fun isEventSilenced(event: BaseEvent): Boolean {
         val eventDeviceId = event.deviceId
 
         return if (eventDeviceId != null) {
@@ -85,25 +85,25 @@ class BadRequestResponse(response: JSONObject) : AnalyticsResponse(BAD_REQUEST) 
         }
     }
 
-    fun isInvalidApiKeyResponse(): Boolean {
+    public fun isInvalidApiKeyResponse(): Boolean {
         return error.lowercase().contains("invalid api key")
     }
 }
 
-class PayloadTooLargeResponse(response: JSONObject) :
+public class PayloadTooLargeResponse(response: JSONObject) :
     AnalyticsResponse(PAYLOAD_TOO_LARGE) {
-    val error: String = response.getStringWithDefault("error", "")
+    public val error: String = response.getStringWithDefault("error", "")
 }
 
-class TooManyRequestsResponse(response: JSONObject) :
+public class TooManyRequestsResponse(response: JSONObject) :
     AnalyticsResponse(TOO_MANY_REQUESTS) {
     private var exceededDailyQuotaUsers: Set<String> = setOf()
     private var exceededDailyQuotaDevices: Set<String> = setOf()
     private var throttledDevices: Set<String> = setOf()
     private var throttledUsers: Set<String> = setOf()
 
-    val error: String = response.getStringWithDefault("error", "")
-    var throttledEvents = setOf<Int>()
+    public val error: String = response.getStringWithDefault("error", "")
+    public var throttledEvents: Set<Int> = setOf<Int>()
 
     init {
         if (response.has("exceeded_daily_quota_users")) {
@@ -124,16 +124,16 @@ class TooManyRequestsResponse(response: JSONObject) :
         }
     }
 
-    fun isEventExceedDailyQuota(event: BaseEvent): Boolean {
+    public fun isEventExceedDailyQuota(event: BaseEvent): Boolean {
         return (event.userId != null && exceededDailyQuotaUsers.contains(event.userId)) ||
             (event.deviceId != null && exceededDailyQuotaDevices.contains(event.deviceId))
     }
 }
 
-class TimeoutResponse : AnalyticsResponse(TIMEOUT)
+public class TimeoutResponse : AnalyticsResponse(TIMEOUT)
 
-class FailedResponse(response: JSONObject) : AnalyticsResponse(HttpStatus.FAILED) {
-    val error: String = response.getStringWithDefault("error", "")
+public class FailedResponse(response: JSONObject) : AnalyticsResponse(HttpStatus.FAILED) {
+    public val error: String = response.getStringWithDefault("error", "")
 }
 
 /**
@@ -143,12 +143,12 @@ class FailedResponse(response: JSONObject) : AnalyticsResponse(HttpStatus.FAILED
  * - e.g. we remove the offending bad event file, split the event file that is too large, etc.
  *
  */
-interface ResponseHandler {
+public interface ResponseHandler {
     /**
      * Main entry point to handle a response after an upload
      * @return true if we shouldRetryUploadOnFailure, false if we should not retry, or null if not applicable
      */
-    fun handle(
+    public fun handle(
         response: AnalyticsResponse,
         events: Any,
         eventsString: String,
@@ -198,7 +198,7 @@ interface ResponseHandler {
     /**
      * Handle a [HttpStatus.SUCCESS] response.
      */
-    fun handleSuccessResponse(
+    public fun handleSuccessResponse(
         successResponse: SuccessResponse,
         events: Any,
         eventsString: String,
@@ -209,7 +209,7 @@ interface ResponseHandler {
      *
      * @return true if we should retry the upload (e.g. no events dropped), else false as we have discarded the events
      */
-    fun handleBadRequestResponse(
+    public fun handleBadRequestResponse(
         badRequestResponse: BadRequestResponse,
         events: Any,
         eventsString: String,
@@ -218,7 +218,7 @@ interface ResponseHandler {
     /**
      * Handle a [HttpStatus.PAYLOAD_TOO_LARGE] response.
      */
-    fun handlePayloadTooLargeResponse(
+    public fun handlePayloadTooLargeResponse(
         payloadTooLargeResponse: PayloadTooLargeResponse,
         events: Any,
         eventsString: String,
@@ -227,7 +227,7 @@ interface ResponseHandler {
     /**
      * Handle a [HttpStatus.TOO_MANY_REQUESTS] response.
      */
-    fun handleTooManyRequestsResponse(
+    public fun handleTooManyRequestsResponse(
         tooManyRequestsResponse: TooManyRequestsResponse,
         events: Any,
         eventsString: String,
@@ -236,7 +236,7 @@ interface ResponseHandler {
     /**
      * Handle a [HttpStatus.TIMEOUT] response.
      */
-    fun handleTimeoutResponse(
+    public fun handleTimeoutResponse(
         timeoutResponse: TimeoutResponse,
         events: Any,
         eventsString: String,
@@ -245,7 +245,7 @@ interface ResponseHandler {
     /**
      * Handle a [HttpStatus.FAILED] response.
      */
-    fun handleFailedResponse(
+    public fun handleFailedResponse(
         failedResponse: FailedResponse,
         events: Any,
         eventsString: String,
@@ -256,9 +256,9 @@ interface ResponseHandler {
  * Enum class to represent the HTTP status codes and whether the upload should be retried on failure.
  * A request requires a retry if the event file/s are still present and we want to attempt to upload them again.
  */
-enum class HttpStatus(
+public enum class HttpStatus(
     code: Int,
-    val range: IntRange = code..code,
+    public val range: IntRange = code..code,
 ) {
     SUCCESS(200, range = 200..299),
     BAD_REQUEST(400),
@@ -268,6 +268,6 @@ enum class HttpStatus(
     FAILED(500, 500..599),
     ;
 
-    val statusCode: Int
+    public val statusCode: Int
         get() = range.first
 }

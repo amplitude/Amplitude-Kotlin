@@ -11,8 +11,8 @@ import kotlin.math.pow
  * - call [attemptRetry] to attempt retry with exponential backoff delay
  * - always call [reset] at the end of your session to reset the retry attempt counter.
  */
-class ExponentialBackoffRetryHandler(
-    val maxRetryAttempt: Int = MAX_RETRY_ATTEMPT,
+public class ExponentialBackoffRetryHandler(
+    public val maxRetryAttempt: Int = MAX_RETRY_ATTEMPT,
     private val baseDelayInMs: Int = 1_000,
     private val factor: Double = 2.0,
 ) {
@@ -28,7 +28,7 @@ class ExponentialBackoffRetryHandler(
      * After we've reached [maxRetryAttempt], we will stop retrying for a longer period and use this
      * value. We apply a ceiling of 60 seconds [MAX_DELAY_IN_MILLIS] to the delay to avoid waiting too long.
      */
-    val maxDelayInMs: Long
+    public val maxDelayInMs: Long
         get() =
             MAX_DELAY_IN_MILLIS.coerceAtMost(
                 baseDelayInMs * factor.pow(maxRetryAttempt + 1).toInt(),
@@ -43,7 +43,7 @@ class ExponentialBackoffRetryHandler(
      * @param block a lambda to execute the retry logic. The lambda will receive a boolean parameter to indicate if the retry logic should be executed.
      * If boolean parameter is false, [maxRetryAttempt] was reached and you should stop retrying and handle the failure.
      */
-    suspend fun attemptRetry(block: (Boolean) -> Unit) {
+    public suspend fun attemptRetry(block: (Boolean) -> Unit) {
         if (!canRetry()) {
             block(false)
             return
@@ -56,11 +56,11 @@ class ExponentialBackoffRetryHandler(
     /**
      * Reset the retry attempt counter.
      */
-    fun reset() {
+    public fun reset() {
         attempt.set(0)
     }
 
-    companion object {
+    public companion object {
         private const val MAX_RETRY_ATTEMPT = 5
         private const val MAX_DELAY_IN_MILLIS = 60_000
     }

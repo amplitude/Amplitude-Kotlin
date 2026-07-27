@@ -32,15 +32,15 @@ import java.util.concurrent.atomic.AtomicLong
  * Type alias for remote configuration map data.
  * Represents config key-value pairs where keys are strings and values can be any type.
  */
-typealias ConfigMap = Map<String, Any>
+public typealias ConfigMap = Map<String, Any>
 
 /**
  * Interface for remote configuration client.
  */
 @RestrictedAmplitudeFeature
-interface RemoteConfigClient {
+public interface RemoteConfigClient {
     @RestrictedAmplitudeFeature
-    enum class Source {
+    public enum class Source {
         CACHE,
         REMOTE,
     }
@@ -51,16 +51,16 @@ interface RemoteConfigClient {
      * successful fetch as an update, so callers always see the latest available config.
      */
     @RestrictedAmplitudeFeature
-    sealed class DeliveryMode {
+    public sealed class DeliveryMode {
         /** Deliver cached config immediately (if present), then remote, and every subsequent successful fetch. */
-        data object All : DeliveryMode()
+        public data object All : DeliveryMode()
 
         /**
          * Block the initial delivery on the remote up to [timeoutMs] — then fall back to
          * cache, else a failure signal. Subsequent successful fetches are delivered as
          * updates, the same as [All].
          */
-        class WaitForRemote(val timeoutMs: Long) : DeliveryMode() {
+        public class WaitForRemote(public val timeoutMs: Long) : DeliveryMode() {
             override fun equals(other: Any?): Boolean = other is WaitForRemote && other.timeoutMs == timeoutMs
 
             override fun hashCode(): Int = timeoutMs.hashCode()
@@ -76,16 +76,16 @@ interface RemoteConfigClient {
      * configs.sessionReplay.sr_android_privacy_config.
      */
     @RestrictedAmplitudeFeature
-    sealed class Key(val value: String) {
-        data object AnalyticsSdk : Key("analyticsSDK.androidSDK")
+    public sealed class Key(public val value: String) {
+        public data object AnalyticsSdk : Key("analyticsSDK.androidSDK")
 
-        data object Diagnostics : Key("diagnostics.androidSDK")
+        public data object Diagnostics : Key("diagnostics.androidSDK")
 
-        data object SessionReplayPrivacyConfig : Key("sessionReplay.sr_android_privacy_config")
+        public data object SessionReplayPrivacyConfig : Key("sessionReplay.sr_android_privacy_config")
 
-        data object SessionReplaySamplingConfig : Key("sessionReplay.sr_android_sampling_config")
+        public data object SessionReplaySamplingConfig : Key("sessionReplay.sr_android_sampling_config")
 
-        class Custom(value: String) : Key(value) {
+        public class Custom(value: String) : Key(value) {
             override fun equals(other: Any?): Boolean = other is Custom && other.value == value
 
             override fun hashCode(): Int = value.hashCode()
@@ -98,16 +98,16 @@ interface RemoteConfigClient {
      * Subscribe to remote configuration updates for a specific configuration key.
      * The callback will be invoked whenever the specific configuration is updated.
      */
-    fun subscribe(
+    public fun subscribe(
         key: Key,
         deliveryMode: DeliveryMode = DeliveryMode.All,
         callback: RemoteConfigCallback,
     )
 
-    fun updateConfigs()
+    public fun updateConfigs()
 
     @RestrictedAmplitudeFeature
-    fun interface RemoteConfigCallback {
+    public fun interface RemoteConfigCallback {
         /**
          * @param config resolved config slice; null when the key is absent from a
          *   successful fetch, or when the fetch failed.
@@ -117,7 +117,7 @@ interface RemoteConfigClient {
          *   absent-but-valid key (non-null timestamp, null config) and an error
          *   (null timestamp, null config).
          */
-        fun onUpdate(
+        public fun onUpdate(
             config: ConfigMap?,
             source: Source,
             timestamp: Long?,
@@ -739,7 +739,7 @@ internal class RemoteConfigClientImpl(
  * These functions provide type-safe access with defaults and never crash.
  */
 @RestrictedAmplitudeFeature
-fun ConfigMap.getString(
+public fun ConfigMap.getString(
     key: String,
     default: String = "",
 ): String {
@@ -750,7 +750,7 @@ fun ConfigMap.getString(
  * Safely extracts a Boolean value from the config map with a default fallback.
  */
 @RestrictedAmplitudeFeature
-fun ConfigMap.getBoolean(
+public fun ConfigMap.getBoolean(
     key: String,
     default: Boolean = false,
 ): Boolean {
@@ -761,7 +761,7 @@ fun ConfigMap.getBoolean(
  * Safely extracts a Double value from the config map with a default fallback.
  */
 @RestrictedAmplitudeFeature
-fun ConfigMap.getDouble(
+public fun ConfigMap.getDouble(
     key: String,
     default: Double = 0.0,
 ): Double {
@@ -777,7 +777,7 @@ fun ConfigMap.getDouble(
  * Safely extracts an Int value from the config map with a default fallback.
  */
 @RestrictedAmplitudeFeature
-fun ConfigMap.getInt(
+public fun ConfigMap.getInt(
     key: String,
     default: Int = 0,
 ): Int {
@@ -793,7 +793,7 @@ fun ConfigMap.getInt(
  * Safely extracts a List<String> value from the config map with a default fallback.
  */
 @RestrictedAmplitudeFeature
-fun ConfigMap.getStringList(
+public fun ConfigMap.getStringList(
     key: String,
     default: List<String> = emptyList(),
 ): List<String> {

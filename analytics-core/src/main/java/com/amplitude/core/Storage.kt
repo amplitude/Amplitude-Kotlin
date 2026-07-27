@@ -6,8 +6,8 @@ import com.amplitude.core.utilities.http.ResponseHandler
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 
-interface Storage {
-    enum class Constants(val rawVal: String) {
+public interface Storage {
+    public enum class Constants(public val rawVal: String) {
         LAST_EVENT_ID("last_event_id"),
         PREVIOUS_SESSION_ID("previous_session_id"),
         LAST_EVENT_TIME("last_event_time"),
@@ -19,24 +19,24 @@ interface Storage {
         REMOTE_CONFIG_TIMESTAMP("remote_config_timestamp"),
     }
 
-    suspend fun writeEvent(event: BaseEvent)
+    public suspend fun writeEvent(event: BaseEvent)
 
-    suspend fun write(
+    public suspend fun write(
         key: Constants,
         value: String,
     )
 
-    suspend fun remove(key: Constants)
+    public suspend fun remove(key: Constants)
 
-    suspend fun rollover()
+    public suspend fun rollover()
 
-    fun read(key: Constants): String?
+    public fun read(key: Constants): String?
 
-    fun readEventsContent(): List<Any>
+    public fun readEventsContent(): List<Any>
 
-    suspend fun getEventsString(content: Any): String
+    public suspend fun getEventsString(content: Any): String
 
-    fun getResponseHandler(
+    public fun getResponseHandler(
         eventPipeline: EventPipeline,
         configuration: Configuration,
         scope: CoroutineScope,
@@ -44,8 +44,8 @@ interface Storage {
     ): ResponseHandler
 }
 
-interface StorageProvider {
-    fun getStorage(
+public interface StorageProvider {
+    public fun getStorage(
         amplitude: Amplitude,
         prefix: String? = null,
     ): Storage

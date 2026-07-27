@@ -4,11 +4,11 @@ import com.amplitude.common.jvm.ConsoleLogger
 import org.json.JSONException
 import org.json.JSONObject
 
-open class IngestionMetadata
+public open class IngestionMetadata
     @JvmOverloads
     constructor(
-        val sourceName: String? = null,
-        val sourceVersion: String? = null,
+        public val sourceName: String? = null,
+        public val sourceVersion: String? = null,
     ) {
         /**
          * Get JSONObject of current ingestion metadata
@@ -32,13 +32,13 @@ open class IngestionMetadata
         /**
          * Get a cloned IngestionMetadata object, to isolate the potentially value changes
          */
-        fun clone(): IngestionMetadata {
+        public fun clone(): IngestionMetadata {
             return IngestionMetadata(sourceName, sourceVersion)
         }
 
-        companion object {
-            const val AMP_INGESTION_METADATA_SOURCE_NAME = "source_name"
-            const val AMP_INGESTION_METADATA_SOURCE_VERSION = "source_version"
+        public companion object {
+            public const val AMP_INGESTION_METADATA_SOURCE_NAME: String = "source_name"
+            public const val AMP_INGESTION_METADATA_SOURCE_VERSION: String = "source_version"
 
             internal fun fromJSONObject(jsonObject: JSONObject): IngestionMetadata {
                 val branch = jsonObject.optString(AMP_INGESTION_METADATA_SOURCE_NAME, null)

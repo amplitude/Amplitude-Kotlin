@@ -3,14 +3,14 @@ package com.amplitude.id
 import com.amplitude.id.utilities.PropertiesFile
 import com.amplitude.id.utilities.createDirectory
 
-class FileIdentityStorage(val configuration: IdentityConfiguration) : IdentityStorage {
+public class FileIdentityStorage(public val configuration: IdentityConfiguration) : IdentityStorage {
     private val propertiesFile: PropertiesFile
 
-    companion object {
-        const val USER_ID_KEY = "user_id"
-        const val DEVICE_ID_KEY = "device_id"
-        const val API_KEY = "api_key"
-        const val EXPERIMENT_API_KEY = "experiment_api_key"
+    public companion object {
+        public const val USER_ID_KEY: String = "user_id"
+        public const val DEVICE_ID_KEY: String = "device_id"
+        public const val API_KEY: String = "api_key"
+        public const val EXPERIMENT_API_KEY: String = "experiment_api_key"
     }
 
     init {
@@ -71,7 +71,7 @@ class FileIdentityStorage(val configuration: IdentityConfiguration) : IdentitySt
     }
 }
 
-class FileIdentityStorageProvider : IdentityStorageProvider {
+public class FileIdentityStorageProvider : IdentityStorageProvider {
     override fun getIdentityStorage(configuration: IdentityConfiguration): IdentityStorage {
         return FileIdentityStorage(configuration)
     }

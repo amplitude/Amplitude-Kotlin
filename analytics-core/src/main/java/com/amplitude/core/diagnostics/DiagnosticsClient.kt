@@ -8,7 +8,7 @@ import com.amplitude.core.RestrictedAmplitudeFeature
  * for SDK diagnostics and telemetry.
  */
 @RestrictedAmplitudeFeature
-interface DiagnosticsClient {
+public interface DiagnosticsClient {
     /**
      * Set a tag with the given name and value.
      * Tags are metadata labels associated with diagnostics data.
@@ -16,7 +16,7 @@ interface DiagnosticsClient {
      * @param name The tag name
      * @param value The tag value
      */
-    fun setTag(
+    public fun setTag(
         name: String,
         value: String,
     )
@@ -26,7 +26,7 @@ interface DiagnosticsClient {
      *
      * @param tags Map of tag names to values
      */
-    fun setTags(tags: Map<String, String>)
+    public fun setTags(tags: Map<String, String>)
 
     /**
      * Increment a counter by the specified size.
@@ -35,7 +35,7 @@ interface DiagnosticsClient {
      * @param name The counter name
      * @param size The amount to increment (default 1)
      */
-    fun increment(
+    public fun increment(
         name: String,
         size: Long = 1,
     )
@@ -47,7 +47,7 @@ interface DiagnosticsClient {
      * @param name The histogram name
      * @param value The value to record
      */
-    fun recordHistogram(
+    public fun recordHistogram(
         name: String,
         value: Double,
     )
@@ -58,7 +58,7 @@ interface DiagnosticsClient {
      * @param name The event name
      * @param properties Optional properties map for the event
      */
-    fun recordEvent(
+    public fun recordEvent(
         name: String,
         properties: Map<String, Any>? = null,
     )
@@ -66,10 +66,10 @@ interface DiagnosticsClient {
     /**
      * Flush all collected diagnostics data to the server.
      */
-    fun flush()
+    public fun flush()
 
     /**
      * Close the diagnostics client and release resources.
      */
-    fun close()
+    public fun close()
 }

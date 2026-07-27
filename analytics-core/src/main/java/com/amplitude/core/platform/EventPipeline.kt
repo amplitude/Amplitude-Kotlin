@@ -19,7 +19,7 @@ import kotlinx.coroutines.withContext
 import java.io.FileNotFoundException
 import java.util.concurrent.atomic.AtomicInteger
 
-class EventPipeline(
+public class EventPipeline(
     private val amplitude: Amplitude,
     private val eventCount: AtomicInteger = AtomicInteger(0),
     private val httpClient: HttpClientInterface =
@@ -37,7 +37,7 @@ class EventPipeline(
 ) {
     private var running: Boolean
     private var scheduled: Boolean
-    var flushSizeDivider: AtomicInteger = AtomicInteger(1)
+    public var flushSizeDivider: AtomicInteger = AtomicInteger(1)
 
     private val responseHandler by lazy {
         overrideResponseHandler ?: storage.getResponseHandler(
@@ -48,7 +48,7 @@ class EventPipeline(
         )
     }
 
-    companion object {
+    public companion object {
         private const val UPLOAD_SIG = "#!upload"
         private const val MAX_RETRY_ATTEMPT_SIG = "#!maxRetryAttemptReached"
     }
@@ -60,22 +60,22 @@ class EventPipeline(
         registerShutdownHook()
     }
 
-    fun put(event: BaseEvent) {
+    public fun put(event: BaseEvent) {
         event.attempts += 1
         writeChannel.trySend(WriteQueueMessage(WriteQueueMessageType.EVENT, event))
     }
 
-    fun flush() {
+    public fun flush() {
         writeChannel.trySend(WriteQueueMessage(WriteQueueMessageType.FLUSH, null))
     }
 
-    fun start() {
+    public fun start() {
         running = true
         write()
         upload()
     }
 
-    fun stop() {
+    public fun stop() {
         uploadChannel.cancel()
         writeChannel.cancel()
         running = false
@@ -199,12 +199,12 @@ class EventPipeline(
     }
 }
 
-enum class WriteQueueMessageType {
+public enum class WriteQueueMessageType {
     EVENT,
     FLUSH,
 }
 
-data class WriteQueueMessage(
+public data class WriteQueueMessage(
     val type: WriteQueueMessageType,
     val event: BaseEvent?,
 )

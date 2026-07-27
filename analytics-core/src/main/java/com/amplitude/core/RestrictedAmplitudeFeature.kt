@@ -6,4 +6,4 @@ package com.amplitude.core
             "It is not intended for public use and may change without notice.",
 )
 @Retention(AnnotationRetention.BINARY)
-annotation class RestrictedAmplitudeFeature
+public annotation class RestrictedAmplitudeFeature

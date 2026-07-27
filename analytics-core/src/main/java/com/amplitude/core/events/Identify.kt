@@ -3,7 +3,7 @@ package com.amplitude.core.events
 import com.amplitude.common.jvm.ConsoleLogger
 import com.amplitude.core.utilities.deepCopy
 
-enum class IdentifyOperation(val operationType: String) {
+public enum class IdentifyOperation(public val operationType: String) {
     SET("\$set"),
     SET_ONCE("\$setOnce"),
     ADD("\$add"),
@@ -16,14 +16,14 @@ enum class IdentifyOperation(val operationType: String) {
     REMOVE("\$remove"),
 }
 
-open class Identify {
+public open class Identify {
     private val propertySet: MutableSet<String> = mutableSetOf()
 
     private val _properties = mutableMapOf<String, Any?>()
-    val properties: MutableMap<String, Any?>
+    public val properties: MutableMap<String, Any?>
         @Synchronized get() = _properties.deepCopy()
 
-    fun set(
+    public fun set(
         property: String,
         value: Boolean,
     ): Identify {
@@ -31,7 +31,7 @@ open class Identify {
         return this
     }
 
-    fun set(
+    public fun set(
         property: String,
         value: Double,
     ): Identify {
@@ -39,7 +39,7 @@ open class Identify {
         return this
     }
 
-    fun set(
+    public fun set(
         property: String,
         value: Float,
     ): Identify {
@@ -47,7 +47,7 @@ open class Identify {
         return this
     }
 
-    fun set(
+    public fun set(
         property: String,
         value: Int,
     ): Identify {
@@ -55,7 +55,7 @@ open class Identify {
         return this
     }
 
-    fun set(
+    public fun set(
         property: String,
         value: Long,
     ): Identify {
@@ -63,7 +63,7 @@ open class Identify {
         return this
     }
 
-    fun set(
+    public fun set(
         property: String,
         value: String,
     ): Identify {
@@ -71,7 +71,7 @@ open class Identify {
         return this
     }
 
-    fun set(
+    public fun set(
         property: String,
         value: Map<String, Any>,
     ): Identify {
@@ -79,7 +79,7 @@ open class Identify {
         return this
     }
 
-    fun set(
+    public fun set(
         property: String,
         value: List<Any>,
     ): Identify {
@@ -87,7 +87,7 @@ open class Identify {
         return this
     }
 
-    fun set(
+    public fun set(
         property: String,
         value: Array<Boolean>,
     ): Identify {
@@ -95,7 +95,7 @@ open class Identify {
         return this
     }
 
-    fun set(
+    public fun set(
         property: String,
         value: Array<Double>,
     ): Identify {
@@ -103,7 +103,7 @@ open class Identify {
         return this
     }
 
-    fun set(
+    public fun set(
         property: String,
         value: Array<Float>,
     ): Identify {
@@ -111,7 +111,7 @@ open class Identify {
         return this
     }
 
-    fun set(
+    public fun set(
         property: String,
         value: Array<Int>,
     ): Identify {
@@ -119,7 +119,7 @@ open class Identify {
         return this
     }
 
-    fun set(
+    public fun set(
         property: String,
         value: Array<Long>,
     ): Identify {
@@ -127,7 +127,7 @@ open class Identify {
         return this
     }
 
-    fun set(
+    public fun set(
         property: String,
         value: Array<String>,
     ): Identify {
@@ -135,7 +135,7 @@ open class Identify {
         return this
     }
 
-    fun set(
+    public fun set(
         property: String,
         value: Any,
     ): Identify {
@@ -143,7 +143,7 @@ open class Identify {
         return this
     }
 
-    fun setOnce(
+    public fun setOnce(
         property: String,
         value: Boolean,
     ): Identify {
@@ -151,7 +151,7 @@ open class Identify {
         return this
     }
 
-    fun setOnce(
+    public fun setOnce(
         property: String,
         value: Double,
     ): Identify {
@@ -159,7 +159,7 @@ open class Identify {
         return this
     }
 
-    fun setOnce(
+    public fun setOnce(
         property: String,
         value: Float,
     ): Identify {
@@ -167,7 +167,7 @@ open class Identify {
         return this
     }
 
-    fun setOnce(
+    public fun setOnce(
         property: String,
         value: Int,
     ): Identify {
@@ -175,7 +175,7 @@ open class Identify {
         return this
     }
 
-    fun setOnce(
+    public fun setOnce(
         property: String,
         value: Long,
     ): Identify {
@@ -183,7 +183,7 @@ open class Identify {
         return this
     }
 
-    fun setOnce(
+    public fun setOnce(
         property: String,
         value: String,
     ): Identify {
@@ -191,7 +191,7 @@ open class Identify {
         return this
     }
 
-    fun setOnce(
+    public fun setOnce(
         property: String,
         value: Map<String, Any>,
     ): Identify {
@@ -199,7 +199,7 @@ open class Identify {
         return this
     }
 
-    fun setOnce(
+    public fun setOnce(
         property: String,
         value: List<Any>,
     ): Identify {
@@ -207,7 +207,7 @@ open class Identify {
         return this
     }
 
-    fun setOnce(
+    public fun setOnce(
         property: String,
         value: Array<Boolean>,
     ): Identify {
@@ -215,7 +215,7 @@ open class Identify {
         return this
     }
 
-    fun setOnce(
+    public fun setOnce(
         property: String,
         value: Array<Double>,
     ): Identify {
@@ -223,7 +223,7 @@ open class Identify {
         return this
     }
 
-    fun setOnce(
+    public fun setOnce(
         property: String,
         value: Array<Float>,
     ): Identify {
@@ -231,7 +231,7 @@ open class Identify {
         return this
     }
 
-    fun setOnce(
+    public fun setOnce(
         property: String,
         value: Array<Int>,
     ): Identify {
@@ -239,7 +239,7 @@ open class Identify {
         return this
     }
 
-    fun setOnce(
+    public fun setOnce(
         property: String,
         value: Array<Long>,
     ): Identify {
@@ -247,7 +247,7 @@ open class Identify {
         return this
     }
 
-    fun setOnce(
+    public fun setOnce(
         property: String,
         value: Array<String>,
     ): Identify {
@@ -255,7 +255,7 @@ open class Identify {
         return this
     }
 
-    fun setOnce(
+    public fun setOnce(
         property: String,
         value: Any,
     ): Identify {
@@ -263,7 +263,7 @@ open class Identify {
         return this
     }
 
-    fun prepend(
+    public fun prepend(
         property: String,
         value: Boolean,
     ): Identify {
@@ -271,7 +271,7 @@ open class Identify {
         return this
     }
 
-    fun prepend(
+    public fun prepend(
         property: String,
         value: Double,
     ): Identify {
@@ -279,7 +279,7 @@ open class Identify {
         return this
     }
 
-    fun prepend(
+    public fun prepend(
         property: String,
         value: Float,
     ): Identify {
@@ -287,7 +287,7 @@ open class Identify {
         return this
     }
 
-    fun prepend(
+    public fun prepend(
         property: String,
         value: Int,
     ): Identify {
@@ -295,7 +295,7 @@ open class Identify {
         return this
     }
 
-    fun prepend(
+    public fun prepend(
         property: String,
         value: Long,
     ): Identify {
@@ -303,7 +303,7 @@ open class Identify {
         return this
     }
 
-    fun prepend(
+    public fun prepend(
         property: String,
         value: String,
     ): Identify {
@@ -311,7 +311,7 @@ open class Identify {
         return this
     }
 
-    fun prepend(
+    public fun prepend(
         property: String,
         value: Map<String, Any>,
     ): Identify {
@@ -319,7 +319,7 @@ open class Identify {
         return this
     }
 
-    fun prepend(
+    public fun prepend(
         property: String,
         value: List<Any>,
     ): Identify {
@@ -327,7 +327,7 @@ open class Identify {
         return this
     }
 
-    fun prepend(
+    public fun prepend(
         property: String,
         value: Array<Boolean>,
     ): Identify {
@@ -335,7 +335,7 @@ open class Identify {
         return this
     }
 
-    fun prepend(
+    public fun prepend(
         property: String,
         value: Array<Double>,
     ): Identify {
@@ -343,7 +343,7 @@ open class Identify {
         return this
     }
 
-    fun prepend(
+    public fun prepend(
         property: String,
         value: Array<Float>,
     ): Identify {
@@ -351,7 +351,7 @@ open class Identify {
         return this
     }
 
-    fun prepend(
+    public fun prepend(
         property: String,
         value: Array<Int>,
     ): Identify {
@@ -359,7 +359,7 @@ open class Identify {
         return this
     }
 
-    fun prepend(
+    public fun prepend(
         property: String,
         value: Array<Long>,
     ): Identify {
@@ -367,7 +367,7 @@ open class Identify {
         return this
     }
 
-    fun prepend(
+    public fun prepend(
         property: String,
         value: Array<String>,
     ): Identify {
@@ -375,7 +375,7 @@ open class Identify {
         return this
     }
 
-    fun append(
+    public fun append(
         property: String,
         value: Boolean,
     ): Identify {
@@ -383,7 +383,7 @@ open class Identify {
         return this
     }
 
-    fun append(
+    public fun append(
         property: String,
         value: Double,
     ): Identify {
@@ -391,7 +391,7 @@ open class Identify {
         return this
     }
 
-    fun append(
+    public fun append(
         property: String,
         value: Float,
     ): Identify {
@@ -399,7 +399,7 @@ open class Identify {
         return this
     }
 
-    fun append(
+    public fun append(
         property: String,
         value: Int,
     ): Identify {
@@ -407,7 +407,7 @@ open class Identify {
         return this
     }
 
-    fun append(
+    public fun append(
         property: String,
         value: Long,
     ): Identify {
@@ -415,7 +415,7 @@ open class Identify {
         return this
     }
 
-    fun append(
+    public fun append(
         property: String,
         value: String,
     ): Identify {
@@ -423,7 +423,7 @@ open class Identify {
         return this
     }
 
-    fun append(
+    public fun append(
         property: String,
         value: Map<String, Any>,
     ): Identify {
@@ -431,7 +431,7 @@ open class Identify {
         return this
     }
 
-    fun append(
+    public fun append(
         property: String,
         value: List<Any>,
     ): Identify {
@@ -439,7 +439,7 @@ open class Identify {
         return this
     }
 
-    fun append(
+    public fun append(
         property: String,
         value: Array<Boolean>,
     ): Identify {
@@ -447,7 +447,7 @@ open class Identify {
         return this
     }
 
-    fun append(
+    public fun append(
         property: String,
         value: Array<Double>,
     ): Identify {
@@ -455,7 +455,7 @@ open class Identify {
         return this
     }
 
-    fun append(
+    public fun append(
         property: String,
         value: Array<Float>,
     ): Identify {
@@ -463,7 +463,7 @@ open class Identify {
         return this
     }
 
-    fun append(
+    public fun append(
         property: String,
         value: Array<Int>,
     ): Identify {
@@ -471,7 +471,7 @@ open class Identify {
         return this
     }
 
-    fun append(
+    public fun append(
         property: String,
         value: Array<Long>,
     ): Identify {
@@ -479,7 +479,7 @@ open class Identify {
         return this
     }
 
-    fun append(
+    public fun append(
         property: String,
         value: Array<String>,
     ): Identify {
@@ -487,7 +487,7 @@ open class Identify {
         return this
     }
 
-    fun postInsert(
+    public fun postInsert(
         property: String,
         value: Boolean,
     ): Identify {
@@ -495,7 +495,7 @@ open class Identify {
         return this
     }
 
-    fun postInsert(
+    public fun postInsert(
         property: String,
         value: Double,
     ): Identify {
@@ -503,7 +503,7 @@ open class Identify {
         return this
     }
 
-    fun postInsert(
+    public fun postInsert(
         property: String,
         value: Float,
     ): Identify {
@@ -511,7 +511,7 @@ open class Identify {
         return this
     }
 
-    fun postInsert(
+    public fun postInsert(
         property: String,
         value: Int,
     ): Identify {
@@ -519,7 +519,7 @@ open class Identify {
         return this
     }
 
-    fun postInsert(
+    public fun postInsert(
         property: String,
         value: Long,
     ): Identify {
@@ -527,7 +527,7 @@ open class Identify {
         return this
     }
 
-    fun postInsert(
+    public fun postInsert(
         property: String,
         value: String,
     ): Identify {
@@ -535,7 +535,7 @@ open class Identify {
         return this
     }
 
-    fun postInsert(
+    public fun postInsert(
         property: String,
         value: Map<String, Any>,
     ): Identify {
@@ -543,7 +543,7 @@ open class Identify {
         return this
     }
 
-    fun postInsert(
+    public fun postInsert(
         property: String,
         value: List<Any>,
     ): Identify {
@@ -551,7 +551,7 @@ open class Identify {
         return this
     }
 
-    fun postInsert(
+    public fun postInsert(
         property: String,
         value: Array<Boolean>,
     ): Identify {
@@ -559,7 +559,7 @@ open class Identify {
         return this
     }
 
-    fun postInsert(
+    public fun postInsert(
         property: String,
         value: Array<Double>,
     ): Identify {
@@ -567,7 +567,7 @@ open class Identify {
         return this
     }
 
-    fun postInsert(
+    public fun postInsert(
         property: String,
         value: Array<Float>,
     ): Identify {
@@ -575,7 +575,7 @@ open class Identify {
         return this
     }
 
-    fun postInsert(
+    public fun postInsert(
         property: String,
         value: Array<Int>,
     ): Identify {
@@ -583,7 +583,7 @@ open class Identify {
         return this
     }
 
-    fun postInsert(
+    public fun postInsert(
         property: String,
         value: Array<Long>,
     ): Identify {
@@ -591,7 +591,7 @@ open class Identify {
         return this
     }
 
-    fun postInsert(
+    public fun postInsert(
         property: String,
         value: Array<String>,
     ): Identify {
@@ -599,7 +599,7 @@ open class Identify {
         return this
     }
 
-    fun preInsert(
+    public fun preInsert(
         property: String,
         value: Boolean,
     ): Identify {
@@ -607,7 +607,7 @@ open class Identify {
         return this
     }
 
-    fun preInsert(
+    public fun preInsert(
         property: String,
         value: Double,
     ): Identify {
@@ -615,7 +615,7 @@ open class Identify {
         return this
     }
 
-    fun preInsert(
+    public fun preInsert(
         property: String,
         value: Float,
     ): Identify {
@@ -623,7 +623,7 @@ open class Identify {
         return this
     }
 
-    fun preInsert(
+    public fun preInsert(
         property: String,
         value: Int,
     ): Identify {
@@ -631,7 +631,7 @@ open class Identify {
         return this
     }
 
-    fun preInsert(
+    public fun preInsert(
         property: String,
         value: Long,
     ): Identify {
@@ -639,7 +639,7 @@ open class Identify {
         return this
     }
 
-    fun preInsert(
+    public fun preInsert(
         property: String,
         value: String,
     ): Identify {
@@ -647,7 +647,7 @@ open class Identify {
         return this
     }
 
-    fun preInsert(
+    public fun preInsert(
         property: String,
         value: Map<String, Any>,
     ): Identify {
@@ -655,7 +655,7 @@ open class Identify {
         return this
     }
 
-    fun preInsert(
+    public fun preInsert(
         property: String,
         value: List<Any>,
     ): Identify {
@@ -663,7 +663,7 @@ open class Identify {
         return this
     }
 
-    fun preInsert(
+    public fun preInsert(
         property: String,
         value: Array<Boolean>,
     ): Identify {
@@ -671,7 +671,7 @@ open class Identify {
         return this
     }
 
-    fun preInsert(
+    public fun preInsert(
         property: String,
         value: Array<Double>,
     ): Identify {
@@ -679,7 +679,7 @@ open class Identify {
         return this
     }
 
-    fun preInsert(
+    public fun preInsert(
         property: String,
         value: Array<Float>,
     ): Identify {
@@ -687,7 +687,7 @@ open class Identify {
         return this
     }
 
-    fun preInsert(
+    public fun preInsert(
         property: String,
         value: Array<Int>,
     ): Identify {
@@ -695,7 +695,7 @@ open class Identify {
         return this
     }
 
-    fun preInsert(
+    public fun preInsert(
         property: String,
         value: Array<Long>,
     ): Identify {
@@ -703,7 +703,7 @@ open class Identify {
         return this
     }
 
-    fun preInsert(
+    public fun preInsert(
         property: String,
         value: Array<String>,
     ): Identify {
@@ -711,7 +711,7 @@ open class Identify {
         return this
     }
 
-    fun remove(
+    public fun remove(
         property: String,
         value: Boolean,
     ): Identify {
@@ -719,7 +719,7 @@ open class Identify {
         return this
     }
 
-    fun remove(
+    public fun remove(
         property: String,
         value: Double,
     ): Identify {
@@ -727,7 +727,7 @@ open class Identify {
         return this
     }
 
-    fun remove(
+    public fun remove(
         property: String,
         value: Float,
     ): Identify {
@@ -735,7 +735,7 @@ open class Identify {
         return this
     }
 
-    fun remove(
+    public fun remove(
         property: String,
         value: Int,
     ): Identify {
@@ -743,7 +743,7 @@ open class Identify {
         return this
     }
 
-    fun remove(
+    public fun remove(
         property: String,
         value: Long,
     ): Identify {
@@ -751,7 +751,7 @@ open class Identify {
         return this
     }
 
-    fun remove(
+    public fun remove(
         property: String,
         value: String,
     ): Identify {
@@ -759,7 +759,7 @@ open class Identify {
         return this
     }
 
-    fun remove(
+    public fun remove(
         property: String,
         value: Map<String, Any>,
     ): Identify {
@@ -767,7 +767,7 @@ open class Identify {
         return this
     }
 
-    fun remove(
+    public fun remove(
         property: String,
         value: List<Any>,
     ): Identify {
@@ -775,7 +775,7 @@ open class Identify {
         return this
     }
 
-    fun remove(
+    public fun remove(
         property: String,
         value: Array<Boolean>,
     ): Identify {
@@ -783,7 +783,7 @@ open class Identify {
         return this
     }
 
-    fun remove(
+    public fun remove(
         property: String,
         value: Array<Double>,
     ): Identify {
@@ -791,7 +791,7 @@ open class Identify {
         return this
     }
 
-    fun remove(
+    public fun remove(
         property: String,
         value: Array<Float>,
     ): Identify {
@@ -799,7 +799,7 @@ open class Identify {
         return this
     }
 
-    fun remove(
+    public fun remove(
         property: String,
         value: Array<Int>,
     ): Identify {
@@ -807,7 +807,7 @@ open class Identify {
         return this
     }
 
-    fun remove(
+    public fun remove(
         property: String,
         value: Array<Long>,
     ): Identify {
@@ -815,7 +815,7 @@ open class Identify {
         return this
     }
 
-    fun remove(
+    public fun remove(
         property: String,
         value: Array<String>,
     ): Identify {
@@ -823,7 +823,7 @@ open class Identify {
         return this
     }
 
-    fun add(
+    public fun add(
         property: String,
         value: Double,
     ): Identify {
@@ -831,7 +831,7 @@ open class Identify {
         return this
     }
 
-    fun add(
+    public fun add(
         property: String,
         value: Float,
     ): Identify {
@@ -839,7 +839,7 @@ open class Identify {
         return this
     }
 
-    fun add(
+    public fun add(
         property: String,
         value: Int,
     ): Identify {
@@ -847,7 +847,7 @@ open class Identify {
         return this
     }
 
-    fun add(
+    public fun add(
         property: String,
         value: Long,
     ): Identify {
@@ -855,12 +855,12 @@ open class Identify {
         return this
     }
 
-    fun unset(property: String): Identify {
+    public fun unset(property: String): Identify {
         setUserProperty(IdentifyOperation.UNSET, property, UNSET_VALUE)
         return this
     }
 
-    @Synchronized fun clearAll(): Identify {
+    @Synchronized public fun clearAll(): Identify {
         _properties.clear()
         _properties.put(IdentifyOperation.CLEAR_ALL.operationType, UNSET_VALUE)
         return this
@@ -902,7 +902,7 @@ open class Identify {
         propertySet.add(property)
     }
 
-    companion object {
-        const val UNSET_VALUE = "-"
+    public companion object {
+        public const val UNSET_VALUE: String = "-"
     }
 }

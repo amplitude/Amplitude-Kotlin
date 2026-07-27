@@ -8,13 +8,13 @@ import com.amplitude.core.events.IdentifyOperation
 import com.amplitude.core.utilities.EventsFileStorage
 import com.amplitude.core.utilities.InMemoryStorage
 
-interface IdentifyInterceptStorageHandler {
-    suspend fun getTransferIdentifyEvent(): BaseEvent?
+public interface IdentifyInterceptStorageHandler {
+    public suspend fun getTransferIdentifyEvent(): BaseEvent?
 
-    suspend fun clearIdentifyIntercepts()
+    public suspend fun clearIdentifyIntercepts()
 
-    companion object {
-        fun getIdentifyInterceptStorageHandler(
+    public companion object {
+        public fun getIdentifyInterceptStorageHandler(
             storage: Storage,
             logger: Logger,
             amplitude: Amplitude,
@@ -35,8 +35,8 @@ interface IdentifyInterceptStorageHandler {
     }
 }
 
-object IdentifyInterceptorUtil {
-    fun mergeIdentifyList(events: List<BaseEvent>): MutableMap<String, Any?> {
+public object IdentifyInterceptorUtil {
+    public fun mergeIdentifyList(events: List<BaseEvent>): MutableMap<String, Any?> {
         val userProperties = mutableMapOf<String, Any?>()
         events.forEach {
             userProperties.putAll(
@@ -46,7 +46,7 @@ object IdentifyInterceptorUtil {
         return userProperties
     }
 
-    fun filterNonNullValues(map: MutableMap<String, Any?>): MutableMap<String, Any?> {
+    public fun filterNonNullValues(map: MutableMap<String, Any?>): MutableMap<String, Any?> {
         return map.filterValues { it != null }.toMutableMap()
     }
 }

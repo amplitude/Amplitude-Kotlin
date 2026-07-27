@@ -39,7 +39,7 @@ private const val LOCAL_ERROR_STATUS_CODE = 0
             "com.amplitude.android.network.NetworkTrackingPlugin",
         ),
 )
-class NetworkTrackingPlugin(
+public class NetworkTrackingPlugin(
     private val options: NetworkTrackingOptions = NetworkTrackingOptions.DEFAULT,
 ) : Interceptor, Plugin {
     override val type: Type = Utility
