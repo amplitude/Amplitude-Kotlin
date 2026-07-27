@@ -1,11 +1,13 @@
 package com.amplitude.android.plugins
 
 import com.amplitude.analytics.connector.AnalyticsConnector
+import com.amplitude.android.AmplitudeRegistry
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
 import java.lang.ClassCastException
 import java.lang.ref.WeakReference
+import com.amplitude.android.Amplitude as AndroidAmplitude
 
 internal class AnalyticsConnectorPlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Before
@@ -19,14 +21,25 @@ internal class AnalyticsConnectorPlugin : Plugin {
 
         // set up listener to core package to receive exposure events from Experiment
         val amplitudeRef = WeakReference(amplitude)
-        connector.eventBridge.setEventReceiver { (eventType, eventProperties, userProperties) ->
-            amplitudeRef.get()?.let { amplitude ->
-                val event = BaseEvent()
-                event.eventType = eventType
-                event.eventProperties = eventProperties?.toMutableMap()
-                event.userProperties = userProperties?.toMutableMap()
-                amplitude.track(event)
+        val installReceiver = {
+            connector.eventBridge.setEventReceiver { (eventType, eventProperties, userProperties) ->
+                amplitudeRef.get()?.let { amplitude ->
+                    val event = BaseEvent()
+                    event.eventType = eventType
+                    event.eventProperties = eventProperties?.toMutableMap()
+                    event.userProperties = userProperties?.toMutableMap()
+                    amplitude.track(event)
+                }
             }
+        }
+
+        // The connector has one receiver per instance name, so a build that finishes after its
+        // instance was replaced must not take it from the replacement.
+        val androidAmplitude = amplitude as? AndroidAmplitude
+        if (androidAmplitude != null) {
+            AmplitudeRegistry.runIfActive(androidAmplitude, installReceiver)
+        } else {
+            installReceiver()
         }
     }
 

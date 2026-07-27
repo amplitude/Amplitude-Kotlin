@@ -9,6 +9,7 @@ import com.amplitude.core.Storage.Constants.LAST_EVENT_TIME
 import com.amplitude.core.Storage.Constants.PREVIOUS_SESSION_ID
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Timeline
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
@@ -34,28 +35,31 @@ class Timeline(
     internal var lastEventTime: Long = DEFAULT_EVENT_ID_OR_TIME
         private set
 
+    private var processingJob: Job? = null
+
     internal fun start() {
         with(amplitude) {
-            amplitudeScope.launch(storageIODispatcher) {
-                // Wait until build (including possible legacy data migration) is finished.
-                isBuilt.await()
+            processingJob =
+                amplitudeScope.launch(storageIODispatcher) {
+                    // Wait until build (including possible legacy data migration) is finished.
+                    isBuilt.await()
 
-                if (initialSessionId == null) {
-                    val restoredSessionId = storage.readLong(PREVIOUS_SESSION_ID, DEFAULT_SESSION_ID)
-                    _sessionId.set(restoredSessionId)
-                    if (restoredSessionId > DEFAULT_SESSION_ID) {
-                        (amplitude as Amplitude).notifySessionIdChanged(restoredSessionId)
+                    if (initialSessionId == null) {
+                        val restoredSessionId = storage.readLong(PREVIOUS_SESSION_ID, DEFAULT_SESSION_ID)
+                        _sessionId.set(restoredSessionId)
+                        if (restoredSessionId > DEFAULT_SESSION_ID) {
+                            (amplitude as Amplitude).notifySessionIdChanged(restoredSessionId)
+                        }
+                    } else if (initialSessionId > DEFAULT_SESSION_ID) {
+                        (amplitude as Amplitude).notifySessionIdChanged(initialSessionId)
                     }
-                } else if (initialSessionId > DEFAULT_SESSION_ID) {
-                    (amplitude as Amplitude).notifySessionIdChanged(initialSessionId)
-                }
-                lastEventId = storage.readLong(LAST_EVENT_ID, DEFAULT_EVENT_ID_OR_TIME)
-                lastEventTime = storage.readLong(LAST_EVENT_TIME, DEFAULT_EVENT_ID_OR_TIME)
+                    lastEventId = storage.readLong(LAST_EVENT_ID, DEFAULT_EVENT_ID_OR_TIME)
+                    lastEventTime = storage.readLong(LAST_EVENT_TIME, DEFAULT_EVENT_ID_OR_TIME)
 
-                for (message in eventMessageChannel) {
-                    processEventMessage(message)
+                    for (message in eventMessageChannel) {
+                        processEventMessage(message)
+                    }
                 }
-            }
         }
     }
 
@@ -63,10 +67,27 @@ class Timeline(
         this.eventMessageChannel.cancel()
     }
 
+    /** Stop accepting new events. Anything already queued still drains to storage. */
+    internal fun close() {
+        this.eventMessageChannel.close()
+    }
+
+    /** Suspends until the events queued at [close] have been processed. */
+    internal suspend fun awaitDrained() {
+        processingJob?.join()
+    }
+
     /**
      * Enqueue an event to be processed by the timeline.
      */
     override fun process(incomingEvent: BaseEvent) {
+        if (!(amplitude as Amplitude).isActive) {
+            amplitude.logger.debug(
+                "Dropping event '${incomingEvent.eventType}': this Amplitude instance was replaced.",
+            )
+            return
+        }
+
         if (incomingEvent.timestamp == null) {
             incomingEvent.timestamp = System.currentTimeMillis()
         }
@@ -91,6 +112,7 @@ class Timeline(
     private suspend fun processEventMessage(message: EventQueueMessage) {
         when (message) {
             is EventQueueMessage.EnterForeground -> {
+                if (!ownsSessions()) return
                 val stopAndStartSessionEvents = startNewSessionIfNeeded(message.timestamp)
                 foreground.set(true)
                 processAndPersistEvents(stopAndStartSessionEvents)
@@ -99,19 +121,28 @@ class Timeline(
                 processEvent(message.event)
             }
             is EventQueueMessage.ExitForeground -> {
+                if (!ownsSessions()) return
                 foreground.set(false)
                 refreshSessionTime(message.timestamp)
             }
         }
     }
 
+    /**
+     * Sessions live in storage shared by instance name, so a replaced instance drains the events it
+     * already accepted without starting, ending, or refreshing a session the replacement now owns.
+     */
+    private fun ownsSessions(): Boolean = (amplitude as Amplitude).isActive
+
     private suspend fun processEvent(event: BaseEvent) {
         val eventTimestamp = event.timestamp ?: System.currentTimeMillis()
 
         when (event.eventType) {
             START_SESSION_EVENT -> {
-                setSessionId(event.sessionId ?: eventTimestamp)
-                refreshSessionTime(eventTimestamp)
+                if (ownsSessions()) {
+                    setSessionId(event.sessionId ?: eventTimestamp)
+                    refreshSessionTime(eventTimestamp)
+                }
             }
 
             END_SESSION_EVENT -> {
@@ -119,7 +150,7 @@ class Timeline(
             }
 
             else -> {
-                if (event.sessionId != DEFAULT_SESSION_ID) {
+                if (event.sessionId != DEFAULT_SESSION_ID && ownsSessions()) {
                     val stopAndStartSessionEvents = startNewSessionIfNeeded(eventTimestamp)
                     processAndPersistEvents(stopAndStartSessionEvents)
                 }
