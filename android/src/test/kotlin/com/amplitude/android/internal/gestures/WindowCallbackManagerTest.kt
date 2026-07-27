@@ -12,6 +12,7 @@ import com.amplitude.android.internal.TrackFunction
 import com.amplitude.common.Logger
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.verify
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -156,14 +157,62 @@ class WindowCallbackManagerTest {
         shadowOf(Looper.getMainLooper()).idle()
 
         // Wrap
+        val wrapper = slot<Window.Callback>()
+        every { window.callback = capture(wrapper) } answers {}
         sut.wrapWindowForTesting(window, decorView)
 
         // Simulate that window.callback returns our wrapper now
-        every { window.callback } returns mockk<AutocaptureWindowCallback>(relaxed = true)
+        every { window.callback } returns wrapper.captured
 
         // Unwrap
         sut.unwrapWindowForTesting(window)
 
         verify { window.callback = originalCallback }
     }
+
+    @Test
+    fun `leaves the chain alone when another manager wrapped on top`() {
+        val activity = mockk<Activity>(relaxed = true)
+        val window = mockk<Window>(relaxed = true)
+        val decorView = mockk<View>(relaxed = true)
+        val originalCallback = mockk<Window.Callback>(relaxed = true)
+
+        every { window.context } returns activity
+        every { window.callback } returns originalCallback
+        every { decorView.context } returns appContext
+
+        val first = newManager()
+        val second = newManager()
+        first.start()
+        second.start()
+        shadowOf(Looper.getMainLooper()).idle()
+
+        val firstWrapper = slot<Window.Callback>()
+        every { window.callback = capture(firstWrapper) } answers {}
+        first.wrapWindowForTesting(window, decorView)
+
+        // The second manager wraps the first manager's callback.
+        every { window.callback } returns firstWrapper.captured
+        val secondWrapper = slot<Window.Callback>()
+        every { window.callback = capture(secondWrapper) } answers {}
+        second.wrapWindowForTesting(window, decorView)
+        every { window.callback } returns secondWrapper.captured
+
+        first.unwrapWindowForTesting(window)
+
+        // Restoring the original here would drop the second manager's wrapper.
+        verify(exactly = 0) { window.callback = originalCallback }
+
+        // The first manager spliced itself out, so the second one restores the real original.
+        second.unwrapWindowForTesting(window)
+        verify { window.callback = originalCallback }
+    }
+
+    private fun newManager() =
+        WindowCallbackManager(
+            track = track,
+            frustrationDetector = null,
+            autocaptureStateProvider = { autocaptureState },
+            logger = logger,
+        )
 }
