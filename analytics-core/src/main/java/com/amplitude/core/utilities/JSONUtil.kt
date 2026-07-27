@@ -157,6 +157,14 @@ internal fun JSONObject.collectIndices(): Set<Int> {
     return indices.toSet()
 }
 
+/**
+ * keySet() is not part of the public Android SDK's org.json.JSONObject, so referencing it
+ * makes R8 warn about a missing method. keys() is in the SDK on every API level.
+ */
+internal fun JSONObject.toKeySet(): Set<String> {
+    return keys().asSequence().toSet()
+}
+
 internal fun JSONArray.toIntArray(): IntArray {
     val intArray = IntArray(this.length())
     for (i in intArray.indices) {
