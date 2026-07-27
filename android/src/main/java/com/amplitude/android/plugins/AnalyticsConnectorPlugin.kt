@@ -7,7 +7,6 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
 import java.lang.ClassCastException
 import java.lang.ref.WeakReference
-import com.amplitude.android.Amplitude as AndroidAmplitude
 
 internal class AnalyticsConnectorPlugin : Plugin {
     override val type: Plugin.Type = Plugin.Type.Before
@@ -19,9 +18,11 @@ internal class AnalyticsConnectorPlugin : Plugin {
         val instanceName = amplitude.configuration.instanceName
         connector = AnalyticsConnector.getInstance(instanceName)
 
-        // set up listener to core package to receive exposure events from Experiment
+        // set up listener to core package to receive exposure events from Experiment. The connector
+        // has one receiver per instance name, so a build that finishes after its instance was
+        // replaced must not take it from the replacement.
         val amplitudeRef = WeakReference(amplitude)
-        val installReceiver = {
+        AmplitudeRegistry.runIfActive(amplitude) {
             connector.eventBridge.setEventReceiver { (eventType, eventProperties, userProperties) ->
                 amplitudeRef.get()?.let { amplitude ->
                     val event = BaseEvent()
@@ -31,15 +32,6 @@ internal class AnalyticsConnectorPlugin : Plugin {
                     amplitude.track(event)
                 }
             }
-        }
-
-        // The connector has one receiver per instance name, so a build that finishes after its
-        // instance was replaced must not take it from the replacement.
-        val androidAmplitude = amplitude as? AndroidAmplitude
-        if (androidAmplitude != null) {
-            AmplitudeRegistry.runIfActive(androidAmplitude, installReceiver)
-        } else {
-            installReceiver()
         }
     }
 

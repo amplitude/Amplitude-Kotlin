@@ -1,6 +1,7 @@
 package com.amplitude.android
 
 import java.lang.ref.WeakReference
+import com.amplitude.core.Amplitude as CoreAmplitude
 
 /**
  * Tracks the single active [Amplitude] per instance name. Storage, identity, and the analytics
@@ -45,13 +46,14 @@ internal object AmplitudeRegistry {
     }
 
     /**
-     * Runs [block] only while [instance] owns its instance name. Atomic against [activate], so a
+     * Runs [block] only while [amplitude] owns its instance name. Atomic against [activate], so a
      * build that finishes after its instance was replaced cannot claim shared state.
      */
     fun runIfActive(
-        instance: Amplitude,
+        amplitude: CoreAmplitude,
         block: () -> Unit,
     ) {
+        val instance = amplitude as? Amplitude ?: return block()
         synchronized(this) {
             if (activeInstances[instance.configuration.instanceName]?.get() === instance) block()
         }
