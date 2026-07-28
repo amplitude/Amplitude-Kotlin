@@ -50,6 +50,7 @@ internal class AndroidNetworkCallback(
             }
 
     /** Registers this callback with [ConnectivityManager] and starts tracking it. */
+    @RequiresPermission(ACCESS_NETWORK_STATE)
     fun register(networkRequest: NetworkRequest) {
         connectivityManager.registerNetworkCallback(networkRequest, this)
         registeredCallbacks.add(this)
