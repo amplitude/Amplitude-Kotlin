@@ -15,6 +15,8 @@ import io.mockk.verify
 import org.junit.Before
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.fail
+import java.lang.ref.WeakReference
 import kotlin.test.Test
 
 class AndroidNetworkListenerTest {
@@ -117,4 +119,211 @@ class AndroidNetworkListenerTest {
         networkCallback.onUnavailable()
         assertFalse(networkChangeCallback.available)
     }
+
+    @Test
+    fun `stop listening should unregister the network callback`() {
+        val networkListener =
+            AndroidNetworkListener(
+                context = fakeContext,
+                logger = fakeLogger,
+                networkCallback = noopNetworkChangeCallback(),
+            )
+
+        networkListener.setupNetworkCallback()
+        val networkCallbackSlot = slot<NetworkCallback>()
+        verify {
+            fakeConnectivityManager.registerNetworkCallback(
+                any<NetworkRequest>(),
+                capture(networkCallbackSlot),
+            )
+        }
+
+        networkListener.stopListening()
+
+        verify {
+            fakeConnectivityManager.unregisterNetworkCallback(networkCallbackSlot.captured)
+        }
+    }
+
+    @Test
+    fun `stop listening twice should unregister only once`() {
+        val networkListener =
+            AndroidNetworkListener(
+                context = fakeContext,
+                logger = fakeLogger,
+                networkCallback = noopNetworkChangeCallback(),
+            )
+        networkListener.setupNetworkCallback()
+
+        networkListener.stopListening()
+        networkListener.stopListening()
+
+        verify(exactly = 1) {
+            fakeConnectivityManager.unregisterNetworkCallback(any<NetworkCallback>())
+        }
+    }
+
+    @Test
+    fun `setup after stop should register again`() {
+        val networkListener =
+            AndroidNetworkListener(
+                context = fakeContext,
+                logger = fakeLogger,
+                networkCallback = noopNetworkChangeCallback(),
+            )
+
+        networkListener.setupNetworkCallback()
+        networkListener.stopListening()
+        networkListener.setupNetworkCallback()
+
+        verify(exactly = 2) {
+            fakeConnectivityManager.registerNetworkCallback(
+                any<NetworkRequest>(),
+                any<NetworkCallback>(),
+            )
+        }
+    }
+
+    @Test
+    fun `setup network callback twice should register only once`() {
+        val networkListener =
+            AndroidNetworkListener(
+                context = fakeContext,
+                logger = fakeLogger,
+                networkCallback = noopNetworkChangeCallback(),
+            )
+
+        networkListener.setupNetworkCallback()
+        networkListener.setupNetworkCallback()
+
+        verify(exactly = 1) {
+            fakeConnectivityManager.registerNetworkCallback(
+                any<NetworkRequest>(),
+                any<NetworkCallback>(),
+            )
+        }
+    }
+
+    @Test
+    fun `registered network callback should not pin a garbage collected listener`() {
+        val (registeredCallback, delegateRef) = registerAndAbandonListener()
+
+        awaitCollected(delegateRef)
+
+        // The first event after collection should release the system registration
+        // without notifying anyone.
+        registeredCallback.onAvailable(mockk(relaxed = true))
+
+        verify {
+            fakeConnectivityManager.unregisterNetworkCallback(registeredCallback)
+        }
+    }
+
+    @Test
+    fun `starting a new listener should unregister abandoned network callbacks`() {
+        val (abandonedCallback, delegateRef) = registerAndAbandonListener()
+
+        awaitCollected(delegateRef)
+
+        val networkListener =
+            AndroidNetworkListener(
+                context = fakeContext,
+                logger = fakeLogger,
+                networkCallback = noopNetworkChangeCallback(),
+            )
+        networkListener.setupNetworkCallback()
+
+        verify {
+            fakeConnectivityManager.unregisterNetworkCallback(abandonedCallback)
+        }
+    }
+
+    @Test
+    fun `starting a new listener should not unregister callbacks of live listeners`() {
+        val liveNetworkChangeCallback = noopNetworkChangeCallback()
+        val liveListener =
+            AndroidNetworkListener(
+                context = fakeContext,
+                logger = fakeLogger,
+                networkCallback = liveNetworkChangeCallback,
+            )
+        liveListener.setupNetworkCallback()
+        val liveCallback = lastRegisteredNetworkCallback()
+
+        val (abandonedCallback, delegateRef) = registerAndAbandonListener()
+        awaitCollected(delegateRef)
+
+        val newListener =
+            AndroidNetworkListener(
+                context = fakeContext,
+                logger = fakeLogger,
+                networkCallback = noopNetworkChangeCallback(),
+            )
+        newListener.setupNetworkCallback()
+
+        // The sweep frees only the abandoned registration, sparing the live one.
+        verify {
+            fakeConnectivityManager.unregisterNetworkCallback(abandonedCallback)
+        }
+        verify(exactly = 0) {
+            fakeConnectivityManager.unregisterNetworkCallback(liveCallback)
+        }
+        liveListener.stopListening()
+        verify(exactly = 1) {
+            fakeConnectivityManager.unregisterNetworkCallback(liveCallback)
+        }
+    }
+
+    /**
+     * Registers a listener and drops every strong reference to it and its
+     * [AndroidNetworkListener.NetworkChangeCallback], simulating an app abandoning an
+     * Amplitude instance without calling [AndroidNetworkListener.stopListening].
+     */
+    private fun registerAndAbandonListener(): Pair<NetworkCallback, WeakReference<AndroidNetworkListener.NetworkChangeCallback>> {
+        val networkChangeCallback =
+            object : AndroidNetworkListener.NetworkChangeCallback {
+                override fun onNetworkAvailable() {
+                    fail<Unit>("Collected delegate should not be notified")
+                }
+
+                override fun onNetworkUnavailable() {
+                    fail<Unit>("Collected delegate should not be notified")
+                }
+            }
+        val networkListener =
+            AndroidNetworkListener(
+                context = fakeContext,
+                logger = fakeLogger,
+                networkCallback = networkChangeCallback,
+            )
+        networkListener.setupNetworkCallback()
+        return lastRegisteredNetworkCallback() to WeakReference(networkChangeCallback)
+    }
+
+    private fun lastRegisteredNetworkCallback(): NetworkCallback {
+        val capturedCallbacks = mutableListOf<NetworkCallback>()
+        verify {
+            fakeConnectivityManager.registerNetworkCallback(
+                any<NetworkRequest>(),
+                capture(capturedCallbacks),
+            )
+        }
+        return capturedCallbacks.last()
+    }
+
+    private fun awaitCollected(ref: WeakReference<*>) {
+        repeat(100) {
+            if (ref.get() == null) return
+            System.gc()
+            Thread.sleep(10)
+        }
+        fail<Unit>("Reference was not garbage collected")
+    }
+
+    private fun noopNetworkChangeCallback() =
+        object : AndroidNetworkListener.NetworkChangeCallback {
+            override fun onNetworkAvailable() {}
+
+            override fun onNetworkUnavailable() {}
+        }
 }

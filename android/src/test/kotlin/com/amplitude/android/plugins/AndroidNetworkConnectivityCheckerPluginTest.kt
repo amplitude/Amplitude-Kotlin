@@ -50,10 +50,11 @@ class AndroidNetworkConnectivityCheckerPluginTest {
     fun `should teardown correctly`() {
         plugin.setup(amplitude)
         assertNotNull(plugin.networkListener)
-        plugin.networkListener.let { networkListener ->
-            spyk(networkListener)
-            plugin.teardown()
-            verify { networkListener.stopListening() }
-        }
+        val networkListener = spyk(plugin.networkListener)
+        plugin.networkListener = networkListener
+
+        plugin.teardown()
+
+        verify { networkListener.stopListening() }
     }
 }
