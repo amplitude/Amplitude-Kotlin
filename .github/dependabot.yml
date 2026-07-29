@@ -1,0 +1,99 @@
+# Dependabot configuration.
+#
+# Grouping is scoped by blast radius: anything that only affects CI, the release
+# automation, or the test suite is collapsed into one PR, while anything a
+# consumer resolves from the published POM keeps its own reviewable PR.
+version: 2
+updates:
+  # ---------------------------------------------------------------------------
+  # JavaScript — the semantic-release toolchain behind
+  # `.github/workflows/release.yml`. None of it ships in the Maven artifacts.
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 1
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - dependencies
+      - javascript
+    groups:
+      # The semantic-release core and its plugins have interlocking peer ranges
+      # and must move together, so everything here belongs in one PR — majors
+      # included.
+      release-tooling:
+        applies-to: version-updates
+        patterns:
+          - "*"
+      release-tooling-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+
+  # ---------------------------------------------------------------------------
+  # GitHub Actions — CI only. Actions are SHA-pinned; Dependabot rewrites both
+  # the SHA and the trailing version comment.
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 1
+    commit-message:
+      prefix: "ci(deps)"
+    labels:
+      - dependencies
+    groups:
+      github-actions:
+        applies-to: version-updates
+        patterns:
+          - "*"
+      github-actions-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
+
+  # ---------------------------------------------------------------------------
+  # Gradle — reads `gradle/libs.versions.toml`.
+  #
+  # Only test tooling is grouped. Consumer-visible dependencies (coroutines,
+  # core-ktx, activity-ktx, curtains, analytics-connector, okhttp, org.json) land
+  # in the published POM or can move the API dump, so each keeps its own PR.
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: gradle
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - dependencies
+    ignore:
+      # `kotlinCompilerExtension` is hand-pinned to match `kotlin`, and Kotlin 2.x
+      # folds the Compose compiler into the Kotlin plugin — a bot bump cannot
+      # land on its own. Bump Kotlin deliberately instead.
+      #
+      # Libraries are named `group:artifact`, but Gradle plugins are named by
+      # bare plugin id (dependabot-core names a plugin dependency `name` alone,
+      # not `group:name`), so the plugin entries carry no colon and no wildcard.
+      #
+      # Deliberately not `org.jetbrains.kotlin*`, which would also swallow
+      # `org.jetbrains.kotlinx` coroutines updates.
+      - dependency-name: "org.jetbrains.kotlin:*"
+      - dependency-name: "org.jetbrains.kotlin.android"
+      - dependency-name: "org.jetbrains.kotlin.jvm"
+    groups:
+      test-tooling:
+        applies-to: version-updates
+        patterns:
+          - "org.junit:*" # junit-bom
+          - "org.junit.jupiter:*"
+          - "org.junit.vintage:*"
+          - "junit:junit"
+          - "io.mockk:*"
+          - "org.robolectric:*"
+          - "androidx.test*" # androidx.test, .ext, .espresso
+          - "com.squareup.okhttp3:mockwebserver" # not okhttp itself — that ships
