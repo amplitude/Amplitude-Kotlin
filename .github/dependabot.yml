@@ -76,11 +76,15 @@ updates:
       # folds the Compose compiler into the Kotlin plugin — a bot bump cannot
       # land on its own. Bump Kotlin deliberately instead.
       #
-      # These are deliberately not written as `org.jetbrains.kotlin*`, which
-      # would also swallow `org.jetbrains.kotlinx` coroutines updates.
+      # Libraries are named `group:artifact`, but Gradle plugins are named by
+      # bare plugin id (dependabot-core names a plugin dependency `name` alone,
+      # not `group:name`), so the plugin entries carry no colon and no wildcard.
+      #
+      # Deliberately not `org.jetbrains.kotlin*`, which would also swallow
+      # `org.jetbrains.kotlinx` coroutines updates.
       - dependency-name: "org.jetbrains.kotlin:*"
-      - dependency-name: "org.jetbrains.kotlin.android:*"
-      - dependency-name: "org.jetbrains.kotlin.jvm:*"
+      - dependency-name: "org.jetbrains.kotlin.android"
+      - dependency-name: "org.jetbrains.kotlin.jvm"
     groups:
       test-tooling:
         applies-to: version-updates
