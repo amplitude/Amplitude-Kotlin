@@ -557,6 +557,11 @@ public open class Amplitude(
             return
         }
 
+        if (event.eventType.isBlank()) {
+            logger.warn("Event has an empty event type, dropping it.")
+            return
+        }
+
         if (event.timestamp == null) {
             event.timestamp = System.currentTimeMillis()
         }

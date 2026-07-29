@@ -21,6 +21,7 @@ import com.amplitude.core.utilities.http.ResponseHandler
 import com.amplitude.core.utilities.http.SuccessResponse
 import com.amplitude.core.utilities.http.TimeoutResponse
 import com.amplitude.core.utils.FakeAmplitude
+import com.amplitude.core.utils.StubPlugin
 import com.amplitude.id.IMIdentityStorageProvider
 import io.mockk.coVerify
 import io.mockk.every
@@ -253,5 +254,25 @@ class EventPipelineTest {
             // this is because the InMemoryStorage will clear the buffer and the second call to
             // readEventsContent() will return an empty list and will stop the processing
             verify(exactly = 1) { retryUploadHandler.reset() }
+        }
+
+    @Test
+    fun `event with empty event type is dropped`() =
+        runTest(testDispatcher) {
+            amplitude.isBuilt.await()
+            val mockPlugin = spyk(StubPlugin())
+            amplitude.add(mockPlugin)
+
+            amplitude.track(BaseEvent().apply { eventType = "" })
+            advanceUntilIdle()
+
+            // The empty event type is dropped in process() before reaching the timeline.
+            verify(exactly = 0) { mockPlugin.track(any()) }
+
+            // A valid event still flows through to the pipeline.
+            amplitude.track(BaseEvent().apply { eventType = "valid_event" })
+            advanceUntilIdle()
+
+            verify(exactly = 1) { mockPlugin.track(any()) }
         }
 }
