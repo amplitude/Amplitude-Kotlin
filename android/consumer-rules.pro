@@ -13,6 +13,9 @@
 }
 -keep class com.google.android.gms.tasks.Task
 
+# Keep the plugin names readable so the log is usable in a minified build.
+-keepnames class com.amplitude.** implements com.amplitude.core.platform.UniversalPlugin
+
 #################### START: Compose Proguard Rules ####################
 
 # The Android SDK checks at runtime if these classes are available via Class.forName
