@@ -2,7 +2,6 @@ import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
 
 plugins {
     alias(libs.plugins.android.library)
-    kotlin("android")
     alias(libs.plugins.mavenPublish)
     alias(libs.plugins.android.junit5)
 }
@@ -33,9 +32,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaConfig.JAVA_VERSION
         targetCompatibility = JavaConfig.JAVA_VERSION
-    }
-    kotlinOptions {
-        jvmTarget = KotlinConfig.JVM_TARGET
     }
     testOptions {
         // Cap unit-test targetSdk to Robolectric's supported ceiling. Robolectric 4.15.1
@@ -102,6 +98,7 @@ dependencies {
     // Junit optional dependencies
     testImplementation(libs.junit.jupiter.params)
     testRuntimeOnly(libs.junit.vintage.engine)
+    testRuntimeOnly(libs.junit.platform.launcher)
 
     testImplementation(libs.kotlin.test.junit)
     testImplementation(libs.junit4)

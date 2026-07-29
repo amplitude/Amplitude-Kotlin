@@ -1,3 +1,4 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
@@ -6,7 +7,6 @@ plugins {
     alias(libs.plugins.android.test) apply false
     alias(libs.plugins.dokka)
     alias(libs.plugins.mavenPublish) apply false
-    alias(libs.plugins.kotlin.android) apply false
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.ktlint) apply false
     alias(libs.plugins.bcv)
@@ -23,9 +23,9 @@ allprojects {
     version = project.findProperty("VERSION_NAME") ?: "0.0.1-SNAPSHOT"
 
     tasks.withType<KotlinCompile>().configureEach {
-        kotlinOptions {
-            jvmTarget = KotlinConfig.JVM_TARGET
-            freeCompilerArgs = listOf("-Xjvm-default=all")
+        compilerOptions {
+            jvmTarget.set(JvmTarget.fromTarget(KotlinConfig.JVM_TARGET))
+            freeCompilerArgs.set(listOf("-Xjvm-default=all"))
         }
     }
 }

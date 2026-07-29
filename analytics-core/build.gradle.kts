@@ -53,6 +53,7 @@ dependencies {
     // Junit optional dependencies
     testImplementation(libs.junit.jupiter.params)
     testRuntimeOnly(libs.junit.vintage.engine)
+    testRuntimeOnly(libs.junit.platform.launcher)
 
     testImplementation(libs.mockwebserver)
 }
