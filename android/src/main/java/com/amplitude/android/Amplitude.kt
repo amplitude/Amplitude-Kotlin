@@ -65,7 +65,10 @@ open class Amplitude internal constructor(
     // where they would clobber a retirement from a same-name instance racing this one.
     private lateinit var retired: AtomicBoolean
 
-    /** Whether this instance still owns its instance name. Gates all work an active instance does. */
+    /**
+     * Whether this instance still owns its instance name. Gates event ingress, session work,
+     * plugin installation, and claims on state shared by name.
+     */
     internal val isActive: Boolean
         get() = !retired.get()
 
@@ -74,9 +77,9 @@ open class Amplitude internal constructor(
 
     /**
      * Init-order trap: [CoreAmplitude]'s `init` calls [build] before this class's field
-     * initializers run, and [buildInternal] may already be on a background thread.
-     * Assign anything [buildInternal] or its plugins read here — never `by lazy`, field
-     * initializers, or `init {}`.
+     * initializers run, and [buildInternal] may already be on a background thread. Assign anything
+     * [buildInternal] or its plugins read here — never `by lazy` or a field initializer. This is
+     * also where the instance claims its name, so ownership settles before the build starts.
      */
     override fun build(): Deferred<Boolean> {
         retired = AtomicBoolean(false)
