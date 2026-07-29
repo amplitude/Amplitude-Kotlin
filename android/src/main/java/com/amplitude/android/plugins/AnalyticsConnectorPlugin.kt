@@ -50,9 +50,13 @@ internal class AnalyticsConnectorPlugin : Plugin {
                 }
             }
         }
-        connector.identityStore.editIdentity()
-            .updateUserProperties(userProperties)
-            .commit()
+        // A replaced instance still drains the events it accepted, but the connector's identity
+        // belongs to whichever instance owns the name now.
+        AmplitudeRegistry.runIfActive(amplitude) {
+            connector.identityStore.editIdentity()
+                .updateUserProperties(userProperties)
+                .commit()
+        }
 
         return event
     }

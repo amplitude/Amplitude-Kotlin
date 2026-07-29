@@ -7,6 +7,7 @@ import android.os.Looper
 import com.amplitude.MainDispatcherRule
 import com.amplitude.analytics.connector.AnalyticsConnector
 import com.amplitude.analytics.connector.AnalyticsEvent
+import com.amplitude.analytics.connector.Identity
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.android.utilities.FakeAndroidAmplitude
 import com.amplitude.android.utilities.createFakeAmplitude
@@ -124,6 +125,33 @@ class AmplitudeReplacementTest {
 
             assertEquals(sessionIdBeforeRetirement, first.sessionId)
             assertEquals(listOf("queued"), recorder.trackedEvents.map { it.eventType })
+        }
+
+    @Test
+    fun `a retired instance does not update connector user properties while draining`() =
+        runTest {
+            val first = createAmplitude(CONNECTOR_PROPERTIES_INSTANCE)
+            advanceUntilIdle()
+
+            // Watch every commit: the replacement's own setup resets the identity, which would
+            // hide a stale write if we only looked at the final state.
+            val connector = AnalyticsConnector.getInstance(CONNECTOR_PROPERTIES_INSTANCE)
+            val updates = mutableListOf<Identity>()
+            val listener: (Identity) -> Unit = { updates += it }
+            connector.identityStore.addIdentityListener(listener)
+
+            // Queued before the replacement, so it drains through the retired instance's plugins.
+            first.track(
+                BaseEvent().apply {
+                    eventType = "queued"
+                    userProperties = mutableMapOf("\$set" to mapOf("plan" to "stale"))
+                },
+            )
+            createAmplitude(CONNECTOR_PROPERTIES_INSTANCE)
+            advanceUntilIdle()
+            connector.identityStore.removeIdentityListener(listener)
+
+            assertTrue(updates.none { it.userProperties.containsKey("plan") })
         }
 
     @Test
@@ -369,6 +397,7 @@ class AmplitudeReplacementTest {
 
     private companion object {
         const val CONNECTOR_INSTANCE = "connector-handover"
+        const val CONNECTOR_PROPERTIES_INSTANCE = "connector-user-properties"
     }
 }
 
