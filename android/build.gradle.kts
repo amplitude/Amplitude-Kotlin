@@ -49,6 +49,9 @@ android {
 }
 
 kotlin {
+    // Keep the published stdlib compatible with our Kotlin 1.9 metadata target.
+    // AGP 9 requires KGP 2.2.10, but publishing stdlib 2.2.10 would break consumers at 1.9/2.0
+    coreLibrariesVersion = libs.versions.kotlinCoreLibraries.get()
     explicitApi()
 }
 
