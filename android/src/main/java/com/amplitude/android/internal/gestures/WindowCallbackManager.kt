@@ -32,7 +32,7 @@ internal class WindowCallbackManager(
     private val autocaptureStateProvider: () -> AutocaptureState,
     private val logger: Logger,
 ) {
-    private val wrappedWindows = mutableMapOf<Window, Window.Callback?>()
+    private val wrappedWindows = mutableMapOf<Window, AutocaptureWindowCallback>()
     private var started = false
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -107,9 +107,6 @@ internal class WindowCallbackManager(
 
         val originalCallback = window.callback ?: NoCaptureWindowCallback()
 
-        // Store original callback before wrapping
-        wrappedWindows[window] = window.callback
-
         val wrappedCallback =
             if (frustrationDetector != null) {
                 FrustrationAwareWindowCallback(
@@ -134,22 +131,31 @@ internal class WindowCallbackManager(
                 )
             }
 
+        wrappedWindows[window] = wrappedCallback
         window.callback = wrappedCallback
 
         logger.debug("Wrapped window callback for $activityName")
     }
 
     private fun unwrapWindow(window: Window) {
-        if (!wrappedWindows.containsKey(window)) return
-        val originalCallback = wrappedWindows.remove(window)
+        val ourCallback = wrappedWindows.remove(window) ?: return
 
-        // Only unwrap if the current callback is our wrapper
-        val currentCallback = window.callback
-        if (currentCallback is AutocaptureWindowCallback) {
-            // Restore original callback, or null if it was NoCaptureWindowCallback
-            window.callback = originalCallback.takeUnless { it is NoCaptureWindowCallback }
-            logger.debug("Unwrapped window callback")
+        if (window.callback === ourCallback) {
+            // Restore the callback we wrapped, or null if there wasn't one
+            window.callback = ourCallback.delegate.takeUnless { it is NoCaptureWindowCallback }
+        } else {
+            // Another Amplitude instance wrapped on top of us, so splice ourselves out of its
+            // chain instead of dropping its callback. All of this runs on the main thread.
+            var node = window.callback
+            while (node is WindowCallbackAdapter) {
+                if (node.delegate === ourCallback) {
+                    node.delegate = ourCallback.delegate
+                    break
+                }
+                node = node.delegate
+            }
         }
+        logger.debug("Unwrapped window callback")
     }
 
     /**

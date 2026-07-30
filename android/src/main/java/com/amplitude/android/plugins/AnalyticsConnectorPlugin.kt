@@ -1,6 +1,7 @@
 package com.amplitude.android.plugins
 
 import com.amplitude.analytics.connector.AnalyticsConnector
+import com.amplitude.android.AmplitudeRegistry
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
@@ -17,15 +18,19 @@ internal class AnalyticsConnectorPlugin : Plugin {
         val instanceName = amplitude.configuration.instanceName
         connector = AnalyticsConnector.getInstance(instanceName)
 
-        // set up listener to core package to receive exposure events from Experiment
+        // set up listener to core package to receive exposure events from Experiment. The connector
+        // has one receiver per instance name, so a build that finishes after its instance was
+        // replaced must not take it from the replacement.
         val amplitudeRef = WeakReference(amplitude)
-        connector.eventBridge.setEventReceiver { (eventType, eventProperties, userProperties) ->
-            amplitudeRef.get()?.let { amplitude ->
-                val event = BaseEvent()
-                event.eventType = eventType
-                event.eventProperties = eventProperties?.toMutableMap()
-                event.userProperties = userProperties?.toMutableMap()
-                amplitude.track(event)
+        AmplitudeRegistry.runIfActive(amplitude) {
+            connector.eventBridge.setEventReceiver { (eventType, eventProperties, userProperties) ->
+                amplitudeRef.get()?.let { amplitude ->
+                    val event = BaseEvent()
+                    event.eventType = eventType
+                    event.eventProperties = eventProperties?.toMutableMap()
+                    event.userProperties = userProperties?.toMutableMap()
+                    amplitude.track(event)
+                }
             }
         }
     }
@@ -45,9 +50,13 @@ internal class AnalyticsConnectorPlugin : Plugin {
                 }
             }
         }
-        connector.identityStore.editIdentity()
-            .updateUserProperties(userProperties)
-            .commit()
+        // A replaced instance still drains the events it accepted, but the connector's identity
+        // belongs to whichever instance owns the name now.
+        AmplitudeRegistry.runIfActive(amplitude) {
+            connector.identityStore.editIdentity()
+                .updateUserProperties(userProperties)
+                .commit()
+        }
 
         return event
     }
