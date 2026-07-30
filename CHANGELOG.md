@@ -1,3 +1,18 @@
+## [1.30.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.30.0...v1.30.1) (2026-07-30)
+
+
+### Bug Fixes
+
+* allow garbage collection of abandoned Amplitude instances ([#425](https://github.com/amplitude/Amplitude-Kotlin/issues/425)) ([5e53a6a](https://github.com/amplitude/Amplitude-Kotlin/commit/5e53a6ac5b2644106477bb77b1cfea76eb7d9cad))
+* **android:** replace same-name instances automatically (SDK-171) ([#432](https://github.com/amplitude/Amplitude-Kotlin/issues/432)) ([4dd846d](https://github.com/amplitude/Amplitude-Kotlin/commit/4dd846ded22a9f2efdc1b80d3b43c9693d319c5c))
+* **android:** stop network callbacks leaking Amplitude instances (SDKA-31) ([#433](https://github.com/amplitude/Amplitude-Kotlin/issues/433)) ([8cea39f](https://github.com/amplitude/Amplitude-Kotlin/commit/8cea39fa4ebab44d2f55704ccf6380559c1ffcbb)), closes [#236](https://github.com/amplitude/Amplitude-Kotlin/issues/236)
+* **core:** null-safe filename filter in EventsFileManager (SDK-176) ([#423](https://github.com/amplitude/Amplitude-Kotlin/issues/423)) ([339b8bc](https://github.com/amplitude/Amplitude-Kotlin/commit/339b8bcf68bf292b01c6565e701aa1410d2c6014))
+
+
+### Performance Improvements
+
+* use shared Dispatchers.IO instead of SDK-owned thread pools ([#426](https://github.com/amplitude/Amplitude-Kotlin/issues/426)) ([2b46e4e](https://github.com/amplitude/Amplitude-Kotlin/commit/2b46e4ef1d40551720df14161bfbb34897add0f4)), closes [#388](https://github.com/amplitude/Amplitude-Kotlin/issues/388)
+
 # [1.30.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.29.0...v1.30.0) (2026-07-20)
 
 
