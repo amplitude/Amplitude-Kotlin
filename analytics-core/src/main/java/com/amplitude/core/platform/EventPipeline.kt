@@ -1,12 +1,15 @@
 package com.amplitude.core.platform
 
 import com.amplitude.core.Amplitude
+import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.Storage
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.ExponentialBackoffRetryHandler
+import com.amplitude.core.utilities.http.BadRequestResponse
 import com.amplitude.core.utilities.http.HttpClient
 import com.amplitude.core.utilities.http.HttpClientInterface
 import com.amplitude.core.utilities.http.ResponseHandler
+import com.amplitude.core.utilities.http.TooManyRequestsResponse
 import com.amplitude.core.utilities.logWithStackTrace
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -19,17 +22,16 @@ import kotlinx.coroutines.withContext
 import java.io.FileNotFoundException
 import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.time.Duration.Companion.milliseconds
 
+@OptIn(RestrictedAmplitudeFeature::class)
 public class EventPipeline(
     private val amplitude: Amplitude,
     private val eventCount: AtomicInteger = AtomicInteger(0),
     private val httpClient: HttpClientInterface =
         amplitude.configuration.httpClient
             ?: HttpClient(amplitude.configuration, amplitude.logger),
-    private val retryUploadHandler: ExponentialBackoffRetryHandler =
-        ExponentialBackoffRetryHandler(
-            maxRetryAttempt = amplitude.configuration.flushMaxRetries,
-        ),
+    private val retryUploadHandler: ExponentialBackoffRetryHandler = ExponentialBackoffRetryHandler(),
     private val storage: Storage = amplitude.storage,
     private val scope: CoroutineScope = amplitude.amplitudeScope,
     private val writeChannel: Channel<WriteQueueMessage> = Channel(UNLIMITED),
@@ -51,7 +53,11 @@ public class EventPipeline(
 
     public companion object {
         private const val UPLOAD_SIG = "#!upload"
-        private const val MAX_RETRY_ATTEMPT_SIG = "#!maxRetryAttemptReached"
+
+        /**
+         * The server asked us to slow down, so we wait this long before retrying.
+         */
+        private const val TOO_MANY_REQUESTS_DELAY_IN_MS = 30_000L
     }
 
     init {
@@ -115,7 +121,7 @@ public class EventPipeline(
 
     private fun upload() =
         scope.launch(amplitude.networkIODispatcher) {
-            uploadChannel.consumeEach { signal ->
+            uploadChannel.consumeEach { _ ->
                 withContext(amplitude.storageIODispatcher) {
                     try {
                         storage.rollover()
@@ -124,16 +130,6 @@ public class EventPipeline(
                             amplitude.logger.warn("Event storage file not found: $it")
                         }
                     }
-                }
-
-                if (signal == MAX_RETRY_ATTEMPT_SIG) {
-                    amplitude.logger.debug(
-                        "Max retries ${retryUploadHandler.maxRetryAttempt} reached, temporarily stop consuming upload signals.",
-                    )
-                    // Use the max delay when retry attempt is reached
-                    delay(retryUploadHandler.maxDelayInMs)
-                    retryUploadHandler.reset()
-                    amplitude.logger.debug("Enable consuming of upload signals again.")
                 }
 
                 val eventFiles = storage.readEventsContent()
@@ -146,12 +142,25 @@ public class EventPipeline(
                         val response = httpClient.upload(eventsString, diagnostics)
                         val shouldRetryUploadOnFailure = responseHandler.handle(response, eventFile, eventsString)
 
+                        // an invalid API key is terminal, retrying can never recover from it
+                        if (response is BadRequestResponse && response.isInvalidApiKeyResponse()) {
+                            amplitude.logger.error("Invalid API key. Don't retry.")
+                            break
+                        }
+
                         // if we encounter a retryable error, we retry with delay and
                         // restart the loop to get the newest event files
                         if (shouldRetryUploadOnFailure == true) {
+                            if (response is TooManyRequestsResponse) {
+                                delay(TOO_MANY_REQUESTS_DELAY_IN_MS.milliseconds)
+                                uploadChannel.trySend(UPLOAD_SIG)
+                                break
+                            }
+
                             retryUploadHandler.attemptRetry { canRetry ->
-                                val retrySignal = if (canRetry) UPLOAD_SIG else MAX_RETRY_ATTEMPT_SIG
-                                uploadChannel.trySend(retrySignal)
+                                if (canRetry) {
+                                    uploadChannel.trySend(UPLOAD_SIG)
+                                }
                             }
                             break
                         }
