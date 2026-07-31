@@ -22,6 +22,9 @@ Analytics SDK for Android. Two modules: **`analytics-core`** (pure Kotlin/JVM) a
 - `ktlintFormat` before every commit.
 - Open classes for public types. Data classes only for internal DTOs. Sealed classes for fixed types.
 - Companion objects for constants and factory methods. No `@JvmStatic` or `@JvmField`.
+- KDoc for all public APIs.
+  - Consider including an example usage code block when it makes the element easier to use correctly.
+  - Elements annotated `@Deprecated` or `@RestrictedAmplitudeFeature` are exempt from new documentation requirements.
 
 ### Public API Stability
 
