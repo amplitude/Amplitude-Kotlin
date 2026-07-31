@@ -185,7 +185,7 @@ public class EventPipeline(
         scope.launch(amplitude.storageIODispatcher) {
             if (isActive && running && !scheduled) {
                 scheduled = true
-                delay(amplitude.configuration.flushIntervalMillis.toLong())
+                delay(amplitude.configuration.flushIntervalMillis.milliseconds)
                 flush()
                 scheduled = false
             }
