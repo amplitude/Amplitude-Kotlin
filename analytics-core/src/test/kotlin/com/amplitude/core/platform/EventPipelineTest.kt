@@ -2,6 +2,7 @@ package com.amplitude.core.platform
 
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Configuration
+import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.State
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.ConsoleLoggerProvider
@@ -20,6 +21,7 @@ import com.amplitude.core.utilities.http.PayloadTooLargeResponse
 import com.amplitude.core.utilities.http.ResponseHandler
 import com.amplitude.core.utilities.http.SuccessResponse
 import com.amplitude.core.utilities.http.TimeoutResponse
+import com.amplitude.core.utilities.http.TooManyRequestsResponse
 import com.amplitude.core.utils.FakeAmplitude
 import com.amplitude.core.utils.StubPlugin
 import com.amplitude.id.IMIdentityStorageProvider
@@ -32,17 +34,21 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runTest
 import org.json.JSONObject
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 @ExperimentalCoroutinesApi
+@OptIn(RestrictedAmplitudeFeature::class)
 class EventPipelineTest {
     private lateinit var fakeResponse: AnalyticsResponse
+    private val flushIntervalMillis = 1
     private val config =
         Configuration(
             apiKey = "API_KEY",
-            flushIntervalMillis = 1,
+            flushIntervalMillis = flushIntervalMillis,
             storageProvider = InMemoryStorageProvider(),
             loggerProvider = ConsoleLoggerProvider(),
             identifyInterceptStorageProvider = InMemoryStorageProvider(),
@@ -227,15 +233,58 @@ class EventPipelineTest {
         }
 
     @Test
-    fun `should send MAX_RETRY_ATTEMPT_SIG after max retry attempts`() =
+    fun `should wait 30 seconds before retrying too many requests`() =
         runTest(testDispatcher) {
             amplitude.isBuilt.await()
-            val retryUploadHandler =
-                spyk(
-                    ExponentialBackoffRetryHandler(
-                        maxRetryAttempt = 0,
-                    ),
+            val retryUploadHandler = spyk(ExponentialBackoffRetryHandler())
+            val eventPipeline =
+                EventPipeline(
+                    amplitude,
+                    retryUploadHandler = retryUploadHandler,
+                    overrideResponseHandler = fakeResponseHandler,
                 )
+            val event = BaseEvent().apply { eventType = "test_event" }
+
+            fakeResponse = TooManyRequestsResponse(JSONObject())
+            eventPipeline.start()
+            val startTime = currentTime
+            eventPipeline.put(event)
+            advanceUntilIdle()
+
+            // a 429 waits a fixed 30s, it does not go through the backoff schedule
+            assertEquals(30_000L, currentTime - startTime - flushIntervalMillis)
+            coVerify(exactly = 0) { retryUploadHandler.attemptRetry(any<(Boolean) -> Unit>()) }
+        }
+
+    @Test
+    fun `should NOT retry on an invalid API key`() =
+        runTest(testDispatcher) {
+            amplitude.isBuilt.await()
+            val retryUploadHandler = spyk(ExponentialBackoffRetryHandler())
+            val eventPipeline =
+                EventPipeline(
+                    amplitude,
+                    retryUploadHandler = retryUploadHandler,
+                    overrideResponseHandler = fakeResponseHandler,
+                )
+            val event = BaseEvent().apply { eventType = "test_event" }
+
+            fakeResponse = BadRequestResponse(JSONObject().put("error", "Invalid API key: API_KEY"))
+            eventPipeline.start()
+            eventPipeline.put(event)
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { retryUploadHandler.attemptRetry(any<(Boolean) -> Unit>()) }
+            verify(exactly = 0) { retryUploadHandler.reset() }
+        }
+
+    @Test
+    fun `should keep retrying past the flush max retries`() =
+        runTest(testDispatcher) {
+            amplitude.isBuilt.await()
+            val retryUploadHandler = spyk(ExponentialBackoffRetryHandler())
+            // way past configuration.flushMaxRetries, upload retries are not capped
+            retryUploadHandler.attempt.set(50)
             val eventPipeline =
                 EventPipeline(
                     amplitude,
@@ -250,10 +299,8 @@ class EventPipelineTest {
             advanceUntilIdle()
 
             coVerify { retryUploadHandler.attemptRetry(any<(Boolean) -> Unit>()) }
-            // this will be called on the MAX_RETRY_ATTEMPT_SIG block on upload(),
-            // this is because the InMemoryStorage will clear the buffer and the second call to
-            // readEventsContent() will return an empty list and will stop the processing
-            verify(exactly = 1) { retryUploadHandler.reset() }
+            assertEquals(51, retryUploadHandler.attempt.get())
+            verify(exactly = 0) { retryUploadHandler.reset() }
         }
 
     @Test

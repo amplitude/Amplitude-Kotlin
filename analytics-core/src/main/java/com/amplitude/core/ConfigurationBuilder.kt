@@ -30,6 +30,7 @@ public class ConfigurationBuilder(
     override var storageProvider: StorageProvider = InMemoryStorageProvider()
     override var loggerProvider: LoggerProvider = ConsoleLoggerProvider()
 
+    @Suppress("DEPRECATION")
     public fun build(): Configuration =
         Configuration(
             apiKey = apiKey,

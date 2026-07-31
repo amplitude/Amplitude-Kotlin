@@ -1,67 +1,84 @@
 package com.amplitude.core.utilities
 
+import com.amplitude.core.RestrictedAmplitudeFeature
 import kotlinx.coroutines.delay
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.math.pow
+import kotlin.random.Random
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
- * A utility class to handle exponential backoff retry logic.
+ * A utility class to handle retry backoff logic.
+ *
+ * Delays follow a fixed schedule of 1s, 8s, 32s, 128s and then plateau at 300s, which is repeated
+ * for as long as the retries keep failing. Every delay is jittered by +/- half of itself so retries
+ * from different clients spread out.
  *
  * Usage:
- * - call [attemptRetry] to attempt retry with exponential backoff delay
- * - always call [reset] at the end of your session to reset the retry attempt counter.
+ * - call [attemptRetry] to attempt retry with a backoff delay
+ * - call [reset] on success, so the next failure starts the schedule over.
  */
-public class ExponentialBackoffRetryHandler(
-    public val maxRetryAttempt: Int = MAX_RETRY_ATTEMPT,
-    private val baseDelayInMs: Int = 1_000,
-    private val factor: Double = 2.0,
-) {
-    /**
-     * The current exponential backoff delay in milliseconds. Formula is [baseDelayInMs] * ([factor]^[attempt])
-     *
-     * e.g. for the default values, it will be: 1, 2, 4, 8, 16 seconds
-     */
-    private val exponentialBackOffDelayInMs
-        get() = (baseDelayInMs * factor.pow(attempt.get())).toLong()
+@RestrictedAmplitudeFeature
+public class ExponentialBackoffRetryHandler() {
+    @Deprecated(
+        "The backoff schedule is fixed now, baseDelayInMs and factor are ignored.",
+        ReplaceWith("ExponentialBackoffRetryHandler()"),
+    )
+    @RestrictedAmplitudeFeature
+    public constructor(
+        maxRetryAttempt: Int = 5,
+        baseDelayInMs: Int,
+        factor: Double,
+    ) : this()
+
+    @Deprecated("The backoff schedule no longer has a max retry cap. This is ignored and will be removed.")
+    public val maxRetryAttempt: Int = 5
 
     /**
      * After we've reached [maxRetryAttempt], we will stop retrying for a longer period and use this
-     * value. We apply a ceiling of 60 seconds [MAX_DELAY_IN_MILLIS] to the delay to avoid waiting too long.
+     * value.
      */
+    @Deprecated("Unused. Will be removed.")
     public val maxDelayInMs: Long
-        get() =
-            MAX_DELAY_IN_MILLIS.coerceAtMost(
-                baseDelayInMs * factor.pow(maxRetryAttempt + 1).toInt(),
-            ).toLong()
+        get() = DELAYS_IN_MS.last()
 
     internal var attempt = AtomicInteger(0)
 
-    private fun canRetry() = attempt.get() < maxRetryAttempt
-
     /**
-     * Attempt retry with exponential backoff delay. see [exponentialBackOffDelayInMs]
+     * Attempt retry with the backoff delay of the current attempt. see [nextDelay]
      * @param block a lambda to execute the retry logic. The lambda will receive a boolean parameter to indicate if the retry logic should be executed.
-     * If boolean parameter is false, [maxRetryAttempt] was reached and you should stop retrying and handle the failure.
+     * Retries are no longer capped, so the parameter is always true.
      */
     public suspend fun attemptRetry(block: (Boolean) -> Unit) {
-        if (!canRetry()) {
-            block(false)
-            return
-        }
-        delay(exponentialBackOffDelayInMs)
+        delay(nextDelay())
         block(true)
         attempt.incrementAndGet()
     }
 
     /**
-     * Reset the retry attempt counter.
+     * Reset the retry attempt counter, so the next retry starts the backoff schedule over.
      */
     public fun reset() {
         attempt.set(0)
     }
 
+    /**
+     * The jittered delay of the current attempt.
+     */
+    internal fun nextDelay(): Duration {
+        val delayInMs = DELAYS_IN_MS[attempt.get().coerceAtMost(DELAYS_IN_MS.lastIndex)]
+        return jitter(delayInMs).milliseconds
+    }
+
+    /**
+     * Spread [delayInMs] over +/- half of itself, e.g. 8s becomes a delay within 4s and 12s.
+     */
+    private fun jitter(delayInMs: Long): Long = delayInMs / 2 + Random.nextLong(delayInMs + 1)
+
     public companion object {
-        private const val MAX_RETRY_ATTEMPT = 5
-        private const val MAX_DELAY_IN_MILLIS = 60_000
+        /**
+         * The backoff delay of each attempt, the last one is reused for every attempt after it.
+         */
+        private val DELAYS_IN_MS = listOf(1_000L, 8_000L, 32_000L, 128_000L, 300_000L)
     }
 }

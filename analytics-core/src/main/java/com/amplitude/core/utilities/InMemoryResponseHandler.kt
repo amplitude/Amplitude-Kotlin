@@ -149,6 +149,7 @@ internal class InMemoryResponseHandler
             }
         }
 
+        @Suppress("DEPRECATION")
         override fun handleFailedResponse(
             failedResponse: FailedResponse,
             events: Any,

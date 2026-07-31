@@ -32,6 +32,7 @@ public class ConfigurationBuilder(
         context = context,
         autocapture = setOf(AutocaptureOption.SESSIONS),
     ) {
+    @Suppress("DEPRECATION")
     public fun build(): Configuration =
         Configuration(
             apiKey = apiKey,
