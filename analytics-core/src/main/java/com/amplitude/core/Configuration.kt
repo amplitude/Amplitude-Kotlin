@@ -28,6 +28,7 @@ public open class Configuration
         public open var minIdLength: Int? = null,
         public open var partnerId: String? = null,
         public open var callback: EventCallBack? = null,
+        @Deprecated("Upload retries are no longer capped. Property will be removed.")
         public open var flushMaxRetries: Int = FLUSH_MAX_RETRIES,
         public open var useBatch: Boolean = false,
         public open var serverZone: ServerZone = ServerZone.US,
