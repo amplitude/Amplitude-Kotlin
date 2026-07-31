@@ -2,7 +2,6 @@ import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
 
 plugins {
     alias(libs.plugins.android.library)
-    kotlin("android")
     alias(libs.plugins.mavenPublish)
     alias(libs.plugins.android.junit5)
 }
@@ -34,9 +33,6 @@ android {
         sourceCompatibility = JavaConfig.JAVA_VERSION
         targetCompatibility = JavaConfig.JAVA_VERSION
     }
-    kotlinOptions {
-        jvmTarget = KotlinConfig.JVM_TARGET
-    }
     testOptions {
         // Cap unit-test targetSdk to Robolectric's supported ceiling. Robolectric 4.15.1
         // rejects test APKs with targetSdk > 35. Bump this alongside any Robolectric upgrade.
@@ -53,6 +49,9 @@ android {
 }
 
 kotlin {
+    // Keep the published stdlib compatible with our Kotlin 1.9 metadata target.
+    // AGP 9 requires KGP 2.2.10, but publishing stdlib 2.2.10 would break consumers at 1.9/2.0
+    coreLibrariesVersion = libs.versions.kotlinCoreLibraries.get()
     explicitApi()
 }
 
@@ -102,6 +101,7 @@ dependencies {
     // Junit optional dependencies
     testImplementation(libs.junit.jupiter.params)
     testRuntimeOnly(libs.junit.vintage.engine)
+    testRuntimeOnly(libs.junit.platform.launcher)
 
     testImplementation(libs.kotlin.test.junit)
     testImplementation(libs.junit4)
