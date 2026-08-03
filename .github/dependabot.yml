@@ -61,6 +61,10 @@ updates:
   # Only test tooling is grouped. Consumer-visible dependencies (coroutines,
   # core-ktx, activity-ktx, curtains, analytics-connector, okhttp, org.json) land
   # in the published POM or can move the API dump, so each keeps its own PR.
+  #
+  # `mockwebserver` is deliberately outside the test-tooling group: it shares the
+  # `okhttp` version ref so the two never drift, which means a bump to it also
+  # bumps the version we compile against.
   # ---------------------------------------------------------------------------
   - package-ecosystem: gradle
     directory: "/"
@@ -96,4 +100,3 @@ updates:
           - "io.mockk:*"
           - "org.robolectric:*"
           - "androidx.test*" # androidx.test, .ext, .espresso
-          - "com.squareup.okhttp3:mockwebserver" # not okhttp itself — that ships
