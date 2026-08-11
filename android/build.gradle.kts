@@ -81,7 +81,6 @@ dependencies {
     implementation(libs.coroutines.android)
     implementation(libs.analytics.connector)
     implementation(libs.core.ktx)
-    implementation(libs.activity.ktx)
     implementation(libs.curtains)
     compileOnly(libs.okhttp)
     compileOnly(libs.fragment.ktx)

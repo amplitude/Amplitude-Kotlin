@@ -59,7 +59,7 @@ updates:
   # Gradle — reads `gradle/libs.versions.toml`.
   #
   # Only test tooling is grouped. Consumer-visible dependencies (coroutines,
-  # core-ktx, activity-ktx, curtains, analytics-connector, okhttp, org.json) land
+  # core-ktx, curtains, analytics-connector, okhttp, org.json) land
   # in the published POM or can move the API dump, so each keeps its own PR.
   #
   # `mockwebserver` is deliberately outside the test-tooling group: it shares the

@@ -1,7 +1,6 @@
 [versions]
 activityCompose = "1.10.1"
 bcv = "0.18.1"
-activityKtx = "1.10.0"
 analyticsConnector = "1.0.0"
 androidGradlePlugin = "9.3.1"
 androidJunit5 = "1.12.2.0"
@@ -37,7 +36,6 @@ testRunner = "1.7.0"
 
 [libraries]
 activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
-activity-ktx = { module = "androidx.activity:activity-ktx", version.ref = "activityKtx" }
 analytics-connector = { module = "com.amplitude:analytics-connector", version.ref = "analyticsConnector" }
 appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" } # Added
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }
