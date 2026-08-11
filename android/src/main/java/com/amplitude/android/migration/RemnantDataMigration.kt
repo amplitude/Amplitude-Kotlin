@@ -1,5 +1,6 @@
 package com.amplitude.android.migration
 
+import com.amplitude.android.utilities.runCatchingCancellable
 import com.amplitude.common.android.LogcatLogger
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Storage
@@ -14,7 +15,6 @@ import org.json.JSONObject
  *      3. saves the device/user id, converted events and identifies to current storage
  *      4. deletes data from sqlite table
  */
-
 public class RemnantDataMigration(public val amplitude: Amplitude, private val databaseStorage: DatabaseStorage) {
     public companion object {
         public const val DEVICE_ID_KEY: String = "device_id"
@@ -64,7 +64,7 @@ public class RemnantDataMigration(public val amplitude: Amplitude, private val d
     }
 
     private suspend fun moveSessionData() {
-        try {
+        runCatchingCancellable {
             val currentSessionId = amplitude.storage.read(Storage.Constants.PREVIOUS_SESSION_ID)?.toLongOrNull()
             val currentLastEventTime = amplitude.storage.read(Storage.Constants.LAST_EVENT_TIME)?.toLongOrNull()
             val currentLastEventId = amplitude.storage.read(Storage.Constants.LAST_EVENT_ID)?.toLongOrNull()
@@ -87,7 +87,7 @@ public class RemnantDataMigration(public val amplitude: Amplitude, private val d
                 amplitude.storage.write(Storage.Constants.LAST_EVENT_ID, lastEventId.toString())
                 databaseStorage.removeLongValue(LAST_EVENT_ID_KEY)
             }
-        } catch (e: Exception) {
+        }.onFailure { e ->
             LogcatLogger.logger.error(
                 "session data migration failed: ${e.message}",
             )
@@ -95,13 +95,13 @@ public class RemnantDataMigration(public val amplitude: Amplitude, private val d
     }
 
     private suspend fun moveEvents() {
-        try {
+        runCatchingCancellable {
             val remnantEvents = databaseStorage.readEventsContent()
 
             for (event in remnantEvents) {
                 moveEvent(event, amplitude.storage, databaseStorage::removeEvent)
             }
-        } catch (e: Exception) {
+        }.onFailure { e ->
             LogcatLogger.logger.error(
                 "events migration failed: ${e.message}",
             )
@@ -109,13 +109,13 @@ public class RemnantDataMigration(public val amplitude: Amplitude, private val d
     }
 
     private suspend fun moveIdentifies() {
-        try {
+        runCatchingCancellable {
             val remnantIdentifies = databaseStorage.readIdentifiesContent()
 
             for (event in remnantIdentifies) {
                 moveEvent(event, amplitude.storage, databaseStorage::removeIdentify)
             }
-        } catch (e: Exception) {
+        }.onFailure { e ->
             LogcatLogger.logger.error(
                 "identifies migration failed: ${e.message}",
             )
@@ -123,13 +123,13 @@ public class RemnantDataMigration(public val amplitude: Amplitude, private val d
     }
 
     private suspend fun moveInterceptedIdentifies() {
-        try {
+        runCatchingCancellable {
             val remnantIdentifies = databaseStorage.readInterceptedIdentifiesContent()
 
             for (event in remnantIdentifies) {
                 moveEvent(event, amplitude.identifyInterceptStorage, databaseStorage::removeInterceptedIdentify)
             }
-        } catch (e: Exception) {
+        }.onFailure { e ->
             LogcatLogger.logger.error(
                 "intercepted identifies migration failed: ${e.message}",
             )
@@ -141,11 +141,11 @@ public class RemnantDataMigration(public val amplitude: Amplitude, private val d
         destinationStorage: Storage,
         removeFromSource: (rowId: Long) -> Unit,
     ) {
-        try {
+        runCatchingCancellable {
             val rowId = convertLegacyEvent(event)
             destinationStorage.writeEvent(event.toBaseEvent())
             removeFromSource(rowId)
-        } catch (e: Exception) {
+        }.onFailure { e ->
             LogcatLogger.logger.error(
                 "event migration failed: ${e.message}",
             )

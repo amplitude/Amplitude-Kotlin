@@ -1,6 +1,7 @@
 package com.amplitude.android.migration
 
 import com.amplitude.android.storage.AndroidStorageV2
+import com.amplitude.android.utilities.runCatchingCancellable
 import com.amplitude.common.Logger
 import com.amplitude.core.Storage
 import com.amplitude.core.utilities.toEvents
@@ -17,12 +18,12 @@ public class AndroidStorageMigration(
     }
 
     private suspend fun moveEventsToDestination() {
-        try {
+        runCatchingCancellable {
             source.rollover()
             val sourceEventFiles = source.readEventsContent() as List<String>
             if (sourceEventFiles.isEmpty()) {
                 source.cleanupMetadata()
-                return
+                return@runCatchingCancellable
             }
 
             for (sourceEventFilePath in sourceEventFiles) {
@@ -30,10 +31,10 @@ public class AndroidStorageMigration(
                 var count = 0
                 val baseEvents = JSONArray(events).toEvents()
                 for (event in baseEvents) {
-                    try {
+                    runCatchingCancellable {
                         count++
                         destination.writeEvent(event)
-                    } catch (e: Exception) {
+                    }.onFailure { e ->
                         logger.error("can't move event ($event) from file $sourceEventFilePath: ${e.message}")
                     }
                 }
@@ -42,7 +43,7 @@ public class AndroidStorageMigration(
             }
             source.cleanupMetadata()
             destination.rollover()
-        } catch (e: Exception) {
+        }.onFailure { e ->
             logger.error("can't move event files: ${e.message}")
         }
     }
@@ -59,20 +60,20 @@ public class AndroidStorageMigration(
     }
 
     private suspend fun moveSimpleValue(key: Storage.Constants) {
-        try {
-            val sourceValue = source.read(key) ?: return
+        runCatchingCancellable {
+            val sourceValue = source.read(key) ?: return@runCatchingCancellable
             val destinationValue = destination.read(key)
             if (destinationValue == null) {
-                try {
+                runCatchingCancellable {
                     logger.debug("Migrating $key with value $sourceValue")
                     destination.write(key, sourceValue)
-                } catch (e: Exception) {
+                }.getOrElse { e ->
                     logger.error("can't write destination $key: ${e.message}")
-                    return
+                    return@runCatchingCancellable
                 }
             }
             source.remove(key)
-        } catch (e: Exception) {
+        }.onFailure { e ->
             logger.error("can't move $key: ${e.message}")
         }
     }

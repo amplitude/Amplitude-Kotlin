@@ -9,6 +9,7 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.IdentifyOperation
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.utilities.logWithStackTrace
+import com.amplitude.core.utilities.runCatchingCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
@@ -110,9 +111,9 @@ public class IdentifyInterceptor(
         }
 
     private suspend fun saveIdentifyProperties(event: BaseEvent) {
-        try {
+        runCatchingCancellable {
             storage.writeEvent(event)
-        } catch (e: Exception) {
+        }.onFailure { e ->
             e.logWithStackTrace(logger, "Error when intercepting identifies")
         }
     }

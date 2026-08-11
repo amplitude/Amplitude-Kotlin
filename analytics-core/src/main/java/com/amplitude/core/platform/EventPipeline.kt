@@ -11,6 +11,7 @@ import com.amplitude.core.utilities.http.HttpClientInterface
 import com.amplitude.core.utilities.http.ResponseHandler
 import com.amplitude.core.utilities.http.TooManyRequestsResponse
 import com.amplitude.core.utilities.logWithStackTrace
+import com.amplitude.core.utilities.runCatchingCancellable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
@@ -94,9 +95,9 @@ public class EventPipeline(
                 // write to storage
                 val triggerFlush = (message.type == WriteQueueMessageType.FLUSH)
                 if (!triggerFlush && message.event != null) {
-                    try {
+                    runCatchingCancellable {
                         storage.writeEvent(message.event)
-                    } catch (e: Exception) {
+                    }.onFailure { e ->
                         e.logWithStackTrace(
                             amplitude.logger,
                             "Error when writing event to pipeline",
@@ -134,44 +135,52 @@ public class EventPipeline(
 
                 val eventFiles = storage.readEventsContent()
                 for (eventFile in eventFiles) {
-                    try {
-                        val eventsString = storage.getEventsString(eventFile)
-                        if (eventsString.isEmpty()) continue
+                    val shouldStop =
+                        runCatchingCancellable {
+                            val eventsString = storage.getEventsString(eventFile)
+                            if (eventsString.isEmpty()) return@runCatchingCancellable false
 
-                        val diagnostics = amplitude.diagnostics.extractDiagnostics()
-                        val response = httpClient.upload(eventsString, diagnostics)
-                        val shouldRetryUploadOnFailure = responseHandler.handle(response, eventFile, eventsString)
+                            val diagnostics = amplitude.diagnostics.extractDiagnostics()
+                            val response = httpClient.upload(eventsString, diagnostics)
+                            val shouldRetryUploadOnFailure =
+                                responseHandler.handle(response, eventFile, eventsString)
 
-                        // an invalid API key is terminal, retrying can never recover from it
-                        if (response is BadRequestResponse && response.isInvalidApiKeyResponse()) {
-                            amplitude.logger.error("Invalid API key. Don't retry.")
-                            break
-                        }
-
-                        // if we encounter a retryable error, we retry with delay and
-                        // restart the loop to get the newest event files
-                        if (shouldRetryUploadOnFailure == true) {
-                            if (response is TooManyRequestsResponse) {
-                                delay(TOO_MANY_REQUESTS_DELAY_IN_MS.milliseconds)
-                                uploadChannel.trySend(UPLOAD_SIG)
-                                break
+                            // an invalid API key is terminal, retrying can never recover from it
+                            if (response is BadRequestResponse && response.isInvalidApiKeyResponse()) {
+                                amplitude.logger.error("Invalid API key. Don't retry.")
+                                return@runCatchingCancellable true
                             }
 
-                            retryUploadHandler.attemptRetry { canRetry ->
-                                if (canRetry) {
+                            // if we encounter a retryable error, we retry with delay and
+                            // restart the loop to get the newest event files
+                            if (shouldRetryUploadOnFailure == true) {
+                                if (response is TooManyRequestsResponse) {
+                                    delay(TOO_MANY_REQUESTS_DELAY_IN_MS.milliseconds)
                                     uploadChannel.trySend(UPLOAD_SIG)
+                                    return@runCatchingCancellable true
                                 }
+
+                                retryUploadHandler.attemptRetry { canRetry ->
+                                    if (canRetry) {
+                                        uploadChannel.trySend(UPLOAD_SIG)
+                                    }
+                                }
+                                return@runCatchingCancellable true
                             }
-                            break
+                            retryUploadHandler.reset() // always reset when we've successfully uploaded
+                            false
+                        }.getOrElse { e ->
+                            when (e) {
+                                is FileNotFoundException ->
+                                    e.message?.let {
+                                        amplitude.logger.warn("Event storage file not found: $it")
+                                    }
+                                else ->
+                                    e.logWithStackTrace(amplitude.logger, "Error when uploading event")
+                            }
+                            false
                         }
-                        retryUploadHandler.reset() // always reset when we've successfully uploaded
-                    } catch (e: FileNotFoundException) {
-                        e.message?.let {
-                            amplitude.logger.warn("Event storage file not found: $it")
-                        }
-                    } catch (e: Exception) {
-                        e.logWithStackTrace(amplitude.logger, "Error when uploading event")
-                    }
+                    if (shouldStop) break
                 }
             }
         }

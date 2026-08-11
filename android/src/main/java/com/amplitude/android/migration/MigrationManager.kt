@@ -8,6 +8,7 @@ import com.amplitude.android.storage.AndroidStorageContextV1
 import com.amplitude.android.storage.AndroidStorageContextV2
 import com.amplitude.android.storage.LegacySdkStorageContext
 import com.amplitude.android.storage.StorageVersion
+import com.amplitude.android.utilities.runCatchingCancellable
 import com.amplitude.common.Logger
 
 internal class MigrationManager(private val amplitude: Amplitude) {
@@ -35,7 +36,7 @@ internal class MigrationManager(private val amplitude: Amplitude) {
     }
 
     internal suspend fun safePerformMigration() {
-        try {
+        runCatchingCancellable {
             val config = amplitude.configuration as Configuration
             if (config.migrateLegacyData) {
                 val legacySdkStorageContext = LegacySdkStorageContext(amplitude)
@@ -49,7 +50,7 @@ internal class MigrationManager(private val amplitude: Amplitude) {
             storageContextV2.migrateToLatestVersion()
 
             sharedPreferences.edit().putInt("storage_version", StorageVersion.V3.rawValue).apply()
-        } catch (ex: Throwable) {
+        }.onFailure { ex ->
             logger.error("Failed to migrate storage: ${ex.message}")
         }
     }

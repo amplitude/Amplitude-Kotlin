@@ -14,6 +14,7 @@ import com.amplitude.core.remoteconfig.RemoteConfigClient.Key
 import com.amplitude.core.remoteconfig.RemoteConfigClient.Source.CACHE
 import com.amplitude.core.remoteconfig.RemoteConfigClient.Source.REMOTE
 import com.amplitude.core.utilities.http.HttpClient
+import com.amplitude.core.utilities.runCatchingCancellable
 import com.amplitude.core.utilities.toJSONObject
 import com.amplitude.core.utilities.toMapObj
 import kotlinx.coroutines.CoroutineDispatcher
@@ -487,22 +488,22 @@ internal class RemoteConfigClientImpl(
 
     private suspend fun performFetch(fetchId: Long): FetchOutcome {
         val blob =
-            try {
-                fetchRemoteConfig() ?: return FetchOutcome.Failure
-            } catch (e: Exception) {
+            runCatchingCancellable {
+                fetchRemoteConfig()
+            }.getOrElse { e ->
                 logger.error("Error fetching remote configs: ${e.message}")
                 return FetchOutcome.Failure
-            }
+            } ?: return FetchOutcome.Failure
         val timestamp = System.currentTimeMillis()
         // Persisting the blob is best-effort: a storage write failure must not discard
         // a valid in-memory remote config (mirrors iOS `try? storage.setConfig`).
-        try {
+        runCatchingCancellable {
             withContext(storageIODispatcher) {
                 storage.write(REMOTE_CONFIG, blob.toJSONObject().toString())
                 storage.write(REMOTE_CONFIG_TIMESTAMP, timestamp.toString())
                 logger.debug("Successfully stored remote configs to storage")
             }
-        } catch (e: Exception) {
+        }.onFailure { e ->
             logger.error("Failed to persist remote configs (delivering anyway): ${e.message}")
         }
         return FetchOutcome.Success(blob, timestamp, fetchId)
@@ -513,12 +514,12 @@ internal class RemoteConfigClientImpl(
     }
 
     private suspend fun shouldRateLimit(): Boolean {
-        return try {
+        return runCatchingCancellable {
             val lastTsStr = withContext(storageIODispatcher) { storage.read(REMOTE_CONFIG_TIMESTAMP) }
             val lastTs = lastTsStr?.toLongOrNull() ?: 0L
-            if (lastTs <= 0L) return false
+            if (lastTs <= 0L) return@runCatchingCancellable false
             (System.currentTimeMillis() - lastTs) < MIN_FETCH_INTERVAL_MS
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             // Don't let a storage read failure leak out of the refresh coroutine or
             // wedge the rate limiter — fall through and let the fetch proceed.
             logger.error("Failed to read rate-limit timestamp: ${e.message}")
@@ -534,8 +535,8 @@ internal class RemoteConfigClientImpl(
      * [storageIODispatcher] (e.g. inside `withContext(storageIODispatcher)`).
      */
     private fun getStoredConfigData(dotPath: String): ConfigData? {
-        return try {
-            val blob = getStoredConfigBlob() ?: return null
+        return runCatchingCancellable {
+            val blob = getStoredConfigBlob() ?: return@runCatchingCancellable null
 
             val resolved = resolveDotPath(blob, dotPath)
             val timestampStr = storage.read(REMOTE_CONFIG_TIMESTAMP)
@@ -543,7 +544,7 @@ internal class RemoteConfigClientImpl(
 
             logger.debug("Retrieved stored config for $dotPath with ${resolved?.size ?: 0} properties")
             ConfigData(resolved, timestamp)
-        } catch (e: Exception) {
+        }.getOrElse { e ->
             logger.error("Failed to retrieve stored config data for $dotPath: ${e.message}")
             null
         }
