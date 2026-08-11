@@ -20,9 +20,10 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.util.ReflectionHelpers
 
 @RunWith(RobolectricTestRunner::class)
-@Config(manifest = Config.NONE, sdk = [Build.VERSION_CODES.LOLLIPOP])
+@Config(manifest = Config.NONE, sdk = [Build.VERSION_CODES.M])
 class AndroidNetworkConnectivityCheckerTest {
     private val context: Context = mockk()
     private val connectivityManager: ConnectivityManager = mockk()
@@ -159,34 +160,48 @@ class AndroidNetworkConnectivityCheckerTest {
 
     @Test
     fun `isConnected should return true when any network has transport on pre-API 23`() {
-        every { context.checkCallingOrSelfPermission("android.permission.ACCESS_NETWORK_STATE") } returns 0
-        val networks = arrayOf(mockk<Network>(), mockk<Network>())
-        every { connectivityManager.allNetworks } returns networks
-        every { connectivityManager.getNetworkCapabilities(networks[0]) } returns null
-        every { connectivityManager.getNetworkCapabilities(networks[1]) } returns networkCapabilities
-        every { networkCapabilities.hasTransport(TRANSPORT_WIFI) } returns true
-        every { networkCapabilities.hasTransport(TRANSPORT_CELLULAR) } returns false
-        networkConnectivityChecker = AndroidNetworkConnectivityChecker(context, logger)
+        val originalSdk = Build.VERSION.SDK_INT
+        ReflectionHelpers.setStaticField(
+            Build.VERSION::class.java,
+            "SDK_INT",
+            Build.VERSION_CODES.LOLLIPOP,
+        )
+        try {
+            every { context.checkCallingOrSelfPermission("android.permission.ACCESS_NETWORK_STATE") } returns 0
+            val networks = arrayOf(mockk<Network>(), mockk<Network>())
+            every { connectivityManager.allNetworks } returns networks
+            every { connectivityManager.getNetworkCapabilities(networks[0]) } returns null
+            every { connectivityManager.getNetworkCapabilities(networks[1]) } returns networkCapabilities
+            every { networkCapabilities.hasTransport(TRANSPORT_WIFI) } returns true
+            every { networkCapabilities.hasTransport(TRANSPORT_CELLULAR) } returns false
+            networkConnectivityChecker = AndroidNetworkConnectivityChecker(context, logger)
 
-        // This path is only taken on pre-API 23, but since minSdk is now 21, this is less relevant
-        // However, the code still handles it for devices between API 21-22
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
             assertTrue(networkConnectivityChecker.isConnected())
+        } finally {
+            ReflectionHelpers.setStaticField(Build.VERSION::class.java, "SDK_INT", originalSdk)
         }
     }
 
     @Test
     fun `isConnected should return false when no networks have transport on pre-API 23`() {
-        every { context.checkCallingOrSelfPermission("android.permission.ACCESS_NETWORK_STATE") } returns 0
-        val networks = arrayOf(mockk<Network>())
-        every { connectivityManager.allNetworks } returns networks
-        every { connectivityManager.getNetworkCapabilities(networks[0]) } returns networkCapabilities
-        every { networkCapabilities.hasTransport(TRANSPORT_WIFI) } returns false
-        every { networkCapabilities.hasTransport(TRANSPORT_CELLULAR) } returns false
-        networkConnectivityChecker = AndroidNetworkConnectivityChecker(context, logger)
+        val originalSdk = Build.VERSION.SDK_INT
+        ReflectionHelpers.setStaticField(
+            Build.VERSION::class.java,
+            "SDK_INT",
+            Build.VERSION_CODES.LOLLIPOP,
+        )
+        try {
+            every { context.checkCallingOrSelfPermission("android.permission.ACCESS_NETWORK_STATE") } returns 0
+            val networks = arrayOf(mockk<Network>())
+            every { connectivityManager.allNetworks } returns networks
+            every { connectivityManager.getNetworkCapabilities(networks[0]) } returns networkCapabilities
+            every { networkCapabilities.hasTransport(TRANSPORT_WIFI) } returns false
+            every { networkCapabilities.hasTransport(TRANSPORT_CELLULAR) } returns false
+            networkConnectivityChecker = AndroidNetworkConnectivityChecker(context, logger)
 
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
             assertFalse(networkConnectivityChecker.isConnected())
+        } finally {
+            ReflectionHelpers.setStaticField(Build.VERSION::class.java, "SDK_INT", originalSdk)
         }
     }
 
@@ -203,7 +218,7 @@ class AndroidNetworkConnectivityCheckerTest {
     @Test
     fun `isConnected should return true and log warning on exception`() {
         every { context.checkCallingOrSelfPermission("android.permission.ACCESS_NETWORK_STATE") } returns 0
-        every { connectivityManager.allNetworks } throws RuntimeException("Test exception")
+        every { connectivityManager.activeNetwork } throws RuntimeException("Test exception")
         networkConnectivityChecker = AndroidNetworkConnectivityChecker(context, logger)
 
         assertTrue(networkConnectivityChecker.isConnected())
