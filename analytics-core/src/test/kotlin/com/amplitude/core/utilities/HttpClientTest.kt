@@ -187,7 +187,7 @@ class HttpClientTest {
         runRequest()
         assertTrue(503 in response.status.range)
         val responseBody = response as FailedResponse
-        assertEquals("<html>Error occurred</html>", responseBody.error)
+        assertEquals("", responseBody.error)
     }
 
     @Test
@@ -208,15 +208,15 @@ class HttpClientTest {
 
         val badRequest = httpClient.upload(events)
         assertTrue(badRequest is BadRequestResponse)
-        assertEquals("invalid_api_key", (badRequest as BadRequestResponse).error)
+        assertEquals("", (badRequest as BadRequestResponse).error)
 
         val payloadTooLarge = httpClient.upload(events)
         assertTrue(payloadTooLarge is PayloadTooLargeResponse)
-        assertEquals("Request too large.", (payloadTooLarge as PayloadTooLargeResponse).error)
+        assertEquals("", (payloadTooLarge as PayloadTooLargeResponse).error)
 
         val tooManyRequests = httpClient.upload(events)
         assertTrue(tooManyRequests is TooManyRequestsResponse)
-        assertEquals("Too many requests", (tooManyRequests as TooManyRequestsResponse).error)
+        assertEquals("", (tooManyRequests as TooManyRequestsResponse).error)
     }
 
     @Test

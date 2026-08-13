@@ -98,7 +98,7 @@ class AnalyticsResponseTest {
             val response = AnalyticsResponse.create(it, "Invalid JSON")
             assertTrue(response is FailedResponse)
             assertEquals(HttpStatus.FAILED, response.status)
-            assertEquals("Invalid JSON", (response as FailedResponse).error)
+            assertEquals("", (response as FailedResponse).error)
         }
     }
 
@@ -118,9 +118,16 @@ class AnalyticsResponseTest {
             assertTrue(response is BadRequestResponse)
             response as BadRequestResponse
             assertEquals(HttpStatus.BAD_REQUEST, response.status)
-            assertEquals("invalid_api_key", response.error)
+            assertEquals("", response.error)
             assertTrue(response.getEventIndicesToDrop().isEmpty())
             assertFalse(response.isInvalidApiKeyResponse())
+        }
+
+        @Test
+        fun `should not treat plain text invalid api key as terminal`() {
+            val response = AnalyticsResponse.create(400, "Invalid API key: leaked-from-proxy")
+            assertTrue(response is BadRequestResponse)
+            assertFalse((response as BadRequestResponse).isInvalidApiKeyResponse())
         }
 
         @Test
@@ -128,7 +135,7 @@ class AnalyticsResponseTest {
             val response = AnalyticsResponse.create(413, "Request too large.")
             assertTrue(response is PayloadTooLargeResponse)
             assertEquals(HttpStatus.PAYLOAD_TOO_LARGE, response.status)
-            assertEquals("Request too large.", (response as PayloadTooLargeResponse).error)
+            assertEquals("", (response as PayloadTooLargeResponse).error)
         }
 
         @Test
@@ -137,7 +144,7 @@ class AnalyticsResponseTest {
             assertTrue(response is TooManyRequestsResponse)
             response as TooManyRequestsResponse
             assertEquals(HttpStatus.TOO_MANY_REQUESTS, response.status)
-            assertEquals("Too many requests", response.error)
+            assertEquals("", response.error)
             assertTrue(response.throttledEvents.isEmpty())
         }
 

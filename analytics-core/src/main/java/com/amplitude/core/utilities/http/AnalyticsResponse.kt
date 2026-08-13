@@ -29,14 +29,14 @@ public sealed class AnalyticsResponse(public val status: HttpStatus) {
         }
 
         private fun parseResponseBodyOrGetDefault(responseBody: String?): JSONObject {
-            val defaultObject = JSONObject()
-            if (responseBody.isNullOrEmpty()) return defaultObject
+            if (responseBody.isNullOrEmpty()) return JSONObject()
 
             return try {
                 JSONObject(responseBody)
             } catch (ignored: Exception) {
-                defaultObject.put("error", responseBody)
-                defaultObject
+                // Unparseable bodies must not populate "error" — that field drives
+                // terminal control flow such as isInvalidApiKeyResponse().
+                JSONObject()
             }
         }
     }
