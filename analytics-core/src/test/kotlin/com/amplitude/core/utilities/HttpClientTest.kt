@@ -3,8 +3,11 @@ package com.amplitude.core.utilities
 import com.amplitude.common.Logger
 import com.amplitude.core.Configuration
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.utilities.http.BadRequestResponse
 import com.amplitude.core.utilities.http.FailedResponse
 import com.amplitude.core.utilities.http.HttpClient
+import com.amplitude.core.utilities.http.PayloadTooLargeResponse
+import com.amplitude.core.utilities.http.TooManyRequestsResponse
 import io.mockk.mockk
 import io.mockk.spyk
 import io.mockk.verify
@@ -185,6 +188,35 @@ class HttpClientTest {
         assertTrue(503 in response.status.range)
         val responseBody = response as FailedResponse
         assertEquals("<html>Error occurred</html>", responseBody.error)
+    }
+
+    @Test
+    fun `upload does not throw on non-json 400 413 and 429`() {
+        server.enqueue(MockResponse().setResponseCode(400).setBody("invalid_api_key"))
+        server.enqueue(MockResponse().setResponseCode(413).setBody("Request too large."))
+        server.enqueue(MockResponse().setResponseCode(429).setBody("Too many requests"))
+
+        val config =
+            Configuration(
+                apiKey = apiKey,
+                serverUrl = server.url("/").toString(),
+            )
+        val event = BaseEvent()
+        event.eventType = "test"
+        val events = JSONUtil.eventsToString(listOf(event))
+        val httpClient = HttpClient(config, silentLogger)
+
+        val badRequest = httpClient.upload(events)
+        assertTrue(badRequest is BadRequestResponse)
+        assertEquals("invalid_api_key", (badRequest as BadRequestResponse).error)
+
+        val payloadTooLarge = httpClient.upload(events)
+        assertTrue(payloadTooLarge is PayloadTooLargeResponse)
+        assertEquals("Request too large.", (payloadTooLarge as PayloadTooLargeResponse).error)
+
+        val tooManyRequests = httpClient.upload(events)
+        assertTrue(tooManyRequests is TooManyRequestsResponse)
+        assertEquals("Too many requests", (tooManyRequests as TooManyRequestsResponse).error)
     }
 
     @Test

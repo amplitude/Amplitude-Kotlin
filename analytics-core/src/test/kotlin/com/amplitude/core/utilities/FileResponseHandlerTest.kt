@@ -7,6 +7,7 @@ import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.diagnostics.DiagnosticsClient
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline
+import com.amplitude.core.utilities.http.AnalyticsResponse
 import com.amplitude.core.utilities.http.BadRequestResponse
 import com.amplitude.core.utilities.http.FailedResponse
 import com.amplitude.core.utilities.http.PayloadTooLargeResponse
@@ -246,6 +247,51 @@ class FileResponseHandlerTest {
             storage.removeFile("file_path")
         }
         assertFalse(shouldRetryUploadOnFailure)
+    }
+
+    @Test
+    fun `bad request with plain text proxy body releases file for retry`() {
+        val response = AnalyticsResponse.create(400, "invalid_api_key") as BadRequestResponse
+        val shouldRetryUploadOnFailure =
+            handler.handleBadRequestResponse(
+                badRequestResponse = response,
+                events = "file_path",
+                eventsString =
+                    JSONUtil.eventsToString(
+                        listOf(
+                            generateBaseEvent("test1"),
+                            generateBaseEvent("test2"),
+                        ),
+                    ),
+            )
+
+        verify(exactly = 1) {
+            storage.releaseFile("file_path")
+        }
+        verify(exactly = 0) {
+            storage.removeFile("file_path")
+        }
+        assertTrue(shouldRetryUploadOnFailure)
+    }
+
+    @Test
+    fun `payload too large with plain text body splits the file`() {
+        val response = AnalyticsResponse.create(413, "Request too large.") as PayloadTooLargeResponse
+        handler.handlePayloadTooLargeResponse(
+            payloadTooLargeResponse = response,
+            events = "file_path",
+            eventsString =
+                JSONUtil.eventsToString(
+                    listOf(
+                        generateBaseEvent("test1"),
+                        generateBaseEvent("test2"),
+                    ),
+                ),
+        )
+
+        verify(exactly = 1) {
+            storage.splitEventFile("file_path", any())
+        }
     }
 
     @Test

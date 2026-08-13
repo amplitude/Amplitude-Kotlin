@@ -20,9 +20,9 @@ public sealed class AnalyticsResponse(public val status: HttpStatus) {
         ): AnalyticsResponse {
             return when (responseCode) {
                 in SUCCESS.range -> SuccessResponse()
-                in BAD_REQUEST.range -> BadRequestResponse(JSONObject(responseBody))
-                in PAYLOAD_TOO_LARGE.range -> PayloadTooLargeResponse(JSONObject(responseBody))
-                in TOO_MANY_REQUESTS.range -> TooManyRequestsResponse(JSONObject(responseBody))
+                in BAD_REQUEST.range -> BadRequestResponse(parseResponseBodyOrGetDefault(responseBody))
+                in PAYLOAD_TOO_LARGE.range -> PayloadTooLargeResponse(parseResponseBodyOrGetDefault(responseBody))
+                in TOO_MANY_REQUESTS.range -> TooManyRequestsResponse(parseResponseBodyOrGetDefault(responseBody))
                 in TIMEOUT.range -> TimeoutResponse()
                 else -> FailedResponse(parseResponseBodyOrGetDefault(responseBody))
             }
