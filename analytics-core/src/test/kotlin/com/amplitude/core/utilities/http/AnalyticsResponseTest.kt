@@ -6,6 +6,7 @@ import org.json.JSONObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 
 class AnalyticsResponseTest {
@@ -16,6 +17,23 @@ class AnalyticsResponseTest {
             assertTrue(response is SuccessResponse)
             assertEquals(HttpStatus.SUCCESS, response.status)
         }
+    }
+
+    @Test
+    fun `test create bad request response`() {
+        val responseBody =
+            JSONObject().apply {
+                put("error", "Invalid API key")
+                put("events_with_invalid_fields", JSONObject().put("time", JSONArray().put(0)))
+            }.toString()
+
+        val response = AnalyticsResponse.create(400, responseBody)
+        assertTrue(response is BadRequestResponse)
+        response as BadRequestResponse
+        assertEquals(HttpStatus.BAD_REQUEST, response.status)
+        assertEquals("Invalid API key", response.error)
+        assertEquals(setOf(0), response.getEventIndicesToDrop())
+        assertTrue(response.isInvalidApiKeyResponse())
     }
 
     @Test
@@ -80,7 +98,7 @@ class AnalyticsResponseTest {
             val response = AnalyticsResponse.create(it, "Invalid JSON")
             assertTrue(response is FailedResponse)
             assertEquals(HttpStatus.FAILED, response.status)
-            assertEquals("Invalid JSON", (response as FailedResponse).error)
+            assertEquals("", (response as FailedResponse).error)
         }
     }
 
@@ -90,5 +108,59 @@ class AnalyticsResponseTest {
         assertTrue(response is FailedResponse)
         assertEquals(HttpStatus.FAILED, response.status)
         assertEquals("", (response as FailedResponse).error)
+    }
+
+    @Nested
+    inner class `non-json 4xx bodies` {
+        @Test
+        fun `should parse plain text 400 as bad request without throwing`() {
+            val response = AnalyticsResponse.create(400, "invalid_api_key")
+            assertTrue(response is BadRequestResponse)
+            response as BadRequestResponse
+            assertEquals(HttpStatus.BAD_REQUEST, response.status)
+            assertEquals("", response.error)
+            assertTrue(response.getEventIndicesToDrop().isEmpty())
+            assertFalse(response.isInvalidApiKeyResponse())
+        }
+
+        @Test
+        fun `should not treat plain text invalid api key as terminal`() {
+            val response = AnalyticsResponse.create(400, "Invalid API key: leaked-from-proxy")
+            assertTrue(response is BadRequestResponse)
+            assertFalse((response as BadRequestResponse).isInvalidApiKeyResponse())
+        }
+
+        @Test
+        fun `should parse plain text 413 as payload too large without throwing`() {
+            val response = AnalyticsResponse.create(413, "Request too large.")
+            assertTrue(response is PayloadTooLargeResponse)
+            assertEquals(HttpStatus.PAYLOAD_TOO_LARGE, response.status)
+            assertEquals("", (response as PayloadTooLargeResponse).error)
+        }
+
+        @Test
+        fun `should parse plain text 429 as too many requests without throwing`() {
+            val response = AnalyticsResponse.create(429, "Too many requests")
+            assertTrue(response is TooManyRequestsResponse)
+            response as TooManyRequestsResponse
+            assertEquals(HttpStatus.TOO_MANY_REQUESTS, response.status)
+            assertEquals("", response.error)
+            assertTrue(response.throttledEvents.isEmpty())
+        }
+
+        @Test
+        fun `should parse null 4xx bodies without throwing`() {
+            listOf(400, 413, 429).forEach { statusCode ->
+                val response = AnalyticsResponse.create(statusCode, null)
+                assertEquals(
+                    when (statusCode) {
+                        400 -> HttpStatus.BAD_REQUEST
+                        413 -> HttpStatus.PAYLOAD_TOO_LARGE
+                        else -> HttpStatus.TOO_MANY_REQUESTS
+                    },
+                    response.status,
+                )
+            }
+        }
     }
 }

@@ -20,23 +20,23 @@ public sealed class AnalyticsResponse(public val status: HttpStatus) {
         ): AnalyticsResponse {
             return when (responseCode) {
                 in SUCCESS.range -> SuccessResponse()
-                in BAD_REQUEST.range -> BadRequestResponse(JSONObject(responseBody))
-                in PAYLOAD_TOO_LARGE.range -> PayloadTooLargeResponse(JSONObject(responseBody))
-                in TOO_MANY_REQUESTS.range -> TooManyRequestsResponse(JSONObject(responseBody))
+                in BAD_REQUEST.range -> BadRequestResponse(parseResponseBodyOrGetDefault(responseBody))
+                in PAYLOAD_TOO_LARGE.range -> PayloadTooLargeResponse(parseResponseBodyOrGetDefault(responseBody))
+                in TOO_MANY_REQUESTS.range -> TooManyRequestsResponse(parseResponseBodyOrGetDefault(responseBody))
                 in TIMEOUT.range -> TimeoutResponse()
                 else -> FailedResponse(parseResponseBodyOrGetDefault(responseBody))
             }
         }
 
         private fun parseResponseBodyOrGetDefault(responseBody: String?): JSONObject {
-            val defaultObject = JSONObject()
-            if (responseBody.isNullOrEmpty()) return defaultObject
+            if (responseBody.isNullOrEmpty()) return JSONObject()
 
             return try {
                 JSONObject(responseBody)
             } catch (ignored: Exception) {
-                defaultObject.put("error", responseBody)
-                defaultObject
+                // Unparseable bodies must not populate "error" — that field drives
+                // terminal control flow such as isInvalidApiKeyResponse().
+                JSONObject()
             }
         }
     }
