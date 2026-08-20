@@ -2,6 +2,8 @@ package com.amplitude.android
 
 import android.app.Application
 import android.content.Context
+import com.amplitude.android.crash.CrashCatcher
+import com.amplitude.android.crash.recordCrash
 import com.amplitude.android.diagnostics.AndroidDiagnosticsContextProvider
 import com.amplitude.android.migration.MigrationManager
 import com.amplitude.android.plugins.AnalyticsConnectorIdentityPlugin
@@ -48,6 +50,14 @@ public open class Amplitude internal constructor(
         storageIODispatcher = storageIODispatcher,
     ) {
     public constructor(configuration: Configuration) : this(configuration, State())
+
+    private val crashCatcher = CrashCatcher(configuration.context)
+
+    init {
+        crashCatcher.consumePreviousCrash()?.let { previousCrash ->
+            diagnosticsClient.recordCrash(previousCrash)
+        }
+    }
 
     override val sessionId: Long
         get() {
