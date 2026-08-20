@@ -2,6 +2,8 @@ package com.amplitude.android
 
 import android.app.Application
 import android.content.Context
+import com.amplitude.android.crash.CrashCatcher
+import com.amplitude.android.crash.recordCrash
 import com.amplitude.android.diagnostics.AndroidDiagnosticsContextProvider
 import com.amplitude.android.migration.MigrationManager
 import com.amplitude.android.plugins.AnalyticsConnectorIdentityPlugin
@@ -48,6 +50,18 @@ public open class Amplitude internal constructor(
         storageIODispatcher = storageIODispatcher,
     ) {
     public constructor(configuration: Configuration) : this(configuration, State())
+
+    // Assigned in [initWatchers], after configuration validation and before any other
+    // initialization, so the handler covers SDK init without leaking on invalid config.
+    private lateinit var crashCatcher: CrashCatcher
+
+    override fun initWatchers() {
+        crashCatcher =
+            CrashCatcher(
+                context = (configuration as Configuration).context,
+                ioDispatcher = storageIODispatcher,
+            )
+    }
 
     override val sessionId: Long
         get() {
@@ -121,6 +135,10 @@ public open class Amplitude internal constructor(
         // A build that outlives its instance must not install plugins or claim shared state:
         // the replacement owns both by then.
         if (!isActive) return
+
+        crashCatcher.consumePreviousCrash()?.let { previousCrash ->
+            diagnosticsClient.recordCrash(previousCrash)
+        }
 
         val migrationManager = MigrationManager(this)
         migrationManager.migrateOldStorage()
