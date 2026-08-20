@@ -9,9 +9,10 @@ internal class CrashCatcher(
 ) {
     private val defaultCrashHandler = Thread.getDefaultUncaughtExceptionHandler()
     private val crashStorage by lazy { CrashStorage(appContext = context) }
+    private var released = false
 
-    init {
-        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+    private val uncaughtExceptionHandler =
+        Thread.UncaughtExceptionHandler { thread, throwable ->
             try {
                 saveCrashReport(throwable)
             } catch (_: Throwable) {
@@ -25,11 +26,31 @@ internal class CrashCatcher(
                     }
             }
         }
+
+    init {
+        Thread.setDefaultUncaughtExceptionHandler(uncaughtExceptionHandler)
     }
 
     fun consumePreviousCrash(): String? {
         synchronized(storageLock) {
             return crashStorage.consumePreviousCrash()
+        }
+    }
+
+    fun release() {
+        synchronized(companionLock) {
+            releaseLocked()
+        }
+    }
+
+    private fun releaseLocked() {
+        if (released) return
+        released = true
+        if (activeCatcher === this) {
+            activeCatcher = null
+        }
+        if (Thread.getDefaultUncaughtExceptionHandler() === uncaughtExceptionHandler) {
+            Thread.setDefaultUncaughtExceptionHandler(defaultCrashHandler)
         }
     }
 
@@ -46,6 +67,15 @@ internal class CrashCatcher(
 
     companion object {
         private val storageLock = Any()
+        private val companionLock = Any()
         private var lastPersistedThrowable: Throwable? = null
+        private var activeCatcher: CrashCatcher? = null
+
+        fun install(context: Context): CrashCatcher {
+            synchronized(companionLock) {
+                activeCatcher?.releaseLocked()
+                return CrashCatcher(context).also { activeCatcher = it }
+            }
+        }
     }
 }

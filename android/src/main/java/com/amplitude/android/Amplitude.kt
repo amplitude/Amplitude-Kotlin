@@ -51,13 +51,9 @@ public open class Amplitude internal constructor(
     ) {
     public constructor(configuration: Configuration) : this(configuration, State())
 
-    private val crashCatcher = CrashCatcher(configuration.context)
-
-    init {
-        crashCatcher.consumePreviousCrash()?.let { previousCrash ->
-            diagnosticsClient.recordCrash(previousCrash)
-        }
-    }
+    // Assigned in [startAsActiveInstance], not by a field initializer: initializers run after the
+    // core constructor, where they would install a handler for an instance already retired.
+    private var crashCatcher: CrashCatcher? = null
 
     override val sessionId: Long
         get() {
@@ -132,6 +128,12 @@ public open class Amplitude internal constructor(
         // the replacement owns both by then.
         if (!isActive) return
 
+        crashCatcher?.consumePreviousCrash()?.let { previousCrash ->
+            diagnosticsClient.recordCrash(previousCrash)
+        }
+
+        if (!isActive) return
+
         val migrationManager = MigrationManager(this)
         migrationManager.migrateOldStorage()
 
@@ -197,6 +199,7 @@ public open class Amplitude internal constructor(
     internal fun startAsActiveInstance() {
         registerShutdownHook()
         application.registerActivityLifecycleCallbacks(activityLifecycleCallbacks)
+        crashCatcher = CrashCatcher.install((configuration as Configuration).context)
     }
 
     /** Marks this instance inactive, returning false if it already was. */
@@ -207,6 +210,9 @@ public open class Amplitude internal constructor(
      * instance, and queued events still drain to the storage the replacement shares by name.
      */
     internal fun retire() {
+        runCatching { crashCatcher?.release() }
+            .onFailure { logger.warn("Failed to release crash catcher: $it") }
+        crashCatcher = null
         runCatching { application.unregisterActivityLifecycleCallbacks(activityLifecycleCallbacks) }
             .onFailure { logger.warn("Failed to unregister activity lifecycle callbacks: $it") }
         runCatching { (timeline as Timeline).close() }
