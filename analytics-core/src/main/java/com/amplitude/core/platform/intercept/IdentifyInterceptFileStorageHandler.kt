@@ -6,6 +6,7 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.IdentifyOperation
 import com.amplitude.core.platform.intercept.IdentifyInterceptorUtil.filterNonNullValues
 import com.amplitude.core.utilities.EventsFileStorage
+import com.amplitude.core.utilities.runCatchingCancellable
 import com.amplitude.core.utilities.toEvents
 import kotlinx.coroutines.launch
 import org.json.JSONArray
@@ -17,13 +18,14 @@ public class IdentifyInterceptFileStorageHandler(
     private val amplitude: Amplitude,
 ) : IdentifyInterceptStorageHandler {
     override suspend fun getTransferIdentifyEvent(): BaseEvent? {
-        try {
+        runCatchingCancellable {
             storage.rollover()
-        } catch (e: FileNotFoundException) {
-            e.message?.let {
-                logger.warn("Event storage file not found: $it")
+        }.onFailure { e ->
+            if (e is FileNotFoundException) {
+                e.message?.let { logger.warn("Event storage file not found: $it") }
+                return null
             }
-            return null
+            throw e
         }
         val eventsData = storage.readEventsContent()
         if (eventsData.isEmpty()) {
@@ -32,29 +34,30 @@ public class IdentifyInterceptFileStorageHandler(
         var event: BaseEvent? = null
         var identifyEventUserProperties: MutableMap<String, Any?>? = null
         for (eventPath in eventsData) {
-            try {
+            runCatchingCancellable {
                 val eventsString = storage.getEventsString(eventPath)
                 if (eventsString.isEmpty()) {
                     removeFile(eventPath as String)
-                    continue
+                    return@runCatchingCancellable
                 }
                 val eventsList = JSONArray(eventsString).toEvents()
                 if (eventsList.isEmpty()) {
                     removeFile(eventPath as String)
-                    continue
+                    return@runCatchingCancellable
                 }
                 var events = eventsList
                 if (event == null) {
-                    event = eventsList[0]
+                    val firstEvent = eventsList[0]
+                    event = firstEvent
                     identifyEventUserProperties =
-                        filterNonNullValues(event.userProperties?.get(IdentifyOperation.SET.operationType) as MutableMap<String, Any?>)
+                        filterNonNullValues(firstEvent.userProperties?.get(IdentifyOperation.SET.operationType) as MutableMap<String, Any?>)
                     events = eventsList.subList(1, eventsList.size)
                 }
                 val userProperties = IdentifyInterceptorUtil.mergeIdentifyList(events)
                 identifyEventUserProperties?.putAll(userProperties)
                 removeFile(eventPath as String)
-            } catch (e: Exception) {
-                logger.warn("Identify Merge error: " + e.message)
+            }.onFailure { e ->
+                logger.warn("Identify Merge error: ${e.message}")
                 removeFile(eventPath as String)
             }
         }
@@ -66,13 +69,14 @@ public class IdentifyInterceptFileStorageHandler(
     }
 
     override suspend fun clearIdentifyIntercepts() {
-        try {
+        runCatchingCancellable {
             storage.rollover()
-        } catch (e: FileNotFoundException) {
-            e.message?.let {
-                logger.warn("Event storage file not found: $it")
+        }.onFailure { e ->
+            if (e is FileNotFoundException) {
+                e.message?.let { logger.warn("Event storage file not found: $it") }
+                return
             }
-            return
+            throw e
         }
         val eventsData = storage.readEventsContent()
         if (eventsData.isEmpty()) {

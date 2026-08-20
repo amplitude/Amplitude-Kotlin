@@ -67,7 +67,7 @@ public class AndroidStorageMigration(
                 runCatchingCancellable {
                     logger.debug("Migrating $key with value $sourceValue")
                     destination.write(key, sourceValue)
-                }.getOrElse { e ->
+                }.onFailure { e ->
                     logger.error("can't write destination $key: ${e.message}")
                     return@runCatchingCancellable
                 }

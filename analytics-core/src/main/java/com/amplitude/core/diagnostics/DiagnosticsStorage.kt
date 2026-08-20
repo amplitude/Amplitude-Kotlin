@@ -2,8 +2,8 @@ package com.amplitude.core.diagnostics
 
 import com.amplitude.common.Logger
 import com.amplitude.core.utilities.Hash
+import com.amplitude.core.utilities.runCatchingCancellable
 import com.amplitude.core.utilities.toHexString
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -65,7 +65,7 @@ internal class DiagnosticsStorage(
                 val result = channel.receiveCatching()
                 if (result.isClosed) break
                 result.getOrNull()?.let { operation ->
-                    try {
+                    runCatchingCancellable {
                         when (operation) {
                             is Operation.SaveSnapshot -> {
                                 val directory = activeStorageDirectory()
@@ -76,9 +76,7 @@ internal class DiagnosticsStorage(
                                 removeActiveFiles()
                             }
                         }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
+                    }.onFailure { e ->
                         logger.error("DiagnosticsStorage: Error processing operation: ${e.message}")
                     }
                 }

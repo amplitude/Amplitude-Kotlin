@@ -124,11 +124,15 @@ public class EventPipeline(
         scope.launch(amplitude.networkIODispatcher) {
             uploadChannel.consumeEach { _ ->
                 withContext(amplitude.storageIODispatcher) {
-                    try {
+                    runCatchingCancellable {
                         storage.rollover()
-                    } catch (e: FileNotFoundException) {
-                        e.message?.let {
-                            amplitude.logger.warn("Event storage file not found: $it")
+                    }.onFailure { e ->
+                        if (e is FileNotFoundException) {
+                            e.message?.let {
+                                amplitude.logger.warn("Event storage file not found: $it")
+                            }
+                        } else {
+                            throw e
                         }
                     }
                 }
