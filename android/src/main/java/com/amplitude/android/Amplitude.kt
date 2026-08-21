@@ -60,6 +60,7 @@ public open class Amplitude internal constructor(
             CrashCatcher(
                 context = (configuration as Configuration).context,
                 ioDispatcher = storageIODispatcher,
+                diagnosticsClientLazy = lazy { diagnosticsClient },
             )
     }
 

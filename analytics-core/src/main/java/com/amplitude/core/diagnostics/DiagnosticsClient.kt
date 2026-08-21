@@ -9,6 +9,9 @@ import com.amplitude.core.RestrictedAmplitudeFeature
  */
 @RestrictedAmplitudeFeature
 public interface DiagnosticsClient {
+    /** Whether this instance should record diagnostics. */
+    public val shouldTrack: Boolean
+
     /**
      * Set a tag with the given name and value.
      * Tags are metadata labels associated with diagnostics data.

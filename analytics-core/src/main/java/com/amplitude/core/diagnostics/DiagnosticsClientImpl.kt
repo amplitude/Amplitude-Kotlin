@@ -46,8 +46,9 @@ internal class DiagnosticsClientImpl(
     private val startTimestampSeed: String = startTimestamp.toString()
     private var sampleRate: Double = sampleRate.coerceIn(0.0, 1.0)
 
-    private var shouldTrack: Boolean =
+    override var shouldTrack: Boolean =
         enabled && Sample.isInSample(seed = startTimestampSeed, sampleRate = this.sampleRate)
+        private set
 
     private var didSetBasicTags: Boolean = false
     private var didFlushPreviousSession: Boolean = false

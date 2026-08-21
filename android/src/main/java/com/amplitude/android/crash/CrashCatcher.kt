@@ -2,12 +2,16 @@ package com.amplitude.android.crash
 
 import android.content.Context
 import android.os.Process
+import com.amplitude.core.RestrictedAmplitudeFeature
+import com.amplitude.core.diagnostics.DiagnosticsClient
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlin.system.exitProcess
 
+@OptIn(RestrictedAmplitudeFeature::class)
 internal class CrashCatcher(
     private val context: Context,
     ioDispatcher: CoroutineDispatcher,
+    private val diagnosticsClientLazy: Lazy<DiagnosticsClient>,
 ) {
     private val defaultCrashHandler = Thread.getDefaultUncaughtExceptionHandler()
     private val crashStorage by lazy {
@@ -20,7 +24,9 @@ internal class CrashCatcher(
     init {
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             try {
-                saveCrashReport(throwable)
+                if (diagnosticsClientLazy.value.shouldTrack) {
+                    saveCrashReport(throwable)
+                }
             } catch (_: Throwable) {
                 // Best-effort: never throw from the uncaught exception handler
             } finally {

@@ -2,9 +2,13 @@ package com.amplitude.android.crash
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.amplitude.core.RestrictedAmplitudeFeature
+import com.amplitude.core.diagnostics.DiagnosticsClient
 import io.mockk.every
+import io.mockk.mockk
 import io.mockk.mockkConstructor
 import io.mockk.unmockkConstructor
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -18,7 +22,7 @@ import kotlin.test.assertNotSame
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, RestrictedAmplitudeFeature::class)
 @RunWith(RobolectricTestRunner::class)
 class CrashCatcherTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
@@ -47,10 +51,10 @@ class CrashCatcherTest {
             var chainedCount = 0
             Thread.setDefaultUncaughtExceptionHandler { _, _ -> chainedCount++ }
 
-            CrashCatcher(context, testDispatcher)
+            createCrashCatcher(testDispatcher)
             val firstHandler = Thread.getDefaultUncaughtExceptionHandler()
 
-            CrashCatcher(context, testDispatcher)
+            createCrashCatcher(testDispatcher)
             val latestHandler = Thread.getDefaultUncaughtExceptionHandler()
 
             assertNotSame(firstHandler, latestHandler)
@@ -78,13 +82,13 @@ class CrashCatcherTest {
             }
 
             Thread.setDefaultUncaughtExceptionHandler { _, _ -> }
-            CrashCatcher(context, testDispatcher)
+            createCrashCatcher(testDispatcher)
             val firstHandler = Thread.getDefaultUncaughtExceptionHandler()!!
             Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
                 firstHandler.uncaughtException(thread, throwable)
             }
 
-            CrashCatcher(context, testDispatcher)
+            createCrashCatcher(testDispatcher)
             Thread.getDefaultUncaughtExceptionHandler()!!
                 .uncaughtException(Thread.currentThread(), RuntimeException("boom"))
 
@@ -99,7 +103,7 @@ class CrashCatcherTest {
                 appContext = context,
                 ioDispatcher = testDispatcher,
             ).saveCrashReport(RuntimeException("previous"))
-            val report = CrashCatcher(context, testDispatcher).consumePreviousCrash()
+            val report = createCrashCatcher(testDispatcher).consumePreviousCrash()
             assertTrue(report!!.contains("previous"))
             assertNull(
                 CrashStorage(
@@ -108,4 +112,17 @@ class CrashCatcherTest {
                 ).consumePreviousCrash(),
             )
         }
+
+    private fun createCrashCatcher(
+        dispatcher: CoroutineDispatcher,
+        shouldTrack: Boolean = true,
+    ): CrashCatcher {
+        val diagnosticsClient = mockk<DiagnosticsClient>(relaxed = true)
+        every { diagnosticsClient.shouldTrack } returns shouldTrack
+        return CrashCatcher(
+            context = context,
+            ioDispatcher = dispatcher,
+            diagnosticsClientLazy = lazy { diagnosticsClient },
+        )
+    }
 }

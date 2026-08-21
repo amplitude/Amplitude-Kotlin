@@ -378,6 +378,7 @@ public abstract interface class com/amplitude/core/StorageProvider {
 public abstract interface class com/amplitude/core/diagnostics/DiagnosticsClient {
 	public abstract fun close ()V
 	public abstract fun flush ()V
+	public abstract fun getShouldTrack ()Z
 	public abstract fun increment (Ljava/lang/String;J)V
 	public static synthetic fun increment$default (Lcom/amplitude/core/diagnostics/DiagnosticsClient;Ljava/lang/String;JILjava/lang/Object;)V
 	public abstract fun recordEvent (Ljava/lang/String;Ljava/util/Map;)V
