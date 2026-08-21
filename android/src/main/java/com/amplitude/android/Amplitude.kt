@@ -51,17 +51,9 @@ public open class Amplitude internal constructor(
     ) {
     public constructor(configuration: Configuration) : this(configuration, State())
 
-    // Assigned in [initWatchers], after configuration validation and before any other
-    // initialization, so the handler covers SDK init without leaking on invalid config.
+    // Assigned in [build] after the instance name is claimed, so a failed claim does not leave
+    // the process-wide handler installed.
     private lateinit var crashCatcher: CrashCatcher
-
-    override fun initWatchers() {
-        crashCatcher =
-            CrashCatcher(
-                context = (configuration as Configuration).context,
-                ioDispatcher = storageIODispatcher,
-            )
-    }
 
     override val sessionId: Long
         get() {
@@ -111,6 +103,11 @@ public open class Amplitude internal constructor(
         // Claim the instance name before the build exists, so nothing the build installs can run
         // before the claim, and a failed claim leaves no build behind.
         AmplitudeRegistry.activate(this)
+        crashCatcher =
+            CrashCatcher(
+                context = androidConfig.context,
+                ioDispatcher = storageIODispatcher,
+            )
         return super.build()
     }
 
