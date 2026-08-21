@@ -2,6 +2,9 @@ package com.amplitude.android
 
 import android.app.Application
 import android.content.Context
+import com.amplitude.android.anr.AnrCatcher
+import com.amplitude.android.anr.createAnrCatcher
+import com.amplitude.android.anr.recordAnr
 import com.amplitude.android.crash.CrashCatcher
 import com.amplitude.android.crash.recordCrash
 import com.amplitude.android.diagnostics.AndroidDiagnosticsContextProvider
@@ -55,11 +58,18 @@ public open class Amplitude internal constructor(
     // Assigned in [initWatchers], after configuration validation and before any other
     // initialization, so the handler covers SDK init without leaking on invalid config.
     private lateinit var crashCatcher: CrashCatcher
+    private lateinit var anrCatcher: AnrCatcher
 
     override fun initWatchers() {
+        val androidConfig = configuration as Configuration
         crashCatcher =
             CrashCatcher(
-                context = (configuration as Configuration).context,
+                context = androidConfig.context,
+                ioDispatcher = storageIODispatcher,
+            )
+        anrCatcher =
+            createAnrCatcher(
+                context = androidConfig.context,
                 ioDispatcher = storageIODispatcher,
             )
     }
@@ -139,6 +149,9 @@ public open class Amplitude internal constructor(
 
         crashCatcher.consumePreviousCrash()?.let { previousCrash ->
             diagnosticsClient.recordCrash(previousCrash)
+        }
+        anrCatcher.consumePreviousAnrs().forEach { previousAnr ->
+            diagnosticsClient.recordAnr(previousAnr)
         }
 
         val migrationManager = MigrationManager(this)
