@@ -2,7 +2,7 @@ package com.amplitude.core.utilities
 
 import com.amplitude.common.Logger
 
-internal fun Exception.logWithStackTrace(
+internal fun Throwable.logWithStackTrace(
     logger: Logger,
     message: String,
 ) {

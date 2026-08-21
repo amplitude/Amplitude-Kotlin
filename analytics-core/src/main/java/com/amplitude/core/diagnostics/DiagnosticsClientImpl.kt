@@ -7,6 +7,7 @@ import com.amplitude.core.ServerZone
 import com.amplitude.core.remoteconfig.RemoteConfigClient
 import com.amplitude.core.utilities.Sample
 import com.amplitude.core.utilities.http.HttpClient
+import com.amplitude.core.utilities.runCatchingCancellable
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -456,7 +457,7 @@ internal class DiagnosticsClientImpl(
     ) {
         val payload = snapshot.toPayload()
 
-        try {
+        runCatchingCancellable {
             val jsonString = payload.toJsonString()
             val request =
                 HttpClient.Request(
@@ -479,11 +480,11 @@ internal class DiagnosticsClientImpl(
                 } else {
                     logger.error("DiagnosticsClient: Failed to upload diagnostics: ${response.statusCode}")
                 }
-                return
+                return@runCatchingCancellable
             }
 
             logger.debug("DiagnosticsClient: Uploaded diagnostics : $jsonString")
-        } catch (e: Exception) {
+        }.onFailure { e ->
             logger.error("DiagnosticsClient: Failed to upload diagnostics: ${e.message}")
         }
     }

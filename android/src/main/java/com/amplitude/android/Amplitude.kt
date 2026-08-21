@@ -11,6 +11,7 @@ import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.android.plugins.AndroidNetworkConnectivityCheckerPlugin
 import com.amplitude.android.storage.AndroidStorageContextV3
 import com.amplitude.android.utilities.ActivityLifecycleObserver
+import com.amplitude.android.utilities.runCatchingCancellable
 import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.State
 import com.amplitude.core.diagnostics.DiagnosticsContextProvider
@@ -213,7 +214,7 @@ public open class Amplitude internal constructor(
             isBuilt.join()
             (timeline as Timeline).awaitDrained()
             plugins(UniversalPlugin::class.java).forEach { plugin ->
-                runCatching { remove(plugin) }
+                runCatchingCancellable { remove(plugin) }
                     .onFailure { logger.warn("Failed to remove ${plugin.name ?: plugin::class.java.simpleName}: $it") }
             }
         }

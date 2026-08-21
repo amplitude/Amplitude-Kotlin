@@ -17,6 +17,7 @@ import com.amplitude.android.utilities.ActivityCallbackType
 import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.android.utilities.DefaultEventUtils
 import com.amplitude.android.utilities.getVersionCode
+import com.amplitude.android.utilities.runCatchingCancellable
 import com.amplitude.core.Amplitude
 import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.Storage
@@ -256,10 +257,10 @@ public class AndroidLifecyclePlugin(
 
         amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
             amplitude.isBuilt.await()
-            try {
+            runCatchingCancellable {
                 storage.write(Storage.Constants.APP_VERSION, currentVersion)
                 storage.write(Storage.Constants.APP_BUILD, currentBuild)
-            } catch (e: Exception) {
+            }.onFailure { e ->
                 amplitude.logger.error("Failed to persist app version/build: $e")
             }
         }
