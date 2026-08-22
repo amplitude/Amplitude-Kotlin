@@ -12,6 +12,7 @@ internal class CrashCatcher(
     private val context: Context,
     ioDispatcher: CoroutineDispatcher,
     private val diagnosticsClientLazy: Lazy<DiagnosticsClient>,
+    private val crashTrackingRemoteConfigLazy: Lazy<CrashTrackingRemoteConfig>,
 ) {
     private val defaultCrashHandler = Thread.getDefaultUncaughtExceptionHandler()
     private val crashStorage by lazy {
@@ -24,7 +25,10 @@ internal class CrashCatcher(
     init {
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             try {
-                if (diagnosticsClientLazy.value.shouldTrack) {
+                if (
+                    crashTrackingRemoteConfigLazy.value.isCrashTrackingEnabled &&
+                    diagnosticsClientLazy.value.shouldTrack
+                ) {
                     saveCrashReport(throwable)
                 }
             } catch (_: Throwable) {

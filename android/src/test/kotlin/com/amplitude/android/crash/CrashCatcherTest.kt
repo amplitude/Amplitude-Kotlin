@@ -113,16 +113,37 @@ class CrashCatcherTest {
             )
         }
 
+    @Test
+    fun `does not persist when crash tracking is not enabled`() =
+        runTest {
+            val testDispatcher = StandardTestDispatcher(testScheduler)
+            Thread.setDefaultUncaughtExceptionHandler { _, _ -> }
+            createCrashCatcher(testDispatcher, isCrashTrackingEnabled = false)
+            Thread.getDefaultUncaughtExceptionHandler()!!
+                .uncaughtException(Thread.currentThread(), RuntimeException("boom"))
+
+            assertNull(
+                CrashStorage(
+                    appContext = context,
+                    ioDispatcher = testDispatcher,
+                ).consumePreviousCrash(),
+            )
+        }
+
     private fun createCrashCatcher(
         dispatcher: CoroutineDispatcher,
         shouldTrack: Boolean = true,
+        isCrashTrackingEnabled: Boolean = true,
     ): CrashCatcher {
         val diagnosticsClient = mockk<DiagnosticsClient>(relaxed = true)
         every { diagnosticsClient.shouldTrack } returns shouldTrack
+        val crashTrackingRemoteConfig = mockk<CrashTrackingRemoteConfig>()
+        every { crashTrackingRemoteConfig.isCrashTrackingEnabled } returns isCrashTrackingEnabled
         return CrashCatcher(
             context = context,
             ioDispatcher = dispatcher,
             diagnosticsClientLazy = lazy { diagnosticsClient },
+            crashTrackingRemoteConfigLazy = lazy { crashTrackingRemoteConfig },
         )
     }
 }

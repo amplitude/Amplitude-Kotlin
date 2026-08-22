@@ -3,6 +3,7 @@ package com.amplitude.android
 import android.app.Application
 import android.content.Context
 import com.amplitude.android.crash.CrashCatcher
+import com.amplitude.android.crash.CrashTrackingRemoteConfig
 import com.amplitude.android.crash.recordCrash
 import com.amplitude.android.diagnostics.AndroidDiagnosticsContextProvider
 import com.amplitude.android.migration.MigrationManager
@@ -61,6 +62,7 @@ public open class Amplitude internal constructor(
                 context = (configuration as Configuration).context,
                 ioDispatcher = storageIODispatcher,
                 diagnosticsClientLazy = lazy { diagnosticsClient },
+                crashTrackingRemoteConfigLazy = lazy { crashTrackingRemoteConfig },
             )
     }
 
@@ -75,6 +77,8 @@ public open class Amplitude internal constructor(
 
     internal lateinit var autocaptureManager: AutocaptureManager
         private set
+
+    private lateinit var crashTrackingRemoteConfig: CrashTrackingRemoteConfig
 
     // Assigned in [build], not by a field initializer: initializers run after the core constructor,
     // where they would clobber a retirement from a same-name instance racing this one.
@@ -101,6 +105,12 @@ public open class Amplitude internal constructor(
         activityLifecycleCallbacks = ActivityLifecycleObserver()
         androidContextPlugin = AndroidContextPlugin()
         val androidConfig = configuration as Configuration
+        crashTrackingRemoteConfig =
+            CrashTrackingRemoteConfig(
+                remoteConfigClient = remoteConfigClient,
+                sdkVersion = BuildConfig.AMPLITUDE_VERSION,
+            )
+        crashTrackingRemoteConfig.initialize()
         autocaptureManager =
             AutocaptureManager(
                 initialAutocapture = androidConfig.autocapture,
