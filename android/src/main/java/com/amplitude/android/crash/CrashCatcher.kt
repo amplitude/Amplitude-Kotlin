@@ -7,6 +7,8 @@ import com.amplitude.core.diagnostics.DiagnosticsClient
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlin.system.exitProcess
 
+private const val AMPLITUDE_PACKAGE_PREFIX = "com.amplitude."
+
 @OptIn(RestrictedAmplitudeFeature::class)
 internal class CrashCatcher(
     private val context: Context,
@@ -26,6 +28,7 @@ internal class CrashCatcher(
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             try {
                 if (
+                    throwable.isAmplitudeSdkCrash() &&
                     crashTrackingRemoteConfigLazy.value.isCrashTrackingEnabled &&
                     diagnosticsClientLazy.value.shouldTrack
                 ) {
@@ -57,6 +60,18 @@ internal class CrashCatcher(
             lastPersistedThrowable = throwable
             crashStorage.saveCrashReport(throwable)
         }
+    }
+
+    private fun Throwable.isAmplitudeSdkCrash(): Boolean {
+        var current: Throwable? = this
+        val seen = mutableSetOf<Throwable>()
+        while (current != null && seen.add(current)) {
+            if (current.stackTrace.any { it.className.startsWith(AMPLITUDE_PACKAGE_PREFIX) }) {
+                return true
+            }
+            current = current.cause
+        }
+        return false
     }
 
     companion object {

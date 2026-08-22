@@ -130,6 +130,49 @@ class CrashCatcherTest {
             )
         }
 
+    @Test
+    fun `does not persist consumer app crashes`() =
+        runTest {
+            val testDispatcher = StandardTestDispatcher(testScheduler)
+            Thread.setDefaultUncaughtExceptionHandler { _, _ -> }
+            createCrashCatcher(testDispatcher)
+            Thread.getDefaultUncaughtExceptionHandler()!!
+                .uncaughtException(
+                    Thread.currentThread(),
+                    throwableWithFrames("com.example.MainActivity"),
+                )
+
+            assertNull(
+                CrashStorage(
+                    appContext = context,
+                    ioDispatcher = testDispatcher,
+                ).consumePreviousCrash(),
+            )
+        }
+
+    @Test
+    fun `persists crashes with Amplitude frames on a cause`() =
+        runTest {
+            val testDispatcher = StandardTestDispatcher(testScheduler)
+            Thread.setDefaultUncaughtExceptionHandler { _, _ -> }
+            createCrashCatcher(testDispatcher)
+            Thread.getDefaultUncaughtExceptionHandler()!!
+                .uncaughtException(
+                    Thread.currentThread(),
+                    throwableWithFrames(
+                        "com.example.Wrapper",
+                        cause = throwableWithFrames("com.amplitude.core.platform.EventPipeline"),
+                    ),
+                )
+
+            val report =
+                CrashStorage(
+                    appContext = context,
+                    ioDispatcher = testDispatcher,
+                ).consumePreviousCrash()
+            assertTrue(report!!.contains("boom"))
+        }
+
     private fun createCrashCatcher(
         dispatcher: CoroutineDispatcher,
         shouldTrack: Boolean = true,
@@ -145,5 +188,17 @@ class CrashCatcherTest {
             diagnosticsClientLazy = lazy { diagnosticsClient },
             crashTrackingRemoteConfigLazy = lazy { crashTrackingRemoteConfig },
         )
+    }
+
+    private fun throwableWithFrames(
+        vararg classNames: String,
+        cause: Throwable? = null,
+    ): RuntimeException {
+        return RuntimeException("boom", cause).apply {
+            stackTrace =
+                classNames
+                    .map { StackTraceElement(it, "method", "File.kt", 1) }
+                    .toTypedArray()
+        }
     }
 }
