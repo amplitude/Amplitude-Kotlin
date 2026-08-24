@@ -10,8 +10,9 @@ private const val CRASH_REPORT_PROPERTY = "report"
  * Records a crash report from the previous app run as an `analytics.crash` counter and an
  * `analytics.crash` event carrying the report text, matching the iOS diagnostics schema.
  *
- * The report is buffered regardless of sampling; upload stays gated on the session being
- * sampled in, so a crash consumed before remote config arrives is not lost.
+ * Persistence at crash time is gated on diagnostics sampling ([DiagnosticsClient.shouldTrack]).
+ * Once a report has been consumed, this buffers it even if sampling has not yet resolved for
+ * the new session; upload stays gated on the session being sampled in.
  */
 @OptIn(RestrictedAmplitudeFeature::class)
 internal fun DiagnosticsClient.recordCrash(crashString: String) {

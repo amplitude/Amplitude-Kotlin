@@ -13,39 +13,58 @@ private const val AMPLITUDE_PACKAGE_PREFIX = "com.amplitude."
 internal class CrashCatcher(
     context: Context,
     ioDispatcher: CoroutineDispatcher,
-    private val diagnosticsClientLazy: Lazy<DiagnosticsClient>,
-    private val crashTrackingRemoteConfigLazy: Lazy<CrashTrackingRemoteConfig>,
+    diagnosticsClientLazy: Lazy<DiagnosticsClient>,
+    crashTrackingRemoteConfigLazy: Lazy<CrashTrackingRemoteConfig>,
 ) {
-    private val context = context.applicationContext
-    private val defaultCrashHandler = Thread.getDefaultUncaughtExceptionHandler()
+    private val appContext = context.applicationContext
     private val crashStorage by lazy {
         CrashStorage(
-            appContext = context,
+            appContext = appContext,
             ioDispatcher = ioDispatcher,
         )
     }
 
+    // The handler outlives this instance and these capture the SDK instance that created it, so
+    // [detach] drops them once that instance is retired.
+    private var diagnosticsClientProvider: Lazy<DiagnosticsClient>? = diagnosticsClientLazy
+    private var crashTrackingRemoteConfigProvider: Lazy<CrashTrackingRemoteConfig>? = crashTrackingRemoteConfigLazy
+
     init {
-        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
-            try {
-                if (
-                    throwable.isAmplitudeSdkCrash() &&
-                    crashTrackingRemoteConfigLazy.value.isCrashTrackingEnabled &&
-                    diagnosticsClientLazy.value.shouldTrack
-                ) {
-                    saveCrashReport(throwable)
-                }
-            } catch (_: Throwable) {
-                // Best-effort: never throw from the uncaught exception handler
-            } finally {
-                defaultCrashHandler?.uncaughtException(thread, throwable)
-                    ?: run {
-                        // If no handler to chain to, kill the process
-                        Process.killProcess(Process.myPid())
-                        exitProcess(10)
+        synchronized(handlerInstallLock) {
+            val previousHandler = Thread.getDefaultUncaughtExceptionHandler()
+            Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+                try {
+                    if (
+                        throwable.isAmplitudeSdkCrash() &&
+                        crashTrackingRemoteConfigProvider?.value?.isCrashTrackingEnabled == true &&
+                        // Persist only when this session is already sampled in. That misses
+                        // crashes before remote config arrives (default sample rate is 0), but
+                        // avoids writing crash files in unsampled sessions.
+                        diagnosticsClientProvider?.value?.shouldTrack == true
+                    ) {
+                        saveCrashReport(throwable)
                     }
+                } catch (_: Throwable) {
+                    // Best-effort: never throw from the uncaught exception handler
+                } finally {
+                    previousHandler?.uncaughtException(thread, throwable)
+                        ?: run {
+                            // If no handler to chain to, kill the process
+                            Process.killProcess(Process.myPid())
+                            exitProcess(10)
+                        }
+                }
             }
         }
+    }
+
+    /**
+     * Stops persisting crashes and releases the SDK instance this catcher reads from. The handler
+     * stays in the chain, since it cannot be unregistered, but it holds nothing afterwards.
+     */
+    fun detach() {
+        diagnosticsClientProvider = null
+        crashTrackingRemoteConfigProvider = null
     }
 
     suspend fun consumePreviousCrash(): String? {
@@ -76,6 +95,7 @@ internal class CrashCatcher(
     }
 
     companion object {
+        private val handlerInstallLock = Any()
         private val storageLock = Any()
         private var lastPersistedThrowable: Throwable? = null
     }

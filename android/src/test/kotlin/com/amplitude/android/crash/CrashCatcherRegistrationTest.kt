@@ -12,8 +12,11 @@ import com.amplitude.core.utilities.InMemoryStorageProvider
 import com.amplitude.id.IMIdentityStorageProvider
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkConstructor
 import io.mockk.slot
+import io.mockk.unmockkConstructor
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
@@ -21,8 +24,10 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.io.File
 import kotlin.test.Test
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotSame
+import kotlin.test.assertNull
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -48,6 +53,48 @@ class CrashCatcherRegistrationTest {
 
                 advanceUntilIdle()
             } finally {
+                Thread.setDefaultUncaughtExceptionHandler(originalHandler)
+            }
+        }
+
+    @Test
+    fun `failed build before activate detaches watchers`() =
+        runTest {
+            val originalHandler = Thread.getDefaultUncaughtExceptionHandler()
+            Thread.setDefaultUncaughtExceptionHandler { _, _ -> }
+            mockkConstructor(CrashTrackingRemoteConfig::class)
+            every { anyConstructed<CrashTrackingRemoteConfig>().initialize() } throws
+                IllegalStateException("remote config failed")
+            try {
+                assertFailsWith<IllegalStateException> {
+                    createFakeAmplitude(
+                        scheduler = testScheduler,
+                        configuration = configuration("crash-build-failure"),
+                    )
+                }
+                Thread.getDefaultUncaughtExceptionHandler()!!
+                    .uncaughtException(
+                        Thread.currentThread(),
+                        RuntimeException("boom").apply {
+                            stackTrace =
+                                arrayOf(
+                                    StackTraceElement(
+                                        "com.amplitude.core.platform.EventPipeline",
+                                        "method",
+                                        "File.kt",
+                                        1,
+                                    ),
+                                )
+                        },
+                    )
+                assertNull(
+                    CrashStorage(
+                        appContext = application,
+                        ioDispatcher = StandardTestDispatcher(testScheduler),
+                    ).consumePreviousCrash(),
+                )
+            } finally {
+                unmockkConstructor(CrashTrackingRemoteConfig::class)
                 Thread.setDefaultUncaughtExceptionHandler(originalHandler)
             }
         }

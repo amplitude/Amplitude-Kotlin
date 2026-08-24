@@ -104,24 +104,32 @@ public open class Amplitude internal constructor(
         retired = AtomicBoolean(false)
         activityLifecycleCallbacks = ActivityLifecycleObserver()
         androidContextPlugin = AndroidContextPlugin()
-        val androidConfig = configuration as Configuration
-        crashTrackingRemoteConfig =
-            CrashTrackingRemoteConfig(
-                remoteConfigClient = remoteConfigClient,
-                sdkVersion = BuildConfig.AMPLITUDE_VERSION,
-            )
-        crashTrackingRemoteConfig.initialize()
-        autocaptureManager =
-            AutocaptureManager(
-                initialAutocapture = androidConfig.autocapture,
-                initialInteractionsOptions = androidConfig.interactionsOptions,
-                remoteConfigClient = if (androidConfig.enableAutocaptureRemoteConfig) remoteConfigClient else null,
-                logger = logger,
-                diagnosticsClient = diagnosticsClient,
-            )
-        // Claim the instance name before the build exists, so nothing the build installs can run
-        // before the claim, and a failed claim leaves no build behind.
-        AmplitudeRegistry.activate(this)
+        try {
+            val androidConfig = configuration as Configuration
+            crashTrackingRemoteConfig =
+                CrashTrackingRemoteConfig(
+                    remoteConfigClient = remoteConfigClient,
+                    sdkVersion = BuildConfig.AMPLITUDE_VERSION,
+                )
+            crashTrackingRemoteConfig.initialize()
+            autocaptureManager =
+                AutocaptureManager(
+                    initialAutocapture = androidConfig.autocapture,
+                    initialInteractionsOptions = androidConfig.interactionsOptions,
+                    remoteConfigClient = if (androidConfig.enableAutocaptureRemoteConfig) remoteConfigClient else null,
+                    logger = logger,
+                    diagnosticsClient = diagnosticsClient,
+                )
+            // Claim the instance name before the build exists, so nothing the build installs can run
+            // before the claim, and a failed claim leaves no build behind.
+            AmplitudeRegistry.activate(this)
+        } catch (error: Throwable) {
+            // Watchers are installed in the constructor, before this method. A throw here never
+            // reaches retire(), so drop them before the half-built instance is abandoned.
+            markRetired()
+            detachWatchers()
+            throw error
+        }
         return super.build()
     }
 
@@ -148,7 +156,9 @@ public open class Amplitude internal constructor(
         if (!isActive) return
 
         crashCatcher.consumePreviousCrash()?.let { previousCrash ->
-            diagnosticsClient.recordCrash(previousCrash)
+            AmplitudeRegistry.runIfActive(this) {
+                diagnosticsClient.recordCrash(previousCrash)
+            }
         }
 
         val migrationManager = MigrationManager(this)
@@ -222,6 +232,17 @@ public open class Amplitude internal constructor(
     internal fun markRetired(): Boolean = retired.compareAndSet(false, true)
 
     /**
+     * Releases process-wide watchers started in [initWatchers]. Safe before [retire], including
+     * when construction fails after those watchers are installed.
+     */
+    internal fun detachWatchers() {
+        if (::crashCatcher.isInitialized) {
+            runCatching { crashCatcher.detach() }
+                .onFailure { logger.warn("Failed to detach the crash handler: $it") }
+        }
+    }
+
+    /**
      * Releases what an inactive instance must not keep holding. Nothing here waits on this
      * instance, and queued events still drain to the storage the replacement shares by name.
      */
@@ -234,6 +255,9 @@ public open class Amplitude internal constructor(
         // takes no part in draining, so it goes now rather than behind the drain below.
         runCatching { findPlugin<AndroidLifecyclePlugin>()?.let { remove(it) } }
             .onFailure { logger.warn("Failed to stop Android autocapture: $it") }
+        // The uncaught exception handler cannot be unregistered, so it has to let go of this
+        // instance instead. Crash persistence belongs to whichever instance is still active.
+        detachWatchers()
 
         // The rest go last: they must outlive an in-flight build that is still adding them and the
         // queued events still draining through them. Off the constructor's thread either way, so

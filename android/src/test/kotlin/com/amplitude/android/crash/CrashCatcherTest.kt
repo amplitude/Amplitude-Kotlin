@@ -16,6 +16,9 @@ import org.junit.After
 import org.junit.Before
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.concurrent.thread
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotSame
@@ -68,6 +71,42 @@ class CrashCatcherTest {
                     ioDispatcher = testDispatcher,
                 ).consumePreviousCrash()
             assertTrue(report!!.contains("boom"))
+        }
+
+    @Test
+    fun `concurrent catchers each wrap the previous handler`() =
+        runTest {
+            val testDispatcher = StandardTestDispatcher(testScheduler)
+            var chainedCount = 0
+            Thread.setDefaultUncaughtExceptionHandler { _, _ -> chainedCount++ }
+
+            val shouldTrackReads = AtomicInteger(0)
+            val start = CyclicBarrier(2)
+            val workers =
+                List(2) {
+                    thread {
+                        val diagnosticsClient = mockk<DiagnosticsClient>(relaxed = true)
+                        every { diagnosticsClient.shouldTrack } answers {
+                            shouldTrackReads.incrementAndGet()
+                            true
+                        }
+                        start.await()
+                        createCrashCatcher(
+                            dispatcher = testDispatcher,
+                            diagnosticsClient = diagnosticsClient,
+                        )
+                    }
+                }
+            workers.forEach { it.join() }
+
+            Thread.getDefaultUncaughtExceptionHandler()!!
+                .uncaughtException(
+                    Thread.currentThread(),
+                    throwableWithFrames("com.amplitude.core.platform.EventPipeline"),
+                )
+
+            assertEquals(1, chainedCount)
+            assertEquals(2, shouldTrackReads.get())
         }
 
     @Test
@@ -173,19 +212,42 @@ class CrashCatcherTest {
             assertTrue(report!!.contains("boom"))
         }
 
+    @Test
+    fun `does not persist after detach`() =
+        runTest {
+            val testDispatcher = StandardTestDispatcher(testScheduler)
+            Thread.setDefaultUncaughtExceptionHandler { _, _ -> }
+            createCrashCatcher(testDispatcher).detach()
+            Thread.getDefaultUncaughtExceptionHandler()!!
+                .uncaughtException(
+                    Thread.currentThread(),
+                    throwableWithFrames("com.amplitude.core.platform.EventPipeline"),
+                )
+
+            assertNull(
+                CrashStorage(
+                    appContext = context,
+                    ioDispatcher = testDispatcher,
+                ).consumePreviousCrash(),
+            )
+        }
+
     private fun createCrashCatcher(
         dispatcher: CoroutineDispatcher,
         shouldTrack: Boolean = true,
         isCrashTrackingEnabled: Boolean = true,
+        diagnosticsClient: DiagnosticsClient? = null,
     ): CrashCatcher {
-        val diagnosticsClient = mockk<DiagnosticsClient>(relaxed = true)
-        every { diagnosticsClient.shouldTrack } returns shouldTrack
+        val client =
+            diagnosticsClient ?: mockk<DiagnosticsClient>(relaxed = true).also {
+                every { it.shouldTrack } returns shouldTrack
+            }
         val crashTrackingRemoteConfig = mockk<CrashTrackingRemoteConfig>()
         every { crashTrackingRemoteConfig.isCrashTrackingEnabled } returns isCrashTrackingEnabled
         return CrashCatcher(
             context = context,
             ioDispatcher = dispatcher,
-            diagnosticsClientLazy = lazy { diagnosticsClient },
+            diagnosticsClientLazy = lazy { client },
             crashTrackingRemoteConfigLazy = lazy { crashTrackingRemoteConfig },
         )
     }
