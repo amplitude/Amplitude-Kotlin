@@ -315,6 +315,7 @@ internal class DiagnosticsClientImpl(
                 put("os_version", contextInfo?.osVersion ?: "")
                 put("platform", contextInfo?.platform ?: "")
                 put("sdk.${Constants.SDK_LIBRARY}.version", Constants.SDK_VERSION)
+                put("app.release", (contextInfo?.appRelease ?: false).toString())
             }
 
         setTags(staticContext)
