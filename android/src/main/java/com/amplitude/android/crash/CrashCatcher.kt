@@ -13,8 +13,8 @@ private const val AMPLITUDE_PACKAGE_PREFIX = "com.amplitude."
 internal class CrashCatcher(
     context: Context,
     ioDispatcher: CoroutineDispatcher,
-    diagnosticsClientLazy: Lazy<DiagnosticsClient>,
-    crashTrackingRemoteConfigLazy: Lazy<CrashTrackingRemoteConfig>,
+    diagnosticsClient: () -> DiagnosticsClient?,
+    crashTrackingRemoteConfig: () -> CrashTrackingRemoteConfig?,
 ) {
     private val appContext = context.applicationContext
     private val crashStorage by lazy {
@@ -24,10 +24,11 @@ internal class CrashCatcher(
         )
     }
 
-    // The handler outlives this instance and these capture the SDK instance that created it, so
-    // [detach] drops them once that instance is retired.
-    private var diagnosticsClientProvider: Lazy<DiagnosticsClient>? = diagnosticsClientLazy
-    private var crashTrackingRemoteConfigProvider: Lazy<CrashTrackingRemoteConfig>? = crashTrackingRemoteConfigLazy
+    // The handler outlives this instance. Providers resolve through a weak reference so an
+    // abandoned instance can be collected, and [detach] clears them once the instance retires.
+    private var diagnosticsClientProvider: (() -> DiagnosticsClient?)? = diagnosticsClient
+    private var crashTrackingRemoteConfigProvider: (() -> CrashTrackingRemoteConfig?)? =
+        crashTrackingRemoteConfig
 
     init {
         synchronized(handlerInstallLock) {
@@ -36,11 +37,11 @@ internal class CrashCatcher(
                 try {
                     if (
                         throwable.isAmplitudeSdkCrash() &&
-                        crashTrackingRemoteConfigProvider?.value?.isCrashTrackingEnabled == true &&
+                        crashTrackingRemoteConfigProvider?.invoke()?.isCrashTrackingEnabled == true &&
                         // Persist only when this session is already sampled in. That misses
                         // crashes before remote config arrives (default sample rate is 0), but
                         // avoids writing crash files in unsampled sessions.
-                        diagnosticsClientProvider?.value?.shouldTrack == true
+                        diagnosticsClientProvider?.invoke()?.shouldTrack == true
                     ) {
                         saveCrashReport(throwable)
                     }
@@ -65,6 +66,14 @@ internal class CrashCatcher(
     fun detach() {
         diagnosticsClientProvider = null
         crashTrackingRemoteConfigProvider = null
+    }
+
+    suspend fun readPreviousCrash(): String? {
+        return crashStorage.readPreviousCrash()
+    }
+
+    fun deletePreviousCrash() {
+        crashStorage.deletePreviousCrash()
     }
 
     suspend fun consumePreviousCrash(): String? {

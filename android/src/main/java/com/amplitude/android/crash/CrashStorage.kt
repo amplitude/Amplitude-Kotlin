@@ -47,19 +47,26 @@ internal class CrashStorage(
         }
     }
 
+    fun readPreviousCrash(): String? =
+        synchronized(fileLock) {
+            val file = File(directory, CRASH_REPORT_FILE_NAME)
+            if (!file.exists()) return null
+            try {
+                file.readText().ifEmpty { null }
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+    fun deletePreviousCrash() {
+        synchronized(fileLock) {
+            File(directory, CRASH_REPORT_FILE_NAME).delete()
+        }
+    }
+
     suspend fun consumePreviousCrash(): String? =
         withContext(ioDispatcher) {
-            synchronized(fileLock) {
-                val file = File(directory, CRASH_REPORT_FILE_NAME)
-                if (!file.exists()) return@withContext null
-                try {
-                    file.readText().ifEmpty { null }
-                } catch (_: Exception) {
-                    null
-                } finally {
-                    file.delete()
-                }
-            }
+            readPreviousCrash()?.also { deletePreviousCrash() }
         }
 
     private fun PrintWriter.printThrowable(throwable: Throwable) {

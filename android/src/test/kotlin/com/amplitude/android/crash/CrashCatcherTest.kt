@@ -247,8 +247,8 @@ class CrashCatcherTest {
         return CrashCatcher(
             context = context,
             ioDispatcher = dispatcher,
-            diagnosticsClientLazy = lazy { client },
-            crashTrackingRemoteConfigLazy = lazy { crashTrackingRemoteConfig },
+            diagnosticsClient = { client },
+            crashTrackingRemoteConfig = { crashTrackingRemoteConfig },
         )
     }
 

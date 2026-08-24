@@ -57,12 +57,21 @@ public open class Amplitude internal constructor(
     private lateinit var crashCatcher: CrashCatcher
 
     override fun initWatchers() {
+        val amplitudeRef = WeakReference(this)
         crashCatcher =
             CrashCatcher(
                 context = (configuration as Configuration).context,
                 ioDispatcher = storageIODispatcher,
-                diagnosticsClientLazy = lazy { diagnosticsClient },
-                crashTrackingRemoteConfigLazy = lazy { crashTrackingRemoteConfig },
+                diagnosticsClient = { amplitudeRef.get()?.diagnosticsClient },
+                crashTrackingRemoteConfig = {
+                    amplitudeRef.get()?.let { instance ->
+                        if (instance::crashTrackingRemoteConfig.isInitialized) {
+                            instance.crashTrackingRemoteConfig
+                        } else {
+                            null
+                        }
+                    }
+                },
             )
     }
 
@@ -155,9 +164,11 @@ public open class Amplitude internal constructor(
         // the replacement owns both by then.
         if (!isActive) return
 
-        crashCatcher.consumePreviousCrash()?.let { previousCrash ->
+        val previousCrash = crashCatcher.readPreviousCrash()
+        if (previousCrash != null) {
             AmplitudeRegistry.runIfActive(this) {
                 diagnosticsClient.recordCrash(previousCrash)
+                crashCatcher.deletePreviousCrash()
             }
         }
 
