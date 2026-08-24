@@ -66,13 +66,13 @@ public open class Amplitude internal constructor(
             CrashCatcher(
                 context = androidConfig.context,
                 ioDispatcher = storageIODispatcher,
+                diagnosticsClientLazy = lazy { diagnosticsClient },
+                crashTrackingRemoteConfigLazy = lazy { crashTrackingRemoteConfig },
             )
         anrCatcher =
             createAnrCatcher(
                 context = androidConfig.context,
                 ioDispatcher = storageIODispatcher,
-                diagnosticsClientLazy = lazy { diagnosticsClient },
-                crashTrackingRemoteConfigLazy = lazy { crashTrackingRemoteConfig },
             )
     }
 
@@ -171,7 +171,9 @@ public open class Amplitude internal constructor(
             }
         }
         anrCatcher.consumePreviousAnrs().forEach { previousAnr ->
-            diagnosticsClient.recordAnr(previousAnr)
+            AmplitudeRegistry.runIfActive(this) {
+                diagnosticsClient.recordAnr(previousAnr)
+            }
         }
 
         val migrationManager = MigrationManager(this)
