@@ -171,7 +171,9 @@ public open class Amplitude internal constructor(
             }
         }
         anrCatcher.consumePreviousAnrs().forEach { previousAnr ->
-            diagnosticsClient.recordAnr(previousAnr)
+            AmplitudeRegistry.runIfActive(this) {
+                diagnosticsClient.recordAnr(previousAnr)
+            }
         }
 
         val migrationManager = MigrationManager(this)
