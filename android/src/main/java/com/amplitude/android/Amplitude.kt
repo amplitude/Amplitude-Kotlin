@@ -255,6 +255,10 @@ public open class Amplitude internal constructor(
             runCatching { crashCatcher.detach() }
                 .onFailure { logger.warn("Failed to detach the crash handler: $it") }
         }
+        if (::anrCatcher.isInitialized) {
+            runCatching { anrCatcher.detach() }
+                .onFailure { logger.warn("Failed to detach the ANR watcher: $it") }
+        }
     }
 
     /**

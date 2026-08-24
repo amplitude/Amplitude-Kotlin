@@ -6,6 +6,8 @@ import kotlinx.coroutines.CoroutineDispatcher
 
 internal interface AnrCatcher {
     suspend fun consumePreviousAnrs(): List<String>
+
+    fun detach() {}
 }
 
 internal fun createAnrCatcher(

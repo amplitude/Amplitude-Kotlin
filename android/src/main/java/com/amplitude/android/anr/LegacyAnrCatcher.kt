@@ -35,6 +35,15 @@ internal class LegacyAnrCatcher(
         return if (report == null) emptyList() else listOf(report)
     }
 
+    override fun detach() {
+        synchronized(watchdogLock) {
+            if (activeCatcher === this) {
+                activeCatcher = null
+                watchdogThread?.interrupt()
+            }
+        }
+    }
+
     private fun persistAnrReport() {
         synchronized(storageLock) {
             anrStorage.saveAnrReport(ANR_TIMEOUT_MS)
