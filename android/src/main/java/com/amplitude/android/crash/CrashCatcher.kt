@@ -11,11 +11,12 @@ private const val AMPLITUDE_PACKAGE_PREFIX = "com.amplitude."
 
 @OptIn(RestrictedAmplitudeFeature::class)
 internal class CrashCatcher(
-    private val context: Context,
+    context: Context,
     ioDispatcher: CoroutineDispatcher,
     private val diagnosticsClientLazy: Lazy<DiagnosticsClient>,
     private val crashTrackingRemoteConfigLazy: Lazy<CrashTrackingRemoteConfig>,
 ) {
+    private val context = context.applicationContext
     private val defaultCrashHandler = Thread.getDefaultUncaughtExceptionHandler()
     private val crashStorage by lazy {
         CrashStorage(
