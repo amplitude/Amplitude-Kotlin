@@ -44,6 +44,7 @@ class DiagnosticsClientTest {
                                 osVersion = "14",
                                 platform = "Android",
                                 appVersion = "1.2.3",
+                                appRelease = false,
                             )
                         },
                 )
@@ -91,6 +92,41 @@ class DiagnosticsClientTest {
                 }
             }
             assertTrue(foundEvent, "Expected to find event_a in events")
+        }
+
+    @Test
+    fun `flush includes app release tag from context`() =
+        runBlocking {
+            val requestSlot = slot<HttpClient.Request>()
+            val httpClient = mockk<HttpClient>()
+            every {
+                httpClient.request(capture(requestSlot))
+            } returns HttpClient.Response(200, "ok")
+
+            val client =
+                createClient(
+                    httpClient = httpClient,
+                    sampleRate = 1.0,
+                    contextProvider =
+                        DiagnosticsContextProvider {
+                            DiagnosticsContextInfo(
+                                manufacturer = "Google",
+                                model = "Pixel",
+                                osName = "Android",
+                                osVersion = "14",
+                                platform = "Android",
+                                appVersion = "1.2.3",
+                                appRelease = true,
+                            )
+                        },
+                )
+
+            delay(100)
+            client.flush()
+            delay(200)
+
+            val tags = JSONObject(requestSlot.captured.body).getJSONObject("tags")
+            assertEquals("true", tags.getString("app.release"))
         }
 
     @Test
