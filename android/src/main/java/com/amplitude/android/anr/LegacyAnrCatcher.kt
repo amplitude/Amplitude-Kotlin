@@ -35,6 +35,23 @@ internal class LegacyAnrCatcher(
         return if (report == null) emptyList() else listOf(report)
     }
 
+    /**
+     * Stops the process-wide watchdog if this catcher still owns it. A replacement that has
+     * already [register]ed keeps the thread and is left alone.
+     */
+    override fun detach() {
+        val thread =
+            synchronized(watchdogLock) {
+                if (activeCatcher !== this) return
+                activeCatcher = null
+                val running = watchdogThread
+                watchdogThread = null
+                running
+            }
+        thread?.interrupt()
+        thread?.join(1_000)
+    }
+
     private fun persistAnrReport() {
         synchronized(storageLock) {
             anrStorage.saveAnrReport(ANR_TIMEOUT_MS)

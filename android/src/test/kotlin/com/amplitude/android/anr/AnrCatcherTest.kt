@@ -8,6 +8,7 @@ import androidx.test.core.app.ApplicationProvider
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.spyk
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -20,6 +21,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
@@ -72,6 +74,21 @@ class AndroidRAnrCatcherTest {
                     ioDispatcher = testDispatcher,
                 ).consumePreviousAnrs()
             assertEquals(emptyList(), again)
+        }
+
+    @Test
+    fun `cancellation from historical exits is not swallowed`() =
+        runTest {
+            every {
+                activityManager.getHistoricalProcessExitReasons(any(), 0, 0)
+            } throws CancellationException()
+
+            assertFailsWith<CancellationException> {
+                AndroidRAnrCatcher(
+                    context = context,
+                    ioDispatcher = StandardTestDispatcher(testScheduler),
+                ).consumePreviousAnrs()
+            }
         }
 
     @Test

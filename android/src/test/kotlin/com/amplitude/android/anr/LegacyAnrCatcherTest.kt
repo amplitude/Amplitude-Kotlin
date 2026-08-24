@@ -62,4 +62,34 @@ class LegacyAnrCatcherTest {
             assertTrue(reports.first().contains("ANR detected"))
             assertTrue(reports.first().contains("Timeout: 5000ms"))
         }
+
+    @Test
+    fun `detach stops the watchdog if this catcher still owns it`() {
+        val catcher =
+            LegacyAnrCatcher(
+                context = context,
+                ioDispatcher = StandardTestDispatcher(),
+            )
+        assertTrue(watchdogThreads().isNotEmpty())
+        catcher.detach()
+        assertTrue(watchdogThreads().isEmpty())
+    }
+
+    @Test
+    fun `detach leaves a replacement's watchdog running`() {
+        val first =
+            LegacyAnrCatcher(
+                context = context,
+                ioDispatcher = StandardTestDispatcher(),
+            )
+        LegacyAnrCatcher(
+            context = context,
+            ioDispatcher = StandardTestDispatcher(),
+        )
+        first.detach()
+        assertTrue(watchdogThreads().isNotEmpty())
+    }
+
+    private fun watchdogThreads(): List<Thread> =
+        Thread.getAllStackTraces().keys.filter { it.name == "amplitude-anr-watchdog" && it.isAlive }
 }

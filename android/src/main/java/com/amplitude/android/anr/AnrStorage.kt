@@ -2,6 +2,7 @@ package com.amplitude.android.anr
 
 import android.content.Context
 import android.os.Looper
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -54,6 +55,8 @@ internal class AnrStorage(
                 if (!file.exists()) return@withContext null
                 try {
                     file.readText().ifEmpty { null }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (_: Exception) {
                     null
                 } finally {
@@ -69,6 +72,8 @@ internal class AnrStorage(
                 if (!file.exists()) return@withContext 0L
                 try {
                     file.readText().trim().toLongOrNull() ?: 0L
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (_: Exception) {
                     0L
                 }

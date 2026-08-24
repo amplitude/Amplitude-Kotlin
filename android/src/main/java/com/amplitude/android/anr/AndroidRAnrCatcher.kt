@@ -5,6 +5,7 @@ import android.app.ApplicationExitInfo
 import android.content.Context
 import android.os.Build
 import androidx.annotation.RequiresApi
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -57,6 +58,8 @@ internal class AndroidRAnrCatcher(
             try {
                 val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
                 am.getHistoricalProcessExitReasons(context.packageName, 0, 0)
+            } catch (e: CancellationException) {
+                throw e
             } catch (_: Exception) {
                 null
             }
@@ -86,6 +89,8 @@ internal class AndroidRAnrCatcher(
             val stream =
                 try {
                     exit.traceInputStream
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (_: Exception) {
                     null
                 } ?: return@withContext null
@@ -94,6 +99,8 @@ internal class AndroidRAnrCatcher(
                 stream.use { input ->
                     readBounded(input)
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (_: Exception) {
                 null
             }
