@@ -3,7 +3,6 @@ package com.amplitude.android.crash
 import android.content.Context
 import android.os.Process
 import com.amplitude.core.RestrictedAmplitudeFeature
-import com.amplitude.core.diagnostics.DiagnosticsClient
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlin.system.exitProcess
 
@@ -13,8 +12,7 @@ private const val AMPLITUDE_PACKAGE_PREFIX = "com.amplitude."
 internal class CrashCatcher(
     context: Context,
     ioDispatcher: CoroutineDispatcher,
-    private val diagnosticsClientLazy: Lazy<DiagnosticsClient>,
-    private val crashTrackingRemoteConfigLazy: Lazy<CrashTrackingRemoteConfig>,
+    private val crashTrackingRemoteConfigProvider: () -> CrashTrackingRemoteConfig?,
 ) {
     private val context = context.applicationContext
     private val defaultCrashHandler = Thread.getDefaultUncaughtExceptionHandler()
@@ -30,8 +28,7 @@ internal class CrashCatcher(
             try {
                 if (
                     throwable.isAmplitudeSdkCrash() &&
-                    crashTrackingRemoteConfigLazy.value.isCrashTrackingEnabled &&
-                    diagnosticsClientLazy.value.shouldTrack
+                    crashTrackingRemoteConfigProvider()?.isCrashTrackingEnabled == true
                 ) {
                     saveCrashReport(throwable)
                 }

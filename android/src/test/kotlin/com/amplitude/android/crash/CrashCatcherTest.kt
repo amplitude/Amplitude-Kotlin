@@ -3,7 +3,6 @@ package com.amplitude.android.crash
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import com.amplitude.core.RestrictedAmplitudeFeature
-import com.amplitude.core.diagnostics.DiagnosticsClient
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkConstructor
@@ -175,18 +174,14 @@ class CrashCatcherTest {
 
     private fun createCrashCatcher(
         dispatcher: CoroutineDispatcher,
-        shouldTrack: Boolean = true,
         isCrashTrackingEnabled: Boolean = true,
     ): CrashCatcher {
-        val diagnosticsClient = mockk<DiagnosticsClient>(relaxed = true)
-        every { diagnosticsClient.shouldTrack } returns shouldTrack
         val crashTrackingRemoteConfig = mockk<CrashTrackingRemoteConfig>()
         every { crashTrackingRemoteConfig.isCrashTrackingEnabled } returns isCrashTrackingEnabled
         return CrashCatcher(
             context = context,
             ioDispatcher = dispatcher,
-            diagnosticsClientLazy = lazy { diagnosticsClient },
-            crashTrackingRemoteConfigLazy = lazy { crashTrackingRemoteConfig },
+            crashTrackingRemoteConfigProvider = { crashTrackingRemoteConfig },
         )
     }
 

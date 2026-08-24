@@ -57,12 +57,12 @@ public open class Amplitude internal constructor(
     private lateinit var crashCatcher: CrashCatcher
 
     override fun initWatchers() {
+        val weakRef = WeakReference(this)
         crashCatcher =
             CrashCatcher(
                 context = (configuration as Configuration).context,
                 ioDispatcher = storageIODispatcher,
-                diagnosticsClientLazy = lazy { diagnosticsClient },
-                crashTrackingRemoteConfigLazy = lazy { crashTrackingRemoteConfig },
+                crashTrackingRemoteConfigProvider = { weakRef.get()?.crashTrackingRemoteConfig },
             )
     }
 
