@@ -14,6 +14,10 @@ curtains = "1.2.5"
 dokka = "2.0.0"
 espressoCore = "3.7.0"
 experimentAndroidClient = "1.6.3"
+# Replace these prototype versions with the first released UniversalPlugin versions before publishing.
+unifiedExperimentAndroidClient = "1.16.1"
+sessionReplayAndroid = "0.28.1"
+engagementAndroid = "3.12.1"
 fragmentKtx = "1.8.9"
 gson = "2.14.0"
 json = "20211205"
@@ -52,6 +56,9 @@ coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", ve
 curtains = { module = "com.squareup.curtains:curtains", version.ref = "curtains" }
 espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "espressoCore" }
 experiment-android-client = { module = "com.amplitude:experiment-android-client", version.ref = "experimentAndroidClient" } # Added
+unified-experiment-android-client = { module = "com.amplitude:experiment-android-client", version.ref = "unifiedExperimentAndroidClient" }
+session-replay-android = { module = "com.amplitude:plugin-session-replay-android", version.ref = "sessionReplayAndroid" }
+engagement-android = { module = "com.amplitude:amplitude-engagement-android", version.ref = "engagementAndroid" }
 fragment-ktx = { module = "androidx.fragment:fragment-ktx", version.ref = "fragmentKtx" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" } # Added
 json = { module = "org.json:json", version.ref = "json" }
