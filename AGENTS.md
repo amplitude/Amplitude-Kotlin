@@ -5,13 +5,15 @@ Analytics SDK for Android. Two modules: **`analytics-core`** (pure Kotlin/JVM) a
 ## Build
 
 ```bash
-./gradlew build -x test           # Build
-./gradlew :android:test            # Android tests
-./gradlew :analytics-core:test     # Core tests
-./gradlew ktlintFormat             # Auto-format
-./gradlew apiDump                  # Update API dumps after public API changes
-./gradlew apiCheck                 # Binary compat check (CI enforced)
+gagent build -x test              # Build
+gagent :android:test               # Android tests
+gagent :analytics-core:test        # Core tests
+gagent ktlintFormat                # Auto-format
+gagent apiDump                     # Update API dumps after public API changes
+gagent apiCheck                    # Binary compat check (CI enforced)
 ```
+
+`gagent` is `./gradlew --priority low` — isolated low-priority daemon so agent builds do not share IntelliJ's daemon. Use `./gradlew` in the IDE or for interactive work.
 
 ## What Gets Merged
 
@@ -40,7 +42,7 @@ This is a published SDK and we guard the public surface:
 
 ### Binary Compatibility
 
-Public API changes require `./gradlew apiDump` and committed `.api` files (`analytics-core/api/analytics-core.api`, `android/api/android.api`). CI fails on stale dumps.
+Public API changes require `gagent apiDump` and committed `.api` files (`analytics-core/api/analytics-core.api`, `android/api/android.api`). CI fails on stale dumps.
 
 ### Thread Safety
 
