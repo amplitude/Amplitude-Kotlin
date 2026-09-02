@@ -167,6 +167,7 @@ class UniversalPluginTest {
 
             assertSame(a.analyticsClient, blade.setupClient)
             assertEquals("FAKE-API-KEY", blade.setupContext?.apiKey)
+            assertNull(blade.setupContext?.platformContext)
         }
 
         @Test

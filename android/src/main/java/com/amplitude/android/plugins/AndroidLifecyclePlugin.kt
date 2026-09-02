@@ -21,6 +21,7 @@ import com.amplitude.android.utilities.runCatchingCancellable
 import com.amplitude.core.Amplitude
 import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.Storage
+import com.amplitude.core.platform.InterfaceSignalProvider
 import com.amplitude.core.platform.Plugin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -333,6 +334,13 @@ public class AndroidLifecyclePlugin(
                 )
             windowCallbackManager?.start()
         }
+    }
+
+    internal fun onInterfaceSignalProviderChanged(
+        from: InterfaceSignalProvider?,
+        to: InterfaceSignalProvider?,
+    ) {
+        frustrationInteractionsDetector?.interfaceSignalProviderDidChange(from, to)
     }
 
     override fun teardown() {

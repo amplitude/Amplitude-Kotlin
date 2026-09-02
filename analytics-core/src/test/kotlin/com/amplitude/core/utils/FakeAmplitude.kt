@@ -11,7 +11,7 @@ import kotlinx.coroutines.test.TestDispatcher
 import kotlinx.coroutines.test.TestScope
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class FakeAmplitude(
+open class FakeAmplitude(
     configuration: Configuration = Configuration("FAKE-API-KEY"),
     store: State = State(),
     val testDispatcher: TestDispatcher = StandardTestDispatcher(),

@@ -4,6 +4,7 @@ public class com/amplitude/android/Amplitude : com/amplitude/core/Amplitude {
 	public static final field START_SESSION_EVENT Ljava/lang/String;
 	public fun <init> (Lcom/amplitude/android/Configuration;)V
 	protected fun build ()Lkotlinx/coroutines/Deferred;
+	protected fun buildAmplitudeContext ()Lcom/amplitude/core/AmplitudeContext;
 	protected fun buildInternal (Lcom/amplitude/id/IdentityConfiguration;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	protected fun createIdentityConfiguration ()Lcom/amplitude/id/IdentityConfiguration;
 	public fun createTimeline ()Lcom/amplitude/android/Timeline;
@@ -13,6 +14,7 @@ public class com/amplitude/android/Amplitude : com/amplitude/core/Amplitude {
 	public fun getSessionId ()J
 	public final fun onEnterForeground (J)V
 	public final fun onExitForeground (J)V
+	protected fun onInterfaceSignalProviderChanged (Lcom/amplitude/core/platform/InterfaceSignalProvider;Lcom/amplitude/core/platform/InterfaceSignalProvider;)V
 	public fun reset ()Lcom/amplitude/android/Amplitude;
 	public synthetic fun reset ()Lcom/amplitude/core/Amplitude;
 }
@@ -369,9 +371,12 @@ public final class com/amplitude/android/FrustrationAnalyticsUtilsKt {
 	public static synthetic fun ignoreFrustrationAnalytics$default (Landroidx/compose/ui/Modifier;ZZILjava/lang/Object;)Landroidx/compose/ui/Modifier;
 }
 
-public final class com/amplitude/android/FrustrationInteractionsDetector {
+public final class com/amplitude/android/FrustrationInteractionsDetector : com/amplitude/core/platform/InterfaceSignalReceiver {
 	public static final field Companion Lcom/amplitude/android/FrustrationInteractionsDetector$Companion;
 	public fun <init> (Lcom/amplitude/core/Amplitude;Lcom/amplitude/common/Logger;FLkotlin/jvm/functions/Function0;)V
+	public fun onInterfaceChanged (Lcom/amplitude/core/platform/InterfaceChangeSignal;)V
+	public fun onStartProviding ()V
+	public fun onStopProviding ()V
 	public final fun processClick (Lcom/amplitude/android/FrustrationInteractionsDetector$ClickInfo;Lcom/amplitude/android/FrustrationInteractionsDetector$TargetInfo;Lcom/amplitude/android/internal/ViewTarget;Ljava/lang/String;)V
 	public final fun start ()V
 	public final fun stop ()V

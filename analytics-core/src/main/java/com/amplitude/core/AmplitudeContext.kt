@@ -13,6 +13,10 @@ import com.amplitude.core.remoteconfig.RemoteConfigClient
  * @property instanceName the host's instance name.
  * @property serverZone the server zone events are sent to.
  * @property logger the host's logger.
+ * @property platformContext host-provided platform handle. On Android this is the
+ *   application [android.content.Context]; on JVM hosts it is `null`. Typed as [Any] so
+ *   `:analytics-core` stays platform-independent. Android plugins should cast:
+ *   `amplitudeContext.platformContext as? android.content.Context`.
  */
 public open class AmplitudeContext
     @RestrictedAmplitudeFeature
@@ -23,8 +27,10 @@ public open class AmplitudeContext
         public val logger: Logger,
         remoteConfigClientProvider: () -> RemoteConfigClient,
         diagnosticsClientProvider: () -> DiagnosticsClient,
+        public val platformContext: Any? = null,
     ) {
         @RestrictedAmplitudeFeature
+        @JvmOverloads
         public constructor(
             apiKey: String,
             instanceName: String,
@@ -32,6 +38,7 @@ public open class AmplitudeContext
             logger: Logger,
             remoteConfigClient: RemoteConfigClient,
             diagnosticsClient: DiagnosticsClient,
+            platformContext: Any? = null,
         ) : this(
             apiKey,
             instanceName,
@@ -39,6 +46,7 @@ public open class AmplitudeContext
             logger,
             { remoteConfigClient },
             { diagnosticsClient },
+            platformContext,
         )
 
         @RestrictedAmplitudeFeature

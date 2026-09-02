@@ -43,4 +43,36 @@ class AmplitudeContextTest {
         assertEquals(1, remoteConfigInitializations)
         assertEquals(1, diagnosticsInitializations)
     }
+
+    @Test
+    fun `platformContext defaults to null`() {
+        val context =
+            AmplitudeContext(
+                apiKey = "api-key",
+                instanceName = "instance",
+                serverZone = ServerZone.US,
+                logger = ConsoleLogger.logger,
+                remoteConfigClient = mockk(),
+                diagnosticsClient = mockk(),
+            )
+
+        assertEquals(null, context.platformContext)
+    }
+
+    @Test
+    fun `platformContext is the value passed to the constructor`() {
+        val platform = Any()
+        val context =
+            AmplitudeContext(
+                apiKey = "api-key",
+                instanceName = "instance",
+                serverZone = ServerZone.US,
+                logger = ConsoleLogger.logger,
+                remoteConfigClient = mockk(),
+                diagnosticsClient = mockk(),
+                platformContext = platform,
+            )
+
+        assertSame(platform, context.platformContext)
+    }
 }

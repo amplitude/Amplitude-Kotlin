@@ -12,6 +12,7 @@ import com.amplitude.core.events.IdentifyEvent
 import com.amplitude.core.events.Revenue
 import com.amplitude.core.events.RevenueEvent
 import com.amplitude.core.platform.EventPlugin
+import com.amplitude.core.platform.InterfaceSignalProvider
 import com.amplitude.core.platform.Plugin
 import com.amplitude.core.platform.PluginHost
 import com.amplitude.core.platform.Signal
@@ -124,8 +125,20 @@ public open class Amplitude(
 
     public val amplitudeContext: AmplitudeContext by lazy { buildAmplitudeContext() }
 
+    /**
+     * The [InterfaceSignalProvider] currently registered via [add], typically Session Replay.
+     * Null when no such plugin is installed.
+     */
+    public var interfaceSignalProvider: InterfaceSignalProvider? = null
+        private set
+
+    /**
+     * Builds the [AmplitudeContext] handed to universal plugins at setup.
+     * Platform subclasses (such as Android) override this to supply platform-specific handles
+     * like the application context via [AmplitudeContext.platformContext].
+     */
     @OptIn(RestrictedAmplitudeFeature::class)
-    private fun buildAmplitudeContext(): AmplitudeContext =
+    protected open fun buildAmplitudeContext(): AmplitudeContext =
         AmplitudeContext(
             apiKey = configuration.apiKey,
             instanceName = configuration.instanceName,
@@ -586,15 +599,19 @@ public open class Amplitude(
      */
     public fun add(plugin: Plugin): Amplitude {
         timeline.add(plugin)
+        bindInterfaceSignalProviderOnAdd(plugin)
         return this
     }
 
     /**
      * Add a [UniversalPlugin]. If the plugin is also a [Plugin], it is added directly.
      * Otherwise it is hosted in the enrichment stage.
+     *
+     * If [plugin] implements [InterfaceSignalProvider], it becomes [interfaceSignalProvider].
      */
     public fun add(plugin: UniversalPlugin): Amplitude {
         timeline.add(plugin)
+        bindInterfaceSignalProviderOnAdd(plugin)
         return this
     }
 
@@ -618,15 +635,52 @@ public open class Amplitude(
 
     public fun remove(plugin: Plugin): Amplitude {
         timeline.remove(plugin)
+        unbindInterfaceSignalProviderOnRemove(plugin)
         return this
     }
 
     /**
      * Remove a [UniversalPlugin], including a bare plugin hosted in the enrichment stage.
+     *
+     * If [plugin] is the current [interfaceSignalProvider], that reference is cleared.
      */
     public fun remove(plugin: UniversalPlugin): Amplitude {
         timeline.remove(plugin)
+        unbindInterfaceSignalProviderOnRemove(plugin)
         return this
+    }
+
+    /**
+     * Called when [interfaceSignalProvider] is replaced. Android overrides this so
+     * frustration autocapture can subscribe to the new provider.
+     */
+    protected open fun onInterfaceSignalProviderChanged(
+        from: InterfaceSignalProvider?,
+        to: InterfaceSignalProvider?,
+    ) {
+    }
+
+    private fun bindInterfaceSignalProviderOnAdd(plugin: UniversalPlugin) {
+        val name = plugin.name
+        if (name != null && plugin(name) !== plugin) {
+            return
+        }
+        val provider = plugin as? InterfaceSignalProvider ?: return
+        if (interfaceSignalProvider === provider) {
+            return
+        }
+        val previous = interfaceSignalProvider
+        interfaceSignalProvider = provider
+        onInterfaceSignalProviderChanged(previous, provider)
+    }
+
+    private fun unbindInterfaceSignalProviderOnRemove(plugin: UniversalPlugin) {
+        if (interfaceSignalProvider !== plugin) {
+            return
+        }
+        val previous = interfaceSignalProvider
+        interfaceSignalProvider = null
+        onInterfaceSignalProviderChanged(previous, null)
     }
 
     public fun flush() {

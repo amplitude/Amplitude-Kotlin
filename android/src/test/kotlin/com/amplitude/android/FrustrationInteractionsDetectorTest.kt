@@ -11,6 +11,9 @@ import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.signals.UiChangeSignal
 import com.amplitude.common.Logger
 import com.amplitude.core.Amplitude
+import com.amplitude.core.platform.InterfaceChangeSignal
+import com.amplitude.core.platform.InterfaceSignalProvider
+import com.amplitude.core.platform.InterfaceSignalReceiver
 import com.amplitude.core.platform.Signal
 import io.mockk.clearMocks
 import io.mockk.every
@@ -37,6 +40,7 @@ class FrustrationInteractionsDetectorTest {
     private lateinit var mockLogger: Logger
     private lateinit var mockViewTarget: ViewTarget
     private val testActivityName = "TestActivity"
+    private lateinit var interfaceSignalProvider: FakeInterfaceSignalProvider
     private lateinit var uiChangeFlow: MutableSharedFlow<Signal>
     private lateinit var detector: FrustrationInteractionsDetector
     private val testDispatcher = UnconfinedTestDispatcher()
@@ -58,6 +62,7 @@ class FrustrationInteractionsDetectorTest {
         mockAmplitude = mockk(relaxed = true)
         mockLogger = mockk(relaxed = true)
         mockViewTarget = mockk(relaxed = true)
+        interfaceSignalProvider = FakeInterfaceSignalProvider(isProviding = true)
         uiChangeFlow = MutableSharedFlow(extraBufferCapacity = 1)
 
         // Setup mock ViewTarget properties to match testTargetInfo
@@ -70,6 +75,7 @@ class FrustrationInteractionsDetectorTest {
         every { mockViewTarget.ampIgnoreRageClick } returns false
         every { mockViewTarget.ampIgnoreDeadClick } returns false
 
+        every { mockAmplitude.interfaceSignalProvider } returns interfaceSignalProvider
         every { mockAmplitude.signalFlow } returns uiChangeFlow
         every { mockAmplitude.amplitudeScope } returns CoroutineScope(testDispatcher)
         every { mockAmplitude.amplitudeDispatcher } returns testDispatcher
@@ -190,10 +196,11 @@ class FrustrationInteractionsDetectorTest {
     }
 
     @Test
-    fun `dead click - detector should be started for signal flow subscription`() {
-        // This test validates that start() is needed for proper signal flow subscription
-        // We'll test this by confirming that the startUiChangeCollection method is called
+    fun `dead click - detector should be started to subscribe to InterfaceSignalProvider`() {
         val mockAmplitudeWithStart = mockk<Amplitude>(relaxed = true)
+        val provider = FakeInterfaceSignalProvider(isProviding = true)
+        every { mockAmplitudeWithStart.interfaceSignalProvider } returns provider
+        every { mockAmplitudeWithStart.signalFlow } returns MutableSharedFlow<Signal>(extraBufferCapacity = 1)
         every { mockAmplitudeWithStart.amplitudeScope } returns CoroutineScope(testDispatcher)
         every { mockAmplitudeWithStart.amplitudeDispatcher } returns testDispatcher
 
@@ -209,14 +216,13 @@ class FrustrationInteractionsDetectorTest {
                 },
             )
 
-        // Call start() to ensure signal flow subscription
         detectorWithStart.start()
 
-        // Verify that the detector is now set up to receive UI change signals
-        // (In real usage, this would prevent false dead click detection)
-        verify { mockAmplitudeWithStart.signalFlow }
+        assertEquals(1, provider.receivers.size)
+        assertEquals(detectorWithStart, provider.receivers.single())
 
         detectorWithStart.stop()
+        assertEquals(0, provider.receivers.size)
     }
 
     //endregion
@@ -321,62 +327,64 @@ class FrustrationInteractionsDetectorTest {
 
     @Test
     fun `dead click detection should work after start()`() {
-        // Start the detector and ensure the signal collector is subscribed
         detector.start()
         testDispatcher.scheduler.runCurrent()
-        // Emit a UiChangeSignal to enable dead click detection
-        uiChangeFlow.tryEmit(UiChangeSignal(Date(System.currentTimeMillis())))
-        testDispatcher.scheduler.runCurrent()
 
-        // Process a click
         val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
         detector.processClick(clickInfo, testTargetInfo, mockViewTarget, testActivityName)
 
-        // Verify no warning was logged about UI change collection being inactive
         verify(exactly = 0) {
             mockLogger.error("Dead click detection is disabled - call start() to enable.")
         }
 
-        // Advance time to trigger dead click timeout
         testDispatcher.scheduler.advanceTimeBy(4000L)
         testDispatcher.scheduler.runCurrent()
 
-        // Verify dead click was tracked
         verify { mockAmplitude.track(DEAD_CLICK, any()) }
     }
 
     @Test
-    fun `dead click detection should not work after start() until UiChangeSignal is observed`() {
+    fun `dead click detection should not work after start() until provider is providing`() {
+        interfaceSignalProvider.isProviding = false
         detector.start()
 
         val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
         detector.processClick(clickInfo, testTargetInfo, mockViewTarget, testActivityName)
 
-        // Advance time past timeout
         testDispatcher.scheduler.advanceTimeBy(4000L)
         testDispatcher.scheduler.runCurrent()
 
-        // Should not track without UiChangeSignal and should log the gating error
         verify(exactly = 0) { mockAmplitude.track(DEAD_CLICK, any()) }
         verify {
             mockLogger.error(
-                match { it.contains("no UI change signals observed yet") },
+                match { it.contains("no UI change source is active") },
             )
         }
     }
 
     @Test
-    fun `dead click detection should reset after stop()`() {
-        // Enable by emitting a UiChangeSignal after start
+    fun `dead click detection still works from UiChangeSignal when no InterfaceSignalProvider is registered`() {
+        every { mockAmplitude.interfaceSignalProvider } returns null
         detector.start()
+        testDispatcher.scheduler.runCurrent()
         uiChangeFlow.tryEmit(UiChangeSignal(Date(System.currentTimeMillis())))
         testDispatcher.scheduler.runCurrent()
 
-        // Stop should reset gating state
-        detector.stop()
+        val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
+        detector.processClick(clickInfo, testTargetInfo, mockViewTarget, testActivityName)
 
-        // Restart but do NOT emit UiChangeSignal again
+        testDispatcher.scheduler.advanceTimeBy(4000L)
+        testDispatcher.scheduler.runCurrent()
+
+        verify { mockAmplitude.track(DEAD_CLICK, any()) }
+    }
+
+    @Test
+    fun `dead click detection should reset after stop()`() {
         detector.start()
+        testDispatcher.scheduler.runCurrent()
+
+        detector.stop()
 
         val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
         detector.processClick(clickInfo, testTargetInfo, mockViewTarget, testActivityName)
@@ -386,9 +394,7 @@ class FrustrationInteractionsDetectorTest {
 
         verify(exactly = 0) { mockAmplitude.track(DEAD_CLICK, any()) }
         verify {
-            mockLogger.error(
-                match { it.contains("no UI change signals observed yet") },
-            )
+            mockLogger.error("Dead click detection is disabled - call start() to enable.")
         }
     }
 
@@ -427,10 +433,6 @@ class FrustrationInteractionsDetectorTest {
                 autocaptureStateProvider = { AutocaptureState(interactions = listOf(InteractionType.RageClick)) },
             )
         detectorWithOptions.start()
-
-        // Emit initial UI change to indicate signal provider is active
-        testDispatcher.scheduler.advanceUntilIdle()
-        uiChangeFlow.tryEmit(UiChangeSignal(Date()))
         testDispatcher.scheduler.advanceUntilIdle()
 
         val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
@@ -454,10 +456,6 @@ class FrustrationInteractionsDetectorTest {
                 autocaptureStateProvider = { AutocaptureState(interactions = emptyList()) },
             )
         detectorWithOptions.start()
-
-        // Emit initial UI change
-        testDispatcher.scheduler.advanceUntilIdle()
-        uiChangeFlow.tryEmit(UiChangeSignal(Date()))
         testDispatcher.scheduler.advanceUntilIdle()
 
         val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
@@ -514,10 +512,6 @@ class FrustrationInteractionsDetectorTest {
                 },
             )
         detectorWithOptions.start()
-
-        // Emit initial UI change to indicate signal provider is active
-        testDispatcher.scheduler.advanceUntilIdle()
-        uiChangeFlow.tryEmit(UiChangeSignal(Date()))
         testDispatcher.scheduler.advanceUntilIdle()
 
         // Test dead click
@@ -570,11 +564,7 @@ class FrustrationInteractionsDetectorTest {
                 },
             )
         detectorWithDefaultOptions.start()
-
-        // Emit initial UI change
         testDispatcher.scheduler.advanceUntilIdle()
-        uiChangeFlow.tryEmit(UiChangeSignal(Date(System.currentTimeMillis())))
-        testDispatcher.scheduler.runCurrent()
 
         // Test dead click
         val deadClickInfo = FrustrationInteractionsDetector.ClickInfo(500f, 500f)
@@ -588,5 +578,49 @@ class FrustrationInteractionsDetectorTest {
         verify(exactly = 1) { mockAmplitude.track(DEAD_CLICK, any()) }
     }
 
+    @Test
+    fun `interface change after click prevents dead click`() {
+        detector.start()
+        val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
+        detector.processClick(clickInfo, testTargetInfo, mockViewTarget, testActivityName)
+
+        interfaceSignalProvider.emit(InterfaceChangeSignal(Date()))
+        testDispatcher.scheduler.advanceTimeBy(4000L)
+        testDispatcher.scheduler.runCurrent()
+
+        verify(exactly = 0) { mockAmplitude.track(DEAD_CLICK, any()) }
+    }
+
+    @Test
+    fun `provider change while started resubscribes the detector`() {
+        detector.start()
+        val next = FakeInterfaceSignalProvider(isProviding = true)
+
+        detector.interfaceSignalProviderDidChange(interfaceSignalProvider, next)
+
+        assertEquals(0, interfaceSignalProvider.receivers.size)
+        assertEquals(listOf(detector), next.receivers)
+    }
+
     //endregion
+}
+
+private class FakeInterfaceSignalProvider(
+    override var isProviding: Boolean,
+) : InterfaceSignalProvider {
+    val receivers = mutableListOf<InterfaceSignalReceiver>()
+
+    override fun addInterfaceSignalReceiver(receiver: InterfaceSignalReceiver) {
+        if (receiver !in receivers) {
+            receivers.add(receiver)
+        }
+    }
+
+    override fun removeInterfaceSignalReceiver(receiver: InterfaceSignalReceiver) {
+        receivers.remove(receiver)
+    }
+
+    fun emit(signal: InterfaceChangeSignal) {
+        receivers.toList().forEach { it.onInterfaceChanged(signal) }
+    }
 }

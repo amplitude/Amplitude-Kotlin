@@ -12,9 +12,11 @@ import com.amplitude.android.plugins.AndroidNetworkConnectivityCheckerPlugin
 import com.amplitude.android.storage.AndroidStorageContextV3
 import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.android.utilities.runCatchingCancellable
+import com.amplitude.core.AmplitudeContext
 import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.State
 import com.amplitude.core.diagnostics.DiagnosticsContextProvider
+import com.amplitude.core.platform.InterfaceSignalProvider
 import com.amplitude.core.platform.UniversalPlugin
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.platform.plugins.ContextPlugin
@@ -99,6 +101,26 @@ public open class Amplitude internal constructor(
         // before the claim, and a failed claim leaves no build behind.
         AmplitudeRegistry.activate(this)
         return super.build()
+    }
+
+    override fun buildAmplitudeContext(): AmplitudeContext {
+        val androidConfig = configuration as Configuration
+        return AmplitudeContext(
+            apiKey = configuration.apiKey,
+            instanceName = configuration.instanceName,
+            serverZone = configuration.serverZone,
+            logger = logger,
+            remoteConfigClient = remoteConfigClient,
+            diagnosticsClient = diagnosticsClient,
+            platformContext = androidConfig.context.applicationContext,
+        )
+    }
+
+    override fun onInterfaceSignalProviderChanged(
+        from: InterfaceSignalProvider?,
+        to: InterfaceSignalProvider?,
+    ) {
+        findPlugin<AndroidLifecyclePlugin>()?.onInterfaceSignalProviderChanged(from, to)
     }
 
     override fun createTimeline(): Timeline {

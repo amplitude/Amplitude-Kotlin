@@ -23,7 +23,7 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(manifest = Config.NONE)
 class WindowCallbackManagerTest {
-    private val track = mockk<TrackFunction>(relaxed = true)
+    private val track: TrackFunction = { _, _ -> }
     private val logger = mockk<Logger>(relaxed = true)
     private val autocaptureState = AutocaptureState(interactions = emptyList())
     private val appContext: Context get() = ApplicationProvider.getApplicationContext()

@@ -28,7 +28,8 @@ public interface UniversalPlugin {
     /**
      * Called when the plugin is registered with a host. [client] exposes live identity,
      * session, and opt-out state; [context] carries shared configuration such as the API key,
-     * server zone, and logger.
+     * server zone, and logger. On Android, [AmplitudeContext.platformContext] is the
+     * application context.
      */
     public fun setup(
         client: AnalyticsClient,
