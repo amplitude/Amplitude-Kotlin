@@ -9,6 +9,7 @@ plugins {
     alias(libs.plugins.dokka)
     alias(libs.plugins.mavenPublish) apply false
     alias(libs.plugins.kotlin.jvm) apply false
+    alias(libs.plugins.kotlin.serialization) apply false
     alias(libs.plugins.ktlint) apply false
     alias(libs.plugins.bcv)
 }
