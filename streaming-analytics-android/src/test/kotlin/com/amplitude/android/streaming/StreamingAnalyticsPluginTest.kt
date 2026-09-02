@@ -33,6 +33,7 @@ class StreamingAnalyticsPluginTest {
             val event =
                 DelayedEvent(
                     eventType = "Video Content Stopped",
+                    kind = DelayedEvent.Kind.DELAYED,
                     timestamp = 1L,
                     eventProperties = mutableMapOf(),
                 )
