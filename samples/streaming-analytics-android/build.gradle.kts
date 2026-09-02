@@ -61,6 +61,7 @@ android {
 
 dependencies {
     implementation(project(":android"))
+    implementation(project(":streaming-analytics-android"))
     implementation(libs.core.ktx)
     implementation(libs.appcompat)
     implementation(libs.material)
