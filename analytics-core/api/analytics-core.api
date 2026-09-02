@@ -131,6 +131,9 @@ public final class com/amplitude/core/AmplitudeKt {
 	public static final fun Amplitude (Ljava/lang/String;Lkotlin/jvm/functions/Function1;)Lcom/amplitude/core/Amplitude;
 }
 
+public abstract interface annotation class com/amplitude/core/AmplitudePreview : java/lang/annotation/Annotation {
+}
+
 public abstract interface class com/amplitude/core/AnalyticsClient {
 	public abstract fun getIdentity ()Lcom/amplitude/core/AnalyticsIdentity;
 	public abstract fun getOptOut ()Z
