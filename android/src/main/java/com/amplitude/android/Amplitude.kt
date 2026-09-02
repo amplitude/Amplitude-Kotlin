@@ -9,6 +9,7 @@ import com.amplitude.android.plugins.AnalyticsConnectorPlugin
 import com.amplitude.android.plugins.AndroidContextPlugin
 import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.android.plugins.AndroidNetworkConnectivityCheckerPlugin
+import com.amplitude.android.plugins.OptionalClasspathPlugins
 import com.amplitude.android.storage.AndroidStorageContextV3
 import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.android.utilities.runCatchingCancellable
@@ -141,6 +142,7 @@ public open class Amplitude internal constructor(
         add(AnalyticsConnectorIdentityPlugin())
         add(AnalyticsConnectorPlugin())
         add(AmplitudeDestination())
+        OptionalClasspathPlugins.install(this)
 
         (timeline as Timeline).start()
     }
