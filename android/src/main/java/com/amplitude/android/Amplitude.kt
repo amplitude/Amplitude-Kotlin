@@ -2,6 +2,9 @@ package com.amplitude.android
 
 import android.app.Application
 import android.content.Context
+import com.amplitude.android.anr.AnrCatcher
+import com.amplitude.android.anr.createAnrCatcher
+import com.amplitude.android.anr.recordAnr
 import com.amplitude.android.crash.CrashCatcher
 import com.amplitude.android.crash.CrashTrackingRemoteConfig
 import com.amplitude.android.crash.recordCrash
@@ -56,14 +59,21 @@ public open class Amplitude internal constructor(
     // Assigned in [initWatchers], after configuration validation and before any other
     // initialization, so the handler covers SDK init without leaking on invalid config.
     private lateinit var crashCatcher: CrashCatcher
+    private lateinit var anrCatcher: AnrCatcher
 
     override fun initWatchers() {
+        val androidConfig = configuration as Configuration
         crashCatcher =
             CrashCatcher(
-                context = (configuration as Configuration).context,
+                context = androidConfig.context,
                 ioDispatcher = storageIODispatcher,
                 diagnosticsClientLazy = lazy { diagnosticsClient },
                 crashTrackingRemoteConfigLazy = lazy { crashTrackingRemoteConfig },
+            )
+        anrCatcher =
+            createAnrCatcher(
+                context = androidConfig.context,
+                ioDispatcher = storageIODispatcher,
             )
     }
 
@@ -161,6 +171,11 @@ public open class Amplitude internal constructor(
                 diagnosticsClient.recordCrash(previousCrash)
             }
         }
+        anrCatcher.consumePreviousAnrs().forEach { previousAnr ->
+            AmplitudeRegistry.runIfActive(this) {
+                diagnosticsClient.recordAnr(previousAnr)
+            }
+        }
 
         val migrationManager = MigrationManager(this)
         migrationManager.migrateOldStorage()
@@ -240,6 +255,10 @@ public open class Amplitude internal constructor(
         if (::crashCatcher.isInitialized) {
             runCatching { crashCatcher.detach() }
                 .onFailure { logger.warn("Failed to detach the crash handler: $it") }
+        }
+        if (::anrCatcher.isInitialized) {
+            runCatching { anrCatcher.detach() }
+                .onFailure { logger.warn("Failed to detach the ANR catcher: $it") }
         }
     }
 
