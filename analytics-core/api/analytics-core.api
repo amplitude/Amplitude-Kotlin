@@ -85,6 +85,7 @@ public class com/amplitude/core/Amplitude : com/amplitude/core/platform/PluginHo
 	public final fun identify (Ljava/util/Map;Lcom/amplitude/core/events/EventOptions;)Lcom/amplitude/core/Amplitude;
 	public static synthetic fun identify$default (Lcom/amplitude/core/Amplitude;Lcom/amplitude/core/events/Identify;Lcom/amplitude/core/events/EventOptions;ILjava/lang/Object;)Lcom/amplitude/core/Amplitude;
 	public static synthetic fun identify$default (Lcom/amplitude/core/Amplitude;Ljava/util/Map;Lcom/amplitude/core/events/EventOptions;ILjava/lang/Object;)Lcom/amplitude/core/Amplitude;
+	protected fun initWatchers ()V
 	public final fun isBuilt ()Lkotlinx/coroutines/Deferred;
 	public final fun logEvent (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/Amplitude;
 	public final fun logRevenue (Lcom/amplitude/core/events/Revenue;)Lcom/amplitude/core/Amplitude;
@@ -377,6 +378,7 @@ public abstract interface class com/amplitude/core/StorageProvider {
 public abstract interface class com/amplitude/core/diagnostics/DiagnosticsClient {
 	public abstract fun close ()V
 	public abstract fun flush ()V
+	public abstract fun getShouldTrack ()Z
 	public abstract fun increment (Ljava/lang/String;J)V
 	public static synthetic fun increment$default (Lcom/amplitude/core/diagnostics/DiagnosticsClient;Ljava/lang/String;JILjava/lang/Object;)V
 	public abstract fun recordEvent (Ljava/lang/String;Ljava/util/Map;)V
