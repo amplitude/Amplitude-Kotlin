@@ -69,13 +69,15 @@ internal val BLOCK_HEADERS: Set<String> =
         "proxy-authorization",
     )
 
-public class NetworkTrackingOptions(
-    captureRules: List<CaptureRule>,
-    ignoreHosts: List<String> = emptyList(),
-    public val ignoreAmplitudeRequests: Boolean = true,
-    public val enabled: Boolean = true,
-    public val enableRemoteConfig: Boolean = true,
-) {
+public class NetworkTrackingOptions
+    @JvmOverloads
+    constructor(
+        captureRules: List<CaptureRule>,
+        ignoreHosts: List<String> = emptyList(),
+        public val ignoreAmplitudeRequests: Boolean = true,
+        public val enabled: Boolean = true,
+        public val enableRemoteConfig: Boolean = true,
+    ) {
     public val captureRules: List<CaptureRule> = captureRules.toList()
     public val ignoreHosts: List<String> = ignoreHosts.toList()
 
@@ -92,10 +94,12 @@ public class NetworkTrackingOptions(
         }
     }
 
-    public class CaptureHeader(
-        allowlist: List<String> = emptyList(),
-        public val captureSafeHeaders: Boolean = true,
-    ) {
+    public class CaptureHeader
+        @JvmOverloads
+        constructor(
+            allowlist: List<String> = emptyList(),
+            public val captureSafeHeaders: Boolean = true,
+        ) {
         public val allowlist: List<String> = allowlist.toList()
 
         internal fun filterHeaders(headers: Headers): Map<String, Any>? {
@@ -124,10 +128,12 @@ public class NetworkTrackingOptions(
         }
     }
 
-    public class CaptureBody(
-        allowlist: List<String>,
-        excludelist: List<String> = emptyList(),
-    ) {
+    public class CaptureBody
+        @JvmOverloads
+        constructor(
+            allowlist: List<String>,
+            excludelist: List<String> = emptyList(),
+        ) {
         public val allowlist: List<String> = allowlist.toList()
         public val excludelist: List<String> = excludelist.toList()
         private val objectFilter = ObjectFilter(this.allowlist, this.excludelist)
@@ -178,6 +184,7 @@ public class NetworkTrackingOptions(
         /**
          * Creates a rule that matches requests by host patterns.
          */
+        @JvmOverloads
         public constructor(
             hosts: List<String>,
             statusCodeRange: List<Int> = (500..599).toList(),
