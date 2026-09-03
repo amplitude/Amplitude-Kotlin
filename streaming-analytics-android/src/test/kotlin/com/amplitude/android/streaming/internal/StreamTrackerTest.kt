@@ -61,11 +61,12 @@ class StreamTrackerTest {
             )
 
         @Test
-        fun `trackVideoStarted sends Video Content Started delayed event with properties`() {
-            tracker.trackVideoStarted(
+        fun `trackStreamStarted sends Stream Started delayed event with properties`() {
+            tracker.trackStreamStarted(
                 options = options,
                 snapshot = snapshot,
-                viewSessionId = "view-1",
+                mediaType = MediaType.VIDEO,
+                streamSessionId = "stream-1",
                 timestamp = 1_000L,
                 insertId = "insert-start-1",
             )
@@ -73,15 +74,16 @@ class StreamTrackerTest {
             assertEquals(1, events.size)
             val event = events.first()
             assertTrue(event is DelayedEvent)
-            assertEquals("Video Content Started", event.eventType)
+            assertEquals("[Amplitude] Stream Started", event.eventType)
             assertEquals(1_000L, event.timestamp)
             assertEquals("insert-start-1", event.insertId)
 
             val props = event.eventProperties!!
-            assertEquals("view-1", props["view_session_id"])
+            assertEquals("stream-1", props["stream_session_id"])
+            assertEquals("video", props["media_type"])
             assertEquals("custom-id", props["content_id"])
             assertEquals("Custom Title", props["title"])
-            assertEquals(PlayerContent.CONTENT_TYPE_VOD, props["content_type"])
+            assertEquals("on_demand", props["delivery_mode"])
             assertEquals(15.0, props["start_position"])
             assertEquals(60.0, props["duration"])
             assertEquals(true, props["is_in_picture_in_picture"])
@@ -90,12 +92,13 @@ class StreamTrackerTest {
         }
 
         @Test
-        fun `trackVideoStopped sends Video Content Stopped delayed event with properties`() {
-            tracker.trackVideoStopped(
+        fun `trackStreamStopped sends Stream Stopped delayed event with properties`() {
+            tracker.trackStreamStopped(
                 options = options,
                 snapshot = snapshot,
-                viewSessionId = "view-1",
-                watchDurationMillis = 5_000L,
+                mediaType = MediaType.VIDEO,
+                streamSessionId = "stream-1",
+                streamDurationMillis = 5_000L,
                 timestamp = 6_000L,
                 insertId = "insert-stop-1",
                 stopReason = StopReason.PAUSED,
@@ -104,60 +107,66 @@ class StreamTrackerTest {
             assertEquals(1, events.size)
             val event = events.first()
             assertTrue(event is DelayedEvent)
-            assertEquals("Video Content Stopped", event.eventType)
+            assertEquals("[Amplitude] Stream Stopped", event.eventType)
             assertEquals(6_000L, event.timestamp)
             assertEquals("insert-stop-1", event.insertId)
 
             val props = event.eventProperties!!
-            assertEquals("view-1", props["view_session_id"])
+            assertEquals("stream-1", props["stream_session_id"])
+            assertEquals("video", props["media_type"])
             assertEquals(15.0, props["current_time"])
-            assertEquals(5.0, props["watch_duration"])
+            assertEquals(5.0, props["stream_duration"])
             assertEquals("paused", props["stop_reason"])
             assertEquals(25.0, props["percent_completed"])
         }
 
         @Test
-        fun `trackAudioStarted and trackAudioStopped default to audio content type`() {
-            tracker.trackAudioStarted(
+        fun `audio streams use media_type audio and on_demand delivery_mode`() {
+            tracker.trackStreamStarted(
                 options = PlayerContent(),
                 snapshot = snapshot,
-                viewSessionId = "view-audio",
+                mediaType = MediaType.AUDIO,
+                streamSessionId = "stream-audio",
                 timestamp = 2_000L,
                 insertId = "audio-start",
             )
-            tracker.trackAudioStopped(
+            tracker.trackStreamStopped(
                 options = PlayerContent(),
                 snapshot = snapshot,
-                viewSessionId = "view-audio",
-                watchDurationMillis = 3_000L,
+                mediaType = MediaType.AUDIO,
+                streamSessionId = "stream-audio",
+                streamDurationMillis = 3_000L,
                 timestamp = 5_000L,
                 insertId = "audio-stop",
             )
 
             assertEquals(2, events.size)
-            assertEquals("Audio Content Started", events[0].eventType)
-            assertEquals(PlayerContent.CONTENT_TYPE_AUDIO, events[0].eventProperties?.get("content_type"))
+            assertEquals("[Amplitude] Stream Started", events[0].eventType)
+            assertEquals("audio", events[0].eventProperties?.get("media_type"))
+            assertEquals("on_demand", events[0].eventProperties?.get("delivery_mode"))
             assertEquals("audio-start", events[0].insertId)
 
-            assertEquals("Audio Content Stopped", events[1].eventType)
-            assertEquals(PlayerContent.CONTENT_TYPE_AUDIO, events[1].eventProperties?.get("content_type"))
+            assertEquals("[Amplitude] Stream Stopped", events[1].eventType)
+            assertEquals("audio", events[1].eventProperties?.get("media_type"))
+            assertEquals("on_demand", events[1].eventProperties?.get("delivery_mode"))
             assertEquals("audio-stop", events[1].insertId)
         }
 
         @Test
         fun `live stream omits duration and percent_completed`() {
             val liveSnapshot = snapshot.copy(isLive = true)
-            tracker.trackVideoStopped(
+            tracker.trackStreamStopped(
                 options = PlayerContent(),
                 snapshot = liveSnapshot,
-                viewSessionId = "view-live",
-                watchDurationMillis = 10_000L,
+                mediaType = MediaType.VIDEO,
+                streamSessionId = "stream-live",
+                streamDurationMillis = 10_000L,
                 timestamp = 10_000L,
                 insertId = "stop-live",
             )
 
             val props = events.first().eventProperties!!
-            assertEquals(PlayerContent.CONTENT_TYPE_LIVE, props["content_type"])
+            assertEquals("live", props["delivery_mode"])
             assertFalse(props.containsKey("duration"))
             assertFalse(props.containsKey("percent_completed"))
         }
@@ -165,11 +174,12 @@ class StreamTrackerTest {
         @Test
         fun `unknown duration omits duration and percent_completed`() {
             val unknownDurationSnapshot = snapshot.copy(durationMillis = C.TIME_UNSET)
-            tracker.trackVideoStopped(
+            tracker.trackStreamStopped(
                 options = PlayerContent(),
                 snapshot = unknownDurationSnapshot,
-                viewSessionId = "view-unknown",
-                watchDurationMillis = 5_000L,
+                mediaType = MediaType.VIDEO,
+                streamSessionId = "stream-unknown",
+                streamDurationMillis = 5_000L,
                 timestamp = 5_000L,
                 insertId = "stop-unknown",
             )
@@ -198,16 +208,16 @@ class StreamTrackerTest {
             tracker.trackAdStarted(
                 options = options,
                 ad = ad,
-                viewSessionId = "view-ad-1",
+                streamSessionId = "stream-ad-1",
             )
 
             assertEquals(1, events.size)
             val event = events.first()
-            assertEquals("Ad Started", event.eventType)
+            assertEquals("[Amplitude] Ad Started", event.eventType)
             val props = event.eventProperties!!
             assertEquals("video-789:0:1", props["ad_id"])
             assertEquals("video-789", props["content_id"])
-            assertEquals("view-ad-1", props["view_session_id"])
+            assertEquals("stream-ad-1", props["stream_session_id"])
             assertEquals(45.0, props["ad_position"])
             assertEquals(30.0, props["ad_duration"])
             assertEquals("summer", props["ad_campaign"])
@@ -218,14 +228,14 @@ class StreamTrackerTest {
             tracker.trackAdStopped(
                 options = options,
                 ad = ad,
-                viewSessionId = "view-ad-1",
-                watchDurationMillis = 30_000L,
+                streamSessionId = "stream-ad-1",
+                streamDurationMillis = 30_000L,
                 completed = true,
             )
 
             val props = events.first().eventProperties!!
-            assertEquals("Ad Stopped", events.first().eventType)
-            assertEquals(30.0, props["ad_watch_duration"])
+            assertEquals("[Amplitude] Ad Stopped", events.first().eventType)
+            assertEquals(30.0, props["ad_stream_duration"])
             assertEquals("completed", props["ad_completion_status"])
             assertEquals(33.333, (props["ad_percent_completed"] as Double), 0.01)
         }
@@ -235,8 +245,8 @@ class StreamTrackerTest {
             tracker.trackAdStopped(
                 options = options,
                 ad = ad,
-                viewSessionId = "view-ad-1",
-                watchDurationMillis = 5_000L,
+                streamSessionId = "stream-ad-1",
+                streamDurationMillis = 5_000L,
                 completed = false,
             )
 
@@ -249,11 +259,11 @@ class StreamTrackerTest {
             tracker.trackAdSkipped(
                 options = options,
                 ad = ad,
-                viewSessionId = "view-ad-1",
+                streamSessionId = "stream-ad-1",
             )
 
             assertEquals(1, events.size)
-            assertEquals("Ad Skipped", events.first().eventType)
+            assertEquals("[Amplitude] Ad Skipped", events.first().eventType)
             assertEquals("video-789:0:1", events.first().eventProperties?.get("ad_id"))
         }
     }
