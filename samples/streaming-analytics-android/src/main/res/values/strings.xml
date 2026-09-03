@@ -1,0 +1,24 @@
+<resources>
+    <string name="app_name">Streaming Analytics Sample</string>
+    <string name="xml_screen_title">XML PlayerView</string>
+    <string name="compose_screen_title">Compose PlayerView</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="seek_back">-10s</string>
+    <string name="seek_forward">+10s</string>
+    <string name="swap_media">Swap media</string>
+    <string name="enter_pip">Enter PiP</string>
+    <string name="chooser_prompt">Choose a player UI</string>
+    <string name="xml_button">XML · one VoD</string>
+    <string name="compose_button">Compose · two VoD + audio</string>
+    <string name="video_one_label">Video 1 (PiP / background)</string>
+    <string name="video_two_label">Video 2</string>
+    <string name="audio_label">Audio</string>
+    <string name="retry">Retry</string>
+    <string name="playback_error">Playback error: %1$s</string>
+    <string name="status_playing">Playing</string>
+    <string name="status_paused">Paused</string>
+    <string name="status_buffering">Buffering</string>
+    <string name="status_ended">Ended</string>
+    <string name="status_error">Error</string>
+</resources>
