@@ -7,13 +7,11 @@ import com.amplitude.android.streaming.internal.util.millisToSeconds
 import com.amplitude.core.Amplitude
 import com.amplitude.core.AmplitudePreview
 
-private const val AD_STARTED = "Ad Started"
-private const val AD_STOPPED = "Ad Stopped"
-private const val AD_SKIPPED = "Ad Skipped"
-private const val VIDEO_STARTED = "Video Content Started"
-private const val VIDEO_STOPPED = "Video Content Stopped"
-private const val AUDIO_STARTED = "Audio Content Started"
-private const val AUDIO_STOPPED = "Audio Content Stopped"
+private const val AD_STARTED = "[Amplitude] Ad Started"
+private const val AD_STOPPED = "[Amplitude] Ad Stopped"
+private const val AD_SKIPPED = "[Amplitude] Ad Skipped"
+private const val STREAM_STARTED = "[Amplitude] Stream Started"
+private const val STREAM_STOPPED = "[Amplitude] Stream Stopped"
 
 internal val StreamingDiGraph.streamTracker: StreamTracker by weak {
     StreamTracker(
@@ -28,34 +26,34 @@ internal class StreamTracker(
     fun trackAdStarted(
         options: PlayerContent,
         ad: AdContext,
-        viewSessionId: String,
+        streamSessionId: String,
     ) {
         amplitude.track(
             eventType = AD_STARTED,
-            eventProperties = adProperties(
-                options = options,
-                ad = ad,
-                viewSessionId = viewSessionId
-            ),
+            eventProperties =
+                adProperties(
+                    options = options,
+                    ad = ad,
+                    streamSessionId = streamSessionId,
+                ),
         )
     }
 
     fun trackAdStopped(
         options: PlayerContent,
         ad: AdContext,
-        viewSessionId: String,
-        watchDurationMillis: Long,
+        streamSessionId: String,
+        streamDurationMillis: Long,
         completed: Boolean,
     ) {
         amplitude.track(
             eventType = AD_STOPPED,
             eventProperties =
-                adProperties(options = options, ad = ad, viewSessionId = viewSessionId).apply {
-                    put("ad_watch_duration", watchDurationMillis.millisToSeconds())
+                adProperties(options = options, ad = ad, streamSessionId = streamSessionId).apply {
+                    put("ad_stream_duration", streamDurationMillis.millisToSeconds())
                     put("ad_completion_status", if (completed) "completed" else "abandoned")
                     ad.percentCompleted()?.let { percentage ->
                         put("ad_percent_completed", percentage)
-
                     }
                 },
         )
@@ -64,37 +62,39 @@ internal class StreamTracker(
     fun trackAdSkipped(
         options: PlayerContent,
         ad: AdContext,
-        viewSessionId: String,
+        streamSessionId: String,
     ) {
         amplitude.track(
             eventType = AD_SKIPPED,
-            eventProperties = adProperties(
-                options = options,
-                ad = ad,
-                viewSessionId = viewSessionId
-            ),
+            eventProperties =
+                adProperties(
+                    options = options,
+                    ad = ad,
+                    streamSessionId = streamSessionId,
+                ),
         )
     }
 
-    fun trackVideoStarted(
+    fun trackStreamStarted(
         options: PlayerContent,
         snapshot: PlayerMediaSnapshot,
-        viewSessionId: String,
+        mediaType: MediaType,
+        streamSessionId: String,
         timestamp: Long,
         insertId: String,
     ) {
         amplitude.track(
             event =
                 DelayedEvent(
-                    eventType = VIDEO_STARTED,
+                    eventType = STREAM_STARTED,
                     kind = DelayedEvent.Kind.INSTANT,
                     timestamp = timestamp,
                     eventProperties =
                         contentProperties(
                             options = options,
                             snapshot = snapshot,
-                            viewSessionId = viewSessionId,
-                            defaultContentType = PlayerContent.CONTENT_TYPE_VOD,
+                            mediaType = mediaType,
+                            streamSessionId = streamSessionId,
                         ).apply {
                             put("start_position", snapshot.positionMillis.millisToSeconds())
                         },
@@ -102,11 +102,12 @@ internal class StreamTracker(
         )
     }
 
-    fun trackVideoStopped(
+    fun trackStreamStopped(
         options: PlayerContent,
         snapshot: PlayerMediaSnapshot,
-        viewSessionId: String,
-        watchDurationMillis: Long,
+        mediaType: MediaType,
+        streamSessionId: String,
+        streamDurationMillis: Long,
         timestamp: Long,
         insertId: String,
         stopReason: StopReason? = null,
@@ -115,74 +116,18 @@ internal class StreamTracker(
         amplitude.track(
             event =
                 DelayedEvent(
-                    eventType = VIDEO_STOPPED,
+                    eventType = STREAM_STOPPED,
                     kind = DelayedEvent.Kind.DELAYED,
                     timestamp = timestamp,
                     eventProperties =
                         stoppedContentProperties(
                             options = options,
                             snapshot = snapshot,
-                            viewSessionId = viewSessionId,
-                            watchDurationMillis = watchDurationMillis,
+                            mediaType = mediaType,
+                            streamSessionId = streamSessionId,
+                            streamDurationMillis = streamDurationMillis,
                             stopReason = stopReason,
                             errorMessage = errorMessage,
-                            defaultContentType = PlayerContent.CONTENT_TYPE_VOD,
-                        ),
-                ).also { it.insertId = insertId },
-        )
-    }
-
-    fun trackAudioStarted(
-        options: PlayerContent,
-        snapshot: PlayerMediaSnapshot,
-        viewSessionId: String,
-        timestamp: Long,
-        insertId: String,
-    ) {
-        amplitude.track(
-            event =
-                DelayedEvent(
-                    eventType = AUDIO_STARTED,
-                    kind = DelayedEvent.Kind.INSTANT,
-                    timestamp = timestamp,
-                    eventProperties =
-                        contentProperties(
-                            options = options,
-                            snapshot = snapshot,
-                            viewSessionId = viewSessionId,
-                            defaultContentType = PlayerContent.CONTENT_TYPE_AUDIO,
-                        ).apply {
-                            put("start_position", snapshot.positionMillis.millisToSeconds())
-                        },
-                ).also { it.insertId = insertId },
-        )
-    }
-
-    fun trackAudioStopped(
-        options: PlayerContent,
-        snapshot: PlayerMediaSnapshot,
-        viewSessionId: String,
-        watchDurationMillis: Long,
-        timestamp: Long,
-        insertId: String,
-        stopReason: StopReason? = null,
-        errorMessage: String? = null,
-    ) {
-        amplitude.track(
-            event =
-                DelayedEvent(
-                    eventType = AUDIO_STOPPED,
-                    kind = DelayedEvent.Kind.DELAYED,
-                    timestamp = timestamp,
-                    eventProperties =
-                        stoppedContentProperties(
-                            options = options,
-                            snapshot = snapshot,
-                            viewSessionId = viewSessionId,
-                            watchDurationMillis = watchDurationMillis,
-                            stopReason = stopReason,
-                            errorMessage = errorMessage,
-                            defaultContentType = PlayerContent.CONTENT_TYPE_AUDIO,
                         ),
                 ).also { it.insertId = insertId },
         )
@@ -193,12 +138,12 @@ internal class StreamTracker(
 private fun adProperties(
     options: PlayerContent,
     ad: AdContext,
-    viewSessionId: String,
+    streamSessionId: String,
 ): MutableMap<String, Any?> =
     options.extraProperties.orEmpty().toMutableMap().apply {
         put("ad_id", ad.adId)
         put("content_id", options.contentId ?: ad.contentId)
-        put("view_session_id", viewSessionId)
+        put("stream_session_id", streamSessionId)
         put("ad_position", ad.contentPositionMillis.millisToSeconds())
         if (ad.durationMillis.isKnownDuration()) {
             put("ad_duration", ad.durationMillis.millisToSeconds())
@@ -209,18 +154,15 @@ private fun adProperties(
 private fun contentProperties(
     options: PlayerContent,
     snapshot: PlayerMediaSnapshot,
-    viewSessionId: String,
-    defaultContentType: String,
+    mediaType: MediaType,
+    streamSessionId: String,
 ): MutableMap<String, Any?> =
     options.extraProperties.orEmpty().toMutableMap().apply {
-        put("view_session_id", viewSessionId)
+        put("stream_session_id", streamSessionId)
+        put("media_type", mediaType.value)
         (options.contentId ?: snapshot.mediaId)?.let { put("content_id", it) }
         (options.title ?: snapshot.title)?.let { put("title", it) }
-        put(
-            "content_type",
-            options.contentType
-                ?: if (snapshot.isLive) PlayerContent.CONTENT_TYPE_LIVE else defaultContentType,
-        )
+        put("delivery_mode", deliveryMode(options = options, snapshot = snapshot))
         put("is_in_picture_in_picture", snapshot.isInPictureInPicture)
         put("is_in_background", snapshot.isInBackground)
         if (snapshot.hasKnownDuration()) {
@@ -232,25 +174,41 @@ private fun contentProperties(
 private fun stoppedContentProperties(
     options: PlayerContent,
     snapshot: PlayerMediaSnapshot,
-    viewSessionId: String,
-    watchDurationMillis: Long,
+    mediaType: MediaType,
+    streamSessionId: String,
+    streamDurationMillis: Long,
     stopReason: StopReason?,
     errorMessage: String?,
-    defaultContentType: String,
 ): MutableMap<String, Any?> =
     contentProperties(
         options = options,
         snapshot = snapshot,
-        viewSessionId = viewSessionId,
-        defaultContentType = defaultContentType,
+        mediaType = mediaType,
+        streamSessionId = streamSessionId,
     ).apply {
         put("current_time", snapshot.positionMillis.millisToSeconds())
-        put("watch_duration", watchDurationMillis.millisToSeconds())
+        put("stream_duration", streamDurationMillis.millisToSeconds())
         stopReason?.let { put("stop_reason", it.value) }
         errorMessage?.let { put("error_message", it) }
         snapshot.percentCompleted()?.let { percentage ->
             put("percent_completed", percentage)
         }
+    }
+
+@OptIn(AmplitudePreview::class)
+private fun deliveryMode(
+    options: PlayerContent,
+    snapshot: PlayerMediaSnapshot,
+): String =
+    when (options.deliveryMode) {
+        PlayerContent.DELIVERY_MODE_LIVE -> PlayerContent.DELIVERY_MODE_LIVE
+        PlayerContent.DELIVERY_MODE_ON_DEMAND -> PlayerContent.DELIVERY_MODE_ON_DEMAND
+        else ->
+            if (snapshot.isLive) {
+                PlayerContent.DELIVERY_MODE_LIVE
+            } else {
+                PlayerContent.DELIVERY_MODE_ON_DEMAND
+            }
     }
 
 private fun PlayerMediaSnapshot.hasKnownDuration(): Boolean =
@@ -295,6 +253,13 @@ internal data class PlayerMediaSnapshot(
     val isInPictureInPicture: Boolean = false,
     val isInBackground: Boolean = false,
 )
+
+internal enum class MediaType(
+    val value: String,
+) {
+    VIDEO("video"),
+    AUDIO("audio"),
+}
 
 internal enum class StopReason(
     val value: String,
