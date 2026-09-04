@@ -1,5 +1,6 @@
 package com.amplitude.android.streaming.internal
 
+import com.amplitude.android.streaming.internal.util.deepCopy
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.JSONUtil
 import kotlinx.serialization.KSerializer
@@ -40,10 +41,10 @@ internal class DelayedEvent(
         kind = kind,
     ) {
         mergeEventOptions(wrapping)
-        this.eventProperties = wrapping.eventProperties
-        this.userProperties = wrapping.userProperties
-        this.groups = wrapping.groups
-        this.groupProperties = wrapping.groupProperties
+        this.eventProperties = wrapping.eventProperties?.deepCopy()
+        this.userProperties = wrapping.userProperties?.deepCopy()
+        this.groups = wrapping.groups?.deepCopy()
+        this.groupProperties = wrapping.groupProperties?.deepCopy()
     }
 }
 
