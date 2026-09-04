@@ -29,6 +29,9 @@ public class StreamingAnalyticsPlugin : Plugin {
     internal var streamingAnalytics: StreamingAnalytics? = null
 
     override fun setup(amplitude: Amplitude) {
+        require(amplitude is com.amplitude.android.Amplitude) {
+            "StreamingAnalyticsPlugin requires com.amplitude.android.Amplitude"
+        }
         super.setup(amplitude)
         streamingAnalytics = StreamingAnalytics(amplitude)
     }
