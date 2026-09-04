@@ -3,12 +3,16 @@ package com.amplitude.android.streaming.internal.network
 import com.amplitude.android.streaming.internal.DelayedEvent
 import com.amplitude.common.Logger
 import com.amplitude.core.Configuration
+import io.mockk.every
 import io.mockk.mockk
+import io.mockk.spyk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.SerializationException
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.SocketPolicy
 import org.json.JSONObject
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -81,6 +85,20 @@ class DelayedEventsEndpointTest {
                     result,
                 )
             }
+
+        @Test
+        fun `5xx keeps the status code when the response body cannot be read`() =
+            runTest {
+                server.enqueue(
+                    MockResponse()
+                        .setResponseCode(500)
+                        .setBody("upstream down")
+                        .setSocketPolicy(SocketPolicy.DISCONNECT_DURING_RESPONSE_BODY),
+                )
+                val result = send()
+                assertTrue(result is DelayedEventsResult.Failure)
+                assertEquals(500, (result as DelayedEventsResult.Failure).statusCode)
+            }
     }
 
     @Nested
@@ -97,6 +115,46 @@ class DelayedEventsEndpointTest {
 
     @Nested
     inner class Serialization {
+        @Test
+        fun `serialization failure is a failure without opening a connection`() =
+            runTest {
+                val configuration =
+                    Configuration(
+                        apiKey = "test-api-key",
+                        serverUrl = server.url("/").toString(),
+                    )
+                val request =
+                    spyk(
+                        DelayedEventsRequestDto(
+                            id = "view-1",
+                            timeoutMillis = 5_000,
+                            events =
+                                listOf(
+                                    DelayedEvent(
+                                        eventType = "Video Content Stopped",
+                                        kind = DelayedEvent.Kind.DELAYED,
+                                        timestamp = 1L,
+                                    ),
+                                ),
+                        ),
+                    )
+                every { request.toJson(any()) } throws SerializationException("encode failed")
+
+                val result =
+                    DelayedEventsEndpoint(
+                        configuration = configuration,
+                        amplitudeBaseUrl = AmplitudeBaseUrl(configuration),
+                        logger = logger,
+                        ioDispatcher = UnconfinedTestDispatcher(),
+                    ).send(request)
+
+                assertEquals(
+                    DelayedEventsResult.Failure(statusCode = null, message = "encode failed"),
+                    result,
+                )
+                assertEquals(0, server.requestCount)
+            }
+
         @Test
         fun `serializes contextual properties at top level of event`() =
             runTest {

@@ -6,6 +6,7 @@ import com.amplitude.common.Logger
 import com.amplitude.core.Configuration
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.SerializationException
 import java.io.IOException
 import java.io.InputStream
 import java.net.HttpURLConnection
@@ -32,6 +33,14 @@ internal class DelayedEventsEndpoint(
 ) {
     suspend fun send(request: DelayedEventsRequestDto): DelayedEventsResult =
         withContext(ioDispatcher) {
+            val requestBody =
+                try {
+                    request.toJson(configuration.apiKey)
+                } catch (error: SerializationException) {
+                    logger.error("Failed to serialize delayed-events request: ${error.message}")
+                    return@withContext DelayedEventsResult.Failure(statusCode = null, message = error.message)
+                }
+
             val connection =
                 try {
                     amplitudeBaseUrl.url("delayed").openConnection() as HttpURLConnection
@@ -52,17 +61,19 @@ internal class DelayedEventsEndpoint(
                 connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
                 connection.setRequestProperty("Accept", "application/json")
                 connection.outputStream.use {
-                    it.write(request.toJson(configuration.apiKey).toByteArray(Charsets.UTF_8))
+                    it.write(requestBody.toByteArray(Charsets.UTF_8))
                 }
                 val statusCode = connection.responseCode
-                val responseBody = readBody(connection)
                 when (statusCode) {
                     in 200..299 -> DelayedEventsResult.Success
                     HTTP_TOO_MANY_REQUESTS -> DelayedEventsResult.RateLimited
                     else ->
                         DelayedEventsResult.Failure(
                             statusCode = statusCode,
-                            message = responseBody?.takeIf { it.isNotBlank() } ?: connection.responseMessage,
+                            message =
+                                readBody(connection)
+                                    ?.takeIf { it.isNotBlank() }
+                                    ?: connection.responseMessage,
                         )
                 }
             } catch (error: IOException) {
@@ -80,6 +91,11 @@ internal class DelayedEventsEndpoint(
             } catch (_: IOException) {
                 connection.errorStream
             }
-        return stream?.bufferedReader()?.use { it.readText() }
+        return try {
+            stream?.bufferedReader()
+                ?.use { it.readText() }
+        } catch (_: IOException) {
+            null
+        }
     }
 }
