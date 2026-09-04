@@ -5,7 +5,6 @@ package com.amplitude.android
 import androidx.media3.common.Player
 import com.amplitude.android.streaming.PlayerContentProvider
 import com.amplitude.android.streaming.StreamingAnalyticsPlugin
-import com.amplitude.core.Amplitude
 import com.amplitude.core.AmplitudePreview
 
 /**
