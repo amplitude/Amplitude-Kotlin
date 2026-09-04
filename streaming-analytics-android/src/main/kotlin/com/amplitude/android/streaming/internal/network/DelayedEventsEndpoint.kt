@@ -19,7 +19,7 @@ private const val READ_TIMEOUT_MILLIS = 20_000
 internal val StreamingDiGraph.delayedEventsEndpoint: DelayedEventsEndpoint by weak {
     DelayedEventsEndpoint(
         configuration = configuration,
-        amplitudeBaseUrl = amplitudeBaseUrl,
+        delayedEventsBaseUrl = delayedEventsBaseUrl,
         logger = logger,
         ioDispatcher = ioDispatcher,
     )
@@ -27,7 +27,7 @@ internal val StreamingDiGraph.delayedEventsEndpoint: DelayedEventsEndpoint by we
 
 internal class DelayedEventsEndpoint(
     private val configuration: Configuration,
-    private val amplitudeBaseUrl: AmplitudeBaseUrl,
+    private val delayedEventsBaseUrl: DelayedEventsBaseUrl,
     private val logger: Logger,
     private val ioDispatcher: CoroutineDispatcher,
 ) {
@@ -43,7 +43,7 @@ internal class DelayedEventsEndpoint(
 
             val connection =
                 try {
-                    amplitudeBaseUrl.url("delayed").openConnection() as HttpURLConnection
+                    delayedEventsBaseUrl.url("delayed").openConnection() as HttpURLConnection
                 } catch (error: URISyntaxException) {
                     logger.error("Invalid delayed-events URI: ${error.message}")
                     return@withContext DelayedEventsResult.Failure(statusCode = null, message = error.message)
