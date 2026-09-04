@@ -40,8 +40,20 @@ public class StreamingAnalyticsPlugin : Plugin {
         if (event !is DelayedEvent) {
             return event
         }
-        streamingAnalytics?.queueDelayedEvent(event)
+        streamingAnalytics?.onDelayedEvent(event)
         return null
+    }
+
+    override fun onDeviceIdChanged(deviceId: String?) {
+        streamingAnalytics?.flush()
+    }
+
+    override fun onUserIdChanged(userId: String?) {
+        streamingAnalytics?.flush()
+    }
+
+    override fun onSessionIdChanged(sessionId: Long) {
+        streamingAnalytics?.flush()
     }
 
     override fun teardown() {
