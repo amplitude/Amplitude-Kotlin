@@ -13,7 +13,7 @@ class PlayerContentTest {
         val content = PlayerContent()
         assertNull(content.contentId)
         assertNull(content.title)
-        assertNull(content.contentType)
+        assertNull(content.deliveryMode)
         assertNull(content.extraProperties)
     }
 
