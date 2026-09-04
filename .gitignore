@@ -21,6 +21,10 @@ out/
 .gradle/
 build/
 
+# Kotlin Gradle plugin data
+# https://kotlinlang.org/docs/whatsnew20.html#new-directory-for-kotlin-data-in-gradle-projects
+.kotlin/
+
 # Local configuration file (sdk path, etc)
 local.properties
 
