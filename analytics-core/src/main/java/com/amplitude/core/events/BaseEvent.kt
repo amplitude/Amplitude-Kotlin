@@ -1,5 +1,7 @@
 package com.amplitude.core.events
 
+import com.amplitude.core.utilities.deepCopy
+
 /**
  * BaseEvent for SDK
  */
@@ -51,6 +53,16 @@ public open class BaseEvent : EventOptions(), AnalyticsEvent {
         options.callback?.let { callback = it }
         options.partnerId?.let { partnerId = it }
         options.sessionId?.let { sessionId = it }
+    }
+
+    /**
+     * Deep-copies [eventProperties], [userProperties], [groups], and [groupProperties] from [source].
+     */
+    protected fun copyPropertyMapsFrom(source: BaseEvent) {
+        eventProperties = source.eventProperties?.deepCopy()
+        userProperties = source.userProperties?.deepCopy()
+        groups = source.groups?.deepCopy()
+        groupProperties = source.groupProperties?.deepCopy()
     }
 
     /**

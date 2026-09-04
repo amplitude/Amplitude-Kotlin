@@ -40,10 +40,7 @@ internal class DelayedEvent(
         kind = kind,
     ) {
         mergeEventOptions(wrapping)
-        this.eventProperties = wrapping.eventProperties
-        this.userProperties = wrapping.userProperties
-        this.groups = wrapping.groups
-        this.groupProperties = wrapping.groupProperties
+        copyPropertyMapsFrom(wrapping)
     }
 }
 

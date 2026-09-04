@@ -436,6 +436,7 @@ public abstract interface class com/amplitude/core/events/AnalyticsEvent {
 public class com/amplitude/core/events/BaseEvent : com/amplitude/core/events/EventOptions, com/amplitude/core/events/AnalyticsEvent {
 	public field eventType Ljava/lang/String;
 	public fun <init> ()V
+	protected final fun copyPropertyMapsFrom (Lcom/amplitude/core/events/BaseEvent;)V
 	public fun getEventProperties ()Ljava/util/Map;
 	public fun getEventType ()Ljava/lang/String;
 	public final fun getGroupProperties ()Ljava/util/Map;
