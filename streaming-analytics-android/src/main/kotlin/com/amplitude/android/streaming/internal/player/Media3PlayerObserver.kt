@@ -90,6 +90,12 @@ internal class Media3PlayerObserver(
             }
             Player.STATE_ENDED -> {
                 cancelBuffering()
+                if (activeAd != null) {
+                    finishAdForTransition(
+                        completed = true,
+                        positionMillis = player.currentPosition.coerceAtLeast(0),
+                    )
+                }
                 emit(PlayerEvent.Ended)
             }
             Player.STATE_IDLE -> cancelBuffering()
@@ -113,7 +119,9 @@ internal class Media3PlayerObserver(
             (
                 newPosition.adGroupIndex == C.INDEX_UNSET ||
                     oldPosition.adGroupIndex != newPosition.adGroupIndex ||
-                    oldPosition.adIndexInAdGroup != newPosition.adIndexInAdGroup
+                    oldPosition.adIndexInAdGroup != newPosition.adIndexInAdGroup ||
+                    oldPosition.mediaItemIndex != newPosition.mediaItemIndex ||
+                    oldPosition.mediaItem != newPosition.mediaItem
             )
         ) {
             finishAdForTransition(
@@ -225,7 +233,9 @@ internal class Media3PlayerObserver(
 }
 
 private fun AdContext.isSameAdAs(other: AdContext): Boolean =
-    adGroupIndex == other.adGroupIndex && adIndexInAdGroup == other.adIndexInAdGroup
+    adGroupIndex == other.adGroupIndex &&
+        adIndexInAdGroup == other.adIndexInAdGroup &&
+        contentId == other.contentId
 
 internal fun Player.createPlayerDispatcher(): CoroutineDispatcher {
     return Handler(applicationLooper).asCoroutineDispatcher()
