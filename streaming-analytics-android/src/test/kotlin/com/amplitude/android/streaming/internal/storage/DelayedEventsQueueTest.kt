@@ -5,6 +5,9 @@ import com.amplitude.common.Logger
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.SerializationException
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -12,6 +15,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import java.util.concurrent.atomic.AtomicReference
 
 class DelayedEventsQueueTest {
     private val storage = mockk<DelayedEventStorage>()
@@ -94,6 +98,59 @@ class DelayedEventsQueueTest {
                         },
                     )
                 }
+            }
+
+        @Test
+        fun `concurrent enqueues merge instead of overwriting`() =
+            runTest {
+                val delayed = eventEntity("stopped")
+                val firstInstant = eventEntity("started")
+                val secondInstant = eventEntity("started-2")
+                val stored =
+                    AtomicReference(
+                        DelayedEventsRequestEntity(
+                            id = "stream-1",
+                            timeoutMillis = 5_000L,
+                            events = listOf(delayed),
+                        ),
+                    )
+                coEvery { storage.findKey(any()) } returns "existing-key"
+                coEvery { storage.read("existing-key") } coAnswers {
+                    delay(10)
+                    stored.get()
+                }
+                coEvery { storage.write("existing-key", any()) } coAnswers {
+                    stored.set(arg<DelayedEventsRequestEntity>(1))
+                }
+
+                coroutineScope {
+                    launch {
+                        queue.enqueue(
+                            DelayedEventsRequestEntity(
+                                id = "stream-1",
+                                timeoutMillis = 0L,
+                                events = emptyList(),
+                                instantEvents = listOf(firstInstant),
+                            ),
+                        )
+                    }
+                    launch {
+                        queue.enqueue(
+                            DelayedEventsRequestEntity(
+                                id = "stream-1",
+                                timeoutMillis = 0L,
+                                events = emptyList(),
+                                instantEvents = listOf(secondInstant),
+                            ),
+                        )
+                    }
+                }
+
+                assertEquals(listOf(delayed), stored.get().events)
+                assertEquals(
+                    listOf(firstInstant, secondInstant).toSet(),
+                    stored.get().instantEvents?.toSet(),
+                )
             }
     }
 
