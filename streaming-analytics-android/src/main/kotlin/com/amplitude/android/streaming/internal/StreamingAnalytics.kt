@@ -2,7 +2,7 @@ package com.amplitude.android.streaming.internal
 
 import androidx.media3.common.Player
 import com.amplitude.android.streaming.PlayerContentProvider
-import com.amplitude.core.Amplitude
+import com.amplitude.android.Amplitude
 import com.amplitude.core.AmplitudePreview
 
 /**
