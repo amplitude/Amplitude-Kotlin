@@ -3,11 +3,11 @@ package com.amplitude.android.streaming
 import androidx.media3.common.Player
 import com.amplitude.android.streaming.internal.DelayedEvent
 import com.amplitude.android.trackPlayer
-import com.amplitude.core.Amplitude
 import com.amplitude.core.AmplitudePreview
-import com.amplitude.core.Configuration
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
+import com.amplitude.core.platform.Timeline
+import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import com.amplitude.android.Amplitude as AndroidAmplitude
 
 @OptIn(AmplitudePreview::class)
 class StreamingAnalyticsPluginTest {
@@ -33,6 +34,7 @@ class StreamingAnalyticsPluginTest {
             val event =
                 DelayedEvent(
                     eventType = "Video Content Stopped",
+                    kind = DelayedEvent.Kind.DELAYED,
                     timestamp = 1L,
                     eventProperties = mutableMapOf(),
                 )
@@ -62,7 +64,7 @@ class StreamingAnalyticsPluginTest {
     inner class LifecycleAndWiring {
         @Test
         fun `setup initializes streamingAnalytics and teardown clears it`() {
-            val amplitude = mockk<Amplitude>(relaxed = true)
+            val amplitude = androidAmplitude()
             val plugin = StreamingAnalyticsPlugin()
             assertNull(plugin.streamingAnalytics)
 
@@ -77,7 +79,7 @@ class StreamingAnalyticsPluginTest {
 
         @Test
         fun `trackPlayer uses registered plugin`() {
-            val amplitude = Amplitude(Configuration(apiKey = "test"))
+            val amplitude = androidAmplitude()
             val plugin = StreamingAnalyticsPlugin()
             amplitude.add(plugin)
 
@@ -90,13 +92,24 @@ class StreamingAnalyticsPluginTest {
 
         @Test
         fun `trackPlayer adds plugin if not registered`() {
-            val amplitude = Amplitude(Configuration(apiKey = "test"))
+            val amplitude = androidAmplitude()
             val player = mockk<Player>(relaxed = true)
             amplitude.trackPlayer(player) { PlayerContent() }
 
             val plugin = amplitude.findPlugin<StreamingAnalyticsPlugin>()
             assertNotNull(plugin)
             assertNotNull(plugin?.streamingAnalytics)
+        }
+
+        private fun androidAmplitude(): AndroidAmplitude {
+            val amplitude = mockk<AndroidAmplitude>(relaxed = true)
+            val timeline = Timeline().also { it.amplitude = amplitude }
+            every { amplitude.timeline } returns timeline
+            every { amplitude.add(any<Plugin>()) } answers {
+                timeline.add(firstArg())
+                amplitude
+            }
+            return amplitude
         }
     }
 }
