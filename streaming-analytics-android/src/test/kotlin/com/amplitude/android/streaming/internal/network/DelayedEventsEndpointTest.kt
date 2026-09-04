@@ -50,7 +50,7 @@ class DelayedEventsEndpointTest {
 
                 val recorded = server.takeRequest(1, TimeUnit.SECONDS)
                 assertEquals("POST", recorded?.method)
-                assertEquals("/2/httpapi/delayed", recorded?.path)
+                assertEquals("/delayed", recorded?.path)
                 assertEquals(
                     "application/json; charset=utf-8",
                     recorded?.getHeader("Content-Type"),

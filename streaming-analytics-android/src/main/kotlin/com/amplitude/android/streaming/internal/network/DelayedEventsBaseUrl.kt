@@ -25,13 +25,28 @@ internal class DelayedEventsBaseUrl(
                     ServerZone.EU -> EU_DEFAULT_HOST
                 }
         val uri = URI(base)
-        val basePath = uri.rawPath.orEmpty().trimEnd('/').ifEmpty { "/2/httpapi" }
+        val basePath = uri.rawPath.orEmpty().trimEnd('/')
         val extra =
             extraPathSegments
                 .map { it.trim('/') }
                 .filter { it.isNotEmpty() }
                 .joinToString("/")
         val path = if (extra.isEmpty()) basePath else "$basePath/$extra"
-        return URL(URI(uri.scheme, uri.authority, path, uri.query, uri.fragment).toString())
+        return URL(
+            buildString {
+                append(uri.scheme)
+                append("://")
+                append(uri.rawAuthority)
+                append(path)
+                if (!uri.rawQuery.isNullOrEmpty()) {
+                    append('?')
+                    append(uri.rawQuery)
+                }
+                if (!uri.rawFragment.isNullOrEmpty()) {
+                    append('#')
+                    append(uri.rawFragment)
+                }
+            },
+        )
     }
 }

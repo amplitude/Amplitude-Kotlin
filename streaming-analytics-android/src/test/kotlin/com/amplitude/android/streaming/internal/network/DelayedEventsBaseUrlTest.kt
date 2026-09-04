@@ -72,12 +72,12 @@ class DelayedEventsBaseUrlTest {
         }
 
         @Test
-        fun `host without a path gets the default ingest path`() {
+        fun `host without a path keeps that host and appends extra segments`() {
             val url =
                 DelayedEventsBaseUrl(
                     Configuration(apiKey = "key", serverUrl = "https://proxy.example.com"),
                 ).url("delayed")
-            assertEquals("https://proxy.example.com/2/httpapi/delayed", url.toString())
+            assertEquals("https://proxy.example.com/delayed", url.toString())
         }
 
         @Test
@@ -90,6 +90,18 @@ class DelayedEventsBaseUrlTest {
                     ),
                 ).url("delayed")
             assertEquals("https://proxy.example.com/2/httpapi/delayed?x=1#frag", url.toString())
+        }
+
+        @Test
+        fun `encoded path and query on serverUrl are preserved`() {
+            val url =
+                DelayedEventsBaseUrl(
+                    Configuration(
+                        apiKey = "key",
+                        serverUrl = "https://proxy.example.com/a%2Fb?token=x%2Fy",
+                    ),
+                ).url("delayed")
+            assertEquals("https://proxy.example.com/a%2Fb/delayed?token=x%2Fy", url.toString())
         }
     }
 }
