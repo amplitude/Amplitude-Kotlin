@@ -5,6 +5,9 @@ import com.amplitude.common.Logger
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.SerializationException
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -12,6 +15,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import java.util.concurrent.atomic.AtomicReference
 
 class DelayedEventsQueueTest {
     private val storage = mockk<DelayedEventStorage>()
@@ -21,7 +25,7 @@ class DelayedEventsQueueTest {
     @BeforeEach
     fun setUp() {
         coEvery { storage.keys() } returns emptyList()
-        queue = DelayedEventsQueue(storage = storage, logger = logger)
+        queue = DelayedEventsQueue(storage = storage, logger = logger, storageKey = "test")
     }
 
     @Nested
@@ -94,6 +98,185 @@ class DelayedEventsQueueTest {
                         },
                     )
                 }
+            }
+
+        @Test
+        fun `delayed update with a new insert id promotes the previous delayed event`() =
+            runTest {
+                val pausedStop = eventEntity("stopped", insertId = "pause-1")
+                val resumedStop = eventEntity("stopped", insertId = "resume-1")
+                val started = eventEntity("started")
+                coEvery { storage.findKey(any()) } returns "existing-key"
+                coEvery { storage.read("existing-key") } returns
+                    DelayedEventsRequestEntity(
+                        id = "stream-1",
+                        timeoutMillis = 5_000L,
+                        events = listOf(pausedStop),
+                        instantEvents = listOf(started),
+                    )
+                coEvery { storage.write(any(), any()) } returns Unit
+
+                queue.enqueue(
+                    DelayedEventsRequestEntity(
+                        id = "stream-1",
+                        timeoutMillis = 8_000L,
+                        events = listOf(resumedStop),
+                    ),
+                )
+
+                coVerify {
+                    storage.write(
+                        "existing-key",
+                        match { stored ->
+                            stored.events == listOf(resumedStop) &&
+                                stored.timeoutMillis == 8_000L &&
+                                stored.instantEvents == listOf(started, pausedStop)
+                        },
+                    )
+                }
+            }
+
+        @Test
+        fun `delayed update with the same insert id does not promote`() =
+            runTest {
+                val firstHeartbeat = eventEntity("stopped", insertId = "stop-1")
+                val nextHeartbeat = eventEntity("stopped-updated", insertId = "stop-1")
+                coEvery { storage.findKey(any()) } returns "existing-key"
+                coEvery { storage.read("existing-key") } returns
+                    DelayedEventsRequestEntity(
+                        id = "stream-1",
+                        timeoutMillis = 5_000L,
+                        events = listOf(firstHeartbeat),
+                    )
+                coEvery { storage.write(any(), any()) } returns Unit
+
+                queue.enqueue(
+                    DelayedEventsRequestEntity(
+                        id = "stream-1",
+                        timeoutMillis = 8_000L,
+                        events = listOf(nextHeartbeat),
+                    ),
+                )
+
+                coVerify {
+                    storage.write(
+                        "existing-key",
+                        match { stored ->
+                            stored.events == listOf(nextHeartbeat) &&
+                                stored.instantEvents == null
+                        },
+                    )
+                }
+            }
+
+        @Test
+        fun `concurrent enqueues merge instead of overwriting`() =
+            runTest {
+                val delayed = eventEntity("stopped")
+                val firstInstant = eventEntity("started")
+                val secondInstant = eventEntity("started-2")
+                val stored =
+                    AtomicReference(
+                        DelayedEventsRequestEntity(
+                            id = "stream-1",
+                            timeoutMillis = 5_000L,
+                            events = listOf(delayed),
+                        ),
+                    )
+                coEvery { storage.findKey(any()) } returns "existing-key"
+                coEvery { storage.read("existing-key") } coAnswers {
+                    delay(10)
+                    stored.get()
+                }
+                coEvery { storage.write("existing-key", any()) } coAnswers {
+                    stored.set(arg<DelayedEventsRequestEntity>(1))
+                }
+
+                coroutineScope {
+                    launch {
+                        queue.enqueue(
+                            DelayedEventsRequestEntity(
+                                id = "stream-1",
+                                timeoutMillis = 0L,
+                                events = emptyList(),
+                                instantEvents = listOf(firstInstant),
+                            ),
+                        )
+                    }
+                    launch {
+                        queue.enqueue(
+                            DelayedEventsRequestEntity(
+                                id = "stream-1",
+                                timeoutMillis = 0L,
+                                events = emptyList(),
+                                instantEvents = listOf(secondInstant),
+                            ),
+                        )
+                    }
+                }
+
+                assertEquals(listOf(delayed), stored.get().events)
+                assertEquals(
+                    listOf(firstInstant, secondInstant).toSet(),
+                    stored.get().instantEvents?.toSet(),
+                )
+            }
+
+        @Test
+        fun `queues that share a storage key do not interleave merges`() =
+            runTest {
+                val delayed = eventEntity("stopped")
+                val firstInstant = eventEntity("started")
+                val secondInstant = eventEntity("started-2")
+                val stored =
+                    AtomicReference(
+                        DelayedEventsRequestEntity(
+                            id = "stream-1",
+                            timeoutMillis = 5_000L,
+                            events = listOf(delayed),
+                        ),
+                    )
+                coEvery { storage.findKey(any()) } returns "existing-key"
+                coEvery { storage.read("existing-key") } coAnswers {
+                    delay(10)
+                    stored.get()
+                }
+                coEvery { storage.write("existing-key", any()) } coAnswers {
+                    stored.set(arg<DelayedEventsRequestEntity>(1))
+                }
+                val first =
+                    DelayedEventsQueue(storage = storage, logger = logger, storageKey = "shared")
+                val second =
+                    DelayedEventsQueue(storage = storage, logger = logger, storageKey = "shared")
+
+                coroutineScope {
+                    launch {
+                        first.enqueue(
+                            DelayedEventsRequestEntity(
+                                id = "stream-1",
+                                timeoutMillis = 0L,
+                                events = emptyList(),
+                                instantEvents = listOf(firstInstant),
+                            ),
+                        )
+                    }
+                    launch {
+                        second.enqueue(
+                            DelayedEventsRequestEntity(
+                                id = "stream-1",
+                                timeoutMillis = 0L,
+                                events = emptyList(),
+                                instantEvents = listOf(secondInstant),
+                            ),
+                        )
+                    }
+                }
+
+                assertEquals(listOf(delayed), stored.get().events)
+                assertEquals(
+                    listOf(firstInstant, secondInstant).toSet(),
+                    stored.get().instantEvents?.toSet(),
+                )
             }
     }
 
@@ -189,11 +372,16 @@ class DelayedEventsQueueTest {
             events = listOf(eventEntity("stopped")),
         )
 
-    private fun eventEntity(eventType: String): DelayedEventEntity =
+    private fun eventEntity(
+        eventType: String,
+        insertId: String? = null,
+    ): DelayedEventEntity =
         DelayedEvent(
             eventType = eventType,
             kind = DelayedEvent.Kind.DELAYED,
             timestamp = 1L,
             eventProperties = mutableMapOf(),
-        ).toEntity()
+        ).also { event ->
+            insertId?.let { event.insertId = it }
+        }.toEntity()
 }
