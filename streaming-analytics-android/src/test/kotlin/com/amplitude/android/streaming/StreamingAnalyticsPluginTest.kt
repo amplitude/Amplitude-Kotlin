@@ -9,6 +9,8 @@ import com.amplitude.core.platform.Plugin
 import com.amplitude.core.platform.Timeline
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
@@ -105,6 +107,7 @@ class StreamingAnalyticsPluginTest {
             val amplitude = mockk<AndroidAmplitude>(relaxed = true)
             val timeline = Timeline().also { it.amplitude = amplitude }
             every { amplitude.timeline } returns timeline
+            every { amplitude.amplitudeScope } returns CoroutineScope(SupervisorJob())
             every { amplitude.add(any<Plugin>()) } answers {
                 timeline.add(firstArg())
                 amplitude
