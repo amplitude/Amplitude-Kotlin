@@ -143,7 +143,7 @@ class DelayedEventsEndpointTest {
                 val result =
                     DelayedEventsEndpoint(
                         configuration = configuration,
-                        amplitudeBaseUrl = AmplitudeBaseUrl(configuration),
+                        delayedEventsBaseUrl = DelayedEventsBaseUrl(configuration),
                         logger = logger,
                         ioDispatcher = UnconfinedTestDispatcher(),
                     ).send(request)
@@ -167,7 +167,7 @@ class DelayedEventsEndpointTest {
                 val endpoint =
                     DelayedEventsEndpoint(
                         configuration = configuration,
-                        amplitudeBaseUrl = AmplitudeBaseUrl(configuration),
+                        delayedEventsBaseUrl = DelayedEventsBaseUrl(configuration),
                         logger = logger,
                         ioDispatcher = UnconfinedTestDispatcher(),
                     )
@@ -277,7 +277,7 @@ class DelayedEventsEndpointTest {
                 val endpoint =
                     DelayedEventsEndpoint(
                         configuration = configuration,
-                        amplitudeBaseUrl = AmplitudeBaseUrl(configuration),
+                        delayedEventsBaseUrl = DelayedEventsBaseUrl(configuration),
                         logger = logger,
                         ioDispatcher = UnconfinedTestDispatcher(),
                     )
@@ -327,7 +327,7 @@ class DelayedEventsEndpointTest {
             )
         return DelayedEventsEndpoint(
             configuration = configuration,
-            amplitudeBaseUrl = AmplitudeBaseUrl(configuration),
+            delayedEventsBaseUrl = DelayedEventsBaseUrl(configuration),
             logger = logger,
             ioDispatcher = UnconfinedTestDispatcher(),
         ).send(
