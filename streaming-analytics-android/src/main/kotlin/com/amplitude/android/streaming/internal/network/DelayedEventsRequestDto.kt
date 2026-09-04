@@ -1,6 +1,7 @@
 package com.amplitude.android.streaming.internal.network
 
 import com.amplitude.android.streaming.internal.DelayedEvent
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -19,6 +20,7 @@ internal data class DelayedEventsRequestDto(
     fun toJson(apiKey: String): String = delayedEventsJson.encodeToString(copy(apiKey = apiKey))
 }
 
+@OptIn(ExperimentalSerializationApi::class)
 private val delayedEventsJson =
     Json {
         encodeDefaults = false
