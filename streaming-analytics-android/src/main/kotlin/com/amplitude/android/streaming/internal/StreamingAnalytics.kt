@@ -4,6 +4,7 @@ import androidx.media3.common.Player
 import com.amplitude.android.Amplitude
 import com.amplitude.android.streaming.PlayerContentProvider
 import com.amplitude.android.streaming.internal.network.uploadPipeline
+import com.amplitude.android.streaming.internal.player.playerBindingFactory
 import com.amplitude.android.streaming.internal.storage.storagePipeline
 import com.amplitude.core.AmplitudePreview
 import kotlinx.coroutines.NonCancellable
@@ -18,32 +19,44 @@ import kotlinx.coroutines.withContext
 internal class StreamingAnalytics(
     amplitude: Amplitude,
 ) {
-    private val graph = StreamingDiGraph(amplitude)
+    private var graph: StreamingDiGraph? = StreamingDiGraph(amplitude)
 
-    @Suppress("UNUSED_PARAMETER")
     fun trackPlayer(
         player: Player,
         contentProvider: PlayerContentProvider,
     ) {
-        // TODO: Not yet implemented
+        graph?.apply {
+            playerBindingFactory.getOrCreate(
+                player = player,
+                contentProvider = contentProvider,
+            )
+        }
     }
 
     fun onDelayedEvent(event: DelayedEvent) {
-        graph.scope.launch {
-            withContext(NonCancellable) {
-                graph.storagePipeline.onDelayedEvent(event)
+        graph?.apply {
+            scope.launch {
+                withContext(NonCancellable) {
+                    storagePipeline.onDelayedEvent(event)
+                }
+                uploadPipeline.onNewEvent()
             }
-            graph.uploadPipeline.onNewEvent()
         }
     }
 
     fun flush() {
-        graph.scope.launch {
-            graph.uploadPipeline.flush()
+        graph?.apply {
+            scope.launch {
+                uploadPipeline.flush()
+            }
         }
     }
 
     fun teardown() {
-        graph.scope.cancel()
+        graph?.apply {
+            playerBindingFactory.detachAll()
+            scope.cancel()
+        }
+        graph = null
     }
 }
