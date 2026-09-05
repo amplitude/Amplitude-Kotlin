@@ -13,6 +13,8 @@ private const val NAME: String = "AmplitudeStreamingAnalytics"
  * Amplitude plugin for Streaming Analytics.
  *
  * Installed automatically when `streaming-analytics-android` is on the classpath.
+ * Runs as an [Plugin.Type.Enrichment] plugin so [DelayedEvent]s receive context from all
+ * [Plugin.Type.Before] plugins before being routed off the standard HTTP destination path.
  * [teardown] calls [StreamingAnalytics.teardown].
  *
  * ```
@@ -23,7 +25,7 @@ private const val NAME: String = "AmplitudeStreamingAnalytics"
  */
 @AmplitudePreview
 public class StreamingAnalyticsPlugin : Plugin {
-    override val type: Plugin.Type = Plugin.Type.Before
+    override val type: Plugin.Type = Plugin.Type.Enrichment
     override val name: String = NAME
     override lateinit var amplitude: Amplitude
     internal var streamingAnalytics: StreamingAnalytics? = null
