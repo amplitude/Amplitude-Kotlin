@@ -41,6 +41,7 @@ internal class Media3PlayerObserver(
     private var bufferingJob: Job? = null
     private var observing = false
     private var activeAd: AdContext? = null
+    private var lastPlaybackState = Player.STATE_IDLE
 
     init {
         scope.launch {
@@ -81,6 +82,15 @@ internal class Media3PlayerObserver(
         }
     }
 
+    override fun onPlayWhenReadyChanged(
+        playWhenReady: Boolean,
+        reason: Int,
+    ) {
+        if (!playWhenReady && player.playbackState == Player.STATE_BUFFERING) {
+            emit(PlayerEvent.Paused)
+        }
+    }
+
     override fun onPlaybackStateChanged(playbackState: Int) {
         when (playbackState) {
             Player.STATE_BUFFERING -> startBufferingDebounce()
@@ -98,8 +108,18 @@ internal class Media3PlayerObserver(
                 }
                 emit(PlayerEvent.Ended)
             }
-            Player.STATE_IDLE -> cancelBuffering()
+            Player.STATE_IDLE -> {
+                cancelBuffering()
+                if (
+                    lastPlaybackState != Player.STATE_IDLE &&
+                        lastPlaybackState != Player.STATE_ENDED &&
+                        lastPlaybackState != Player.STATE_BUFFERING
+                ) {
+                    emit(PlayerEvent.Paused)
+                }
+            }
         }
+        lastPlaybackState = playbackState
     }
 
     override fun onPlayerError(error: PlaybackException) {
