@@ -24,11 +24,11 @@ class StreamingAnalyticsPluginTest {
         fun `name is stable for Amplitude add dedupe`() {
             val plugin = StreamingAnalyticsPlugin()
             assertEquals("AmplitudeStreamingAnalytics", plugin.name)
-            assertEquals(Plugin.Type.Before, plugin.type)
+            assertEquals(Plugin.Type.Enrichment, plugin.type)
         }
 
         @Test
-        fun `delayed events are consumed before the standard pipeline`() {
+        fun `delayed events are consumed after before plugins and before destinations`() {
             val plugin = StreamingAnalyticsPlugin()
             val event =
                 DelayedEvent(
