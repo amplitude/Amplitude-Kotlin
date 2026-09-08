@@ -9,6 +9,8 @@ import com.google.common.collect.ImmutableList
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -18,10 +20,41 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Test
+import java.lang.ref.WeakReference
+import java.lang.reflect.Proxy
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class Media3PlayerObserverTest {
+    @Test
+    fun `should not retain the player`() =
+        runTest {
+            val (observer, playerReference) =
+                observerWithAbandonedPlayer(
+                    backgroundScope,
+                    UnconfinedTestDispatcher(testScheduler),
+                )
+
+            awaitCollected(playerReference)
+
+            assertTrue(observer.eventFlow.replayCache.isEmpty())
+        }
+
+    @Test
+    fun `should return the last snapshot after the player is collected`() =
+        runTest {
+            val (observer, playerReference) =
+                observerWithAbandonedPlayer(
+                    backgroundScope,
+                    UnconfinedTestDispatcher(testScheduler),
+                )
+
+            awaitCollected(playerReference)
+
+            assertEquals(0L, observer.snapshot().positionMillis)
+        }
+
     @Test
     fun `should add the listener once while subscribers are present and remove it when they leave`() =
         runTest {
@@ -406,6 +439,31 @@ class Media3PlayerObserverTest {
         }
         runCurrent()
         return observer to events
+    }
+
+    private fun observerWithAbandonedPlayer(
+        scope: CoroutineScope,
+        dispatcher: CoroutineDispatcher,
+    ): Pair<Media3PlayerObserver, WeakReference<Player>> {
+        val player =
+            Proxy.newProxyInstance(
+                Player::class.java.classLoader,
+                arrayOf(Player::class.java),
+            ) { _, _, _ -> null } as Player
+        return Media3PlayerObserver(
+            player = player,
+            scope = scope,
+            playerDispatcher = dispatcher,
+        ) to WeakReference(player)
+    }
+
+    private fun awaitCollected(reference: WeakReference<*>) {
+        repeat(100) {
+            if (reference.get() == null) return
+            System.gc()
+            Thread.sleep(10)
+        }
+        fail<Unit>("Player was not garbage collected")
     }
 }
 
