@@ -14,6 +14,7 @@ import io.mockk.verify
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -164,6 +165,7 @@ class StreamingAnalyticsPluginTest {
             val amplitude = mockk<AndroidAmplitude>(relaxed = true)
             val timeline = Timeline().also { it.amplitude = amplitude }
             every { amplitude.timeline } returns timeline
+            every { amplitude.amplitudeScope } returns CoroutineScope(SupervisorJob())
             every { amplitude.add(any<Plugin>()) } answers {
                 timeline.add(firstArg())
                 amplitude
