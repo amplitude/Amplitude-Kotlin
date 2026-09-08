@@ -17,6 +17,7 @@ internal val StreamingDiGraph.playerBindingFactory: PlayerBindingFactory by DiGr
     PlayerBindingFactory(
         playerObserverFactory = playerObserverFactory,
         streamTracker = streamTracker,
+        heartbeatFactory = heartbeatFactory,
         time = time,
         scope = scope,
         playerDispatcherFactory = playerDispatcherFactory,
@@ -27,6 +28,7 @@ internal val StreamingDiGraph.playerBindingFactory: PlayerBindingFactory by DiGr
 internal class PlayerBindingFactory(
     private val playerObserverFactory: PlayerObserverFactory,
     private val streamTracker: StreamTracker,
+    private val heartbeatFactory: HeartbeatFactory,
     private val time: Time,
     private val scope: CoroutineScope,
     private val playerDispatcherFactory: PlayerDispatcherFactory,
@@ -46,6 +48,7 @@ internal class PlayerBindingFactory(
                     contentProvider = contentProvider,
                     playerObserverFactory = playerObserverFactory,
                     streamTracker = streamTracker,
+                    heartbeatFactory = heartbeatFactory,
                     time = time,
                     parentScope = scope,
                     playerDispatcher = playerDispatcherFactory.create(player),

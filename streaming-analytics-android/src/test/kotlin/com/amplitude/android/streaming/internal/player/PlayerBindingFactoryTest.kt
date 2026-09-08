@@ -69,6 +69,7 @@ class PlayerBindingFactoryTest {
         PlayerBindingFactory(
             playerObserverFactory = PlayerObserverFactory { _, _, _ -> TestPlayerObserver() },
             streamTracker = StreamTracker(mockk<Amplitude>(relaxed = true)),
+            heartbeatFactory = HeartbeatFactory(time = Time()),
             time = Time(),
             scope = CoroutineScope(Dispatchers.IO),
             playerDispatcherFactory =
