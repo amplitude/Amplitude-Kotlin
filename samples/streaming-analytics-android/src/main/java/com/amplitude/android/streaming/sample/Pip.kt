@@ -19,3 +19,6 @@ internal fun Activity.enterPipIfPossible(): Boolean {
             .build()
     return enterPictureInPictureMode(params)
 }
+
+internal val Activity.isInPipMode: Boolean
+    get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && isInPictureInPictureMode

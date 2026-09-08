@@ -23,6 +23,9 @@ internal class DemoPlayer(
     }
 
     fun play() {
+        if (exoPlayer.playbackState == Player.STATE_ENDED) {
+            exoPlayer.seekToDefaultPosition()
+        }
         exoPlayer.play()
     }
 
@@ -31,7 +34,11 @@ internal class DemoPlayer(
     }
 
     fun togglePlayPause() {
-        if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
+        if (exoPlayer.playWhenReady && exoPlayer.playbackState != Player.STATE_ENDED) {
+            pause()
+        } else {
+            play()
+        }
     }
 
     fun seekBy(deltaMs: Long) {

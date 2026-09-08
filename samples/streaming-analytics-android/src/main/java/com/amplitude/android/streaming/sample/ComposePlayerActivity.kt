@@ -57,7 +57,8 @@ class ComposePlayerActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
-        viewModel.onHostStopped(isInPictureInPictureMode, isFinishing)
+        if (isChangingConfigurations) return
+        viewModel.onHostStopped(isInPipMode, isFinishing)
     }
 
     override fun onPictureInPictureModeChanged(

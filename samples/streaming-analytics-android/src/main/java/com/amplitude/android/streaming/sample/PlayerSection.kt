@@ -27,7 +27,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.annotation.OptIn
 import androidx.media3.common.C
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.ui.PlayerView
@@ -40,6 +42,7 @@ import java.util.concurrent.TimeUnit
  */
 internal class DemoPlayerState {
     var isPlaying by mutableStateOf(false)
+    var playWhenReady by mutableStateOf(false)
     var isBuffering by mutableStateOf(false)
     var hasEnded by mutableStateOf(false)
     var title by mutableStateOf("")
@@ -64,6 +67,7 @@ internal fun rememberDemoPlayerState(demoPlayer: DemoPlayer): DemoPlayerState {
         fun sync() {
             val player = demoPlayer.exoPlayer
             state.isPlaying = player.isPlaying
+            state.playWhenReady = player.playWhenReady
             state.isBuffering = player.playbackState == Player.STATE_BUFFERING
             state.hasEnded = player.playbackState == Player.STATE_ENDED
             state.durationMs = player.duration
@@ -169,7 +173,15 @@ internal fun PlayerSection(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 FilledTonalButton(onClick = { demoPlayer.togglePlayPause() }) {
-                    Text(stringResource(if (state.isPlaying) R.string.pause else R.string.play))
+                    Text(
+                        stringResource(
+                            if (state.playWhenReady && !state.hasEnded) {
+                                R.string.pause
+                            } else {
+                                R.string.play
+                            },
+                        ),
+                    )
                 }
                 OutlinedButton(onClick = { demoPlayer.seekBy(-SEEK_STEP_MS) }) {
                     Text(stringResource(R.string.seek_back))
@@ -200,6 +212,7 @@ internal fun PlayerSection(
  * Media3 [PlayerView] bridged into Compose. Detaching clears the player so a disposed surface never
  * keeps receiving frames — otherwise returning from PiP leaves a black video.
  */
+@OptIn(UnstableApi::class)
 @Composable
 internal fun PlayerSurface(
     demoPlayer: DemoPlayer,

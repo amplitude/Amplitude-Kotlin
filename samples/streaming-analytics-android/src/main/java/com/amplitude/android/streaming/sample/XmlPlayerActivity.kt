@@ -4,9 +4,12 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Button
 import android.widget.TextView
+import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
 
+@OptIn(UnstableApi::class)
 class XmlPlayerActivity : AppCompatActivity() {
     private val viewModel: XmlPlayerViewModel by injectedViewModel { xmlPlayerViewModel }
 
@@ -37,7 +40,8 @@ class XmlPlayerActivity : AppCompatActivity() {
 
     override fun onStop() {
         super.onStop()
-        viewModel.onHostStopped(isInPictureInPictureMode, isFinishing)
+        if (isChangingConfigurations) return
+        viewModel.onHostStopped(isInPipMode, isFinishing)
     }
 
     override fun onDestroy() {
