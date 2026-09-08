@@ -45,16 +45,16 @@ internal class StreamTracker(
         options: PlayerContent,
         ad: AdContext,
         streamSessionId: String,
-        streamDurationMillis: Long,
-        completed: Boolean,
+        watchDurationMillis: Long,
+        status: AdCompletionStatus,
     ) {
         amplitude.track(
             eventType = AD_STOPPED,
             eventProperties =
                 adProperties(options = options, ad = ad, streamSessionId = streamSessionId).apply {
-                    put("ad_stream_duration", streamDurationMillis.millisToSeconds())
-                    put("ad_completion_status", if (completed) "completed" else "abandoned")
-                    ad.percentCompleted()?.let { percentage ->
+                    put("ad_watch_duration", watchDurationMillis.millisToSeconds())
+                    put("ad_completion_status", status.value)
+                    ad.percentWatched(watchDurationMillis)?.let { percentage ->
                         put("ad_percent_completed", percentage)
                     }
                 },
@@ -73,7 +73,9 @@ internal class StreamTracker(
                     options = options,
                     ad = ad,
                     streamSessionId = streamSessionId,
-                ),
+                ).apply {
+                    put("skip_position", ad.positionMillis.millisToSeconds())
+                },
         )
     }
 
@@ -262,15 +264,23 @@ internal data class AdContext(
         get() = "${contentId.orEmpty()}:$adGroupIndex:$adIndexInAdGroup"
 }
 
-internal fun AdContext.percentCompleted(): Double? {
+internal fun AdContext.percentWatched(watchDurationMillis: Long): Double? {
     if (!durationMillis.isKnownDuration()) {
         return null
     }
     if (durationMillis == 0L) {
         return 0.0
     }
-    return (100.0 * positionMillis.toDouble() / durationMillis)
+    return (100.0 * watchDurationMillis.toDouble() / durationMillis)
         .coerceIn(0.0, 100.0)
+}
+
+internal enum class AdCompletionStatus(
+    val value: String,
+) {
+    COMPLETED("completed"),
+    SKIPPED("skipped"),
+    ABANDONED("abandoned"),
 }
 
 internal enum class MediaType(
