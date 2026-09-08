@@ -41,6 +41,7 @@ internal class UploadPipeline(
 ) {
     private val mutex = Mutex()
     private val pending = AtomicBoolean(false)
+    private val pendingIgnoreThrottle = AtomicBoolean(false)
     private var attempt = 0
     private var backoffUntilMs = 0L
     private val sent = mutableMapOf<String, SentRequest>()
@@ -50,13 +51,18 @@ internal class UploadPipeline(
     suspend fun flush() = upload(ignoreThrottle = true)
 
     private suspend fun upload(ignoreThrottle: Boolean) {
+        if (ignoreThrottle) {
+            pendingIgnoreThrottle.set(true)
+        }
         pending.set(true)
         if (!mutex.tryLock()) return
         var retryWaitMs: Long? = null
+        var bypassThrottle = ignoreThrottle
         try {
             while (true) {
                 pending.set(false)
-                drain(ignoreThrottle)
+                bypassThrottle = bypassThrottle || pendingIgnoreThrottle.getAndSet(false)
+                drain(bypassThrottle)
                 if (pending.get()) continue
                 retryWaitMs = throttleRetryWaitMs()
                 break
@@ -66,12 +72,12 @@ internal class UploadPipeline(
         }
         val waitMs = retryWaitMs
         if (pending.get()) {
-            upload(ignoreThrottle = false)
+            upload(ignoreThrottle = pendingIgnoreThrottle.getAndSet(false))
         } else if (waitMs != null) {
             if (waitMs > 0) {
                 delay(waitMs.milliseconds)
             }
-            upload(ignoreThrottle = false)
+            upload(ignoreThrottle = pendingIgnoreThrottle.getAndSet(false))
         }
     }
 
