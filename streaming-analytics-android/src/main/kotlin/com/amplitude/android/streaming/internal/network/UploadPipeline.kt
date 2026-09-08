@@ -80,6 +80,8 @@ internal class UploadPipeline(
         }
         if (retryWaitMs > 0) {
             delay(retryWaitMs.milliseconds)
+        }
+        if (retryWaitMs > 0 || queue.peek(skipIds = emptySet()) != null) {
             upload(ignoreThrottle = false)
         }
     }
