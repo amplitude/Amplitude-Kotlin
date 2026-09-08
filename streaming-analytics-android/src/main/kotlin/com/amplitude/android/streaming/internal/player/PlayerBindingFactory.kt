@@ -52,10 +52,12 @@ internal class PlayerBindingFactory(
                         time = time,
                         parentScope = scope,
                         onStopped = ::unregister,
-                    ).also { bindingRegistry.add(it) }
+                    ).also {
+                        bindingRegistry.add(it)
+                        it.start()
+                    }
         }
         orphaned.forEach { it.stop() }
-        binding.start()
         return binding
     }
 
