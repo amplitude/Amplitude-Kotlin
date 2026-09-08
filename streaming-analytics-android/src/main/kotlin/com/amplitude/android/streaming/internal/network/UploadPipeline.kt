@@ -57,9 +57,7 @@ internal class UploadPipeline(
                 val request = queue.peek(skipIds = skipIds) ?: break
                 when (endpoint.send(request.toDto())) {
                     DelayedEventsResult.Success -> {
-                        if (queue.matches(request)) {
-                            queue.remove(request)
-                        }
+                        queue.removeIfUnchanged(request)
                         sent[request.id] =
                             SentRequest(
                                 atMs = currentTimeMs(),
