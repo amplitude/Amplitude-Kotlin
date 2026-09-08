@@ -7,6 +7,7 @@ import com.amplitude.android.streaming.internal.storage.toDto
 import com.amplitude.android.streaming.internal.util.DiGraph.Companion.singleton
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -39,6 +40,7 @@ internal class UploadPipeline(
     private val currentTimeMs: () -> Long = { System.currentTimeMillis() },
 ) {
     private val mutex = Mutex()
+    private val pending = AtomicBoolean(false)
     private var attempt = 0
     private var backoffUntilMs = 0L
     private val sent = mutableMapOf<String, SentRequest>()
@@ -48,44 +50,59 @@ internal class UploadPipeline(
     suspend fun flush() = upload(ignoreThrottle = true)
 
     private suspend fun upload(ignoreThrottle: Boolean) {
+        pending.set(true)
         if (!mutex.tryLock()) return
-        val retryWaitMs: Long
+        var retryWaitMs: Long? = null
         try {
             while (true) {
-                waitForBackoff()
-                val skipIds = if (ignoreThrottle) emptySet() else throttledIds()
-                val request = queue.peek(skipIds = skipIds) ?: break
-                when (endpoint.send(request.toDto())) {
-                    DelayedEventsResult.Success -> {
-                        queue.removeIfUnchanged(request)
-                        sent[request.id] =
-                            SentRequest(
-                                atMs = currentTimeMs(),
-                                minIntervalMs = request.timeoutMillis / 4,
-                            )
-                        attempt = 0
-                        backoffUntilMs = 0L
-                    }
-                    DelayedEventsResult.RateLimited -> {
-                        scheduleBackoff(minDelayMs = RATE_LIMIT_MIN_DELAY_MS)
-                    }
-                    is DelayedEventsResult.Failure -> {
-                        scheduleBackoff(minDelayMs = 0L)
-                    }
-                }
+                pending.set(false)
+                drain(ignoreThrottle)
+                if (pending.get()) continue
+                retryWaitMs = throttleRetryWaitMs()
+                break
             }
-            retryWaitMs = throttleRetryWaitMs()
         } finally {
             mutex.unlock()
         }
-        if (retryWaitMs > 0) {
-            delay(retryWaitMs.milliseconds)
+        val waitMs = retryWaitMs
+        if (pending.get()) {
+            upload(ignoreThrottle = false)
+        } else if (waitMs != null) {
+            if (waitMs > 0) {
+                delay(waitMs.milliseconds)
+            }
             upload(ignoreThrottle = false)
         }
     }
 
-    private suspend fun throttleRetryWaitMs(): Long {
-        if (queue.peek(skipIds = emptySet()) == null) return 0L
+    private suspend fun drain(ignoreThrottle: Boolean) {
+        while (true) {
+            waitForBackoff()
+            val skipIds = if (ignoreThrottle) emptySet() else throttledIds()
+            val request = queue.peek(skipIds = skipIds) ?: return
+            when (endpoint.send(request.toDto())) {
+                DelayedEventsResult.Success -> {
+                    queue.removeIfUnchanged(request)
+                    sent[request.id] =
+                        SentRequest(
+                            atMs = currentTimeMs(),
+                            minIntervalMs = request.timeoutMillis / 4,
+                        )
+                    attempt = 0
+                    backoffUntilMs = 0L
+                }
+                DelayedEventsResult.RateLimited -> {
+                    scheduleBackoff(minDelayMs = RATE_LIMIT_MIN_DELAY_MS)
+                }
+                is DelayedEventsResult.Failure -> {
+                    scheduleBackoff(minDelayMs = 0L)
+                }
+            }
+        }
+    }
+
+    private suspend fun throttleRetryWaitMs(): Long? {
+        if (queue.peek(skipIds = emptySet()) == null) return null
         val now = currentTimeMs()
         return sent.minOfOrNull { (_, sent) -> sent.atMs + sent.minIntervalMs - now }
             ?.coerceAtLeast(0L)
