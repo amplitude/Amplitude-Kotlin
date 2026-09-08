@@ -213,6 +213,34 @@ class UploadPipelineTest {
 
                 draining.cancel()
             }
+
+        @Test
+        fun `uploads a request enqueued while the drain loop is running`() =
+            runTest {
+                val pipeline = pipeline()
+                val entries = mutableListOf(queuedRequest("stream-1"))
+                coEvery { queue.peek(any()) } answers {
+                    val skipIds = firstArg<Set<String>>()
+                    entries.firstOrNull { it.id !in skipIds }
+                }
+                coEvery { queue.removeIfUnchanged(any()) } answers {
+                    entries.removeAll { it.id == firstArg<DelayedEventsRequestEntity>().id }
+                }
+                coEvery { endpoint.send(any()) } coAnswers {
+                    val id = firstArg<DelayedEventsRequestDto>().id
+                    if (id == "stream-1") {
+                        entries.add(queuedRequest("stream-2"))
+                        launch { pipeline.onNewEvent() }
+                        testScheduler.runCurrent()
+                    }
+                    DelayedEventsResult.Success
+                }
+
+                pipeline.onNewEvent()
+
+                coVerify(exactly = 1) { endpoint.send(match { it.id == "stream-1" }) }
+                coVerify(exactly = 1) { endpoint.send(match { it.id == "stream-2" }) }
+            }
     }
 
     @Nested
