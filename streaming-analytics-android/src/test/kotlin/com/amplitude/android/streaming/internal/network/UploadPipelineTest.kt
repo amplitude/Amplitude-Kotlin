@@ -31,8 +31,7 @@ class UploadPipelineTest {
             val skipIds = firstArg<Set<String>>()
             queued?.takeUnless { it.id in skipIds }
         }
-        coEvery { queue.matches(any()) } returns true
-        coEvery { queue.remove(any()) } answers { queued = null }
+        coEvery { queue.removeIfUnchanged(any()) } answers { queued = null }
     }
 
     @Nested
@@ -45,7 +44,7 @@ class UploadPipelineTest {
                 pipeline().onNewEvent()
 
                 coVerify(exactly = 0) { endpoint.send(any()) }
-                coVerify(exactly = 0) { queue.remove(any()) }
+                coVerify(exactly = 0) { queue.removeIfUnchanged(any()) }
                 assertEquals(0L, currentTime)
             }
 
@@ -58,7 +57,7 @@ class UploadPipelineTest {
 
                 coVerify { queue.peek(emptySet()) }
                 coVerify { endpoint.send(match { it.id == "stream-1" }) }
-                coVerify { queue.remove(match { it.id == "stream-1" }) }
+                coVerify { queue.removeIfUnchanged(match { it.id == "stream-1" }) }
                 assertEquals(0L, currentTime)
             }
 
@@ -74,7 +73,7 @@ class UploadPipelineTest {
                 pipeline().onNewEvent()
 
                 coVerify(exactly = 2) { endpoint.send(any()) }
-                coVerify { queue.remove(any()) }
+                coVerify { queue.removeIfUnchanged(any()) }
                 assertEquals(2_000L, currentTime)
             }
 
@@ -90,7 +89,7 @@ class UploadPipelineTest {
                 pipeline().onNewEvent()
 
                 coVerify(exactly = 2) { endpoint.send(any()) }
-                coVerify { queue.remove(any()) }
+                coVerify { queue.removeIfUnchanged(any()) }
                 assertEquals(30_000L, currentTime)
             }
 
@@ -112,7 +111,7 @@ class UploadPipelineTest {
                 pipeline().onNewEvent()
 
                 coVerify(exactly = 8) { endpoint.send(any()) }
-                coVerify { queue.remove(any()) }
+                coVerify { queue.removeIfUnchanged(any()) }
                 assertEquals(
                     2_000L + 4_000L + 8_000L + 16_000L + 32_000L + 64_000L + 64_000L,
                     currentTime,
@@ -144,8 +143,8 @@ class UploadPipelineTest {
                 val first = queuedRequest("stream-1")
                 val second = queuedRequest("stream-2")
                 queued = first
-                coEvery { queue.remove(match { it.id == "stream-1" }) } answers { queued = second }
-                coEvery { queue.remove(match { it.id == "stream-2" }) } answers { queued = null }
+                coEvery { queue.removeIfUnchanged(match { it.id == "stream-1" }) } answers { queued = second }
+                coEvery { queue.removeIfUnchanged(match { it.id == "stream-2" }) } answers { queued = null }
                 coEvery { endpoint.send(any()) } returnsMany
                     listOf(
                         DelayedEventsResult.Failure(statusCode = 500, message = "upstream down"),
@@ -166,8 +165,8 @@ class UploadPipelineTest {
                 val first = queuedRequest("stream-1")
                 val second = queuedRequest("stream-2")
                 queued = first
-                coEvery { queue.remove(match { it.id == "stream-1" }) } answers { queued = second }
-                coEvery { queue.remove(match { it.id == "stream-2" }) } answers { queued = null }
+                coEvery { queue.removeIfUnchanged(match { it.id == "stream-1" }) } answers { queued = second }
+                coEvery { queue.removeIfUnchanged(match { it.id == "stream-2" }) } answers { queued = null }
                 coEvery { endpoint.send(any()) } returns DelayedEventsResult.Success
 
                 pipeline().onNewEvent()
@@ -248,7 +247,7 @@ class UploadPipelineTest {
                     val skipIds = firstArg<Set<String>>()
                     entries.firstOrNull { it.id !in skipIds }
                 }
-                coEvery { queue.remove(any()) } answers {
+                coEvery { queue.removeIfUnchanged(any()) } answers {
                     entries.removeAll { it.id == firstArg<DelayedEventsRequestEntity>().id }
                 }
 
@@ -264,12 +263,15 @@ class UploadPipelineTest {
             runTest {
                 val pipeline = pipeline()
                 coEvery { endpoint.send(any()) } returns DelayedEventsResult.Success
-                coEvery { queue.matches(any()) } returnsMany listOf(false, true)
+                var unchanged = false
+                coEvery { queue.removeIfUnchanged(any()) } answers {
+                    if (unchanged) queued = null else unchanged = true
+                }
 
                 pipeline.onNewEvent()
 
                 coVerify(exactly = 2) { endpoint.send(any()) }
-                coVerify { queue.remove(any()) }
+                coVerify(exactly = 2) { queue.removeIfUnchanged(any()) }
                 assertEquals(1_250L, currentTime)
             }
     }
