@@ -13,25 +13,32 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.lang.ref.WeakReference
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.time.Duration.Companion.milliseconds
+
+private const val ORPHAN_CHECK_MILLIS = 1_000L
 
 /**
  * Turns player events into stream sessions, Stream Started, and ad events.
  */
 @OptIn(AmplitudePreview::class)
 internal class PlayerBinding internal constructor(
-    val player: Player,
+    player: Player,
     private val contentProvider: PlayerContentProvider,
     playerObserverFactory: PlayerObserverFactory,
     private val streamTracker: StreamTracker,
     private val heartbeatFactory: HeartbeatFactory,
     private val time: Time,
     parentScope: CoroutineScope,
+    private val onStopped: (PlayerBinding) -> Unit = {},
 ) {
+    private val playerReference = WeakReference(player)
     private val scope =
         CoroutineScope(
             parentScope.coroutineContext +
@@ -54,7 +61,7 @@ internal class PlayerBinding internal constructor(
 
     fun start() {
         if (eventJob != null) return
-        options = resolveOptions(player.currentMediaItem)
+        options = resolveOptions(playerReference.get()?.currentMediaItem)
         eventJob =
             scope.launch {
                 observer.eventFlow.collect { event ->
@@ -65,6 +72,12 @@ internal class PlayerBinding internal constructor(
                     }
                 }
             }
+        scope.launch {
+            while (!stopped.get()) {
+                delay(ORPHAN_CHECK_MILLIS.milliseconds)
+                if (isOrphaned()) stop()
+            }
+        }
     }
 
     fun stop() {
@@ -81,11 +94,16 @@ internal class PlayerBinding internal constructor(
             } finally {
                 this@PlayerBinding.scope.cancel()
                 cleanupScope.cancel()
+                onStopped(this@PlayerBinding)
             }
         }
     }
 
     private suspend fun handlePlayerEvent(event: PlayerEvent) {
+        if (isOrphaned()) {
+            stop()
+            return
+        }
         when (event) {
             PlayerEvent.Playing -> onPlaying()
             PlayerEvent.Paused -> onPaused()
@@ -105,7 +123,7 @@ internal class PlayerBinding internal constructor(
     }
 
     private suspend fun onPlaying() {
-        if (player.isPlayingAd || playback is PlaybackState.Ad) return
+        if (playerReference.get()?.isPlayingAd == true || playback is PlaybackState.Ad) return
         when (val state = playback) {
             is PlaybackState.Content -> {
                 state.segment.resumeWatch()
@@ -288,7 +306,7 @@ internal class PlayerBinding internal constructor(
         val content = state.content
         if (content == null) {
             playback = PlaybackState.Idle(state.viewSessionId)
-            if (player.isPlaying) startContent(state.viewSessionId)
+            if (playerReference.get()?.isPlaying == true) startContent(state.viewSessionId)
             return
         }
         if (state.paused) {
@@ -297,7 +315,7 @@ internal class PlayerBinding internal constructor(
             return
         }
         playback = content
-        if (player.isPlaying) resumeContent(content)
+        if (playerReference.get()?.isPlaying == true) resumeContent(content)
     }
 
     private fun resumeContent(state: PlaybackState.Suspended) {
@@ -405,7 +423,8 @@ internal class PlayerBinding internal constructor(
         streamTracker.trackStreamStopped(
             options = segment.options,
             snapshot =
-                if (segment.frozen) {
+                if (segment.frozen || isOrphaned()) {
+                    if (!segment.frozen) segment.freeze(segment.snapshot)
                     segment.snapshot
                 } else {
                     snapshot().also { segment.updateSnapshot(it) }
@@ -422,6 +441,10 @@ internal class PlayerBinding internal constructor(
     }
 
     private suspend fun snapshot(): PlayerMediaSnapshot = observer.snapshot()
+
+    internal fun isBoundTo(player: Player): Boolean = playerReference.get() === player
+
+    internal fun isOrphaned(): Boolean = playerReference.get() == null
 
     private fun newViewSessionId(): String = UUID.randomUUID().toString()
 

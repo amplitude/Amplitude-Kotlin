@@ -10,7 +10,6 @@ import com.amplitude.android.streaming.internal.util.Time
 import com.amplitude.android.streaming.internal.util.time
 import com.amplitude.core.AmplitudePreview
 import kotlinx.coroutines.CoroutineScope
-import java.util.IdentityHashMap
 
 internal val StreamingDiGraph.playerBindingFactory: PlayerBindingFactory by DiGraph.singleton {
     PlayerBindingFactory(
@@ -31,35 +30,46 @@ internal class PlayerBindingFactory(
     private val scope: CoroutineScope,
 ) {
     private val lock = Any()
-    private val bindingRegistry = IdentityHashMap<Player, PlayerBinding>()
+    private val bindingRegistry = mutableListOf<PlayerBinding>()
 
     fun getOrCreate(
         player: Player,
         contentProvider: PlayerContentProvider,
     ): PlayerBinding {
+        val orphaned: List<PlayerBinding>
+        val binding: PlayerBinding
         synchronized(lock) {
-            bindingRegistry[player]?.let { return it }
-            val binding =
-                PlayerBinding(
-                    player = player,
-                    contentProvider = contentProvider,
-                    playerObserverFactory = playerObserverFactory,
-                    streamTracker = streamTracker,
-                    heartbeatFactory = heartbeatFactory,
-                    time = time,
-                    parentScope = scope,
-                )
-            bindingRegistry[player] = binding
-            binding.start()
-            return binding
+            orphaned = bindingRegistry.filter { it.isOrphaned() }
+            bindingRegistry.removeAll(orphaned.toSet())
+            binding =
+                bindingRegistry.firstOrNull { it.isBoundTo(player) }
+                    ?: PlayerBinding(
+                        player = player,
+                        contentProvider = contentProvider,
+                        playerObserverFactory = playerObserverFactory,
+                        streamTracker = streamTracker,
+                        heartbeatFactory = heartbeatFactory,
+                        time = time,
+                        parentScope = scope,
+                        onStopped = ::unregister,
+                    ).also { bindingRegistry.add(it) }
         }
+        orphaned.forEach { it.stop() }
+        binding.start()
+        return binding
     }
 
     fun detachAll() {
         synchronized(lock) {
-            val toFlush = bindingRegistry.values.toList()
+            val toFlush = bindingRegistry.toList()
             bindingRegistry.clear()
             toFlush
         }.forEach { it.stop() }
+    }
+
+    private fun unregister(binding: PlayerBinding) {
+        synchronized(lock) {
+            bindingRegistry.remove(binding)
+        }
     }
 }

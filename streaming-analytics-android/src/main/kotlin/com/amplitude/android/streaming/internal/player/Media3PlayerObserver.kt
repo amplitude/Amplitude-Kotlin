@@ -23,17 +23,19 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.lang.ref.WeakReference
 import kotlin.time.Duration.Companion.milliseconds
 
 private const val BUFFERING_DEBOUNCE_MILLIS = 500L
 private const val EVENT_BUFFER_CAPACITY = 64
 
 internal class Media3PlayerObserver(
-    private val player: Player,
+    player: Player,
     private val scope: CoroutineScope,
     private val playerDispatcher: CoroutineDispatcher = player.createPlayerDispatcher(),
 ) : Player.Listener,
     PlayerObserver {
+    private val playerReference = WeakReference(player)
     private val _eventFlow =
         MutableSharedFlow<PlayerEvent>(extraBufferCapacity = EVENT_BUFFER_CAPACITY)
     override val eventFlow: SharedFlow<PlayerEvent> = _eventFlow.asSharedFlow()
@@ -41,6 +43,11 @@ internal class Media3PlayerObserver(
     private var bufferingJob: Job? = null
     private var observing = false
     private var activeAd: AdContext? = null
+    private var lastSnapshot =
+        PlayerMediaSnapshot(
+            positionMillis = 0L,
+            mediaType = MediaType.VIDEO,
+        )
 
     init {
         scope.launch {
@@ -61,6 +68,7 @@ internal class Media3PlayerObserver(
 
     override suspend fun snapshot(): PlayerMediaSnapshot =
         withContext(playerDispatcher) {
+            val player = playerReference.get() ?: return@withContext lastSnapshot
             val item = player.currentMediaItem
             val metadata = item?.mediaMetadata
             PlayerMediaSnapshot(
@@ -70,10 +78,11 @@ internal class Media3PlayerObserver(
                 mediaId = item?.mediaId?.takeIf { it.isNotEmpty() },
                 title = metadata?.title?.toString() ?: metadata?.displayTitle?.toString(),
                 mediaType = player.mediaType(),
-            )
+            ).also { lastSnapshot = it }
         }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
+        val player = playerReference.get() ?: return
         if (isPlaying) {
             emit(PlayerEvent.Playing)
         } else if (player.playWhenReady && player.playbackState == Player.STATE_READY) {
@@ -87,6 +96,7 @@ internal class Media3PlayerObserver(
         playWhenReady: Boolean,
         reason: Int,
     ) {
+        val player = playerReference.get() ?: return
         if (!playWhenReady && player.playbackState != Player.STATE_ENDED) {
             cancelBuffering()
             emit(PlayerEvent.Paused)
@@ -94,6 +104,7 @@ internal class Media3PlayerObserver(
     }
 
     override fun onPlaybackStateChanged(playbackState: Int) {
+        val player = playerReference.get() ?: return
         when (playbackState) {
             Player.STATE_BUFFERING -> startBufferingDebounce()
             Player.STATE_READY -> {
@@ -163,6 +174,7 @@ internal class Media3PlayerObserver(
     }
 
     internal fun detectAdTransition() {
+        val player = playerReference.get() ?: return
         if (player.playbackState == Player.STATE_ENDED) {
             if (activeAd != null) {
                 finishAdForTransition(
@@ -173,7 +185,7 @@ internal class Media3PlayerObserver(
             return
         }
         if (player.isPlayingAd) {
-            val current = adContextFromPlayer()
+            val current = adContextFromPlayer(player)
             val previous = activeAd
             if (previous != null && !previous.isSameAdAs(current)) {
                 finishAdForTransition(completed = false)
@@ -205,6 +217,7 @@ internal class Media3PlayerObserver(
         withContext(playerDispatcher) {
             mutex.withLock {
                 if (observing) return@withLock
+                val player = playerReference.get() ?: return@withLock
                 observing = true
                 player.addListener(this@Media3PlayerObserver)
                 if (player.isPlaying) {
@@ -221,7 +234,7 @@ internal class Media3PlayerObserver(
             mutex.withLock {
                 if (observing) {
                     observing = false
-                    player.removeListener(this@Media3PlayerObserver)
+                    playerReference.get()?.removeListener(this@Media3PlayerObserver)
                 }
                 activeAd = null
                 cancelBuffering()
@@ -234,6 +247,7 @@ internal class Media3PlayerObserver(
     }
 
     private fun startBufferingDebounce() {
+        val player = playerReference.get() ?: return
         if (!player.playWhenReady || bufferingJob?.isActive == true) return
         bufferingJob =
             scope.launch {
@@ -247,7 +261,7 @@ internal class Media3PlayerObserver(
         bufferingJob = null
     }
 
-    private fun adContextFromPlayer(): AdContext =
+    private fun adContextFromPlayer(player: Player): AdContext =
         AdContext(
             adGroupIndex = player.currentAdGroupIndex,
             adIndexInAdGroup = player.currentAdIndexInAdGroup,
