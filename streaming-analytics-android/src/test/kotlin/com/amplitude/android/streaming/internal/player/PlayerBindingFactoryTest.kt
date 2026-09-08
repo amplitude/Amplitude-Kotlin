@@ -1,5 +1,6 @@
 package com.amplitude.android.streaming.internal.player
 
+import android.os.Looper
 import androidx.media3.common.Player
 import com.amplitude.android.streaming.PlayerContent
 import com.amplitude.android.streaming.internal.StreamTracker
@@ -181,18 +182,25 @@ class PlayerBindingFactoryTest {
         return binding to WeakReference(player)
     }
 
-    private fun playerProxy(): Player =
-        Proxy.newProxyInstance(
+    /**
+     * A [Proxy] rather than a mock, because MockK keeps strong references to its mocks and these
+     * tests assert that the player becomes unreachable.
+     */
+    private fun playerProxy(): Player {
+        val looper = mockk<Looper>(relaxed = true)
+        return Proxy.newProxyInstance(
             Player::class.java.classLoader,
             arrayOf(Player::class.java),
         ) { _, method, _ ->
-            when (method.returnType) {
-                java.lang.Boolean.TYPE -> false
-                java.lang.Integer.TYPE -> 0
-                java.lang.Long.TYPE -> 0L
+            when {
+                method.name == "getApplicationLooper" -> looper
+                method.returnType == java.lang.Boolean.TYPE -> false
+                method.returnType == java.lang.Integer.TYPE -> 0
+                method.returnType == java.lang.Long.TYPE -> 0L
                 else -> null
             }
         } as Player
+    }
 
     private fun awaitCollected(reference: WeakReference<*>) {
         repeat(100) {

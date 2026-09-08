@@ -67,6 +67,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.constraintlayout)
     implementation(libs.media3.exoplayer)
+    implementation(libs.media3.exoplayer.ima)
     implementation(libs.media3.ui)
 
     implementation(platform(libs.compose.bom))
