@@ -29,9 +29,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.annotation.OptIn
 import androidx.media3.common.C
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.PlayerView
 import kotlinx.coroutines.delay
 import java.util.concurrent.TimeUnit
@@ -45,6 +45,7 @@ internal class DemoPlayerState {
     var playWhenReady by mutableStateOf(false)
     var isBuffering by mutableStateOf(false)
     var hasEnded by mutableStateOf(false)
+    var isPlayingAd by mutableStateOf(false)
     var title by mutableStateOf("")
     var errorMessage by mutableStateOf<String?>(null)
     var positionMs by mutableLongStateOf(0L)
@@ -59,6 +60,7 @@ internal class DemoPlayerState {
             }
 }
 
+@OptIn(UnstableApi::class)
 @Composable
 internal fun rememberDemoPlayerState(demoPlayer: DemoPlayer): DemoPlayerState {
     val state = remember(demoPlayer) { DemoPlayerState() }
@@ -70,6 +72,7 @@ internal fun rememberDemoPlayerState(demoPlayer: DemoPlayer): DemoPlayerState {
             state.playWhenReady = player.playWhenReady
             state.isBuffering = player.playbackState == Player.STATE_BUFFERING
             state.hasEnded = player.playbackState == Player.STATE_ENDED
+            state.isPlayingAd = player.isPlayingAd
             state.durationMs = player.duration
             state.positionMs = player.currentPosition
             state.title = demoPlayer.currentItem.title
@@ -227,11 +230,11 @@ internal fun PlayerSurface(
             }
         },
         update = { view ->
-            view.player = demoPlayer.exoPlayer
+            demoPlayer.attachPlayerView(view)
             view.useController = useController
         },
         onRelease = { view ->
-            view.player = null
+            demoPlayer.detachPlayerView(view)
         },
         modifier = modifier,
     )
@@ -241,6 +244,7 @@ private fun DemoPlayerState.statusRes(): Int =
     when {
         errorMessage != null -> R.string.status_error
         isBuffering -> R.string.status_buffering
+        isPlayingAd -> R.string.status_ad
         isPlaying -> R.string.status_playing
         hasEnded -> R.string.status_ended
         else -> R.string.status_paused
