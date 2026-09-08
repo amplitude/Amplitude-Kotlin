@@ -2,6 +2,8 @@ package com.amplitude.android.streaming.internal
 
 import androidx.media3.common.C
 import com.amplitude.android.streaming.PlayerContent
+import com.amplitude.android.streaming.internal.player.PlayerMediaSnapshot
+import com.amplitude.android.streaming.internal.player.PlayerState
 import com.amplitude.core.Amplitude
 import com.amplitude.core.AmplitudePreview
 import com.amplitude.core.events.BaseEvent
@@ -50,6 +52,10 @@ class StreamTrackerTest {
                 durationMillis = 60_000L,
                 mediaId = "media-123",
                 title = "Test Video",
+                mediaType = MediaType.VIDEO,
+            )
+        private val playerState =
+            PlayerState(
                 isInPictureInPicture = true,
                 isInBackground = false,
             )
@@ -65,6 +71,7 @@ class StreamTrackerTest {
             tracker.trackStreamStarted(
                 options = options,
                 snapshot = snapshot,
+                playerState = playerState,
                 mediaType = MediaType.VIDEO,
                 streamSessionId = "stream-1",
                 timestamp = 1_000L,
@@ -96,6 +103,7 @@ class StreamTrackerTest {
             tracker.trackStreamStopped(
                 options = options,
                 snapshot = snapshot,
+                playerState = playerState,
                 mediaType = MediaType.VIDEO,
                 streamSessionId = "stream-1",
                 streamDurationMillis = 5_000L,
@@ -125,6 +133,7 @@ class StreamTrackerTest {
             tracker.trackStreamStarted(
                 options = PlayerContent(),
                 snapshot = snapshot,
+                playerState = playerState,
                 mediaType = MediaType.AUDIO,
                 streamSessionId = "stream-audio",
                 timestamp = 2_000L,
@@ -133,6 +142,7 @@ class StreamTrackerTest {
             tracker.trackStreamStopped(
                 options = PlayerContent(),
                 snapshot = snapshot,
+                playerState = playerState,
                 mediaType = MediaType.AUDIO,
                 streamSessionId = "stream-audio",
                 streamDurationMillis = 3_000L,
@@ -158,6 +168,7 @@ class StreamTrackerTest {
             tracker.trackStreamStopped(
                 options = PlayerContent(),
                 snapshot = liveSnapshot,
+                playerState = playerState,
                 mediaType = MediaType.VIDEO,
                 streamSessionId = "stream-live",
                 streamDurationMillis = 10_000L,
@@ -177,6 +188,7 @@ class StreamTrackerTest {
             tracker.trackStreamStopped(
                 options = PlayerContent(),
                 snapshot = unknownDurationSnapshot,
+                playerState = playerState,
                 mediaType = MediaType.VIDEO,
                 streamSessionId = "stream-unknown",
                 streamDurationMillis = 5_000L,
