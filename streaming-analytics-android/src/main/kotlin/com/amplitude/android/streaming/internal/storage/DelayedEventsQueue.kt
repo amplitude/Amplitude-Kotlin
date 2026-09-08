@@ -69,27 +69,21 @@ internal class DelayedEventsQueue(
         }
     }
 
-    suspend fun remove(request: DelayedEventsRequestEntity) {
+    suspend fun removeIfUnchanged(request: DelayedEventsRequestEntity) {
         mutex.withLock {
-            request.queueKey?.let { storage.delete(it) }
-        }
-    }
-
-    /**
-     * True when [request] still matches the on-disk payload for its [DelayedEventsRequestEntity.queueKey].
-     * Missing files count as a match so a later [remove] is a no-op.
-     */
-    suspend fun matches(request: DelayedEventsRequestEntity): Boolean =
-        mutex.withLock {
-            val key = request.queueKey ?: return@withLock true
+            val key = request.queueKey ?: return@withLock
             try {
-                storage.read(key).copy(queueKey = null) == request.copy(queueKey = null)
+                val stored = storage.read(key)
+                if (stored == request.copy(queueKey = null)) {
+                    storage.delete(key)
+                }
             } catch (_: FileNotFoundException) {
-                true
+                // Already removed.
             } catch (_: SerializationException) {
-                false
+                // Leave changed or corrupt entries for peek to handle.
             }
         }
+    }
 
     /**
      * Read the on-disk max under [mutex] so two graphs sharing [storageKey] cannot mint the same id.
