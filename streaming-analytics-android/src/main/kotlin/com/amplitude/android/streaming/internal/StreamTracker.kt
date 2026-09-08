@@ -2,6 +2,8 @@ package com.amplitude.android.streaming.internal
 
 import androidx.media3.common.C
 import com.amplitude.android.streaming.PlayerContent
+import com.amplitude.android.streaming.internal.player.PlayerMediaSnapshot
+import com.amplitude.android.streaming.internal.player.PlayerState
 import com.amplitude.android.streaming.internal.util.DiGraph.Companion.weak
 import com.amplitude.android.streaming.internal.util.millisToSeconds
 import com.amplitude.core.Amplitude
@@ -78,6 +80,7 @@ internal class StreamTracker(
     fun trackStreamStarted(
         options: PlayerContent,
         snapshot: PlayerMediaSnapshot,
+        playerState: PlayerState,
         mediaType: MediaType,
         streamSessionId: String,
         playId: String,
@@ -95,6 +98,7 @@ internal class StreamTracker(
                         contentProperties(
                             options = options,
                             snapshot = snapshot,
+                            playerState = playerState,
                             mediaType = mediaType,
                             streamSessionId = streamSessionId,
                             playId = playId,
@@ -107,6 +111,7 @@ internal class StreamTracker(
     fun trackStreamStopped(
         options: PlayerContent,
         snapshot: PlayerMediaSnapshot,
+        playerState: PlayerState,
         mediaType: MediaType,
         streamSessionId: String,
         playId: String,
@@ -127,6 +132,7 @@ internal class StreamTracker(
                         stoppedContentProperties(
                             options = options,
                             snapshot = snapshot,
+                            playerState = playerState,
                             mediaType = mediaType,
                             streamSessionId = streamSessionId,
                             playId = playId,
@@ -160,6 +166,7 @@ private fun adProperties(
 private fun contentProperties(
     options: PlayerContent,
     snapshot: PlayerMediaSnapshot,
+    playerState: PlayerState,
     mediaType: MediaType,
     streamSessionId: String,
     playId: String,
@@ -172,8 +179,8 @@ private fun contentProperties(
         (options.contentId ?: snapshot.mediaId)?.let { put("content_id", it) }
         (options.title ?: snapshot.title)?.let { put("title", it) }
         put("delivery_mode", deliveryMode(options = options, snapshot = snapshot))
-        put("is_in_picture_in_picture", snapshot.isInPictureInPicture)
-        put("is_in_background", snapshot.isInBackground)
+        put("is_in_picture_in_picture", playerState.isInPictureInPicture)
+        put("is_in_background", playerState.isInBackground)
         if (snapshot.hasKnownDuration()) {
             put("duration", snapshot.durationMillis.millisToSeconds())
         }
@@ -185,6 +192,7 @@ private fun contentProperties(
 private fun stoppedContentProperties(
     options: PlayerContent,
     snapshot: PlayerMediaSnapshot,
+    playerState: PlayerState,
     mediaType: MediaType,
     streamSessionId: String,
     playId: String,
@@ -196,6 +204,7 @@ private fun stoppedContentProperties(
     contentProperties(
         options = options,
         snapshot = snapshot,
+        playerState = playerState,
         mediaType = mediaType,
         streamSessionId = streamSessionId,
         playId = playId,
@@ -263,16 +272,6 @@ internal fun AdContext.percentCompleted(): Double? {
     return (100.0 * positionMillis.toDouble() / durationMillis)
         .coerceIn(0.0, 100.0)
 }
-
-internal data class PlayerMediaSnapshot(
-    val positionMillis: Long,
-    val durationMillis: Long = C.TIME_UNSET,
-    val isLive: Boolean = false,
-    val mediaId: String? = null,
-    val title: String? = null,
-    val isInPictureInPicture: Boolean = false,
-    val isInBackground: Boolean = false,
-)
 
 internal enum class MediaType(
     val value: String,
