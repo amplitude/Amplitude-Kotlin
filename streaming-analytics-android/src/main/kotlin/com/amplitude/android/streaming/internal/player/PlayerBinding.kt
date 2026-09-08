@@ -5,6 +5,7 @@ import androidx.media3.common.Player
 import com.amplitude.android.streaming.PlayerContent
 import com.amplitude.android.streaming.PlayerContentProvider
 import com.amplitude.android.streaming.internal.AdContext
+import com.amplitude.android.streaming.internal.AdCompletionStatus
 import com.amplitude.android.streaming.internal.StopReason
 import com.amplitude.android.streaming.internal.StreamTracker
 import com.amplitude.android.streaming.internal.util.Time
@@ -19,6 +20,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import java.lang.ref.WeakReference
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
@@ -38,7 +40,7 @@ internal class PlayerBinding internal constructor(
     private val heartbeatFactory: HeartbeatFactory,
     private val time: Time,
     parentScope: CoroutineScope,
-    playerDispatcher: CoroutineDispatcher,
+    private val playerDispatcher: CoroutineDispatcher,
     private val onStopped: (PlayerBinding) -> Unit = {},
 ) {
     private val playerReference = WeakReference(player)
@@ -138,27 +140,23 @@ internal class PlayerBinding internal constructor(
     }
 
     private suspend fun onPlaying() {
-        val player = playerReference.get()
-        val current = playback
-        if (current is PlaybackState.Ad) {
-            playback =
-                if (player?.isPlayingAd == true) {
-                    resumeAdWatch(current)
-                } else {
-                    current.copy(paused = false)
-                }
-            return
-        }
-        if (player?.isPlayingAd == true) return
-        when (current) {
-            is PlaybackState.Content -> {
-                current.segment.resumeWatch()
-                current.segment.stopReason = null
-                current.segment.errorMessage = null
-                playback = current.copy(phase = ContentPhase.PLAYING)
+        when (val state = playback) {
+            is PlaybackState.Ad -> {
+                playback = state.copy(paused = false).resumeWatch(time.elapsedRealtime())
+                return
             }
-            is PlaybackState.Suspended -> resumeContent(current)
-            is PlaybackState.Idle -> startContent(current.viewSessionId)
+            else -> Unit
+        }
+        if (playerIsPlayingAd()) return
+        when (val state = playback) {
+            is PlaybackState.Content -> {
+                state.segment.resumeWatch()
+                state.segment.stopReason = null
+                state.segment.errorMessage = null
+                playback = state.copy(phase = ContentPhase.PLAYING)
+            }
+            is PlaybackState.Suspended -> resumeContent(state)
+            is PlaybackState.Idle -> startContent(state.viewSessionId)
             is PlaybackState.Ad -> Unit
         }
     }
@@ -210,11 +208,7 @@ internal class PlayerBinding internal constructor(
                 playback = PlaybackState.Idle(state.viewSessionId, state.segment)
             }
             is PlaybackState.Ad -> {
-                state.content?.segment?.apply {
-                    pauseWatch()
-                    stopReason = StopReason.PAUSED
-                }
-                playback = pauseAdWatch(state)
+                playback = state.pauseWatch(time.elapsedRealtime()).copy(paused = true)
             }
             is PlaybackState.Idle -> Unit
         }
@@ -248,7 +242,10 @@ internal class PlayerBinding internal constructor(
                     pauseWatch()
                     stopReason = reason
                 }
-                playback = state.copy(content = state.content?.copy(phase = phase))
+                playback =
+                    state.pauseWatch(time.elapsedRealtime()).copy(
+                        content = state.content?.copy(phase = phase),
+                    )
             }
             is PlaybackState.Idle -> Unit
         }
@@ -266,7 +263,12 @@ internal class PlayerBinding internal constructor(
                 state.segment.stopReason = null
                 playback = state.copy(phase = ContentPhase.PLAYING)
             }
-            else -> Unit
+            is PlaybackState.Ad -> {
+                if (!state.paused) {
+                    playback = state.resumeWatch(time.elapsedRealtime())
+                }
+            }
+            is PlaybackState.Idle -> Unit
         }
     }
 
@@ -281,7 +283,11 @@ internal class PlayerBinding internal constructor(
     private suspend fun onAdStarted(ad: AdContext) {
         val current = playback
         if (current is PlaybackState.Ad) {
-            trackAdFinished(current, current.ad, completed = false)
+            trackAdFinished(
+                current.pauseWatch(time.elapsedRealtime()),
+                current.ad,
+                AdCompletionStatus.ABANDONED,
+            )
         }
         val content =
             when (current) {
@@ -314,29 +320,38 @@ internal class PlayerBinding internal constructor(
         completed: Boolean,
     ) {
         val state = playback as? PlaybackState.Ad ?: return
-        trackAdFinished(state, ad, completed)
-        continueAfterAd(state)
+        val finished = state.pauseWatch(time.elapsedRealtime())
+        val status =
+            if (completed) AdCompletionStatus.COMPLETED else AdCompletionStatus.ABANDONED
+        trackAdFinished(finished, ad, status)
+        continueAfterAd(finished)
     }
 
     private suspend fun skipAd(ad: AdContext) {
         val state = playback as? PlaybackState.Ad ?: return
-        streamTracker.trackAdSkipped(options, ad, state.viewSessionId)
-        continueAfterAd(state)
+        val finished = state.pauseWatch(time.elapsedRealtime())
+        streamTracker.trackAdSkipped(options, ad, finished.viewSessionId)
+        trackAdFinished(finished, ad, AdCompletionStatus.SKIPPED)
+        continueAfterAd(finished)
     }
 
     private fun trackAdFinished(
         state: PlaybackState.Ad,
         ad: AdContext,
-        completed: Boolean,
+        status: AdCompletionStatus,
     ) {
-        val watchDuration = adWatchDurationMillis(pauseAdWatch(state))
-        streamTracker.trackAdStopped(options, ad, state.viewSessionId, watchDuration, completed)
+        streamTracker.trackAdStopped(
+            options = options,
+            ad = ad,
+            streamSessionId = state.viewSessionId,
+            watchDurationMillis = state.durationMillis(time.elapsedRealtime()),
+            status = status,
+        )
     }
 
     private suspend fun continueAfterAd(state: PlaybackState.Ad) {
         val content = state.content
-        val player = playerReference.get()
-        val playingContent = player != null && player.isPlaying && !player.isPlayingAd
+        val playingContent = playerIsPlaying() && !playerIsPlayingAd()
         if (content == null) {
             playback = PlaybackState.Idle(state.viewSessionId)
             if (playingContent) startContent(state.viewSessionId)
@@ -349,28 +364,6 @@ internal class PlayerBinding internal constructor(
         }
         playback = content
         if (playingContent) resumeContent(content)
-    }
-
-    private fun pauseAdWatch(state: PlaybackState.Ad): PlaybackState.Ad {
-        val startedAt = state.watchStartedAt ?: return state.copy(paused = true)
-        return state.copy(
-            paused = true,
-            watchStartedAt = null,
-            accumulatedWatchMillis =
-                state.accumulatedWatchMillis +
-                    (time.elapsedRealtime() - startedAt).coerceAtLeast(0),
-        )
-    }
-
-    private fun resumeAdWatch(state: PlaybackState.Ad): PlaybackState.Ad {
-        if (state.watchStartedAt != null) return state.copy(paused = false)
-        return state.copy(paused = false, watchStartedAt = time.elapsedRealtime())
-    }
-
-    private fun adWatchDurationMillis(state: PlaybackState.Ad): Long {
-        val running =
-            state.watchStartedAt?.let { (time.elapsedRealtime() - it).coerceAtLeast(0) } ?: 0
-        return state.accumulatedWatchMillis + running
     }
 
     private fun resumeContent(state: PlaybackState.Suspended) {
@@ -417,7 +410,11 @@ internal class PlayerBinding internal constructor(
                 )
             }
             is PlaybackState.Ad -> {
-                trackAdFinished(state, state.ad, completed = false)
+                trackAdFinished(
+                    state.pauseWatch(time.elapsedRealtime()),
+                    state.ad,
+                    AdCompletionStatus.ABANDONED,
+                )
                 state.content?.let {
                     finishSegment(
                         segment = it.segment,
@@ -499,6 +496,12 @@ internal class PlayerBinding internal constructor(
     private suspend fun snapshot(): PlayerMediaSnapshot? =
         runCatchingCancellable { observer.snapshot() }.getOrNull()
 
+    private suspend fun playerIsPlaying(): Boolean =
+        withContext(playerDispatcher) { playerReference.get()?.isPlaying == true }
+
+    private suspend fun playerIsPlayingAd(): Boolean =
+        withContext(playerDispatcher) { playerReference.get()?.isPlayingAd == true }
+
     internal fun isBoundTo(player: Player): Boolean = playerReference.get() === player
 
     internal fun isOrphaned(): Boolean = playerReference.get() == null
@@ -542,10 +545,24 @@ internal class PlayerBinding internal constructor(
         data class Ad(
             override val viewSessionId: String,
             val ad: AdContext,
-            val content: Suspended?,
+            val watchDurationMillis: Long = 0L,
             val watchStartedAt: Long? = null,
-            val accumulatedWatchMillis: Long = 0,
+            val content: Suspended?,
             val paused: Boolean = false,
-        ) : PlaybackState
+        ) : PlaybackState {
+            fun pauseWatch(now: Long): Ad {
+                val startedAt = watchStartedAt ?: return this
+                return copy(
+                    watchDurationMillis = watchDurationMillis + (now - startedAt).coerceAtLeast(0),
+                    watchStartedAt = null,
+                )
+            }
+
+            fun resumeWatch(now: Long): Ad =
+                if (watchStartedAt != null) this else copy(watchStartedAt = now)
+
+            fun durationMillis(now: Long): Long =
+                watchDurationMillis + (watchStartedAt?.let { now - it }?.coerceAtLeast(0) ?: 0)
+        }
     }
 }
