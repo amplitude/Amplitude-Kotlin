@@ -28,6 +28,7 @@ internal class PlayerBinding internal constructor(
     private val contentProvider: PlayerContentProvider,
     playerObserverFactory: PlayerObserverFactory,
     private val streamTracker: StreamTracker,
+    private val heartbeatFactory: HeartbeatFactory,
     private val time: Time,
     parentScope: CoroutineScope,
 ) {
@@ -125,8 +126,10 @@ internal class PlayerBinding internal constructor(
             StreamSession(
                 streamSessionId = id,
                 startedInsertId = UUID.randomUUID().toString(),
+                stoppedInsertId = UUID.randomUUID().toString(),
                 options = options,
                 mediaType = snapshot.mediaType,
+                snapshot = snapshot,
                 time = time,
             ).also { it.resumeWatch() }
         streamTracker.trackStreamStarted(
@@ -142,20 +145,20 @@ internal class PlayerBinding internal constructor(
             PlaybackState.Content(
                 viewSessionId = id,
                 segment = segment,
+                heartbeat = createHeartbeat(segment),
                 phase = ContentPhase.PLAYING,
             )
-        // TODO: heartbeat a delayed Stream Stopped event while this segment stays active.
     }
 
-    private fun onPaused() {
+    private suspend fun onPaused() {
         when (val state = playback) {
             is PlaybackState.Content -> {
-                finishSegment(state.segment, StopReason.PAUSED)
-                playback = PlaybackState.Idle(state.viewSessionId)
+                finishSegment(state.segment, state.heartbeat, StopReason.PAUSED)
+                playback = PlaybackState.Idle(state.viewSessionId, state.segment)
             }
             is PlaybackState.Suspended -> {
-                finishSegment(state.segment, StopReason.PAUSED)
-                playback = PlaybackState.Idle(state.viewSessionId)
+                finishSegment(state.segment, heartbeat = null, reason = StopReason.PAUSED)
+                playback = PlaybackState.Idle(state.viewSessionId, state.segment)
             }
             is PlaybackState.Ad -> {
                 state.content?.segment?.apply {
@@ -218,7 +221,7 @@ internal class PlayerBinding internal constructor(
         }
     }
 
-    private fun finishSession(
+    private suspend fun finishSession(
         reason: StopReason?,
         errorMessage: String? = null,
     ) {
@@ -235,6 +238,7 @@ internal class PlayerBinding internal constructor(
             when (current) {
                 is PlaybackState.Content -> {
                     current.segment.pauseWatch()
+                    current.heartbeat.cancel()
                     PlaybackState.Suspended(
                         viewSessionId = current.viewSessionId,
                         segment = current.segment,
@@ -288,8 +292,8 @@ internal class PlayerBinding internal constructor(
             return
         }
         if (state.paused) {
-            finishSegment(content.segment, StopReason.PAUSED)
-            playback = PlaybackState.Idle(state.viewSessionId)
+            finishSegment(content.segment, heartbeat = null, reason = StopReason.PAUSED)
+            playback = PlaybackState.Idle(state.viewSessionId, content.segment)
             return
         }
         playback = content
@@ -304,33 +308,117 @@ internal class PlayerBinding internal constructor(
             PlaybackState.Content(
                 viewSessionId = state.viewSessionId,
                 segment = state.segment,
+                heartbeat = createHeartbeat(state.segment),
                 phase = ContentPhase.PLAYING,
             )
     }
 
-    private fun finishPlayback(
+    private fun createHeartbeat(segment: StreamSession): Heartbeat =
+        heartbeatFactory
+            .create(
+                scope = scope,
+                stoppedEvent = { timestamp ->
+                    sendStreamStopped(segment, timestamp)
+                },
+            ).also { it.start() }
+
+    private suspend fun finishPlayback(
         reason: StopReason?,
         errorMessage: String? = null,
     ) {
         when (val state = playback) {
-            is PlaybackState.Content -> finishSegment(state.segment, reason, errorMessage)
-            is PlaybackState.Suspended -> finishSegment(state.segment, reason, errorMessage)
+            is PlaybackState.Content -> {
+                finishSegment(state.segment, state.heartbeat, reason, errorMessage)
+            }
+            is PlaybackState.Suspended -> {
+                finishSegment(
+                    segment = state.segment,
+                    heartbeat = null,
+                    reason = reason,
+                    errorMessage = errorMessage,
+                )
+            }
             is PlaybackState.Ad -> {
                 trackAdFinished(state, state.ad, completed = false)
-                state.content?.let { finishSegment(it.segment, reason, errorMessage) }
+                state.content?.let {
+                    finishSegment(
+                        segment = it.segment,
+                        heartbeat = null,
+                        reason = reason,
+                        errorMessage = errorMessage,
+                    )
+                }
             }
-            is PlaybackState.Idle -> Unit
+            is PlaybackState.Idle -> {
+                if (reason == StopReason.UNSUBSCRIBED) {
+                    state.lastSegment?.let {
+                        it.stopReason = reason
+                        it.errorMessage = errorMessage
+                        sendStreamStopped(it, time.nowMillis())
+                    }
+                }
+            }
         }
     }
 
-    private fun finishSegment(
+    private suspend fun finishSegment(
         segment: StreamSession,
+        heartbeat: Heartbeat?,
         reason: StopReason?,
         errorMessage: String? = null,
     ) {
         segment.pauseWatch()
         segment.stopReason = reason
         segment.errorMessage = errorMessage
+        freezeSegment(segment)
+        if (heartbeat == null) {
+            sendFinalStreamStopped(segment)
+        } else {
+            try {
+                heartbeat.stop()
+            } catch (_: Exception) {
+                // The segment is frozen and the heartbeat job is stopped.
+            }
+        }
+    }
+
+    private suspend fun sendFinalStreamStopped(segment: StreamSession) {
+        try {
+            sendStreamStopped(segment, time.nowMillis())
+        } catch (_: Exception) {
+            // A final upsert failure must not prevent the state transition.
+        }
+    }
+
+    private suspend fun freezeSegment(segment: StreamSession) {
+        try {
+            segment.freeze(snapshot())
+        } catch (_: Exception) {
+            segment.freeze(segment.snapshot)
+        }
+    }
+
+    private suspend fun sendStreamStopped(
+        segment: StreamSession,
+        timestamp: Long,
+    ) {
+        streamTracker.trackStreamStopped(
+            options = segment.options,
+            snapshot =
+                if (segment.frozen) {
+                    segment.snapshot
+                } else {
+                    snapshot().also { segment.updateSnapshot(it) }
+                },
+            playerState = playerState,
+            mediaType = segment.mediaType,
+            streamSessionId = segment.streamSessionId,
+            streamDurationMillis = segment.durationMillis(),
+            timestamp = timestamp,
+            insertId = segment.stoppedInsertId,
+            stopReason = segment.stopReason,
+            errorMessage = segment.errorMessage,
+        )
     }
 
     private suspend fun snapshot(): PlayerMediaSnapshot = observer.snapshot()
@@ -355,11 +443,13 @@ internal class PlayerBinding internal constructor(
 
         data class Idle(
             override val viewSessionId: String? = null,
+            val lastSegment: StreamSession? = null,
         ) : PlaybackState
 
         data class Content(
             override val viewSessionId: String,
             val segment: StreamSession,
+            val heartbeat: Heartbeat,
             val phase: ContentPhase,
         ) : PlaybackState
 
