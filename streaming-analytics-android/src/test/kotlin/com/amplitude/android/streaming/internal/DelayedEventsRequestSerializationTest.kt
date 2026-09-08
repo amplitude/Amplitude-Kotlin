@@ -37,6 +37,8 @@ class DelayedEventsRequestSerializationTest {
                     event.deviceModel = "Pixel 8"
                     event.platform = "Android"
                     event.appVersion = "2.0.0"
+                    event.versionName = "2.0.0-prod"
+                    event.currency = "USD"
                     event.country = "US"
                     event.language = "en"
                     event.ip = "\$remote"
@@ -75,6 +77,8 @@ class DelayedEventsRequestSerializationTest {
             assertEquals("Pixel 8", restored.deviceModel)
             assertEquals("Android", restored.platform)
             assertEquals("2.0.0", restored.appVersion)
+            assertEquals("2.0.0-prod", restored.versionName)
+            assertEquals("USD", restored.currency)
             assertEquals("US", restored.country)
             assertEquals("en", restored.language)
             assertEquals("\$remote", restored.ip)
