@@ -71,7 +71,10 @@ internal class DelayedEventsQueue(
 
     suspend fun remove(request: DelayedEventsRequestEntity) {
         mutex.withLock {
-            request.queueKey?.let { storage.delete(it) }
+            val key = request.queueKey ?: return@withLock
+            if (payloadMatches(key, request)) {
+                storage.delete(key)
+            }
         }
     }
 
@@ -82,13 +85,19 @@ internal class DelayedEventsQueue(
     suspend fun matches(request: DelayedEventsRequestEntity): Boolean =
         mutex.withLock {
             val key = request.queueKey ?: return@withLock true
-            try {
-                storage.read(key).copy(queueKey = null) == request.copy(queueKey = null)
-            } catch (_: FileNotFoundException) {
-                true
-            } catch (_: SerializationException) {
-                false
-            }
+            payloadMatches(key, request)
+        }
+
+    private suspend fun payloadMatches(
+        key: String,
+        request: DelayedEventsRequestEntity,
+    ): Boolean =
+        try {
+            storage.read(key).copy(queueKey = null) == request.copy(queueKey = null)
+        } catch (_: FileNotFoundException) {
+            true
+        } catch (_: SerializationException) {
+            false
         }
 
     /**
