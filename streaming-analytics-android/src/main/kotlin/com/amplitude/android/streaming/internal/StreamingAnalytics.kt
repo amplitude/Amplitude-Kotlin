@@ -4,6 +4,7 @@ import androidx.media3.common.Player
 import com.amplitude.android.Amplitude
 import com.amplitude.android.streaming.PlayerContentProvider
 import com.amplitude.android.streaming.internal.network.uploadPipeline
+import com.amplitude.android.streaming.internal.player.playerBindingFactory
 import com.amplitude.android.streaming.internal.storage.storagePipeline
 import com.amplitude.android.streaming.internal.util.runCatchingCancellable
 import com.amplitude.core.AmplitudePreview
@@ -20,50 +21,64 @@ import kotlinx.coroutines.withContext
 internal class StreamingAnalytics(
     amplitude: Amplitude,
 ) {
-    private val graph = StreamingDiGraph(amplitude)
+    private var graph: StreamingDiGraph? = StreamingDiGraph(amplitude)
 
     init {
-        graph.scope.launch {
-            runCatchingCancellable {
-                graph.uploadPipeline.onNewEvent()
-            }.onFailure {
-                graph.logger.error("startup upload drain error: ${it.localizedMessage}")
+        graph?.let { graph ->
+            graph.scope.launch {
+                runCatchingCancellable {
+                    graph.uploadPipeline.onNewEvent()
+                }.onFailure {
+                    graph.logger.error("startup upload drain error: ${it.localizedMessage}")
+                }
             }
         }
     }
 
-    @Suppress("UNUSED_PARAMETER")
     fun trackPlayer(
         player: Player,
         contentProvider: PlayerContentProvider,
     ) {
-        // TODO: Not yet implemented
+        graph?.apply {
+            playerBindingFactory.getOrCreate(
+                player = player,
+                contentProvider = contentProvider,
+            )
+        }
     }
 
     fun onDelayedEvent(event: DelayedEvent) {
-        graph.scope.launch(start = CoroutineStart.UNDISPATCHED) {
-            runCatchingCancellable {
-                withContext(NonCancellable) {
-                    graph.storagePipeline.onDelayedEvent(event)
+        graph?.apply {
+            scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                runCatchingCancellable {
+                    withContext(NonCancellable) {
+                        storagePipeline.onDelayedEvent(event)
+                    }
+                    uploadPipeline.onNewEvent()
+                }.onFailure {
+                    logger.error("onDelayedEvent error: ${it.localizedMessage}")
                 }
-                graph.uploadPipeline.onNewEvent()
-            }.onFailure {
-                graph.logger.error("onDelayedEvent error: ${it.localizedMessage}")
             }
         }
     }
 
     fun flush() {
-        graph.scope.launch {
-            runCatchingCancellable {
-                graph.uploadPipeline.flush()
-            }.onFailure {
-                graph.logger.error("flush error: ${it.localizedMessage}")
+        graph?.apply {
+            scope.launch {
+                runCatchingCancellable {
+                    uploadPipeline.flush()
+                }.onFailure {
+                    logger.error("flush error: ${it.localizedMessage}")
+                }
             }
         }
     }
 
     fun teardown() {
-        graph.scope.cancel()
+        graph?.apply {
+            playerBindingFactory.detachAll()
+            scope.cancel()
+        }
+        graph = null
     }
 }
