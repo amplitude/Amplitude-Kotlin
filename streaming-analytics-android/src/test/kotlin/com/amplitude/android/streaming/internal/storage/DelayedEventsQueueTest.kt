@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import java.io.FileNotFoundException
 import java.util.concurrent.atomic.AtomicReference
 
 class DelayedEventsQueueTest {
@@ -335,33 +336,42 @@ class DelayedEventsQueueTest {
     }
 
     @Nested
-    inner class Matches {
+    inner class RemoveIfUnchanged {
         @Test
-        fun `is true when the on-disk payload is unchanged`() =
+        fun `removes the on-disk payload when it is unchanged`() =
             runTest {
                 val stored = request("stream-1")
                 coEvery { storage.read("queue-1") } returns stored
+                coEvery { storage.delete("queue-1") } returns Unit
 
-                assertEquals(
-                    true,
-                    queue.matches(stored.copy(queueKey = "queue-1")),
-                )
+                queue.removeIfUnchanged(stored.copy(queueKey = "queue-1"))
+
+                coVerify { storage.delete("queue-1") }
             }
 
         @Test
-        fun `is false when the on-disk payload changed`() =
+        fun `keeps the on-disk payload when it changed`() =
             runTest {
                 coEvery { storage.read("queue-1") } returns request("stream-1")
 
-                assertEquals(
-                    false,
-                    queue.matches(
-                        request("stream-1").copy(
-                            timeoutMillis = 9_000L,
-                            queueKey = "queue-1",
-                        ),
+                queue.removeIfUnchanged(
+                    request("stream-1").copy(
+                        timeoutMillis = 9_000L,
+                        queueKey = "queue-1",
                     ),
                 )
+
+                coVerify(exactly = 0) { storage.delete(any()) }
+            }
+
+        @Test
+        fun `does nothing when the on-disk payload was already removed`() =
+            runTest {
+                coEvery { storage.read("queue-1") } throws FileNotFoundException()
+
+                queue.removeIfUnchanged(request("stream-1").copy(queueKey = "queue-1"))
+
+                coVerify(exactly = 0) { storage.delete(any()) }
             }
     }
 
