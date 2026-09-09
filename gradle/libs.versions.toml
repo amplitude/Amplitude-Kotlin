@@ -21,6 +21,7 @@ junit = "5.14.4"
 junit4 = "4.13.2"
 kotlin = "2.2.10"
 kotlinCoreLibraries = "1.9.25"
+kotlinxSerialization = "1.9.0"
 ktlint = "12.3.0"
 lifecycle = "2.8.7"
 media3 = "1.8.0"
@@ -63,9 +64,12 @@ junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher
 junit-vintage-engine = { module = "org.junit.vintage:junit-vintage-engine" }
 junit4 = { module = "junit:junit", version.ref = "junit4" }
 kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
 lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "lifecycle" }
 material = { module = "com.google.android.material:material", version.ref = "material" } # Added
+media3-common = { module = "androidx.media3:media3-common", version.ref = "media3" }
 media3-exoplayer = { module = "androidx.media3:media3-exoplayer", version.ref = "media3" }
+media3-exoplayer-ima = { module = "androidx.media3:media3-exoplayer-ima", version.ref = "media3" }
 media3-ui = { module = "androidx.media3:media3-ui", version.ref = "media3" }
 material3 = { module = "androidx.compose.material3:material3" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
@@ -92,6 +96,7 @@ android-test = { id = "com.android.test", version.ref = "androidGradlePlugin" }
 dokka = { id = "org.jetbrains.dokka", version.ref = "dokka" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 mavenPublish = { id = "com.vanniktech.maven.publish", version.ref = "mavenPublish" }
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
