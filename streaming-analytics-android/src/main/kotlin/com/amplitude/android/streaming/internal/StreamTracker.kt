@@ -80,6 +80,8 @@ internal class StreamTracker(
         snapshot: PlayerMediaSnapshot,
         mediaType: MediaType,
         streamSessionId: String,
+        playId: String,
+        startTimeMillis: Long,
         timestamp: Long,
         insertId: String,
     ) {
@@ -95,9 +97,9 @@ internal class StreamTracker(
                             snapshot = snapshot,
                             mediaType = mediaType,
                             streamSessionId = streamSessionId,
-                        ).apply {
-                            put("start_position", snapshot.positionMillis.millisToSeconds())
-                        },
+                            playId = playId,
+                            startTimeMillis = startTimeMillis,
+                        ),
                 ).also { it.insertId = insertId },
         )
     }
@@ -107,6 +109,8 @@ internal class StreamTracker(
         snapshot: PlayerMediaSnapshot,
         mediaType: MediaType,
         streamSessionId: String,
+        playId: String,
+        startTimeMillis: Long,
         streamDurationMillis: Long,
         timestamp: Long,
         insertId: String,
@@ -117,7 +121,7 @@ internal class StreamTracker(
             event =
                 DelayedEvent(
                     eventType = STREAM_STOPPED,
-                    kind = DelayedEvent.Kind.DELAYED,
+                    kind = stopReason.eventKind(),
                     timestamp = timestamp,
                     eventProperties =
                         stoppedContentProperties(
@@ -125,6 +129,8 @@ internal class StreamTracker(
                             snapshot = snapshot,
                             mediaType = mediaType,
                             streamSessionId = streamSessionId,
+                            playId = playId,
+                            startTimeMillis = startTimeMillis,
                             streamDurationMillis = streamDurationMillis,
                             stopReason = stopReason,
                             errorMessage = errorMessage,
@@ -156,9 +162,12 @@ private fun contentProperties(
     snapshot: PlayerMediaSnapshot,
     mediaType: MediaType,
     streamSessionId: String,
+    playId: String,
+    startTimeMillis: Long,
 ): MutableMap<String, Any?> =
     options.extraProperties.orEmpty().toMutableMap().apply {
         put("stream_session_id", streamSessionId)
+        put("play_id", playId)
         put("media_type", mediaType.value)
         (options.contentId ?: snapshot.mediaId)?.let { put("content_id", it) }
         (options.title ?: snapshot.title)?.let { put("title", it) }
@@ -168,6 +177,8 @@ private fun contentProperties(
         if (snapshot.hasKnownDuration()) {
             put("duration", snapshot.durationMillis.millisToSeconds())
         }
+        put("start_time", startTimeMillis.millisToSeconds())
+        put("position", snapshot.positionMillis.millisToSeconds())
     }
 
 @OptIn(AmplitudePreview::class)
@@ -176,6 +187,8 @@ private fun stoppedContentProperties(
     snapshot: PlayerMediaSnapshot,
     mediaType: MediaType,
     streamSessionId: String,
+    playId: String,
+    startTimeMillis: Long,
     streamDurationMillis: Long,
     stopReason: StopReason?,
     errorMessage: String?,
@@ -185,8 +198,9 @@ private fun stoppedContentProperties(
         snapshot = snapshot,
         mediaType = mediaType,
         streamSessionId = streamSessionId,
+        playId = playId,
+        startTimeMillis = startTimeMillis,
     ).apply {
-        put("current_time", snapshot.positionMillis.millisToSeconds())
         put("stream_duration", streamDurationMillis.millisToSeconds())
         stopReason?.let { put("stop_reason", it.value) }
         errorMessage?.let { put("error_message", it) }
@@ -214,11 +228,14 @@ private fun deliveryMode(
 private fun PlayerMediaSnapshot.hasKnownDuration(): Boolean =
     !isLive && durationMillis.isKnownDuration()
 
-private fun Long.isKnownDuration(): Boolean = this != C.TIME_UNSET && this > 0
+private fun Long.isKnownDuration(): Boolean = this != C.TIME_UNSET && this >= 0
 
 private fun PlayerMediaSnapshot.percentCompleted(): Double? {
     if (!hasKnownDuration()) {
         return null
+    }
+    if (durationMillis == 0L) {
+        return 0.0
     }
     return (positionMillis.toDouble() / durationMillis.toDouble() * 100.0)
         .coerceIn(0.0, 100.0)
@@ -239,6 +256,9 @@ internal data class AdContext(
 internal fun AdContext.percentCompleted(): Double? {
     if (!durationMillis.isKnownDuration()) {
         return null
+    }
+    if (durationMillis == 0L) {
+        return 0.0
     }
     return (100.0 * positionMillis.toDouble() / durationMillis)
         .coerceIn(0.0, 100.0)
@@ -264,10 +284,18 @@ internal enum class MediaType(
 internal enum class StopReason(
     val value: String,
 ) {
-    COMPLETED("completed"),
+    TIMEOUT("timeout"),
     PAUSED("paused"),
+    COMPLETED("completed"),
     SEEKING("seeking"),
     WAITING("waiting"),
     ERROR("error"),
-    UNSUBSCRIBED("unsubscribed"),
+    UNTRACKED("untracked"),
 }
+
+private fun StopReason?.eventKind(): DelayedEvent.Kind =
+    if (this == StopReason.TIMEOUT) {
+        DelayedEvent.Kind.DELAYED
+    } else {
+        DelayedEvent.Kind.INSTANT
+    }
