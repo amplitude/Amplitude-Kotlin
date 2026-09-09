@@ -101,10 +101,19 @@ private fun DelayedEventsRequestEntity.mergedWith(
         return incoming.copy(
             events = events,
             timeoutMillis = timeoutMillis,
-            instantEvents =
-                (instantEvents.orEmpty() + incoming.instantEvents.orEmpty())
-                    .distinct()
-                    .takeIf { it.isNotEmpty() },
+            instantEvents = mergedInstantEvents(incoming.instantEvents),
+        )
+    }
+    if (events.isNotEmpty() && incoming.eventTime() <= eventTime()) {
+        val currentIds = events.mapNotNull { it.insertId() }.toSet()
+        val promoted =
+            if (currentIds.isEmpty()) {
+                emptyList()
+            } else {
+                incoming.events.filter { it.insertId() !in currentIds }
+            }
+        return copy(
+            instantEvents = mergedInstantEvents(promoted + incoming.instantEvents.orEmpty()),
         )
     }
     val nextIds = incoming.events.mapNotNull { it.insertId() }.toSet()
@@ -115,12 +124,22 @@ private fun DelayedEventsRequestEntity.mergedWith(
             events.filter { it.insertId() !in nextIds }
         }
     return incoming.copy(
-        instantEvents =
-            (instantEvents.orEmpty() + promoted + incoming.instantEvents.orEmpty())
-                .distinct()
-                .takeIf { it.isNotEmpty() },
+        instantEvents = mergedInstantEvents(promoted + incoming.instantEvents.orEmpty()),
     )
 }
+
+private fun DelayedEventsRequestEntity.mergedInstantEvents(
+    incoming: List<DelayedEventEntity>?,
+): List<DelayedEventEntity>? =
+    (instantEvents.orEmpty() + incoming.orEmpty())
+        .distinct()
+        .takeIf { it.isNotEmpty() }
+
+private fun DelayedEventsRequestEntity.eventTime(): Long =
+    events.maxOfOrNull { it.timeMillis() } ?: Long.MIN_VALUE
+
+private fun DelayedEventEntity.timeMillis(): Long =
+    (ingestJson["time"] as? JsonPrimitive)?.contentOrNull?.toLongOrNull() ?: Long.MIN_VALUE
 
 private fun DelayedEventEntity.insertId(): String? =
     (ingestJson["insert_id"] as? JsonPrimitive)?.contentOrNull
