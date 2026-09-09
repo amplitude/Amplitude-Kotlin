@@ -3,6 +3,7 @@ package com.amplitude.android.streaming.internal.network
 import com.amplitude.android.streaming.internal.DelayedEvent
 import com.amplitude.common.Logger
 import com.amplitude.core.Configuration
+import com.amplitude.core.Constants
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.spyk
@@ -111,6 +112,45 @@ class DelayedEventsEndpointTest {
                 assertTrue(result is DelayedEventsResult.Failure)
                 assertEquals(null, (result as DelayedEventsResult.Failure).statusCode)
             }
+
+        @Test
+        fun `non-HTTP serverUrl is a failure`() =
+            runTest {
+                val configuration =
+                    Configuration(
+                        apiKey = "test-api-key",
+                        serverUrl = "file:///tmp",
+                    )
+                val result =
+                    DelayedEventsEndpoint(
+                        configuration = configuration,
+                        delayedEventsBaseUrl = DelayedEventsBaseUrl(configuration),
+                        logger = logger,
+                        ioDispatcher = UnconfinedTestDispatcher(),
+                    ).send(
+                        DelayedEventsRequestDto(
+                            id = "view-1",
+                            timeoutMillis = 5_000,
+                            events =
+                                listOf(
+                                    DelayedEvent(
+                                        eventType = "Video Content Stopped",
+                                        kind = DelayedEvent.Kind.DELAYED,
+                                        timestamp = 1L,
+                                    ),
+                                ),
+                        ),
+                    )
+
+                assertEquals(
+                    DelayedEventsResult.Failure(
+                        statusCode = null,
+                        message = "Delayed-events URL is not HTTP",
+                    ),
+                    result,
+                )
+                assertEquals(0, server.requestCount)
+            }
     }
 
     @Nested
@@ -152,6 +192,45 @@ class DelayedEventsEndpointTest {
                     DelayedEventsResult.Failure(statusCode = null, message = "encode failed"),
                     result,
                 )
+                assertEquals(0, server.requestCount)
+            }
+
+        @Test
+        fun `too many event properties is a serialization failure`() =
+            runTest {
+                val configuration =
+                    Configuration(
+                        apiKey = "test-api-key",
+                        serverUrl = server.url("/").toString(),
+                    )
+                val tooManyProperties =
+                    (0..Constants.MAX_PROPERTY_KEYS)
+                        .associate { "key-$it" to it as Any? }
+                        .toMutableMap()
+                val result =
+                    DelayedEventsEndpoint(
+                        configuration = configuration,
+                        delayedEventsBaseUrl = DelayedEventsBaseUrl(configuration),
+                        logger = logger,
+                        ioDispatcher = UnconfinedTestDispatcher(),
+                    ).send(
+                        DelayedEventsRequestDto(
+                            id = "view-1",
+                            timeoutMillis = 5_000,
+                            events =
+                                listOf(
+                                    DelayedEvent(
+                                        eventType = "Video Content Stopped",
+                                        kind = DelayedEvent.Kind.DELAYED,
+                                        timestamp = 1L,
+                                        eventProperties = tooManyProperties,
+                                    ),
+                                ),
+                        ),
+                    )
+
+                assertTrue(result is DelayedEventsResult.Failure)
+                assertEquals(null, (result as DelayedEventsResult.Failure).statusCode)
                 assertEquals(0, server.requestCount)
             }
 

@@ -37,19 +37,26 @@ internal class DelayedEventsEndpoint(
                 try {
                     request.toJson(configuration.apiKey)
                 } catch (error: SerializationException) {
-                    logger.error("Failed to serialize delayed-events request: ${error.message}")
-                    return@withContext DelayedEventsResult.Failure(statusCode = null, message = error.message)
+                    return@withContext serializationFailure(error)
+                } catch (error: IllegalArgumentException) {
+                    return@withContext serializationFailure(error)
                 }
 
             val connection =
                 try {
-                    delayedEventsBaseUrl.url("delayed").openConnection() as HttpURLConnection
+                    delayedEventsBaseUrl.url("delayed").openConnection() as? HttpURLConnection
                 } catch (error: URISyntaxException) {
                     logger.error("Invalid delayed-events URI: ${error.message}")
                     return@withContext DelayedEventsResult.Failure(statusCode = null, message = error.message)
                 } catch (error: IOException) {
                     logger.error("Failed to open delayed-events connection: ${error.message}")
                     return@withContext DelayedEventsResult.Failure(statusCode = null, message = error.message)
+                } ?: run {
+                    logger.error("Delayed-events URL is not HTTP")
+                    return@withContext DelayedEventsResult.Failure(
+                        statusCode = null,
+                        message = "Delayed-events URL is not HTTP",
+                    )
                 }
 
             try {
@@ -83,6 +90,11 @@ internal class DelayedEventsEndpoint(
                 connection.disconnect()
             }
         }
+
+    private fun serializationFailure(error: Exception): DelayedEventsResult.Failure {
+        logger.error("Failed to serialize delayed-events request: ${error.message}")
+        return DelayedEventsResult.Failure(statusCode = null, message = error.message)
+    }
 
     private fun readBody(connection: HttpURLConnection): String? {
         val stream: InputStream? =
