@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:name=".MainApplication"
+        android:allowBackup="true"
+        android:icon="@drawable/ic_launcher_background"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.StreamingAnalyticsSample">
+        <activity
+            android:name=".LauncherActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.StreamingAnalyticsSample">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".XmlPlayerActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:exported="false"
+            android:label="@string/xml_screen_title"
+            android:resizeableActivity="true"
+            android:supportsPictureInPicture="true"
+            android:theme="@style/Theme.StreamingAnalyticsSample" />
+        <activity
+            android:name=".ComposePlayerActivity"
+            android:configChanges="screenSize|smallestScreenSize|screenLayout|orientation"
+            android:exported="false"
+            android:label="@string/compose_screen_title"
+            android:resizeableActivity="true"
+            android:supportsPictureInPicture="true"
+            android:theme="@style/Theme.StreamingAnalyticsSample" />
+    </application>
+</manifest>

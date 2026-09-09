@@ -14,7 +14,7 @@ plugins {
 }
 
 apiValidation {
-    ignoredProjects += listOf("kotlin-android-app")
+    ignoredProjects += listOf("kotlin-android-app", "streaming-app")
 }
 
 allprojects {
