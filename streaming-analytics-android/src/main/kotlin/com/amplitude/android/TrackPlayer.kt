@@ -28,12 +28,26 @@ public fun Amplitude.trackPlayer(
     player: Player,
     contentProvider: PlayerContentProvider,
 ) {
-    val plugin =
-        findPlugin<StreamingAnalyticsPlugin>()
-            ?: StreamingAnalyticsPlugin().also { add(it) }
-
+    val plugin = resolveStreamingAnalyticsPlugin(findPlugin())
     plugin.streamingAnalytics?.trackPlayer(
         player = player,
         contentProvider = contentProvider,
     )
+}
+
+/**
+ * Returns the registered [StreamingAnalyticsPlugin], installing one if needed.
+ *
+ * Plugin registration is first-name-wins. If another thread already registered the
+ * plugin, [Amplitude.add] keeps that instance; resolve it instead of using a rejected
+ * candidate that was never set up.
+ */
+@OptIn(AmplitudePreview::class)
+internal fun Amplitude.resolveStreamingAnalyticsPlugin(
+    existing: StreamingAnalyticsPlugin?,
+): StreamingAnalyticsPlugin {
+    existing?.let { return it }
+    val candidate = StreamingAnalyticsPlugin()
+    add(candidate)
+    return plugin(candidate.name) as? StreamingAnalyticsPlugin ?: candidate
 }

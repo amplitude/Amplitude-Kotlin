@@ -1,5 +1,6 @@
 package com.amplitude.android.streaming
 
+import com.amplitude.android.streaming.internal.util.deepCopy
 import com.amplitude.core.AmplitudePreview
 
 /**
@@ -10,14 +11,15 @@ import com.amplitude.core.AmplitudePreview
  *
  * @param contentId Stable id for the current media item (`content_id` on events).
  * @param title Human-readable title.
- * @param contentType One of `VoD`, `live`, `audio`, or `podcast` when known.
+ * @param contentType One of [CONTENT_TYPE_VOD], [CONTENT_TYPE_LIVE], or [CONTENT_TYPE_AUDIO]
+ * when known.
  * @param extraProperties App extras merged onto started/stopped events.
  *
  * ```
  * PlayerContent(
  *     contentId = "ep-1",
  *     title = "Episode 1",
- *     contentType = PlayerContent.CONTENT_TYPE_PODCAST,
+ *     contentType = PlayerContent.CONTENT_TYPE_AUDIO,
  * )
  * ```
  */
@@ -30,8 +32,9 @@ public class PlayerContent @JvmOverloads constructor(
 ) {
     /**
      * Defensive copy so callers can mutate the map they passed without racing the tracker.
+     * Nested maps and lists are copied too; later mutations of the originals are ignored.
      */
-    public val extraProperties: Map<String, Any?>? = extraProperties?.toMap()
+    public val extraProperties: Map<String, Any?>? = extraProperties?.deepCopy()
 
     public companion object {
         public const val CONTENT_TYPE_VOD: String = "VoD"

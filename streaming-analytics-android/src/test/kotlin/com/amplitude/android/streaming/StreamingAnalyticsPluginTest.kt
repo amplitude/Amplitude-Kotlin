@@ -2,6 +2,7 @@ package com.amplitude.android.streaming
 
 import androidx.media3.common.Player
 import com.amplitude.android.streaming.internal.DelayedEvent
+import com.amplitude.android.resolveStreamingAnalyticsPlugin
 import com.amplitude.android.trackPlayer
 import com.amplitude.core.Amplitude
 import com.amplitude.core.AmplitudePreview
@@ -97,6 +98,18 @@ class StreamingAnalyticsPluginTest {
             val plugin = amplitude.findPlugin<StreamingAnalyticsPlugin>()
             assertNotNull(plugin)
             assertNotNull(plugin?.streamingAnalytics)
+        }
+
+        @Test
+        fun `resolveStreamingAnalyticsPlugin uses registered plugin when add loses`() {
+            val amplitude = Amplitude(Configuration(apiKey = "test"))
+            val registered = StreamingAnalyticsPlugin()
+            amplitude.add(registered)
+
+            val winner = amplitude.resolveStreamingAnalyticsPlugin(existing = null)
+
+            assertSame(registered, winner)
+            assertNotNull(winner.streamingAnalytics)
         }
     }
 }
