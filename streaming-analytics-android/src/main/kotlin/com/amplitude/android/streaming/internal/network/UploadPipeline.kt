@@ -47,6 +47,12 @@ internal class UploadPipeline(
 
     suspend fun onNewEvent() = upload(ignoreThrottle = false)
 
+    /**
+     * Bypasses heartbeat throttle when this call owns the drain. If another drain already holds
+     * the lock, only [pending] is recorded and the in-flight [ignoreThrottle] is kept. That is
+     * best-effort: the server already has a recent snapshot, and the next unthrottled heartbeat
+     * or [throttleRetryWaitMs] retry will send any newer one.
+     */
     suspend fun flush() = upload(ignoreThrottle = true)
 
     private suspend fun upload(ignoreThrottle: Boolean) {

@@ -69,8 +69,8 @@ class DelayedEventsQueueTest {
         @Test
         fun `delayed update replaces delayed events and timeout`() =
             runTest {
-                val previousDelayed = eventEntity("stopped-old")
-                val nextDelayed = eventEntity("stopped-new")
+                val previousDelayed = eventEntity("stopped-old", timestamp = 1L)
+                val nextDelayed = eventEntity("stopped-new", timestamp = 2L)
                 coEvery { storage.findKey(any()) } returns "existing-key"
                 coEvery { storage.read("existing-key") } returns
                     DelayedEventsRequestEntity(
@@ -104,8 +104,8 @@ class DelayedEventsQueueTest {
         @Test
         fun `delayed update with a new insert id promotes the previous delayed event`() =
             runTest {
-                val pausedStop = eventEntity("stopped", insertId = "pause-1")
-                val resumedStop = eventEntity("stopped", insertId = "resume-1")
+                val pausedStop = eventEntity("stopped", insertId = "pause-1", timestamp = 1L)
+                val resumedStop = eventEntity("stopped", insertId = "resume-1", timestamp = 2L)
                 val started = eventEntity("started")
                 coEvery { storage.findKey(any()) } returns "existing-key"
                 coEvery { storage.read("existing-key") } returns
@@ -140,8 +140,8 @@ class DelayedEventsQueueTest {
         @Test
         fun `delayed update with the same insert id does not promote`() =
             runTest {
-                val firstHeartbeat = eventEntity("stopped", insertId = "stop-1")
-                val nextHeartbeat = eventEntity("stopped-updated", insertId = "stop-1")
+                val firstHeartbeat = eventEntity("stopped", insertId = "stop-1", timestamp = 1L)
+                val nextHeartbeat = eventEntity("stopped-updated", insertId = "stop-1", timestamp = 2L)
                 coEvery { storage.findKey(any()) } returns "existing-key"
                 coEvery { storage.read("existing-key") } returns
                     DelayedEventsRequestEntity(
@@ -165,6 +165,39 @@ class DelayedEventsQueueTest {
                         match { stored ->
                             stored.events == listOf(nextHeartbeat) &&
                                 stored.instantEvents == null
+                        },
+                    )
+                }
+            }
+
+        @Test
+        fun `older delayed update does not replace a newer snapshot`() =
+            runTest {
+                val newer = eventEntity("stopped-new", timestamp = 2L)
+                val older = eventEntity("stopped-old", timestamp = 1L)
+                coEvery { storage.findKey(any()) } returns "existing-key"
+                coEvery { storage.read("existing-key") } returns
+                    DelayedEventsRequestEntity(
+                        id = "stream-1",
+                        timeoutMillis = 8_000L,
+                        events = listOf(newer),
+                    )
+                coEvery { storage.write(any(), any()) } returns Unit
+
+                queue.enqueue(
+                    DelayedEventsRequestEntity(
+                        id = "stream-1",
+                        timeoutMillis = 5_000L,
+                        events = listOf(older),
+                    ),
+                )
+
+                coVerify {
+                    storage.write(
+                        "existing-key",
+                        match { stored ->
+                            stored.events == listOf(newer) &&
+                                stored.timeoutMillis == 8_000L
                         },
                     )
                 }
@@ -385,11 +418,12 @@ class DelayedEventsQueueTest {
     private fun eventEntity(
         eventType: String,
         insertId: String? = null,
+        timestamp: Long = 1L,
     ): DelayedEventEntity =
         DelayedEvent(
             eventType = eventType,
             kind = DelayedEvent.Kind.DELAYED,
-            timestamp = 1L,
+            timestamp = timestamp,
             eventProperties = mutableMapOf(),
         ).also { event ->
             insertId?.let { event.insertId = it }
