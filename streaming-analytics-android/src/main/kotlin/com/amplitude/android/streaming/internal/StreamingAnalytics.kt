@@ -5,7 +5,9 @@ import com.amplitude.android.Amplitude
 import com.amplitude.android.streaming.PlayerContentProvider
 import com.amplitude.android.streaming.internal.network.uploadPipeline
 import com.amplitude.android.streaming.internal.storage.storagePipeline
+import com.amplitude.android.streaming.internal.util.runCatchingCancellable
 import com.amplitude.core.AmplitudePreview
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -29,9 +31,13 @@ internal class StreamingAnalytics(
     }
 
     fun onDelayedEvent(event: DelayedEvent) {
-        graph.scope.launch {
+        graph.scope.launch(start = CoroutineStart.UNDISPATCHED) {
             withContext(NonCancellable) {
-                graph.storagePipeline.onDelayedEvent(event)
+                runCatchingCancellable {
+                    graph.storagePipeline.onDelayedEvent(event)
+                }.onFailure {
+                    graph.logger.error("onDelayedEvent error: ${it.localizedMessage}")
+                }
             }
             graph.uploadPipeline.onNewEvent()
         }
@@ -39,7 +45,11 @@ internal class StreamingAnalytics(
 
     fun flush() {
         graph.scope.launch {
-            graph.uploadPipeline.flush()
+            runCatchingCancellable {
+                graph.uploadPipeline.flush()
+            }.onFailure {
+                graph.logger.error("flush error: ${it.localizedMessage}")
+            }
         }
     }
 
