@@ -150,6 +150,7 @@ class StreamTrackerTest {
                 streamDurationMillis = 5_000L,
                 timestamp = 6_000L,
                 insertId = "timeout-stop",
+                playerState = playerState,
                 stopReason = StopReason.TIMEOUT,
             )
             assertEquals(DelayedEvent.Kind.DELAYED, (events.last() as DelayedEvent).kind)
@@ -176,6 +177,7 @@ class StreamTrackerTest {
                     streamDurationMillis = 5_000L,
                     timestamp = 6_000L,
                     insertId = "stop-${reason.value}",
+                    playerState = playerState,
                     stopReason = reason,
                 )
                 assertEquals(DelayedEvent.Kind.INSTANT, (events.last() as DelayedEvent).kind)
@@ -277,6 +279,7 @@ class StreamTrackerTest {
                 streamDurationMillis = 0L,
                 timestamp = 5_000L,
                 insertId = "stop-zero",
+                playerState = playerState,
                 stopReason = StopReason.COMPLETED,
             )
 
