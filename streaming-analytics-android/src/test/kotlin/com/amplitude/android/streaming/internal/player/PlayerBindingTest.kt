@@ -14,7 +14,10 @@ import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -170,21 +173,22 @@ class PlayerBindingTest {
         @Test
         fun `should not track Stream Started from an event queued before stop`() =
             runTest {
+                val playerDispatcher = StandardTestDispatcher(testScheduler)
                 val binding =
                     PlayerBinding(
                         player = mockk(relaxed = true),
                         contentProvider = { PlayerContent() },
-                        playerObserverFactory = PlayerObserverFactory { _, _ -> observer },
+                        playerObserverFactory = PlayerObserverFactory { _, _, _ -> observer },
                         streamTracker = StreamTracker(amplitude),
                         time = Time(),
                         parentScope = this,
+                        playerDispatcher = playerDispatcher,
                     )
                 binding.start()
-                runCurrent()
                 try {
                     observer.emit(PlayerEvent.Playing)
                     binding.stop()
-                    runCurrent()
+                    advanceUntilIdle()
 
                     assertEquals(0, startedEvents().size)
                 } finally {
@@ -201,10 +205,11 @@ class PlayerBindingTest {
                     PlayerBinding(
                         player = mockk(relaxed = true),
                         contentProvider = { PlayerContent() },
-                        playerObserverFactory = PlayerObserverFactory { _, _ -> observer },
+                        playerObserverFactory = PlayerObserverFactory { _, _, _ -> observer },
                         streamTracker = StreamTracker(amplitude),
                         time = Time(),
                         parentScope = CoroutineScope(coroutineContext + parentJob),
+                        playerDispatcher = UnconfinedTestDispatcher(testScheduler),
                     )
                 binding.start()
                 runCurrent()
@@ -370,10 +375,11 @@ class PlayerBindingTest {
             PlayerBinding(
                 player = player,
                 contentProvider = contentProvider,
-                playerObserverFactory = PlayerObserverFactory { _, _ -> observer },
+                playerObserverFactory = PlayerObserverFactory { _, _, _ -> observer },
                 streamTracker = StreamTracker(amplitude),
                 time = Time(),
                 parentScope = this,
+                playerDispatcher = UnconfinedTestDispatcher(testScheduler),
             )
         binding.start()
         runCurrent()
