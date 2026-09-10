@@ -2,22 +2,32 @@ package com.amplitude.android.streaming
 
 import androidx.media3.common.Player
 import com.amplitude.android.streaming.internal.DelayedEvent
-import com.amplitude.android.resolveStreamingAnalyticsPlugin
+import com.amplitude.android.streaming.internal.StreamingAnalytics
 import com.amplitude.android.trackPlayer
 import com.amplitude.core.Amplitude
 import com.amplitude.core.AmplitudePreview
-import com.amplitude.core.Configuration
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
+import com.amplitude.core.platform.Timeline
+import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import com.amplitude.android.Amplitude as AndroidAmplitude
 
-@OptIn(AmplitudePreview::class)
+@OptIn(AmplitudePreview::class, ExperimentalCoroutinesApi::class)
 class StreamingAnalyticsPluginTest {
     @Nested
     inner class PluginContract {
@@ -77,39 +87,84 @@ class StreamingAnalyticsPluginTest {
         }
 
         @Test
-        fun `trackPlayer uses registered plugin`() {
-            val amplitude = Amplitude(Configuration(apiKey = "test"))
+        fun `trackPlayer uses registered plugin`() =
+            runTest {
+                val isBuilt = CompletableDeferred<Boolean>()
+                val amplitude = androidAmplitude(isBuilt)
+                val streamingAnalytics = installMockedPlugin(amplitude)
+
+                val player = mockk<Player>(relaxed = true)
+                val contentProvider = PlayerContentProvider { PlayerContent() }
+                amplitude.trackPlayer(player, contentProvider)
+                isBuilt.complete(true)
+                advanceUntilIdle()
+
+                verify { streamingAnalytics.trackPlayer(player, contentProvider) }
+            }
+
+        @Test
+        fun `trackPlayer waits for the instance to finish building`() =
+            runTest {
+                val isBuilt = CompletableDeferred<Boolean>()
+                val amplitude = androidAmplitude(isBuilt)
+                val player = mockk<Player>(relaxed = true)
+                val contentProvider = PlayerContentProvider { PlayerContent() }
+
+                amplitude.trackPlayer(player, contentProvider)
+                advanceUntilIdle()
+
+                val streamingAnalytics = installMockedPlugin(amplitude)
+                isBuilt.complete(true)
+                advanceUntilIdle()
+
+                verify { streamingAnalytics.trackPlayer(player, contentProvider) }
+            }
+
+        @Test
+        fun `trackPlayer logs an error when the plugin is not installed`() =
+            runTest {
+                val amplitude = androidAmplitude(CompletableDeferred(true))
+
+                amplitude.trackPlayer(mockk<Player>(relaxed = true)) { PlayerContent() }
+                advanceUntilIdle()
+
+                verify { amplitude.logger.error("StreamingAnalyticsPlugin is not installed.") }
+            }
+
+        @Test
+        fun `trackPlayer logs an error after plugin teardown`() =
+            runTest {
+                val amplitude = androidAmplitude(CompletableDeferred(true))
+                val plugin = StreamingAnalyticsPlugin()
+                amplitude.add(plugin)
+                plugin.teardown()
+
+                amplitude.trackPlayer(mockk<Player>(relaxed = true)) { PlayerContent() }
+                advanceUntilIdle()
+
+                verify { amplitude.logger.error("StreamingAnalyticsPlugin is not installed.") }
+            }
+
+        private fun installMockedPlugin(amplitude: AndroidAmplitude): StreamingAnalytics {
             val plugin = StreamingAnalyticsPlugin()
             amplitude.add(plugin)
-
-            val player = mockk<Player>(relaxed = true)
-            amplitude.trackPlayer(player) { PlayerContent() }
-
             assertSame(plugin, amplitude.findPlugin<StreamingAnalyticsPlugin>())
-            assertNotNull(plugin.streamingAnalytics)
+            return mockk<StreamingAnalytics>(relaxed = true).also { plugin.streamingAnalytics = it }
         }
 
-        @Test
-        fun `trackPlayer adds plugin if not registered`() {
-            val amplitude = Amplitude(Configuration(apiKey = "test"))
-            val player = mockk<Player>(relaxed = true)
-            amplitude.trackPlayer(player) { PlayerContent() }
-
-            val plugin = amplitude.findPlugin<StreamingAnalyticsPlugin>()
-            assertNotNull(plugin)
-            assertNotNull(plugin?.streamingAnalytics)
-        }
-
-        @Test
-        fun `resolveStreamingAnalyticsPlugin uses registered plugin when add loses`() {
-            val amplitude = Amplitude(Configuration(apiKey = "test"))
-            val registered = StreamingAnalyticsPlugin()
-            amplitude.add(registered)
-
-            val winner = amplitude.resolveStreamingAnalyticsPlugin(existing = null)
-
-            assertSame(registered, winner)
-            assertNotNull(winner.streamingAnalytics)
+        private fun TestScope.androidAmplitude(isBuilt: CompletableDeferred<Boolean>): AndroidAmplitude {
+            val timeline = Timeline()
+            val amplitude = mockk<AndroidAmplitude>(relaxed = true)
+            timeline.amplitude = amplitude
+            every { amplitude.timeline } returns timeline
+            every { amplitude.isBuilt } returns isBuilt
+            every { amplitude.amplitudeScope } returns this as CoroutineScope
+            every { amplitude.amplitudeDispatcher } returns StandardTestDispatcher(testScheduler)
+            every { amplitude.add(any<Plugin>()) } answers {
+                timeline.add(firstArg<Plugin>())
+                amplitude
+            }
+            return amplitude
         }
     }
 }

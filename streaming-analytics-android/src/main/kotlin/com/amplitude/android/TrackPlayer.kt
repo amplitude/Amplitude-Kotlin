@@ -6,6 +6,7 @@ import androidx.media3.common.Player
 import com.amplitude.android.streaming.PlayerContentProvider
 import com.amplitude.android.streaming.StreamingAnalyticsPlugin
 import com.amplitude.core.AmplitudePreview
+import kotlinx.coroutines.launch
 
 /**
  * Starts Streaming Analytics on [androidx.media3.common.Player].
@@ -27,26 +28,16 @@ public fun Amplitude.trackPlayer(
     player: Player,
     contentProvider: PlayerContentProvider,
 ) {
-    val plugin = resolveStreamingAnalyticsPlugin(findPlugin())
-    plugin.streamingAnalytics?.trackPlayer(
-        player = player,
-        contentProvider = contentProvider,
-    )
-}
-
-/**
- * Returns the registered [StreamingAnalyticsPlugin], installing one if needed.
- *
- * Plugin registration is first-name-wins. If another thread already registered the
- * plugin, [Amplitude.add] keeps that instance; resolve it instead of using a rejected
- * candidate that was never set up.
- */
-@OptIn(AmplitudePreview::class)
-internal fun Amplitude.resolveStreamingAnalyticsPlugin(
-    existing: StreamingAnalyticsPlugin?,
-): StreamingAnalyticsPlugin {
-    existing?.let { return it }
-    val candidate = StreamingAnalyticsPlugin()
-    add(candidate)
-    return plugin(candidate.name) as? StreamingAnalyticsPlugin ?: candidate
+    amplitudeScope.launch(amplitudeDispatcher) {
+        isBuilt.await()
+        val streamingAnalytics = findPlugin<StreamingAnalyticsPlugin>()?.streamingAnalytics
+        if (streamingAnalytics == null) {
+            logger.error("StreamingAnalyticsPlugin is not installed.")
+            return@launch
+        }
+        streamingAnalytics.trackPlayer(
+            player = player,
+            contentProvider = contentProvider,
+        )
+    }
 }
