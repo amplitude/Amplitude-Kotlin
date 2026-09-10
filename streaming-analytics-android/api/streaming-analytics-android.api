@@ -3,10 +3,9 @@ public final class com/amplitude/android/AmplitudeStreamingAnalytics {
 }
 
 public final class com/amplitude/android/streaming/PlayerContent {
-	public static final field CONTENT_TYPE_AUDIO Ljava/lang/String;
-	public static final field CONTENT_TYPE_LIVE Ljava/lang/String;
-	public static final field CONTENT_TYPE_VOD Ljava/lang/String;
 	public static final field Companion Lcom/amplitude/android/streaming/PlayerContent$Companion;
+	public static final field DELIVERY_MODE_LIVE Ljava/lang/String;
+	public static final field DELIVERY_MODE_ON_DEMAND Ljava/lang/String;
 	public fun <init> ()V
 	public fun <init> (Ljava/lang/String;)V
 	public fun <init> (Ljava/lang/String;Ljava/lang/String;)V
@@ -14,7 +13,7 @@ public final class com/amplitude/android/streaming/PlayerContent {
 	public fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;)V
 	public synthetic fun <init> (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public final fun getContentId ()Ljava/lang/String;
-	public final fun getContentType ()Ljava/lang/String;
+	public final fun getDeliveryMode ()Ljava/lang/String;
 	public final fun getExtraProperties ()Ljava/util/Map;
 	public final fun getTitle ()Ljava/lang/String;
 }
