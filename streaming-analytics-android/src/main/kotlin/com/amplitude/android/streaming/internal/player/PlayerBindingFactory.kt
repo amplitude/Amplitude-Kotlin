@@ -9,6 +9,7 @@ import com.amplitude.android.streaming.internal.util.DiGraph
 import com.amplitude.android.streaming.internal.util.Time
 import com.amplitude.android.streaming.internal.util.time
 import com.amplitude.core.AmplitudePreview
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import java.util.IdentityHashMap
 
@@ -18,6 +19,7 @@ internal val StreamingDiGraph.playerBindingFactory: PlayerBindingFactory by DiGr
         streamTracker = streamTracker,
         time = time,
         scope = scope,
+        playerDispatcherFactory = playerDispatcherFactory,
     )
 }
 
@@ -27,6 +29,7 @@ internal class PlayerBindingFactory(
     private val streamTracker: StreamTracker,
     private val time: Time,
     private val scope: CoroutineScope,
+    private val playerDispatcherFactory: PlayerDispatcherFactory,
 ) {
     private val lock = Any()
     private val bindingRegistry = IdentityHashMap<Player, PlayerBinding>()
@@ -45,6 +48,7 @@ internal class PlayerBindingFactory(
                     streamTracker = streamTracker,
                     time = time,
                     parentScope = scope,
+                    playerDispatcher = playerDispatcherFactory.create(player),
                 )
             bindingRegistry[player] = binding
             binding.start()
