@@ -90,6 +90,8 @@ internal class Media3PlayerObserver(
         if (!playWhenReady && player.playbackState != Player.STATE_ENDED) {
             cancelBuffering()
             emit(PlayerEvent.Paused)
+        } else if (playWhenReady && player.playbackState == Player.STATE_BUFFERING) {
+            startBufferingDebounce()
         }
     }
 
