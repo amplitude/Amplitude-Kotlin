@@ -1,11 +1,11 @@
+import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
 import kotlinx.validation.KotlinApiBuildTask
 import kotlinx.validation.KotlinApiCompareTask
 
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.serialization)
-    // TODO: Publishing is off until the public API is ready.
-    // alias(libs.plugins.mavenPublish)
+    alias(libs.plugins.mavenPublish)
     alias(libs.plugins.android.junit5)
 }
 
@@ -53,8 +53,6 @@ kotlin {
     explicitApi()
 }
 
-/*
-TODO: Publishing is off until the public API is ready.
 mavenPublishing {
     coordinates(artifactId = "streaming-analytics-android")
 
@@ -71,7 +69,6 @@ mavenPublishing {
         ),
     )
 }
-*/
 
 dependencies {
     api(project(":android"))
