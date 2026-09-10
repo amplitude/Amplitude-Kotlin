@@ -11,7 +11,8 @@ plugins {
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.serialization) apply false
     alias(libs.plugins.ktlint) apply false
-    alias(libs.plugins.bcv)
+    // On the buildSrc classpath for KotlinApiBuildTask. Version: libs.versions.bcv.
+    id("org.jetbrains.kotlinx.binary-compatibility-validator")
 }
 
 apiValidation {

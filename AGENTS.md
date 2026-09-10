@@ -40,7 +40,7 @@ This is a published SDK and we guard the public surface:
 
 ### Binary Compatibility
 
-Public API changes require `./gradlew apiDump` and committed `.api` files (`analytics-core/api/analytics-core.api`, `android/api/android.api`). CI fails on stale dumps.
+Public API changes require `./gradlew apiDump` and committed `.api` files (`analytics-core/api/analytics-core.api`, `android/api/android.api`, `streaming-analytics-android/api/streaming-analytics-android.api`). CI fails on stale dumps.
 
 ### Thread Safety
 

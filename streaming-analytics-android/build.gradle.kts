@@ -1,4 +1,5 @@
-// import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
+import kotlinx.validation.KotlinApiBuildTask
+import kotlinx.validation.KotlinApiCompareTask
 
 plugins {
     alias(libs.plugins.android.library)
@@ -107,4 +108,60 @@ tasks.withType<Test> {
         events("passed", "skipped", "failed")
         showStandardStreams = true
     }
+}
+
+// BCV's plugin does not register apiDump/apiCheck for AGP 9 built-in Kotlin.
+// https://github.com/Kotlin/binary-compatibility-validator/issues/312
+val bcvRuntimeClasspath =
+    configurations.register("bcvRuntimeClasspath") {
+        isCanBeConsumed = false
+        isCanBeResolved = true
+    }
+
+dependencies {
+    add(bcvRuntimeClasspath.name, "org.ow2.asm:asm:9.6")
+    add(bcvRuntimeClasspath.name, "org.ow2.asm:asm-tree:9.6")
+    add(
+        bcvRuntimeClasspath.name,
+        "org.jetbrains.kotlin:kotlin-metadata-jvm:${libs.versions.kotlin.get()}",
+    )
+}
+
+val apiDumpFile = layout.projectDirectory.file("api/${project.name}.api")
+
+val apiBuild =
+    tasks.register<KotlinApiBuildTask>("apiBuild") {
+        description =
+            "Builds Kotlin API for release compilations of ${project.name}. Complementary task and shouldn't be called manually"
+        dependsOn("compileReleaseKotlin", "compileReleaseJavaWithJavac")
+        inputClassesDirs.from(
+            tasks.named("compileReleaseKotlin").map { it.outputs.files },
+            tasks.named("compileReleaseJavaWithJavac").map { it.outputs.files },
+        )
+        ignoredClasses.add("com.amplitude.android.streaming.BuildConfig")
+        outputApiFile.set(layout.buildDirectory.file("api/${project.name}.api"))
+        runtimeClasspath.from(bcvRuntimeClasspath)
+    }
+
+val apiCheck =
+    tasks.register<KotlinApiCompareTask>("apiCheck") {
+        group = "verification"
+        description =
+            "Checks signatures of public API against the golden value in API folder for ${project.name}"
+        projectApiFile.set(apiDumpFile)
+        generatedApiFile.set(apiBuild.flatMap { it.outputApiFile })
+    }
+
+tasks.register("apiDump") {
+    group = "other"
+    description = "Syncs the API file for ${project.name}"
+    dependsOn(apiBuild)
+    val builtApi = apiBuild.flatMap { it.outputApiFile }
+    doLast {
+        builtApi.get().asFile.copyTo(apiDumpFile.asFile, overwrite = true)
+    }
+}
+
+tasks.named("check") {
+    dependsOn(apiCheck)
 }
