@@ -9,6 +9,7 @@ import com.amplitude.android.streaming.internal.StopReason
 import com.amplitude.android.streaming.internal.StreamTracker
 import com.amplitude.android.streaming.internal.util.Time
 import com.amplitude.core.AmplitudePreview
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -30,10 +31,11 @@ internal class PlayerBinding internal constructor(
     private val streamTracker: StreamTracker,
     private val time: Time,
     parentScope: CoroutineScope,
+    playerDispatcher: CoroutineDispatcher,
 ) {
     private val scope =
         CoroutineScope(
-            parentScope.coroutineContext +
+            playerDispatcher +
                 SupervisorJob(parentScope.coroutineContext[Job]),
         )
     private val mutex = Mutex()
@@ -41,6 +43,7 @@ internal class PlayerBinding internal constructor(
         playerObserverFactory.create(
             player = player,
             parentScope = scope,
+            playerDispatcher = playerDispatcher,
         )
     private var eventJob: Job? = null
     private var playback: PlaybackState = PlaybackState.Idle()
@@ -53,17 +56,20 @@ internal class PlayerBinding internal constructor(
 
     fun start() {
         if (eventJob != null) return
-        options = resolveOptions(player.currentMediaItem)
-        eventJob =
-            scope.launch {
-                observer.eventFlow.collect { event ->
-                    if (stopped.get()) return@collect
-                    mutex.withLock {
-                        if (stopped.get()) return@withLock
-                        handlePlayerEvent(event)
+        scope.launch {
+            if (stopped.get() || eventJob != null) return@launch
+            options = resolveOptions(player.currentMediaItem)
+            eventJob =
+                scope.launch {
+                    observer.eventFlow.collect { event ->
+                        if (stopped.get()) return@collect
+                        mutex.withLock {
+                            if (stopped.get()) return@withLock
+                            handlePlayerEvent(event)
+                        }
                     }
                 }
-            }
+        }
     }
 
     fun stop() {
