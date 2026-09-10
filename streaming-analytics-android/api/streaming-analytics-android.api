@@ -32,6 +32,9 @@ public final class com/amplitude/android/streaming/StreamingAnalyticsPlugin : co
 	public fun getAmplitude ()Lcom/amplitude/core/Amplitude;
 	public fun getName ()Ljava/lang/String;
 	public fun getType ()Lcom/amplitude/core/platform/Plugin$Type;
+	public fun onDeviceIdChanged (Ljava/lang/String;)V
+	public fun onSessionIdChanged (J)V
+	public fun onUserIdChanged (Ljava/lang/String;)V
 	public fun setAmplitude (Lcom/amplitude/core/Amplitude;)V
 	public fun setup (Lcom/amplitude/core/Amplitude;)V
 	public fun teardown ()V
