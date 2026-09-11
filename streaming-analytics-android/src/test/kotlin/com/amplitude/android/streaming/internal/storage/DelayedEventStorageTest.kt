@@ -1,0 +1,360 @@
+package com.amplitude.android.streaming.internal.storage
+
+import android.content.Context
+import com.amplitude.android.Configuration
+import com.amplitude.android.streaming.internal.DelayedEvent
+import com.amplitude.common.Logger
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Nested
+import org.junit.jupiter.api.Test
+import java.io.File
+import java.util.UUID
+import kotlin.io.path.createTempDirectory
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class DelayedEventStorageTest {
+    private lateinit var amplitudeDir: File
+    private lateinit var context: Context
+
+    @BeforeEach
+    fun setup() {
+        amplitudeDir = createTempDirectory("amplitude").toFile()
+        context =
+            mockk {
+                every { getDir("amplitude", Context.MODE_PRIVATE) } returns amplitudeDir
+                every { packageName } returns "com.example.app"
+            }
+    }
+
+    @AfterEach
+    fun tearDown() {
+        amplitudeDir.deleteRecursively()
+    }
+
+    @Nested
+    inner class WriteAndRead {
+        @Test
+        fun `should create the queue directory and round trip a request`() =
+            runTest {
+                val instanceName = uniqueInstance()
+                val storage = storage(instanceName)
+                val request = request("view-1")
+
+                storage.write("0000000000000000001-abc", request)
+
+                assertTrue(queueDir(instanceName).isDirectory)
+                assertEquals(request, storage.read("0000000000000000001-abc"))
+            }
+
+        @Test
+        fun `should replace an existing file for the same key`() =
+            runTest {
+                val storage = storage()
+                storage.write("key-1", request("view-1", timeoutMillis = 1_000L))
+                storage.write("key-1", request("view-1", timeoutMillis = 9_000L))
+
+                assertEquals(9_000L, storage.read("key-1")?.timeoutMillis)
+                assertEquals(listOf("key-1"), storage.keys())
+            }
+
+        @Test
+        fun `should ignore leftover tmp files after a successful write`() =
+            runTest {
+                val instanceName = uniqueInstance()
+                val storage = storage(instanceName)
+                storage.write("key-1", request())
+
+                File(queueDir(instanceName), "key-1-leftover.tmp").writeText("{not-json")
+
+                assertEquals(listOf("key-1"), storage.keys())
+                assertEquals(request(), storage.read("key-1"))
+            }
+
+        @Test
+        fun `should ignore unknown json keys when reading`() =
+            runTest {
+                val instanceName = uniqueInstance()
+                val storage = storage(instanceName)
+                val stored = request("view-1")
+                storage.write("key-1", stored)
+
+                val file = File(queueDir(instanceName), "key-1.json")
+                val parsed = delayedEventsStorageJson.parseToJsonElement(file.readText()).jsonObject
+                file.writeText(
+                    JsonObject(
+                        parsed.toMutableMap().apply {
+                            put("schemaVersion", JsonPrimitive(2))
+                        },
+                    ).toString(),
+                )
+
+                assertEquals(stored, storage.read("key-1"))
+            }
+
+        @Test
+        fun `should return null and log when the file is missing`() =
+            runTest {
+                val logger = mockk<Logger>(relaxed = true)
+                val storage = storage(logger = logger)
+
+                assertNull(storage.read("missing"))
+                verify {
+                    logger.error(match { it.contains("Failed to read delayed-events queue entry missing") })
+                }
+            }
+
+        @Test
+        fun `should return null and log when the file is not valid json`() =
+            runTest {
+                val instanceName = uniqueInstance()
+                val logger = mockk<Logger>(relaxed = true)
+                val storage = storage(instanceName, logger)
+                storage.write("key-1", request())
+                File(queueDir(instanceName), "key-1.json").writeText("{not-json")
+
+                assertNull(storage.read("key-1"))
+                verify {
+                    logger.error(match { it.contains("Failed to read delayed-events queue entry key-1") })
+                }
+            }
+
+        @Test
+        fun `should log and skip write when the queue directory cannot be created`() =
+            runTest {
+                val instanceName = uniqueInstance()
+                val logger = mockk<Logger>(relaxed = true)
+                val parent = File(amplitudeDir, "com.example.app/$instanceName/analytics")
+                parent.mkdirs()
+                File(parent, "streaming-delayed-events").writeText("not-a-directory")
+                val storage = storage(instanceName, logger)
+
+                storage.write("key-1", request())
+
+                assertEquals(emptyList<String>(), storage.keys())
+                verify {
+                    logger.error(match { it.contains("Failed to persist delayed-events queue entry key-1") })
+                }
+            }
+    }
+
+    @Nested
+    inner class DiskBound {
+        @Test
+        fun `should drop the oldest entries when a write would exceed the disk bound`() =
+            runTest {
+                val instanceName = uniqueInstance()
+                val logger = mockk<Logger>(relaxed = true)
+                val measuring = storage(instanceName, logger)
+                measuring.write("0000000000000000001-aaa", request("view-1"))
+                val size =
+                    File(queueDir(instanceName), "0000000000000000001-aaa.json").length()
+                val storage = storage(instanceName, logger, maxStorageBytes = size * 2 + 32)
+
+                storage.write("0000000000000000002-bbb", request("view-2"))
+                storage.write("0000000000000000003-ccc", request("view-3"))
+
+                assertEquals(
+                    listOf("0000000000000000002-bbb", "0000000000000000003-ccc"),
+                    storage.keys().sorted(),
+                )
+                verify {
+                    logger.error(
+                        match {
+                            it.contains("Dropping delayed-events queue entry 0000000000000000001-aaa") &&
+                                it.contains("disk bound")
+                        },
+                    )
+                }
+            }
+
+        @Test
+        fun `should skip a write whose payload is larger than the disk bound`() =
+            runTest {
+                val instanceName = uniqueInstance()
+                val logger = mockk<Logger>(relaxed = true)
+                val storage = storage(instanceName, logger)
+                storage.write("key-1", request("view-1"))
+                val bounded = storage(instanceName, logger, maxStorageBytes = 10)
+
+                bounded.write("key-2", request("view-2"))
+
+                assertEquals(listOf("key-1"), bounded.keys())
+                verify {
+                    logger.error(
+                        match {
+                            it.contains("Dropping delayed-events queue entry key-2") &&
+                                it.contains("payload is")
+                        },
+                    )
+                }
+            }
+
+        @Test
+        fun `should replace an existing entry without dropping others under the bound`() =
+            runTest {
+                val instanceName = uniqueInstance()
+                val measuring = storage(instanceName)
+                measuring.write("0000000000000000001-aaa", request("view-1"))
+                val size =
+                    File(queueDir(instanceName), "0000000000000000001-aaa.json").length()
+                val storage = storage(instanceName, maxStorageBytes = size * 2 + 32)
+                storage.write("0000000000000000002-bbb", request("view-2", timeoutMillis = 1_000L))
+
+                storage.write("0000000000000000002-bbb", request("view-2", timeoutMillis = 9_000L))
+
+                assertEquals(
+                    listOf("0000000000000000001-aaa", "0000000000000000002-bbb"),
+                    storage.keys().sorted(),
+                )
+                assertEquals(9_000L, storage.read("0000000000000000002-bbb")?.timeoutMillis)
+            }
+    }
+
+    @Nested
+    inner class Keys {
+        @Test
+        fun `should return no keys when the directory is empty`() =
+            runTest {
+                val storage = storage()
+                assertEquals(emptyList<String>(), storage.keys())
+            }
+
+        @Test
+        fun `should return every stored key`() =
+            runTest {
+                val storage = storage()
+                storage.write("0000000000000000002-bbb", request("view-2"))
+                storage.write("0000000000000000001-aaa", request("view-1"))
+                storage.write("0000000000000000003-ccc", request("view-3"))
+
+                assertEquals(
+                    listOf(
+                        "0000000000000000001-aaa",
+                        "0000000000000000002-bbb",
+                        "0000000000000000003-ccc",
+                    ),
+                    storage.keys().sorted(),
+                )
+            }
+
+        @Test
+        fun `should isolate files by instance name`() =
+            runTest {
+                val first = uniqueInstance()
+                val second = uniqueInstance()
+                storage(first).write("key-1", request("view-1"))
+                storage(second).write("key-2", request("view-2"))
+
+                assertEquals(listOf("key-1"), storage(first).keys())
+                assertEquals(listOf("key-2"), storage(second).keys())
+            }
+    }
+
+    @Nested
+    inner class FindKey {
+        @Test
+        fun `should return null when no filename matches the hashed id`() =
+            runTest {
+                val storage = storage()
+                storage.write("0000000000000000001-aaa", request())
+                assertNull(storage.findKey("bbb"))
+            }
+
+        @Test
+        fun `should keep the oldest duplicate and delete the rest`() =
+            runTest {
+                val storage = storage()
+                storage.write("0000000000000000001-deadbeef", request("view-1", timeoutMillis = 1_000L))
+                storage.write("0000000000000000003-deadbeef", request("view-1", timeoutMillis = 3_000L))
+                storage.write("0000000000000000002-deadbeef", request("view-1", timeoutMillis = 2_000L))
+                storage.write("0000000000000000004-other", request("view-2"))
+
+                assertEquals("0000000000000000001-deadbeef", storage.findKey("deadbeef"))
+                assertEquals(
+                    setOf("0000000000000000001-deadbeef", "0000000000000000004-other"),
+                    storage.keys().toSet(),
+                )
+                assertEquals(1_000L, storage.read("0000000000000000001-deadbeef")?.timeoutMillis)
+            }
+    }
+
+    @Nested
+    inner class Delete {
+        @Test
+        fun `should remove a stored request`() =
+            runTest {
+                val storage = storage()
+                storage.write("key-1", request())
+                storage.delete("key-1")
+
+                assertEquals(emptyList<String>(), storage.keys())
+                assertNull(storage.read("key-1"))
+            }
+
+        @Test
+        fun `should no-op when the key does not exist`() =
+            runTest {
+                val storage = storage()
+                storage.delete("missing")
+                assertEquals(emptyList<String>(), storage.keys())
+            }
+    }
+
+    private fun TestScope.storage(
+        instanceName: String = uniqueInstance(),
+        logger: Logger = mockk(relaxed = true),
+        maxStorageBytes: Long = 25L * 1024 * 1024,
+    ): DelayedEventStorage =
+        DelayedEventStorage(
+            context = context,
+            configuration =
+                Configuration(
+                    apiKey = "test-api-key",
+                    context = context,
+                    instanceName = instanceName,
+                ),
+            logger = logger,
+            ioDispatcher = StandardTestDispatcher(testScheduler),
+            maxStorageBytes = maxStorageBytes,
+        )
+
+    private fun uniqueInstance(): String = UUID.randomUUID().toString()
+
+    private fun queueDir(instanceName: String): File =
+        File(
+            amplitudeDir,
+            "com.example.app/$instanceName/analytics/streaming-delayed-events",
+        )
+
+    private fun request(
+        id: String = "view-1",
+        timeoutMillis: Long = 5_000L,
+    ): DelayedEventsRequestEntity =
+        DelayedEventsRequestEntity(
+            id = id,
+            timeoutMillis = timeoutMillis,
+            events =
+                listOf(
+                    DelayedEvent(
+                        eventType = "video_stopped",
+                        kind = DelayedEvent.Kind.DELAYED,
+                        timestamp = 1L,
+                        eventProperties = mutableMapOf("video_id" to "v-100"),
+                    ).toEntity(),
+                ),
+        )
+}
