@@ -132,9 +132,26 @@ class ComposeActivity : ComponentActivity() {
                         modifier =
                             Modifier
                                 .fillMaxWidth()
+                                .padding(bottom = 16.dp)
                                 .testTag("advanced_events_button"),
                     ) {
                         Text("Advanced Events")
+                    }
+
+                    Button(
+                        onClick = {
+                            throw RuntimeException("Sample app crash")
+                        },
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFE53935),
+                            ),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .testTag("crash_button"),
+                    ) {
+                        Text("Crash")
                     }
                 }
             }

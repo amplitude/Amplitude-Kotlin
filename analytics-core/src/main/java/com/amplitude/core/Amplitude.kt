@@ -60,6 +60,12 @@ public open class Amplitude(
     public val networkIODispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1),
     public val storageIODispatcher: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1),
 ) : PluginHost {
+    // Declared first so watchers start before any other field initializer or `init` runs.
+    init {
+        require(configuration.isValid()) { "invalid configuration" }
+        initWatchers()
+    }
+
     public open val identity: AnalyticsIdentity
         get() =
             object : AnalyticsIdentity {
@@ -169,7 +175,6 @@ public open class Amplitude(
     internal val analyticsClient: AnalyticsClient by lazy { AmplitudeAnalyticsClient(this) }
 
     init {
-        require(configuration.isValid()) { "invalid configuration" }
         timeline = this.createTimeline()
         isBuilt = this.build()
         isBuilt.start()
@@ -199,6 +204,13 @@ public open class Amplitude(
         idContainer = IdentityContainer.getInstance(identityConfiguration)
         identityCoordinator.bootstrap(idContainer.identityManager)
     }
+
+    /**
+     * Installs process-wide watchers, such as an uncaught exception handler, that must be in place
+     * before the SDK does any other work. Runs after configuration validation, ahead of every field
+     * initializer and [build], so a failure during initialization is still observed.
+     */
+    protected open fun initWatchers() {}
 
     protected open fun build(): Deferred<Boolean> {
         val amplitude = this

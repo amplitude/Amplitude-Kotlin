@@ -40,6 +40,7 @@ class AmplitudeSessionTest {
     ): Configuration {
         setupMockAndroidContext()
         val context = mockk<Application>(relaxed = true)
+        every { context.applicationContext } returns context
         val connectivityManager = mockk<ConnectivityManager>(relaxed = true)
         every { context.getSystemService(Context.CONNECTIVITY_SERVICE) } returns connectivityManager
         val dirNameSlot = slot<String>()
