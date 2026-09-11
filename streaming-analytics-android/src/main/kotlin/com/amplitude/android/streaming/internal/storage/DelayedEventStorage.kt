@@ -25,6 +25,7 @@ internal val StreamingDiGraph.delayedEventStorage: DelayedEventStorage by weak {
         configuration = configuration,
         logger = logger,
         ioDispatcher = ioDispatcher,
+        maxStorageBytes = maxStorageBytes,
     )
 }
 
@@ -32,12 +33,14 @@ internal val StreamingDiGraph.delayedEventStorage: DelayedEventStorage by weak {
  * Persists delayed-events request payloads as JSON files until they can be uploaded.
  *
  * Filesystem and parse failures are logged and contained so they do not reach the host app.
+ * The queue directory is capped at [maxStorageBytes]; oldest entries are dropped to stay under it.
  */
 internal class DelayedEventStorage(
     private val context: Context,
     private val configuration: Configuration,
     private val logger: Logger,
     private val ioDispatcher: CoroutineDispatcher,
+    private val maxStorageBytes: Long,
 ) {
     private val directory =
         lazySuspend {
@@ -66,6 +69,9 @@ internal class DelayedEventStorage(
                         delayedEventsStorageJson.encodeToString(request).toByteArray(Charsets.UTF_8)
                     output.write(byteArray)
                     output.fd.sync()
+                }
+                if (!makeRoom(directory, destination, temporary.length())) {
+                    return@runCatchingStorage
                 }
                 if (!temporary.renameTo(destination)) {
                     error("Failed to commit delayed-events queue entry")
@@ -123,6 +129,49 @@ internal class DelayedEventStorage(
             }
             .orEmpty()
             .toList()
+
+    /**
+     * Drops oldest committed entries until [incomingBytes] can be stored without exceeding
+     * [maxStorageBytes]. Returns false when the incoming payload itself is over the bound.
+     */
+    private fun makeRoom(
+        directory: File,
+        destination: File,
+        incomingBytes: Long,
+    ): Boolean {
+        if (incomingBytes > maxStorageBytes) {
+            logger.error(
+                "Dropping delayed-events queue entry ${destination.nameWithoutExtension}: " +
+                    "payload is $incomingBytes bytes, bound is $maxStorageBytes",
+            )
+            return false
+        }
+        val retained =
+            directory
+                .listFiles { candidate ->
+                    candidate != destination && candidate.extension == "json"
+                }
+                .orEmpty()
+                .sortedBy { it.name }
+                .toMutableList()
+        var used = retained.sumOf { it.length() } + incomingBytes
+        while (used > maxStorageBytes && retained.isNotEmpty()) {
+            val victim = retained.removeAt(0)
+            val size = victim.length()
+            val key = victim.nameWithoutExtension
+            if (!victim.delete()) {
+                logger.error(
+                    "Failed to remove delayed-events queue entry $key to stay under disk bound",
+                )
+                return false
+            }
+            logger.error(
+                "Dropping delayed-events queue entry $key to stay under $maxStorageBytes-byte disk bound",
+            )
+            used -= size
+        }
+        return used <= maxStorageBytes
+    }
 
     private suspend fun <T> runCatchingStorage(
         message: String,

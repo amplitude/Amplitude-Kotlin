@@ -152,6 +152,79 @@ class DelayedEventStorageTest {
     }
 
     @Nested
+    inner class DiskBound {
+        @Test
+        fun `should drop the oldest entries when a write would exceed the disk bound`() =
+            runTest {
+                val instanceName = uniqueInstance()
+                val logger = mockk<Logger>(relaxed = true)
+                val measuring = storage(instanceName, logger)
+                measuring.write("0000000000000000001-aaa", request("view-1"))
+                val size =
+                    File(queueDir(instanceName), "0000000000000000001-aaa.json").length()
+                val storage = storage(instanceName, logger, maxStorageBytes = size * 2 + 32)
+
+                storage.write("0000000000000000002-bbb", request("view-2"))
+                storage.write("0000000000000000003-ccc", request("view-3"))
+
+                assertEquals(
+                    listOf("0000000000000000002-bbb", "0000000000000000003-ccc"),
+                    storage.keys().sorted(),
+                )
+                verify {
+                    logger.error(
+                        match {
+                            it.contains("Dropping delayed-events queue entry 0000000000000000001-aaa") &&
+                                it.contains("disk bound")
+                        },
+                    )
+                }
+            }
+
+        @Test
+        fun `should skip a write whose payload is larger than the disk bound`() =
+            runTest {
+                val instanceName = uniqueInstance()
+                val logger = mockk<Logger>(relaxed = true)
+                val storage = storage(instanceName, logger)
+                storage.write("key-1", request("view-1"))
+                val bounded = storage(instanceName, logger, maxStorageBytes = 10)
+
+                bounded.write("key-2", request("view-2"))
+
+                assertEquals(listOf("key-1"), bounded.keys())
+                verify {
+                    logger.error(
+                        match {
+                            it.contains("Dropping delayed-events queue entry key-2") &&
+                                it.contains("payload is")
+                        },
+                    )
+                }
+            }
+
+        @Test
+        fun `should replace an existing entry without dropping others under the bound`() =
+            runTest {
+                val instanceName = uniqueInstance()
+                val measuring = storage(instanceName)
+                measuring.write("0000000000000000001-aaa", request("view-1"))
+                val size =
+                    File(queueDir(instanceName), "0000000000000000001-aaa.json").length()
+                val storage = storage(instanceName, maxStorageBytes = size * 2 + 32)
+                storage.write("0000000000000000002-bbb", request("view-2", timeoutMillis = 1_000L))
+
+                storage.write("0000000000000000002-bbb", request("view-2", timeoutMillis = 9_000L))
+
+                assertEquals(
+                    listOf("0000000000000000001-aaa", "0000000000000000002-bbb"),
+                    storage.keys().sorted(),
+                )
+                assertEquals(9_000L, storage.read("0000000000000000002-bbb")?.timeoutMillis)
+            }
+    }
+
+    @Nested
     inner class Keys {
         @Test
         fun `should return no keys when the directory is empty`() =
@@ -244,6 +317,7 @@ class DelayedEventStorageTest {
     private fun TestScope.storage(
         instanceName: String = uniqueInstance(),
         logger: Logger = mockk(relaxed = true),
+        maxStorageBytes: Long = 25L * 1024 * 1024,
     ): DelayedEventStorage =
         DelayedEventStorage(
             context = context,
@@ -255,6 +329,7 @@ class DelayedEventStorageTest {
                 ),
             logger = logger,
             ioDispatcher = StandardTestDispatcher(testScheduler),
+            maxStorageBytes = maxStorageBytes,
         )
 
     private fun uniqueInstance(): String = UUID.randomUUID().toString()
