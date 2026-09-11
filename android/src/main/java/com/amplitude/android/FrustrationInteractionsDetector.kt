@@ -17,19 +17,27 @@ import com.amplitude.android.internal.buildElementInteractedProperties
 import com.amplitude.android.signals.UiChangeSignal
 import com.amplitude.common.Logger
 import com.amplitude.core.Amplitude
+import com.amplitude.core.RestrictedAmplitudeFeature
+import com.amplitude.core.platform.InterfaceChangeSignal
+import com.amplitude.core.platform.InterfaceSignalProvider
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import java.util.ArrayDeque
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Core frustration interactions detector that handles rage click and dead click detection.
  *
- * **Important**: Call `start()` to enable proper dead click detection. Dead clicks require
- * active subscription to UI change signals to function correctly. If `start()` is not called,
- * dead click events will not be tracked and a warning will be logged.
+ * **Important**: Call [start] to enable dead click detection. Dead clicks require an active
+ * [InterfaceSignalProvider]. [UiChangeSignal] remains a compatible signal payload, but its provider
+ * must expose current availability through [InterfaceSignalProvider].
  */
+@OptIn(RestrictedAmplitudeFeature::class)
 public class FrustrationInteractionsDetector(
     private val amplitude: Amplitude,
     private val logger: Logger,
@@ -45,6 +53,7 @@ public class FrustrationInteractionsDetector(
          */
         private const val RAGE_CLICK_DISTANCE_THRESHOLD: Float = 50f
         private const val DEAD_CLICK_TIMEOUT: Long = 3_000L // 3 seconds
+        private const val MAX_RECENT_UI_CHANGES: Int = 32
         private const val RAGE_CLICK_THRESHOLD: Int = 4
         private const val RAGE_CLICK_TIME_WINDOW: Long = 1_000L // 1 second
     }
@@ -52,31 +61,52 @@ public class FrustrationInteractionsDetector(
     // Convert pt to pixels for density-independent behavior
     private val rageClickDistanceThresholdPx: Float = RAGE_CLICK_DISTANCE_THRESHOLD * density
 
+    @Volatile
+    private var started = false
+    private val lifecycleLock = Any()
+    private val lifecycleGeneration = AtomicLong(0L)
     private var uiChangeCollectionJob: Job? = null
 
     // Rage click detection
     private val pendingRageClicks = ConcurrentHashMap<String, RageClickSession>()
 
     // Dead click detection
+    private val deadClickLock = Any()
     private val pendingDeadClicks = ConcurrentHashMap<String, DeadClickSession>()
-    private var lastUiChangeTime = 0L
+    private val recentUiChangeTimes = ArrayDeque<Long>(MAX_RECENT_UI_CHANGES)
 
     /**
      * Starts the detector and begins subscribing to UI change signals.
      * This is required for proper dead click detection.
      */
     public fun start() {
-        startUiChangeCollection()
+        synchronized(lifecycleLock) {
+            if (started) return
+
+            startUiChangeCollection()
+            started = true
+        }
         logger.debug("FrustrationInteractionsDetector started - UI change collection is now active")
     }
 
     public fun stop() {
-        lastUiChangeTime = 0L
-        uiChangeCollectionJob?.cancel()
-        // Cancel all pending dead click jobs to prevent resource leaks
-        pendingDeadClicks.values.forEach { it.job?.cancel() }
-        pendingDeadClicks.clear()
-        pendingRageClicks.clear()
+        val jobsToCancel =
+            synchronized(lifecycleLock) {
+                started = false
+                lifecycleGeneration.incrementAndGet()
+                val jobs =
+                    synchronized(deadClickLock) {
+                        val pendingJobs = pendingDeadClicks.values.mapNotNull { it.job }
+                        pendingDeadClicks.clear()
+                        recentUiChangeTimes.clear()
+                        pendingJobs
+                    }
+                pendingRageClicks.clear()
+                uiChangeCollectionJob?.cancel()
+                uiChangeCollectionJob = null
+                jobs
+            }
+        jobsToCancel.forEach { it.cancel() }
         logger.debug("FrustrationInteractionsDetector stopped - UI change collection is now inactive")
     }
 
@@ -167,16 +197,17 @@ public class FrustrationInteractionsDetector(
         clickTime: Long,
         clickId: String,
     ) {
-        if (uiChangeCollectionJob?.isActive != true) {
+        if (!started) {
             logger.error("Dead click detection is disabled - call start() to enable.")
             return
         }
 
-        // Dead click detection requires an active SignalProvider plugin to emit UI change signals
         if (!hasActiveSignalProvider()) {
-            logger.error("Dead click detection is disabled - no UI change signals observed yet. Ensure SessionReplay plugin is active.")
+            logger.error("Dead click detection is disabled - no UI change signal provider is active.")
             return
         }
+
+        val clickLifecycleGeneration = lifecycleGeneration.get()
 
         // Cancel any existing dead click job for this location to prevent accumulation
         pendingDeadClicks[clickId]?.job?.cancel()
@@ -187,47 +218,84 @@ public class FrustrationInteractionsDetector(
                 activityName = activityName,
                 clickInfo = clickInfo.copy(timestamp = clickTime),
                 targetInfo = targetInfo,
-                preClickUiChangeTime = lastUiChangeTime,
+                lifecycleGeneration = clickLifecycleGeneration,
             )
-
-        pendingDeadClicks[clickId] = deadClickSession
 
         // Schedule dead click detection
         val job =
-            amplitude.amplitudeScope.launch(amplitude.amplitudeDispatcher) {
+            amplitude.amplitudeScope.launch(
+                amplitude.amplitudeDispatcher,
+                start = CoroutineStart.LAZY,
+            ) {
                 delay(DEAD_CLICK_TIMEOUT)
 
-                // Check if UI changed after the click
-                if (lastUiChangeTime <= deadClickSession.preClickUiChangeTime) {
-                    // No UI change detected, this is a dead click
+                val shouldTrackDeadClick =
+                    synchronized(deadClickLock) {
+                        pendingDeadClicks.remove(clickId, deadClickSession) &&
+                            started &&
+                            lifecycleGeneration.get() == deadClickSession.lifecycleGeneration &&
+                            hasActiveSignalProvider() &&
+                            !deadClickSession.uiChanged.get()
+                    }
+                if (shouldTrackDeadClick) {
                     trackDeadClick(deadClickSession)
                 }
-
-                // Clean up when done
-                pendingDeadClicks.remove(clickId)
             }
 
         deadClickSession.job = job
+        synchronized(deadClickLock) {
+            deadClickSession.uiChanged.set(
+                recentUiChangeTimes.any { timestampMillis ->
+                    timestampMillis >= deadClickSession.clickInfo.timestamp
+                },
+            )
+            pendingDeadClicks[clickId] = deadClickSession
+        }
+
+        if (!started || lifecycleGeneration.get() != clickLifecycleGeneration) {
+            pendingDeadClicks.remove(clickId, deadClickSession)
+            job.cancel()
+            return
+        }
+        job.start()
     }
 
     private fun startUiChangeCollection() {
         uiChangeCollectionJob =
-            amplitude.amplitudeScope.launch(amplitude.amplitudeDispatcher) {
+            amplitude.amplitudeScope.launch(
+                amplitude.amplitudeDispatcher,
+                start = CoroutineStart.UNDISPATCHED,
+            ) {
                 logger.debug("Starting UI change signal collection for dead click detection")
                 amplitude.signalFlow.collectLatest { signal ->
-                    if (signal is UiChangeSignal) {
-                        lastUiChangeTime = signal.timestamp.time
-                        logger.debug("UI change detected at $lastUiChangeTime")
+                    if (signal is InterfaceChangeSignal) {
+                        recordUiChange(signal.timestampMillis)
                     }
                 }
             }
     }
 
-    /**
-     * This is used to determine if a SignalProvider-backed plugin is active.
-     * So if we have seen at least one UiChangeSignal, lastUiChangeTime will be > 0.
-     */
-    private fun hasActiveSignalProvider(): Boolean = lastUiChangeTime > 0L
+    private fun recordUiChange(timestampMillis: Long) {
+        synchronized(deadClickLock) {
+            if (!started) return
+
+            if (recentUiChangeTimes.size == MAX_RECENT_UI_CHANGES) {
+                recentUiChangeTimes.removeFirst()
+            }
+            recentUiChangeTimes.addLast(timestampMillis)
+            pendingDeadClicks.values.forEach { session ->
+                if (timestampMillis >= session.clickInfo.timestamp) {
+                    session.uiChanged.set(true)
+                }
+            }
+        }
+        logger.debug("UI change detected at $timestampMillis")
+    }
+
+    private fun hasActiveSignalProvider(): Boolean =
+        amplitude.plugins(InterfaceSignalProvider::class.java).any { provider ->
+            runCatching { provider.isProviding }.getOrDefault(false)
+        }
 
     private fun startNewRageClickSession(
         locationKey: String,
@@ -338,7 +406,8 @@ public class FrustrationInteractionsDetector(
         val activityName: String,
         val clickInfo: ClickInfo,
         val targetInfo: TargetInfo,
-        val preClickUiChangeTime: Long,
+        val lifecycleGeneration: Long,
+        val uiChanged: AtomicBoolean = AtomicBoolean(false),
         var job: Job? = null,
     )
 
