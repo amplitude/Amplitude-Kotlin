@@ -312,7 +312,9 @@ class Media3PlayerObserverTest {
 
             val started = events.filterIsInstance<PlayerEvent.AdStarted>()
             assertEquals(listOf(0, 1), started.map { it.ad.adIndexInAdGroup })
-            assertTrue(events.any { it is PlayerEvent.AdSkipped })
+            assertTrue(
+                events.any { it is PlayerEvent.AdStopped && !it.completed },
+            )
         }
 
     @Test
@@ -358,7 +360,9 @@ class Media3PlayerObserverTest {
                 listOf("item-a", "item-b"),
                 events.filterIsInstance<PlayerEvent.AdStarted>().map { it.ad.contentId },
             )
-            assertTrue(events.any { it is PlayerEvent.AdSkipped })
+            assertTrue(
+                events.any { it is PlayerEvent.AdStopped && !it.completed },
+            )
         }
 
     @Test

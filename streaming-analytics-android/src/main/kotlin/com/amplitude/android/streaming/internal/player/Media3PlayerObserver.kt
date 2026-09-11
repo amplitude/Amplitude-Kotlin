@@ -159,6 +159,7 @@ internal class Media3PlayerObserver(
             finishAdForTransition(
                 completed = reason == Player.DISCONTINUITY_REASON_AUTO_TRANSITION,
                 positionMillis = oldPosition.positionMs,
+                userSkipped = reason == Player.DISCONTINUITY_REASON_SKIP,
             )
         }
     }
@@ -206,14 +207,15 @@ internal class Media3PlayerObserver(
     internal fun finishAdForTransition(
         completed: Boolean,
         positionMillis: Long? = null,
+        userSkipped: Boolean = false,
     ) {
         val ad = activeAd ?: return
         activeAd = null
         val finalAd = positionMillis?.let { ad.copy(positionMillis = it) } ?: ad
-        if (completed) {
-            emit(PlayerEvent.AdStopped(finalAd, completed = true))
-        } else {
-            emit(PlayerEvent.AdSkipped(finalAd))
+        when {
+            completed -> emit(PlayerEvent.AdStopped(finalAd, completed = true))
+            userSkipped -> emit(PlayerEvent.AdSkipped(finalAd))
+            else -> emit(PlayerEvent.AdStopped(finalAd, completed = false))
         }
     }
 
