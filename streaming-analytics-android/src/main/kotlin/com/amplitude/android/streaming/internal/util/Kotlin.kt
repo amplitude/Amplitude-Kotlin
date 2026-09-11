@@ -20,3 +20,5 @@ private fun Any?.deepCopyValue(): Any? =
         is Collection<*> -> mapTo(ArrayList(size)) { it.deepCopyValue() }
         else -> this
     }
+
+internal fun Long.millisToSeconds(): Double = this / 1_000.0
