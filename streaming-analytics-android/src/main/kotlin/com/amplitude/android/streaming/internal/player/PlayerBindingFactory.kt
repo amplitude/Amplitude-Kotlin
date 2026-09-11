@@ -40,12 +40,17 @@ internal class PlayerBindingFactory(
     ): PlayerBinding {
         val orphaned: List<PlayerBinding>
         val binding: PlayerBinding
+        val created: Boolean
         synchronized(lock) {
             orphaned = bindingRegistry.filter { it.isOrphaned() }
             bindingRegistry.removeAll(orphaned.toSet())
-            binding =
-                bindingRegistry.firstOrNull { it.isBoundTo(player) }
-                    ?: PlayerBinding(
+            val existing = bindingRegistry.firstOrNull { it.isBoundTo(player) }
+            if (existing != null) {
+                binding = existing
+                created = false
+            } else {
+                binding =
+                    PlayerBinding(
                         player = player,
                         contentProvider = contentProvider,
                         playerObserverFactory = playerObserverFactory,
@@ -56,9 +61,11 @@ internal class PlayerBindingFactory(
                         playerDispatcher = playerDispatcherFactory.create(player),
                         onStopped = ::unregister,
                     ).also { bindingRegistry.add(it) }
+                created = true
+            }
+            if (created) binding.start()
         }
         orphaned.forEach { it.stop() }
-        binding.start()
         return binding
     }
 

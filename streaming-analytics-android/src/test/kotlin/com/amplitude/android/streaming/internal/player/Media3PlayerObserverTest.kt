@@ -54,7 +54,7 @@ class Media3PlayerObserverTest {
 
             awaitCollected(playerReference)
 
-            assertEquals(0L, observer.snapshot().positionMillis)
+            assertEquals(0L, observer.snapshot()?.positionMillis)
         }
 
     @Test

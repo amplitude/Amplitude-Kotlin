@@ -56,6 +56,7 @@ internal class PlayerBinding internal constructor(
         )
     private var eventJob: Job? = null
     private var playback: PlaybackState = PlaybackState.Idle()
+    private val started = AtomicBoolean(false)
     private val stopped = AtomicBoolean(false)
 
     // TODO: wire picture-in-picture and background from the host app.
@@ -64,7 +65,7 @@ internal class PlayerBinding internal constructor(
     private var options: PlayerContent = PlayerContent()
 
     fun start() {
-        if (eventJob != null) return
+        if (!started.compareAndSet(false, true)) return
         scope.launch {
             runCatchingCancellable {
                 if (stopped.get() || eventJob != null) return@runCatchingCancellable
@@ -91,6 +92,7 @@ internal class PlayerBinding internal constructor(
 
     fun stop() {
         if (!stopped.compareAndSet(false, true)) return
+        val rewriteIdleLastSegment = !isOrphaned()
         eventJob?.cancel()
         eventJob = null
         // Independent of the graph job so teardown's scope.cancel() cannot drop finishAd.
@@ -98,7 +100,10 @@ internal class PlayerBinding internal constructor(
         cleanupScope.launch {
             try {
                 mutex.withLock {
-                    finishPlayback(StopReason.UNTRACKED)
+                    finishPlayback(
+                        StopReason.UNTRACKED,
+                        rewriteIdleLastSegment = rewriteIdleLastSegment,
+                    )
                 }
             } finally {
                 this@PlayerBinding.scope.cancel()
@@ -397,6 +402,7 @@ internal class PlayerBinding internal constructor(
     private suspend fun finishPlayback(
         reason: StopReason?,
         errorMessage: String? = null,
+        rewriteIdleLastSegment: Boolean = true,
     ) {
         when (val state = playback) {
             is PlaybackState.Content -> {
@@ -422,7 +428,7 @@ internal class PlayerBinding internal constructor(
                 }
             }
             is PlaybackState.Idle -> {
-                if (reason == StopReason.UNTRACKED) {
+                if (reason == StopReason.UNTRACKED && rewriteIdleLastSegment) {
                     state.lastSegment?.let {
                         it.stopReason = reason
                         it.errorMessage = errorMessage

@@ -22,6 +22,7 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNotSame
 import org.junit.jupiter.api.Assertions.assertSame
@@ -30,6 +31,7 @@ import org.junit.jupiter.api.Assertions.fail
 import org.junit.jupiter.api.Test
 import java.lang.ref.WeakReference
 import java.lang.reflect.Proxy
+import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.Executors
 
 @OptIn(AmplitudePreview::class, ExperimentalCoroutinesApi::class)
@@ -74,6 +76,52 @@ class PlayerBindingFactoryTest {
 
             playerDispatcher.close()
             playerExecutor.shutdown()
+        }
+
+    @Test
+    fun `should not start a second collector when getOrCreate races`() =
+        runTest {
+            val events = mutableListOf<BaseEvent>()
+            val amplitude =
+                mockk<Amplitude>(relaxed = true).also { amplitude ->
+                    every { amplitude.track(any<BaseEvent>(), any(), any()) } answers {
+                        events.add(firstArg())
+                        amplitude
+                    }
+                }
+            val observers = mutableListOf<TestPlayerObserver>()
+            val factory =
+                playerBindingFactory(
+                    streamTracker = StreamTracker(amplitude),
+                    playerObserverFactory =
+                        PlayerObserverFactory { _, _, _ ->
+                            TestPlayerObserver().also { observers.add(it) }
+                        },
+                )
+            val player = mockk<Player>(relaxed = true)
+            val callers = 8
+            val barrier = CyclicBarrier(callers)
+            val threads =
+                List(callers) {
+                    Thread {
+                        barrier.await()
+                        factory.getOrCreate(player) { PlayerContent() }
+                    }
+                }
+            try {
+                threads.forEach { it.start() }
+                threads.forEach { it.join() }
+                runCurrent()
+
+                assertEquals(1, observers.size)
+                observers.single().emit(PlayerEvent.Playing)
+                runCurrent()
+
+                assertEquals(1, events.count { it.eventType == "[Amplitude] Stream Started" })
+            } finally {
+                factory.detachAll()
+                runCurrent()
+            }
         }
 
     @Test
@@ -148,6 +196,58 @@ class PlayerBindingFactoryTest {
                         it.eventProperties?.get("stop_reason") == "untracked"
                 },
             )
+        }
+
+    @Test
+    fun `should keep paused stop reason when a paused player is collected`() =
+        runTest {
+            val events = mutableListOf<BaseEvent>()
+            val amplitude =
+                mockk<Amplitude>(relaxed = true).also { amplitude ->
+                    every { amplitude.track(any<BaseEvent>(), any(), any()) } answers {
+                        events.add(firstArg())
+                        amplitude
+                    }
+                    every { amplitude.track(any<String>(), any(), any()) } answers {
+                        events.add(
+                            BaseEvent().apply {
+                                eventType = firstArg()
+                                eventProperties = secondArg<Map<String, Any?>?>()?.toMutableMap()
+                            },
+                        )
+                        amplitude
+                    }
+                }
+            val observers = mutableListOf<TestPlayerObserver>()
+            val factory =
+                playerBindingFactory(
+                    streamTracker = StreamTracker(amplitude),
+                    playerObserverFactory =
+                        PlayerObserverFactory { _, _, _ ->
+                            TestPlayerObserver().also { observers.add(it) }
+                        },
+                )
+            val playerReference = factory.createAbandonedBinding().second
+            runCurrent()
+            observers.first().emit(PlayerEvent.Playing)
+            runCurrent()
+            observers.first().emit(PlayerEvent.Paused)
+            runCurrent()
+
+            val paused =
+                events.filter { it.eventType == "[Amplitude] Stream Stopped" }
+            assertEquals("paused", paused.last().eventProperties?.get("stop_reason"))
+            val insertId = paused.last().insertId
+
+            awaitCollected(playerReference)
+            advanceTimeBy(1_000)
+            runCurrent()
+
+            val samePlay =
+                events.filter {
+                    it.eventType == "[Amplitude] Stream Stopped" && it.insertId == insertId
+                }
+            assertEquals("paused", samePlay.last().eventProperties?.get("stop_reason"))
         }
 
     private lateinit var dispatcherFactory: PlayerDispatcherFactory
