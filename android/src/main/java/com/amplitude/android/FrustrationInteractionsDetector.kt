@@ -27,7 +27,11 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.text.SimpleDateFormat
 import java.util.ArrayDeque
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -56,6 +60,7 @@ public class FrustrationInteractionsDetector(
         private const val MAX_RECENT_UI_CHANGES: Int = 32
         private const val RAGE_CLICK_THRESHOLD: Int = 4
         private const val RAGE_CLICK_TIME_WINDOW: Long = 1_000L // 1 second
+        private const val ISO_8601_TIMESTAMP_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
     }
 
     // Convert pt to pixels for density-independent behavior
@@ -428,8 +433,8 @@ public class FrustrationInteractionsDetector(
      */
     private fun buildRageClickProperties(session: RageClickSession): Map<String, Any?> =
         mapOf(
-            BEGIN_TIME to session.firstClickTime,
-            END_TIME to session.lastClickTime,
+            BEGIN_TIME to formatRageClickTimestamp(session.firstClickTime),
+            END_TIME to formatRageClickTimestamp(session.lastClickTime),
             DURATION to (session.lastClickTime - session.firstClickTime),
             COORDINATE_X to session.firstClickX.toInt(),
             COORDINATE_Y to session.firstClickY.toInt(),
@@ -439,10 +444,15 @@ public class FrustrationInteractionsDetector(
                     mapOf(
                         COORDINATE_X to it.x.toInt(),
                         COORDINATE_Y to it.y.toInt(),
-                        "timestamp" to it.timestamp,
+                        "timestamp" to formatRageClickTimestamp(it.timestamp),
                     )
                 },
         )
+
+    internal fun formatRageClickTimestamp(timestamp: Long): String =
+        SimpleDateFormat(ISO_8601_TIMESTAMP_FORMAT, Locale.US)
+            .apply { timeZone = TimeZone.getTimeZone("UTC") }
+            .format(Date(timestamp))
 
     /**
      * Builds only the dead-click specific properties.
