@@ -3,8 +3,10 @@ package com.amplitude.android.streaming.internal.storage
 import android.content.Context
 import com.amplitude.android.Configuration
 import com.amplitude.android.streaming.internal.DelayedEvent
+import com.amplitude.common.Logger
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -19,9 +21,7 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.assertThrows
 import java.io.File
-import java.io.FileNotFoundException
 import java.util.UUID
 import kotlin.io.path.createTempDirectory
 
@@ -67,7 +67,7 @@ class DelayedEventStorageTest {
                 storage.write("key-1", request("view-1", timeoutMillis = 1_000L))
                 storage.write("key-1", request("view-1", timeoutMillis = 9_000L))
 
-                assertEquals(9_000L, storage.read("key-1").timeoutMillis)
+                assertEquals(9_000L, storage.read("key-1")?.timeoutMillis)
                 assertEquals(listOf("key-1"), storage.keys())
             }
 
@@ -106,10 +106,48 @@ class DelayedEventStorageTest {
             }
 
         @Test
-        fun `should throw when the file is missing`() =
+        fun `should return null and log when the file is missing`() =
             runTest {
-                val storage = storage()
-                assertThrows<FileNotFoundException> { storage.read("missing") }
+                val logger = mockk<Logger>(relaxed = true)
+                val storage = storage(logger = logger)
+
+                assertNull(storage.read("missing"))
+                verify {
+                    logger.error(match { it.contains("Failed to read delayed-events queue entry missing") })
+                }
+            }
+
+        @Test
+        fun `should return null and log when the file is not valid json`() =
+            runTest {
+                val instanceName = uniqueInstance()
+                val logger = mockk<Logger>(relaxed = true)
+                val storage = storage(instanceName, logger)
+                storage.write("key-1", request())
+                File(queueDir(instanceName), "key-1.json").writeText("{not-json")
+
+                assertNull(storage.read("key-1"))
+                verify {
+                    logger.error(match { it.contains("Failed to read delayed-events queue entry key-1") })
+                }
+            }
+
+        @Test
+        fun `should log and skip write when the queue directory cannot be created`() =
+            runTest {
+                val instanceName = uniqueInstance()
+                val logger = mockk<Logger>(relaxed = true)
+                val parent = File(amplitudeDir, "com.example.app/$instanceName/analytics")
+                parent.mkdirs()
+                File(parent, "streaming-delayed-events").writeText("not-a-directory")
+                val storage = storage(instanceName, logger)
+
+                storage.write("key-1", request())
+
+                assertEquals(emptyList<String>(), storage.keys())
+                verify {
+                    logger.error(match { it.contains("Failed to persist delayed-events queue entry key-1") })
+                }
             }
     }
 
@@ -177,7 +215,7 @@ class DelayedEventStorageTest {
                     setOf("0000000000000000001-deadbeef", "0000000000000000004-other"),
                     storage.keys().toSet(),
                 )
-                assertEquals(1_000L, storage.read("0000000000000000001-deadbeef").timeoutMillis)
+                assertEquals(1_000L, storage.read("0000000000000000001-deadbeef")?.timeoutMillis)
             }
     }
 
@@ -191,7 +229,7 @@ class DelayedEventStorageTest {
                 storage.delete("key-1")
 
                 assertEquals(emptyList<String>(), storage.keys())
-                assertThrows<FileNotFoundException> { storage.read("key-1") }
+                assertNull(storage.read("key-1"))
             }
 
         @Test
@@ -203,7 +241,10 @@ class DelayedEventStorageTest {
             }
     }
 
-    private fun TestScope.storage(instanceName: String = uniqueInstance()): DelayedEventStorage =
+    private fun TestScope.storage(
+        instanceName: String = uniqueInstance(),
+        logger: Logger = mockk(relaxed = true),
+    ): DelayedEventStorage =
         DelayedEventStorage(
             context = context,
             configuration =
@@ -212,6 +253,7 @@ class DelayedEventStorageTest {
                     context = context,
                     instanceName = instanceName,
                 ),
+            logger = logger,
             ioDispatcher = StandardTestDispatcher(testScheduler),
         )
 
