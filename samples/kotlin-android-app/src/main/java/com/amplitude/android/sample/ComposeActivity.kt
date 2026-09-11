@@ -149,9 +149,26 @@ class ComposeActivity : ComponentActivity() {
                         modifier =
                             Modifier
                                 .fillMaxWidth()
+                                .padding(bottom = 16.dp)
                                 .testTag("crash_button"),
                     ) {
                         Text("Crash")
+                    }
+
+                    Button(
+                        onClick = {
+                            Thread.sleep(10_000)
+                        },
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFFFF8F00),
+                            ),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .testTag("anr_button"),
+                    ) {
+                        Text("ANR")
                     }
                 }
             }
