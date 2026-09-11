@@ -1,9 +1,13 @@
 package com.amplitude.android
 
 import com.amplitude.android.Constants.EventProperties.ACTION
+import com.amplitude.android.Constants.EventProperties.BEGIN_TIME
+import com.amplitude.android.Constants.EventProperties.CLICKS
 import com.amplitude.android.Constants.EventProperties.CLICK_COUNT
 import com.amplitude.android.Constants.EventProperties.COORDINATE_X
 import com.amplitude.android.Constants.EventProperties.COORDINATE_Y
+import com.amplitude.android.Constants.EventProperties.DURATION
+import com.amplitude.android.Constants.EventProperties.END_TIME
 import com.amplitude.android.Constants.EventProperties.TARGET_CLASS
 import com.amplitude.android.Constants.EventTypes.DEAD_CLICK
 import com.amplitude.android.Constants.EventTypes.RAGE_CLICK
@@ -30,10 +34,13 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
+import java.time.Instant
 import java.util.Date
+import java.util.TimeZone
 
 @OptIn(ExperimentalCoroutinesApi::class, RestrictedAmplitudeFeature::class)
 class FrustrationInteractionsDetectorTest {
@@ -171,13 +178,55 @@ class FrustrationInteractionsDetectorTest {
         val capturedProperties = slot<Map<String, Any?>>()
         verify { mockAmplitude.track(RAGE_CLICK, capture(capturedProperties)) }
 
+        val beginTime = capturedProperties.captured[BEGIN_TIME] as String
+        val endTime = capturedProperties.captured[END_TIME] as String
+        @Suppress("UNCHECKED_CAST")
+        val clicks = capturedProperties.captured[CLICKS] as List<Map<String, Any?>>
+        val clickTimestamps = clicks.map { it["timestamp"] as String }
+        val timestampPattern = Regex("""\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z""")
+
         assertAll(
             { assertEquals(150, capturedProperties.captured[COORDINATE_X]) },
             { assertEquals(200, capturedProperties.captured[COORDINATE_Y]) },
             { assertEquals(4, capturedProperties.captured[CLICK_COUNT]) },
             { assertEquals("TestButton", capturedProperties.captured[TARGET_CLASS]) },
             { assertEquals("touch", capturedProperties.captured[ACTION]) },
+            { assertTrue(timestampPattern.matches(beginTime)) },
+            { assertTrue(timestampPattern.matches(endTime)) },
+            { assertEquals(beginTime, clickTimestamps.first()) },
+            { assertEquals(endTime, clickTimestamps.last()) },
+            { assertTrue(clickTimestamps.all(timestampPattern::matches)) },
+            {
+                assertTrue(
+                    clickTimestamps
+                        .map(Instant::parse)
+                        .zipWithNext()
+                        .all { (first, second) -> first <= second },
+                )
+            },
+            {
+                assertEquals(
+                    Instant.parse(endTime).toEpochMilli() - Instant.parse(beginTime).toEpochMilli(),
+                    capturedProperties.captured[DURATION],
+                )
+            },
         )
+    }
+
+    @Test
+    fun `rage click - formats timestamps as UTC`() {
+        val originalTimeZone = TimeZone.getDefault()
+
+        try {
+            TimeZone.setDefault(TimeZone.getTimeZone("GMT-08:00"))
+
+            assertEquals(
+                "2026-09-08T05:23:36.809Z",
+                detector.formatRageClickTimestamp(1_788_845_016_809L),
+            )
+        } finally {
+            TimeZone.setDefault(originalTimeZone)
+        }
     }
 
     //endregion
