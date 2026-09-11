@@ -4,7 +4,6 @@ import androidx.media3.common.Player
 import com.amplitude.android.streaming.internal.DelayedEvent
 import com.amplitude.android.streaming.internal.StreamingAnalytics
 import com.amplitude.android.trackPlayer
-import com.amplitude.core.Amplitude
 import com.amplitude.core.AmplitudePreview
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
@@ -44,6 +43,7 @@ class StreamingAnalyticsPluginTest {
             val event =
                 DelayedEvent(
                     eventType = "Video Content Stopped",
+                    kind = DelayedEvent.Kind.DELAYED,
                     timestamp = 1L,
                     eventProperties = mutableMapOf(),
                 )
@@ -73,7 +73,7 @@ class StreamingAnalyticsPluginTest {
     inner class LifecycleAndWiring {
         @Test
         fun `setup initializes streamingAnalytics and teardown clears it`() {
-            val amplitude = mockk<Amplitude>(relaxed = true)
+            val amplitude = androidAmplitude()
             val plugin = StreamingAnalyticsPlugin()
             assertNull(plugin.streamingAnalytics)
 
@@ -153,15 +153,19 @@ class StreamingAnalyticsPluginTest {
         }
 
         private fun TestScope.androidAmplitude(isBuilt: CompletableDeferred<Boolean>): AndroidAmplitude {
-            val timeline = Timeline()
-            val amplitude = mockk<AndroidAmplitude>(relaxed = true)
-            timeline.amplitude = amplitude
-            every { amplitude.timeline } returns timeline
+            val amplitude = androidAmplitude()
             every { amplitude.isBuilt } returns isBuilt
             every { amplitude.amplitudeScope } returns this as CoroutineScope
             every { amplitude.amplitudeDispatcher } returns StandardTestDispatcher(testScheduler)
+            return amplitude
+        }
+
+        private fun androidAmplitude(): AndroidAmplitude {
+            val amplitude = mockk<AndroidAmplitude>(relaxed = true)
+            val timeline = Timeline().also { it.amplitude = amplitude }
+            every { amplitude.timeline } returns timeline
             every { amplitude.add(any<Plugin>()) } answers {
-                timeline.add(firstArg<Plugin>())
+                timeline.add(firstArg())
                 amplitude
             }
             return amplitude
