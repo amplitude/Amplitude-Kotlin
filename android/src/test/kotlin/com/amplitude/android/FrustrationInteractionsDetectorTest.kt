@@ -11,6 +11,10 @@ import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.signals.UiChangeSignal
 import com.amplitude.common.Logger
 import com.amplitude.core.Amplitude
+import com.amplitude.core.RestrictedAmplitudeFeature
+import com.amplitude.core.platform.InterfaceChangeSignal
+import com.amplitude.core.platform.InterfaceSignalProvider
+import com.amplitude.core.platform.Plugin
 import com.amplitude.core.platform.Signal
 import io.mockk.clearMocks
 import io.mockk.every
@@ -21,17 +25,23 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestCoroutineScheduler
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertAll
 import java.util.Date
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, RestrictedAmplitudeFeature::class)
 class FrustrationInteractionsDetectorTest {
     private lateinit var mockAmplitude: Amplitude
     private lateinit var mockLogger: Logger
@@ -39,6 +49,7 @@ class FrustrationInteractionsDetectorTest {
     private val testActivityName = "TestActivity"
     private lateinit var uiChangeFlow: MutableSharedFlow<Signal>
     private lateinit var detector: FrustrationInteractionsDetector
+    private lateinit var interfaceSignalProvider: TestInterfaceSignalProvider
     private val testDispatcher = UnconfinedTestDispatcher()
 
     private val testTargetInfo =
@@ -59,6 +70,7 @@ class FrustrationInteractionsDetectorTest {
         mockLogger = mockk(relaxed = true)
         mockViewTarget = mockk(relaxed = true)
         uiChangeFlow = MutableSharedFlow(extraBufferCapacity = 1)
+        interfaceSignalProvider = TestInterfaceSignalProvider()
 
         // Setup mock ViewTarget properties to match testTargetInfo
         every { mockViewTarget.className } returns testTargetInfo.className
@@ -73,6 +85,8 @@ class FrustrationInteractionsDetectorTest {
         every { mockAmplitude.signalFlow } returns uiChangeFlow
         every { mockAmplitude.amplitudeScope } returns CoroutineScope(testDispatcher)
         every { mockAmplitude.amplitudeDispatcher } returns testDispatcher
+        every { mockAmplitude.plugins(InterfaceSignalProvider::class.java) } returns
+            listOf(interfaceSignalProvider)
 
         detector =
             FrustrationInteractionsDetector(
@@ -196,6 +210,7 @@ class FrustrationInteractionsDetectorTest {
         val mockAmplitudeWithStart = mockk<Amplitude>(relaxed = true)
         every { mockAmplitudeWithStart.amplitudeScope } returns CoroutineScope(testDispatcher)
         every { mockAmplitudeWithStart.amplitudeDispatcher } returns testDispatcher
+        every { mockAmplitudeWithStart.signalFlow } returns MutableSharedFlow()
 
         val detectorWithStart =
             FrustrationInteractionsDetector(
@@ -321,11 +336,8 @@ class FrustrationInteractionsDetectorTest {
 
     @Test
     fun `dead click detection should work after start()`() {
-        // Start the detector and ensure the signal collector is subscribed
+        interfaceSignalProvider.activate()
         detector.start()
-        testDispatcher.scheduler.runCurrent()
-        // Emit a UiChangeSignal to enable dead click detection
-        uiChangeFlow.tryEmit(UiChangeSignal(Date(System.currentTimeMillis())))
         testDispatcher.scheduler.runCurrent()
 
         // Process a click
@@ -346,7 +358,27 @@ class FrustrationInteractionsDetectorTest {
     }
 
     @Test
-    fun `dead click detection should not work after start() until UiChangeSignal is observed`() {
+    fun `Android UI signal after click prevents dead click`() {
+        interfaceSignalProvider.activate()
+        detector.start()
+
+        detector.processClick(
+            FrustrationInteractionsDetector.ClickInfo(100f, 100f),
+            testTargetInfo,
+            mockViewTarget,
+            testActivityName,
+        )
+        uiChangeFlow.tryEmit(UiChangeSignal(Date(System.currentTimeMillis() + 1L)))
+        testDispatcher.scheduler.runCurrent()
+
+        testDispatcher.scheduler.advanceTimeBy(4_000L)
+        testDispatcher.scheduler.runCurrent()
+
+        verify(exactly = 0) { mockAmplitude.track(DEAD_CLICK, any()) }
+    }
+
+    @Test
+    fun `dead click detection should not work without an active signal provider`() {
         detector.start()
 
         val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
@@ -356,40 +388,218 @@ class FrustrationInteractionsDetectorTest {
         testDispatcher.scheduler.advanceTimeBy(4000L)
         testDispatcher.scheduler.runCurrent()
 
-        // Should not track without UiChangeSignal and should log the gating error
+        // Should not track without a provider and should log the gating error
         verify(exactly = 0) { mockAmplitude.track(DEAD_CLICK, any()) }
         verify {
             mockLogger.error(
-                match { it.contains("no UI change signals observed yet") },
+                match { it.contains("no UI change signal provider is active") },
             )
         }
     }
 
     @Test
-    fun `dead click detection should reset after stop()`() {
-        // Enable by emitting a UiChangeSignal after start
+    fun `pending dead click should be cancelled across stop and restart`() {
+        interfaceSignalProvider.activate()
         detector.start()
-        uiChangeFlow.tryEmit(UiChangeSignal(Date(System.currentTimeMillis())))
-        testDispatcher.scheduler.runCurrent()
+        detector.processClick(
+            FrustrationInteractionsDetector.ClickInfo(100f, 100f),
+            testTargetInfo,
+            mockViewTarget,
+            testActivityName,
+        )
 
-        // Stop should reset gating state
         detector.stop()
-
-        // Restart but do NOT emit UiChangeSignal again
         detector.start()
 
-        val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
-        detector.processClick(clickInfo, testTargetInfo, mockViewTarget, testActivityName)
-
-        testDispatcher.scheduler.advanceTimeBy(4000L)
+        testDispatcher.scheduler.advanceTimeBy(4_000L)
         testDispatcher.scheduler.runCurrent()
 
         verify(exactly = 0) { mockAmplitude.track(DEAD_CLICK, any()) }
-        verify {
-            mockLogger.error(
-                match { it.contains("no UI change signals observed yet") },
-            )
+    }
+
+    @Test
+    fun `slow provider availability check does not block stop or register stale click`() {
+        val availabilityCheckStarted = CountDownLatch(1)
+        val continueAvailabilityCheck = CountDownLatch(1)
+        val stopStarted = CountDownLatch(1)
+        val executor = Executors.newFixedThreadPool(2)
+        interfaceSignalProvider.activate()
+        interfaceSignalProvider.availabilityCheckStarted = availabilityCheckStarted
+        interfaceSignalProvider.continueAvailabilityCheck = continueAvailabilityCheck
+        detector.start()
+
+        val clickFuture =
+            executor.submit {
+                detector.processClick(
+                    FrustrationInteractionsDetector.ClickInfo(100f, 100f),
+                    testTargetInfo,
+                    mockViewTarget,
+                    testActivityName,
+                )
+            }
+
+        try {
+            assertTrue(availabilityCheckStarted.await(5, TimeUnit.SECONDS))
+            val stopFuture =
+                executor.submit {
+                    stopStarted.countDown()
+                    detector.stop()
+                }
+
+            assertTrue(stopStarted.await(5, TimeUnit.SECONDS))
+            stopFuture.get(1, TimeUnit.SECONDS)
+
+            continueAvailabilityCheck.countDown()
+            clickFuture.get(5, TimeUnit.SECONDS)
+            testDispatcher.scheduler.advanceTimeBy(4_000L)
+            testDispatcher.scheduler.runCurrent()
+
+            verify(exactly = 0) { mockAmplitude.track(DEAD_CLICK, any()) }
+        } finally {
+            continueAvailabilityCheck.countDown()
+            executor.shutdownNow()
         }
+    }
+
+    @Test
+    fun `reentrant stop during collector startup cleans up collection`() {
+        var shouldStopDuringStartup = true
+        every {
+            mockLogger.debug("Starting UI change signal collection for dead click detection")
+        } answers {
+            if (shouldStopDuringStartup) {
+                shouldStopDuringStartup = false
+                detector.stop()
+            }
+        }
+
+        detector.start()
+        testDispatcher.scheduler.runCurrent()
+
+        assertEquals(0, uiChangeFlow.subscriptionCount.value)
+
+        detector.start()
+        testDispatcher.scheduler.runCurrent()
+
+        assertEquals(1, uiChangeFlow.subscriptionCount.value)
+    }
+
+    @Test
+    fun `signal emitted immediately after start is observed on queued dispatcher`() {
+        val scheduler = TestCoroutineScheduler()
+        val dispatcher = StandardTestDispatcher(scheduler)
+        val signalFlow = MutableSharedFlow<Signal>(extraBufferCapacity = 1)
+        val amplitude = mockk<Amplitude>(relaxed = true)
+        every { amplitude.signalFlow } returns signalFlow
+        every { amplitude.amplitudeScope } returns CoroutineScope(dispatcher)
+        every { amplitude.amplitudeDispatcher } returns dispatcher
+        every { amplitude.plugins(InterfaceSignalProvider::class.java) } returns
+            listOf(interfaceSignalProvider)
+        interfaceSignalProvider.activate()
+        val detector =
+            FrustrationInteractionsDetector(
+                amplitude = amplitude,
+                logger = mockLogger,
+                density = 2f,
+                autocaptureStateProvider = {
+                    AutocaptureState(interactions = listOf(InteractionType.DeadClick))
+                },
+            )
+
+        detector.start()
+        detector.processClick(
+            FrustrationInteractionsDetector.ClickInfo(100f, 100f),
+            testTargetInfo,
+            mockViewTarget,
+            testActivityName,
+        )
+        assertTrue(
+            signalFlow.tryEmit(TestInterfaceChangeSignal(System.currentTimeMillis() + 1L)),
+        )
+
+        scheduler.runCurrent()
+        scheduler.advanceTimeBy(4_000L)
+        scheduler.runCurrent()
+
+        verify(exactly = 0) { amplitude.track(DEAD_CLICK, any()) }
+        detector.stop()
+    }
+
+    @Test
+    fun `older signal does not erase post-click interface change`() {
+        interfaceSignalProvider.activate()
+        detector.start()
+
+        detector.processClick(
+            FrustrationInteractionsDetector.ClickInfo(100f, 100f),
+            testTargetInfo,
+            mockViewTarget,
+            testActivityName,
+        )
+        uiChangeFlow.tryEmit(TestInterfaceChangeSignal(System.currentTimeMillis() + 1L))
+        testDispatcher.scheduler.runCurrent()
+        uiChangeFlow.tryEmit(TestInterfaceChangeSignal(System.currentTimeMillis() - 1_000L))
+        testDispatcher.scheduler.runCurrent()
+
+        testDispatcher.scheduler.advanceTimeBy(4_000L)
+        testDispatcher.scheduler.runCurrent()
+
+        verify(exactly = 0) { mockAmplitude.track(DEAD_CLICK, any()) }
+    }
+
+    @Test
+    fun `delayed pre-click signal does not prevent dead click`() {
+        interfaceSignalProvider.activate()
+        detector.start()
+
+        detector.processClick(
+            FrustrationInteractionsDetector.ClickInfo(100f, 100f),
+            testTargetInfo,
+            mockViewTarget,
+            testActivityName,
+        )
+        uiChangeFlow.tryEmit(TestInterfaceChangeSignal(System.currentTimeMillis() - 1_000L))
+        testDispatcher.scheduler.runCurrent()
+
+        testDispatcher.scheduler.advanceTimeBy(4_000L)
+        testDispatcher.scheduler.runCurrent()
+
+        verify { mockAmplitude.track(DEAD_CLICK, any()) }
+    }
+
+    @Test
+    fun `provider becoming unavailable before timeout skips dead click classification`() {
+        interfaceSignalProvider.activate()
+        detector.start()
+
+        detector.processClick(
+            FrustrationInteractionsDetector.ClickInfo(100f, 100f),
+            testTargetInfo,
+            mockViewTarget,
+            testActivityName,
+        )
+        interfaceSignalProvider.deactivate()
+
+        testDispatcher.scheduler.advanceTimeBy(4_000L)
+        testDispatcher.scheduler.runCurrent()
+
+        verify(exactly = 0) { mockAmplitude.track(DEAD_CLICK, any()) }
+    }
+
+    @Test
+    fun `provider availability failure does not escape click processing`() {
+        interfaceSignalProvider.throwOnAvailabilityCheck = true
+        detector.start()
+
+        detector.processClick(
+            FrustrationInteractionsDetector.ClickInfo(100f, 100f),
+            testTargetInfo,
+            mockViewTarget,
+            testActivityName,
+        )
+
+        verify(exactly = 0) { mockAmplitude.track(DEAD_CLICK, any()) }
+        verify { mockLogger.error(match { it.contains("no UI change signal provider is active") }) }
     }
 
     //endregion
@@ -515,10 +725,7 @@ class FrustrationInteractionsDetectorTest {
             )
         detectorWithOptions.start()
 
-        // Emit initial UI change to indicate signal provider is active
-        testDispatcher.scheduler.advanceUntilIdle()
-        uiChangeFlow.tryEmit(UiChangeSignal(Date()))
-        testDispatcher.scheduler.advanceUntilIdle()
+        interfaceSignalProvider.activate()
 
         // Test dead click
         val deadClickInfo = FrustrationInteractionsDetector.ClickInfo(500f, 500f)
@@ -571,10 +778,7 @@ class FrustrationInteractionsDetectorTest {
             )
         detectorWithDefaultOptions.start()
 
-        // Emit initial UI change
-        testDispatcher.scheduler.advanceUntilIdle()
-        uiChangeFlow.tryEmit(UiChangeSignal(Date(System.currentTimeMillis())))
-        testDispatcher.scheduler.runCurrent()
+        interfaceSignalProvider.activate()
 
         // Test dead click
         val deadClickInfo = FrustrationInteractionsDetector.ClickInfo(500f, 500f)
@@ -589,4 +793,24 @@ class FrustrationInteractionsDetectorTest {
     }
 
     //endregion
+
+    private class TestInterfaceSignalProvider : InterfaceSignalProvider {
+        override var active: Boolean = false
+        override val type: Plugin.Type = Plugin.Type.Utility
+        override lateinit var amplitude: Amplitude
+        var throwOnAvailabilityCheck: Boolean = false
+        var availabilityCheckStarted: CountDownLatch? = null
+        var continueAvailabilityCheck: CountDownLatch? = null
+        override val isProviding: Boolean
+            get() {
+                if (throwOnAvailabilityCheck) error("availability failed")
+                availabilityCheckStarted?.countDown()
+                continueAvailabilityCheck?.await(5, TimeUnit.SECONDS)
+                return active
+            }
+    }
+
+    private data class TestInterfaceChangeSignal(
+        override val timestampMillis: Long,
+    ) : InterfaceChangeSignal
 }
