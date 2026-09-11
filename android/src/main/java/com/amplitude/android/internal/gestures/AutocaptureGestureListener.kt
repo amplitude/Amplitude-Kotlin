@@ -7,6 +7,8 @@ import androidx.annotation.VisibleForTesting
 import com.amplitude.android.AutocaptureState
 import com.amplitude.android.Constants.EventTypes.ELEMENT_INTERACTED
 import com.amplitude.android.InteractionType.ElementInteraction
+import com.amplitude.android.internal.ELEMENT_INTERACTED_ACTION_LONG_PRESS
+import com.amplitude.android.internal.ELEMENT_INTERACTED_ACTION_TOUCH
 import com.amplitude.android.internal.TrackFunction
 import com.amplitude.android.internal.ViewHierarchyScanner.findTarget
 import com.amplitude.android.internal.ViewTarget
@@ -40,31 +42,11 @@ public class AutocaptureGestureListener(
     override fun onShowPress(e: MotionEvent) {}
 
     override fun onSingleTapUp(e: MotionEvent): Boolean {
-        // Short-circuit if no interactions are enabled — avoids expensive view hierarchy scan.
-        if (autocaptureState.interactions.isEmpty()) return false
-
-        val decorView = decorViewRef.get() ?: logger.error("DecorView is null in onSingleTapUp()").let { return false }
-
-        val target: ViewTarget =
-            decorView.findTarget(
-                Pair(e.x, e.y),
-                viewTargetLocators,
-                ViewTarget.Type.Clickable,
-                logger,
-            ) ?: logger.warn("Unable to find click target. No event captured.").let {
-                return false
-            }
+        val target = findClickableTarget(e, "onSingleTapUp") ?: return false
 
         // Notify callback with found target (for reuse by frustration interactions)
         onViewTargetFound?.invoke(target)
-
-        // Track element interaction events only if ElementInteraction is enabled
-        if (ElementInteraction in autocaptureState.interactions) {
-            // Build ELEMENT_INTERACTED properties using shared function
-            val properties = buildElementInteractedProperties(target, activityName)
-            track(ELEMENT_INTERACTED, properties)
-        }
-
+        trackElementInteracted(target, ELEMENT_INTERACTED_ACTION_TOUCH)
         return false
     }
 
@@ -77,7 +59,42 @@ public class AutocaptureGestureListener(
         return false
     }
 
-    override fun onLongPress(e: MotionEvent) {}
+    override fun onLongPress(e: MotionEvent) {
+        // Long-press is not a tap: do not cache the target for rage/dead click on ACTION_UP.
+        if (ElementInteraction !in autocaptureState.interactions) return
+        val target = findClickableTarget(e, "onLongPress") ?: return
+        trackElementInteracted(target, ELEMENT_INTERACTED_ACTION_LONG_PRESS)
+    }
+
+    private fun findClickableTarget(
+        event: MotionEvent,
+        caller: String,
+    ): ViewTarget? {
+        // Short-circuit if no interactions are enabled — avoids expensive view hierarchy scan.
+        if (autocaptureState.interactions.isEmpty()) return null
+
+        val decorView =
+            decorViewRef.get() ?: logger.error("DecorView is null in $caller()").let { return null }
+
+        return decorView.findTarget(
+            Pair(event.x, event.y),
+            viewTargetLocators,
+            ViewTarget.Type.Clickable,
+            logger,
+        ) ?: logger.warn("Unable to find click target. No event captured.").let {
+            null
+        }
+    }
+
+    private fun trackElementInteracted(
+        target: ViewTarget,
+        action: String,
+    ) {
+        if (ElementInteraction in autocaptureState.interactions) {
+            val properties = buildElementInteractedProperties(target, activityName, action)
+            track(ELEMENT_INTERACTED, properties)
+        }
+    }
 
     override fun onFling(
         e1: MotionEvent?,
