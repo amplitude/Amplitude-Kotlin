@@ -24,7 +24,7 @@ class XmlPlayerActivity : AppCompatActivity() {
         playerView = findViewById(R.id.player_view)
         mediaTitle = findViewById(R.id.media_title)
         controls = findViewById(R.id.controls)
-        playerView.player = viewModel.player.exoPlayer
+        viewModel.player.attachPlayerView(playerView)
         bindTitle()
 
         findViewById<Button>(R.id.play).setOnClickListener { viewModel.player.play() }
@@ -46,7 +46,7 @@ class XmlPlayerActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        playerView.player = null
+        viewModel.player.detachPlayerView(playerView)
     }
 
     override fun onPictureInPictureModeChanged(
