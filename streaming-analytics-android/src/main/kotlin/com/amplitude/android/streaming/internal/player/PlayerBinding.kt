@@ -293,16 +293,21 @@ internal class PlayerBinding internal constructor(
         val content = state.content
         if (content == null) {
             playback = PlaybackState.Idle(state.viewSessionId)
-            if (player.isPlaying) startContent(state.viewSessionId)
+            if (player.isPlaying && !player.isPlayingAd) startContent(state.viewSessionId)
             return
         }
         if (state.paused) {
+            if (player.isPlaying && !player.isPlayingAd) {
+                playback = content
+                resumeContent(content)
+                return
+            }
             finishSegment(content.segment, StopReason.PAUSED)
             playback = PlaybackState.Idle(state.viewSessionId)
             return
         }
         playback = content
-        if (player.isPlaying) resumeContent(content)
+        if (player.isPlaying && !player.isPlayingAd) resumeContent(content)
     }
 
     private fun resumeContent(state: PlaybackState.Suspended) {
