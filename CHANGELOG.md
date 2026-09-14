@@ -1,3 +1,22 @@
+# [1.31.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.30.1...v1.31.0) (2026-09-14)
+
+
+### Bug Fixes
+
+* preserve coroutine cancellation in catch sites ([#468](https://github.com/amplitude/Amplitude-Kotlin/issues/468)) ([b18926e](https://github.com/amplitude/Amplitude-Kotlin/commit/b18926e7a69acfa59847a6d1cbaec99982b16b40))
+* safe-parse non-JSON 4xx upload responses ([#469](https://github.com/amplitude/Amplitude-Kotlin/issues/469)) ([df49d7d](https://github.com/amplitude/Amplitude-Kotlin/commit/df49d7d019c3171a7d4ca931f723e6dd7bea4201))
+
+
+### Features
+
+* add @JvmOverloads to NetworkTrackingOptions constructors ([#476](https://github.com/amplitude/Amplitude-Kotlin/issues/476)) ([047da9e](https://github.com/amplitude/Amplitude-Kotlin/commit/047da9ef69112b89a3a7090f21f2a01c66129aec))
+* add core interface change signals (SDKA-10) ([#498](https://github.com/amplitude/Amplitude-Kotlin/issues/498)) ([4f206a3](https://github.com/amplitude/Amplitude-Kotlin/commit/4f206a3acb1489cdfe976b535bdde5415f0e2b58))
+* **core:** new upload retry backoff schedule (SDKA-36) ([#446](https://github.com/amplitude/Amplitude-Kotlin/issues/446)) ([c59259b](https://github.com/amplitude/Amplitude-Kotlin/commit/c59259bc467e1b7eb578249b0a2d007f5104e735))
+* Streaming - Events ([#488](https://github.com/amplitude/Amplitude-Kotlin/issues/488)) ([619d7ab](https://github.com/amplitude/Amplitude-Kotlin/commit/619d7ab092c382084f2ff05a4652778cd61b0180))
+* Streaming - Module ([#483](https://github.com/amplitude/Amplitude-Kotlin/issues/483)) ([52c9b29](https://github.com/amplitude/Amplitude-Kotlin/commit/52c9b298490b612f63c7f8569f12ec1110d623cc))
+* Streaming - Network ([#486](https://github.com/amplitude/Amplitude-Kotlin/issues/486)) ([941d8f8](https://github.com/amplitude/Amplitude-Kotlin/commit/941d8f825e098b138aa78e96afc6b556447d0523))
+* Streaming - Public API ([#485](https://github.com/amplitude/Amplitude-Kotlin/issues/485)) ([383e75a](https://github.com/amplitude/Amplitude-Kotlin/commit/383e75aa67578adb0d2e63bdef15da6e88cdf646))
+
 ## [1.30.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.30.0...v1.30.1) (2026-07-30)
 
 
