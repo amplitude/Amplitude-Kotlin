@@ -64,8 +64,8 @@ internal class Media3PlayerObserver(
             val item = player.currentMediaItem
             val metadata = item?.mediaMetadata
             PlayerMediaSnapshot(
-                positionMillis = player.currentPosition.coerceAtLeast(0L),
-                durationMillis = player.duration,
+                positionMillis = player.contentPosition.coerceAtLeast(0L),
+                durationMillis = player.contentDuration,
                 isLive = player.isCurrentMediaItemLive,
                 mediaId = item?.mediaId?.takeIf { it.isNotEmpty() },
                 title = metadata?.title?.toString() ?: metadata?.displayTitle?.toString(),
@@ -100,6 +100,13 @@ internal class Media3PlayerObserver(
     }
 
     override fun onPlaybackStateChanged(playbackState: Int) {
+        handlePlaybackStateChanged(playbackState, emitIdlePause = true)
+    }
+
+    private fun handlePlaybackStateChanged(
+        playbackState: Int,
+        emitIdlePause: Boolean,
+    ) {
         when (playbackState) {
             Player.STATE_BUFFERING -> startBufferingDebounce()
             Player.STATE_READY -> {
@@ -119,7 +126,7 @@ internal class Media3PlayerObserver(
             Player.STATE_IDLE -> {
                 cancelBuffering()
                 // Player.stop() / reset go idle without changing playWhenReady, so pause never fires.
-                if (player.playWhenReady) {
+                if (emitIdlePause && player.playWhenReady) {
                     emit(PlayerEvent.Paused)
                 }
             }
@@ -216,7 +223,7 @@ internal class Media3PlayerObserver(
                 if (player.isPlaying) {
                     emit(PlayerEvent.Playing)
                 }
-                onPlaybackStateChanged(player.playbackState)
+                handlePlaybackStateChanged(player.playbackState, emitIdlePause = false)
                 detectAdTransition()
             }
         }
