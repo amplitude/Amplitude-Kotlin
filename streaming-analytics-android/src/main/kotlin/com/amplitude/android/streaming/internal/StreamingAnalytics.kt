@@ -22,6 +22,16 @@ internal class StreamingAnalytics(
 ) {
     private val graph = StreamingDiGraph(amplitude)
 
+    init {
+        graph.scope.launch {
+            runCatchingCancellable {
+                graph.uploadPipeline.onNewEvent()
+            }.onFailure {
+                graph.logger.error("startup upload drain error: ${it.localizedMessage}")
+            }
+        }
+    }
+
     @Suppress("UNUSED_PARAMETER")
     fun trackPlayer(
         player: Player,
