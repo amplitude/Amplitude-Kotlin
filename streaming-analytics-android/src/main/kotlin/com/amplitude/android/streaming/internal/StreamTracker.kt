@@ -121,12 +121,13 @@ internal class StreamTracker(
         insertId: String,
         stopReason: StopReason? = null,
         errorMessage: String? = null,
+        kind: DelayedEvent.Kind? = null,
     ) {
         amplitude.track(
             event =
                 DelayedEvent(
                     eventType = STREAM_STOPPED,
-                    kind = stopReason.eventKind(),
+                    kind = kind ?: stopReason.eventKind(),
                     timestamp = timestamp,
                     eventProperties =
                         stoppedContentProperties(

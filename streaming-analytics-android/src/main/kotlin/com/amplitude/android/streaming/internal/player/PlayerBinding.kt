@@ -5,10 +5,12 @@ import androidx.media3.common.Player
 import com.amplitude.android.streaming.PlayerContent
 import com.amplitude.android.streaming.PlayerContentProvider
 import com.amplitude.android.streaming.internal.AdContext
+import com.amplitude.android.streaming.internal.DelayedEvent
 import com.amplitude.android.streaming.internal.StopReason
 import com.amplitude.android.streaming.internal.StreamTracker
 import com.amplitude.android.streaming.internal.util.Time
 import com.amplitude.core.AmplitudePreview
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -330,7 +332,7 @@ internal class PlayerBinding internal constructor(
             .create(
                 scope = scope,
                 stoppedEvent = { timestamp ->
-                    sendStreamStopped(segment, timestamp)
+                    sendStreamStopped(segment, timestamp, isHeartbeat = true)
                 },
             ).also { it.start() }
 
@@ -388,8 +390,11 @@ internal class PlayerBinding internal constructor(
         } else {
             try {
                 heartbeat.stop()
+            } catch (e: CancellationException) {
+                sendFinalStreamStopped(segment)
+                throw e
             } catch (_: Exception) {
-                // The segment is frozen and the heartbeat job is stopped.
+                sendFinalStreamStopped(segment)
             }
         }
     }
@@ -397,6 +402,8 @@ internal class PlayerBinding internal constructor(
     private suspend fun sendFinalStreamStopped(segment: StreamSession) {
         try {
             sendStreamStopped(segment, time.nowMillis())
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             // A final upsert failure must not prevent the state transition.
         }
@@ -413,6 +420,7 @@ internal class PlayerBinding internal constructor(
     private suspend fun sendStreamStopped(
         segment: StreamSession,
         timestamp: Long,
+        isHeartbeat: Boolean = false,
     ) {
         streamTracker.trackStreamStopped(
             options = segment.options,
@@ -430,8 +438,9 @@ internal class PlayerBinding internal constructor(
             streamDurationMillis = segment.durationMillis(),
             timestamp = timestamp,
             insertId = segment.stoppedInsertId,
-            stopReason = segment.stopReason,
-            errorMessage = segment.errorMessage,
+            stopReason = if (isHeartbeat) null else segment.stopReason,
+            errorMessage = if (isHeartbeat) null else segment.errorMessage,
+            kind = if (isHeartbeat) DelayedEvent.Kind.DELAYED else null,
         )
     }
 
