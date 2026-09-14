@@ -1,6 +1,7 @@
 package com.amplitude.android.signals
 
-import com.amplitude.core.platform.Signal
+import com.amplitude.core.RestrictedAmplitudeFeature
+import com.amplitude.core.platform.InterfaceChangeSignal
 import java.util.Date
 
 /**
@@ -9,4 +10,8 @@ import java.util.Date
  *
  * @property timestamp The time when the UI change occurred.
  */
-public data class UiChangeSignal(val timestamp: Date) : Signal
+@OptIn(RestrictedAmplitudeFeature::class)
+public data class UiChangeSignal(val timestamp: Date) : InterfaceChangeSignal {
+    override val timestampMillis: Long
+        get() = timestamp.time
+}

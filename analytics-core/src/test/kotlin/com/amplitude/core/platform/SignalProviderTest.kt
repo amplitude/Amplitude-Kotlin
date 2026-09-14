@@ -2,7 +2,7 @@ package com.amplitude.core.platform
 
 import com.amplitude.core.Amplitude
 import com.amplitude.core.Configuration
-import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.utils.FakeAmplitude
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.collectLatest
@@ -17,6 +17,7 @@ import org.junit.jupiter.api.Test
 import java.util.Date
 
 @ExperimentalCoroutinesApi
+@OptIn(RestrictedAmplitudeFeature::class)
 class SignalProviderTest {
     private val testDispatcher = StandardTestDispatcher()
     private val amplitude =
@@ -72,6 +73,25 @@ class SignalProviderTest {
 
             // Clean up
             collectionJob.cancel()
+        }
+
+    @Test
+    fun `interface signal provider is discoverable while registered`() =
+        runTest(testDispatcher) {
+            amplitude.isBuilt.await()
+
+            amplitude.add(signalProviderPlugin)
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf(signalProviderPlugin),
+                amplitude.plugins(InterfaceSignalProvider::class.java),
+            )
+
+            amplitude.remove(signalProviderPlugin)
+            advanceUntilIdle()
+
+            assertTrue(amplitude.plugins(InterfaceSignalProvider::class.java).isEmpty())
         }
 
     @Test
@@ -202,13 +222,18 @@ class SignalProviderTest {
             collectionJob.cancel()
         }
 
-    private class TestSignal(val timestamp: Date) : Signal
+    private class TestSignal(val timestamp: Date) : InterfaceChangeSignal {
+        override val timestampMillis: Long
+            get() = timestamp.time
+    }
 
     /**
      * Test plugin that extends SignalProvider to emit TestSignal
      */
-    private class TestSignalProviderPlugin : SignalProvider, EventPlugin {
+    private class TestSignalProviderPlugin : InterfaceSignalProvider {
         override var active: Boolean = false
+        override val isProviding: Boolean
+            get() = active
         override val type: Plugin.Type = Plugin.Type.Before
         override lateinit var amplitude: Amplitude
 
@@ -219,8 +244,6 @@ class SignalProviderTest {
             super.setup(amplitude)
             activate()
         }
-
-        override fun track(payload: BaseEvent): BaseEvent = payload
 
         override fun teardown() {
             deactivate()

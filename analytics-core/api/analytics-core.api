@@ -842,6 +842,14 @@ public abstract interface class com/amplitude/core/platform/EventPlugin : com/am
 	public fun track (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;
 }
 
+public abstract interface class com/amplitude/core/platform/InterfaceChangeSignal : com/amplitude/core/platform/Signal {
+	public abstract fun getTimestampMillis ()J
+}
+
+public abstract interface class com/amplitude/core/platform/InterfaceSignalProvider : com/amplitude/core/platform/Plugin, com/amplitude/core/platform/SignalProvider {
+	public abstract fun isProviding ()Z
+}
+
 public abstract class com/amplitude/core/platform/ObservePlugin : com/amplitude/core/platform/Plugin {
 	public fun <init> ()V
 	public final fun execute (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/events/BaseEvent;

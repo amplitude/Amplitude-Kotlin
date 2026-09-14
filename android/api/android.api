@@ -862,13 +862,14 @@ public final class com/amplitude/android/plugins/AndroidNetworkConnectivityCheck
 	public final fun getDisabled ()Ljava/lang/Void;
 }
 
-public final class com/amplitude/android/signals/UiChangeSignal : com/amplitude/core/platform/Signal {
+public final class com/amplitude/android/signals/UiChangeSignal : com/amplitude/core/platform/InterfaceChangeSignal {
 	public fun <init> (Ljava/util/Date;)V
 	public final fun component1 ()Ljava/util/Date;
 	public final fun copy (Ljava/util/Date;)Lcom/amplitude/android/signals/UiChangeSignal;
 	public static synthetic fun copy$default (Lcom/amplitude/android/signals/UiChangeSignal;Ljava/util/Date;ILjava/lang/Object;)Lcom/amplitude/android/signals/UiChangeSignal;
 	public fun equals (Ljava/lang/Object;)Z
 	public final fun getTimestamp ()Ljava/util/Date;
+	public fun getTimestampMillis ()J
 	public fun hashCode ()I
 	public fun toString ()Ljava/lang/String;
 }
@@ -1114,4 +1115,3 @@ public final class com/amplitude/common/android/LogcatLogger : com/amplitude/com
 public final class com/amplitude/common/android/LogcatLogger$Companion {
 	public final fun getLogger ()Lcom/amplitude/common/android/LogcatLogger;
 }
-
