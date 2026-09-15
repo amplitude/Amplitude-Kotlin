@@ -10,8 +10,12 @@ import com.amplitude.core.events.IdentifyOperation
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.utilities.logWithStackTrace
 import com.amplitude.core.utilities.runCatchingCancellable
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -26,6 +30,7 @@ public class IdentifyInterceptor(
     private val plugin: AmplitudeDestination,
 ) {
     private var transferScheduled = AtomicBoolean(false)
+    private val operationMutex = Mutex()
 
     private var userId: String? = null
     private var deviceId: String? = null
@@ -44,13 +49,18 @@ public class IdentifyInterceptor(
      * @param event full event data after plugins run
      * @return event with potentially more information or null if intercepted
      */
-    public suspend fun intercept(event: BaseEvent): BaseEvent? {
+    public suspend fun intercept(event: BaseEvent): BaseEvent? =
+        operationMutex.withLock {
+            interceptLocked(event)
+        }
+
+    private suspend fun interceptLocked(event: BaseEvent): BaseEvent? {
         if (storageHandler == null) {
             // no-op to prevent custom storage errors
             return event
         }
         if (isIdentityUpdated(event)) {
-            transferInterceptedIdentify()
+            transferInterceptedIdentifyLocked()
         }
         when (event.eventType) {
             Constants.IDENTIFY_EVENT -> {
@@ -63,12 +73,12 @@ public class IdentifyInterceptor(
                     }
                     isClearAll(event) -> {
                         // clear existing and return event
-                        clearIdentifyIntercepts()
+                        storageHandler.clearIdentifyIntercepts()
                         event
                     }
                     else -> {
                         // send out transfer event
-                        transferInterceptedIdentify()
+                        transferInterceptedIdentifyLocked()
                         return event
                     }
                 }
@@ -79,20 +89,27 @@ public class IdentifyInterceptor(
             }
             else -> {
                 // send out transfer event
-                transferInterceptedIdentify()
+                transferInterceptedIdentifyLocked()
                 return event
             }
         }
     }
 
-    private suspend fun clearIdentifyIntercepts() {
-        storageHandler!!.clearIdentifyIntercepts()
-    }
+    public suspend fun transferInterceptedIdentify(): Unit =
+        operationMutex.withLock {
+            transferInterceptedIdentifyLocked()
+        }
 
-    public suspend fun transferInterceptedIdentify() {
-        val event = getTransferIdentifyEvent()
-        event?.let {
-            plugin.enqueuePipeline(it)
+    private suspend fun transferInterceptedIdentifyLocked() {
+        if (storageHandler == null) {
+            return
+        }
+        // Consuming the source batch and handing it to the destination queue is one operation.
+        withContext(NonCancellable) {
+            val event = getTransferIdentifyEvent()
+            event?.let {
+                plugin.enqueuePipeline(it)
+            }
         }
     }
 
@@ -100,15 +117,19 @@ public class IdentifyInterceptor(
         return storageHandler!!.getTransferIdentifyEvent()
     }
 
-    private fun scheduleTransfer() =
+    private fun scheduleTransfer() {
+        if (!transferScheduled.compareAndSet(false, true)) {
+            return
+        }
         amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
-            if (!transferScheduled.get()) {
-                transferScheduled.getAndSet(true)
+            try {
                 delay(configuration.identifyBatchIntervalMillis)
                 transferInterceptedIdentify()
-                transferScheduled.getAndSet(false)
+            } finally {
+                transferScheduled.set(false)
             }
         }
+    }
 
     private suspend fun saveIdentifyProperties(event: BaseEvent) {
         runCatchingCancellable {

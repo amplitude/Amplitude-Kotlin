@@ -8,7 +8,8 @@ import com.amplitude.core.platform.intercept.IdentifyInterceptorUtil.filterNonNu
 import com.amplitude.core.utilities.EventsFileStorage
 import com.amplitude.core.utilities.runCatchingCancellable
 import com.amplitude.core.utilities.toEvents
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import java.io.FileNotFoundException
 
@@ -17,50 +18,72 @@ public class IdentifyInterceptFileStorageHandler(
     private val logger: Logger,
     private val amplitude: Amplitude,
 ) : IdentifyInterceptStorageHandler {
+    // Keep emitted files claimed so cleanup failures cannot make a batch eligible again.
+    private val consumedFilePaths = mutableSetOf<String>()
+
     override suspend fun getTransferIdentifyEvent(): BaseEvent? {
         runCatchingCancellable {
             storage.rollover()
         }.onFailure { e ->
             if (e is FileNotFoundException) {
                 e.message?.let { logger.warn("Event storage file not found: $it") }
-                return null
+            } else {
+                throw e
             }
-            throw e
         }
-        val eventsData = storage.readEventsContent()
+        cleanupConsumedFiles()
+        val eventsData =
+            storage.readEventsContent()
+                .map { it as String }
+                .filterNot(consumedFilePaths::contains)
         if (eventsData.isEmpty()) {
             return null
         }
         var event: BaseEvent? = null
         var identifyEventUserProperties: MutableMap<String, Any?>? = null
-        for (eventPath in eventsData) {
-            runCatchingCancellable {
-                val eventsString = storage.getEventsString(eventPath)
-                if (eventsString.isEmpty()) {
-                    removeFile(eventPath as String)
-                    return@runCatchingCancellable
+        val processedFilePaths = mutableListOf<String>()
+        try {
+            for (eventPath in eventsData) {
+                val processed =
+                    runCatchingCancellable {
+                        val eventsString = storage.getEventsString(eventPath)
+                        if (eventsString.isEmpty()) {
+                            return@runCatchingCancellable
+                        }
+                        val eventsList = JSONArray(eventsString).toEvents()
+                        if (eventsList.isEmpty()) {
+                            return@runCatchingCancellable
+                        }
+
+                        if (event == null) {
+                            val firstEvent = eventsList[0]
+                            val firstEventUserProperties =
+                                filterNonNullValues(
+                                    firstEvent.userProperties?.get(IdentifyOperation.SET.operationType) as MutableMap<String, Any?>,
+                                )
+                            val mergedUserProperties =
+                                IdentifyInterceptorUtil.mergeIdentifyList(eventsList.subList(1, eventsList.size))
+                            firstEventUserProperties.putAll(mergedUserProperties)
+                            event = firstEvent
+                            identifyEventUserProperties = firstEventUserProperties
+                        } else {
+                            val mergedUserProperties = IdentifyInterceptorUtil.mergeIdentifyList(eventsList)
+                            identifyEventUserProperties?.putAll(mergedUserProperties)
+                        }
+                    }
+                processed.onSuccess {
+                    processedFilePaths.add(eventPath)
+                }.onFailure { e ->
+                    logger.warn("Identify Merge error: ${e.message}")
+                    storage.releaseFile(eventPath)
                 }
-                val eventsList = JSONArray(eventsString).toEvents()
-                if (eventsList.isEmpty()) {
-                    removeFile(eventPath as String)
-                    return@runCatchingCancellable
-                }
-                var events = eventsList
-                if (event == null) {
-                    val firstEvent = eventsList[0]
-                    event = firstEvent
-                    identifyEventUserProperties =
-                        filterNonNullValues(firstEvent.userProperties?.get(IdentifyOperation.SET.operationType) as MutableMap<String, Any?>)
-                    events = eventsList.subList(1, eventsList.size)
-                }
-                val userProperties = IdentifyInterceptorUtil.mergeIdentifyList(events)
-                identifyEventUserProperties?.putAll(userProperties)
-                removeFile(eventPath as String)
-            }.onFailure { e ->
-                logger.warn("Identify Merge error: ${e.message}")
-                removeFile(eventPath as String)
             }
+        } catch (e: CancellationException) {
+            eventsData.forEach(storage::releaseFile)
+            throw e
         }
+        consumedFilePaths.addAll(processedFilePaths)
+        cleanupConsumedFiles()
         event?.userProperties?.put(
             IdentifyOperation.SET.operationType,
             identifyEventUserProperties,
@@ -74,22 +97,30 @@ public class IdentifyInterceptFileStorageHandler(
         }.onFailure { e ->
             if (e is FileNotFoundException) {
                 e.message?.let { logger.warn("Event storage file not found: $it") }
-                return
+            } else {
+                throw e
             }
-            throw e
         }
-        val eventsData = storage.readEventsContent()
-        if (eventsData.isEmpty()) {
-            return
-        }
-        for (eventPath in eventsData) {
-            removeFile(eventPath as String)
-        }
+        cleanupConsumedFiles()
+        consumedFilePaths.addAll(storage.readEventsContent().map { it as String })
+        cleanupConsumedFiles()
     }
 
-    private fun removeFile(file: String) {
-        amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
-            storage.removeFile(file)
+    private suspend fun cleanupConsumedFiles() {
+        consumedFilePaths.toList().forEach { file ->
+            val removal =
+                runCatchingCancellable {
+                    withContext(amplitude.storageIODispatcher) {
+                        storage.removeFile(file)
+                    }
+                }.onFailure { e ->
+                    logger.warn("Unable to remove consumed identify file $file: ${e.message}")
+                }
+            if (removal.getOrDefault(false)) {
+                consumedFilePaths.remove(file)
+            } else if (removal.isSuccess) {
+                logger.warn("Unable to remove consumed identify file $file")
+            }
         }
     }
 }
