@@ -26,6 +26,9 @@ internal object AmplitudeRegistry {
                     // Nothing was claimed and the build does not exist yet, so retiring the
                     // half-built instance is enough; the previous instance keeps the name.
                     instance.markRetired()
+                    // Watchers are installed in the constructor, before this claim, so they
+                    // have to drop the half-built instance even though retire() never runs.
+                    instance.detachWatchers()
                     throw error
                 }
                 activeInstances[instanceName] = WeakReference(instance)
