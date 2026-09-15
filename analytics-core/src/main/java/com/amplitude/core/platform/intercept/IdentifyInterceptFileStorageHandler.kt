@@ -8,7 +8,7 @@ import com.amplitude.core.platform.intercept.IdentifyInterceptorUtil.filterNonNu
 import com.amplitude.core.utilities.EventsFileStorage
 import com.amplitude.core.utilities.runCatchingCancellable
 import com.amplitude.core.utilities.toEvents
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import java.io.FileNotFoundException
 
@@ -65,7 +65,7 @@ public class IdentifyInterceptFileStorageHandler(
             IdentifyOperation.SET.operationType,
             identifyEventUserProperties,
         )
-        return event?.withFreshInsertId()
+        return event
     }
 
     override suspend fun clearIdentifyIntercepts() {
@@ -87,9 +87,8 @@ public class IdentifyInterceptFileStorageHandler(
         }
     }
 
-    private suspend fun removeFile(file: String) {
-        // TODO: withContext should be applied and storage layer should expose suspend
-        withContext(amplitude.storageIODispatcher) {
+    private fun removeFile(file: String) {
+        amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
             storage.removeFile(file)
         }
     }
