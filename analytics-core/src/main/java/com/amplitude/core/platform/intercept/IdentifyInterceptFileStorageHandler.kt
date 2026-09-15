@@ -30,12 +30,12 @@ public class IdentifyInterceptFileStorageHandler(
                 throw e
             }
         }
-        cleanupConsumedFiles()
         val eventsData =
             storage.readEventsContent()
                 .map { it as String }
                 .filterNot(consumedFilePaths::contains)
         if (eventsData.isEmpty()) {
+            cleanupConsumedFiles()
             return null
         }
         var event: BaseEvent? = null
@@ -97,7 +97,6 @@ public class IdentifyInterceptFileStorageHandler(
                 throw e
             }
         }
-        cleanupConsumedFiles()
         consumedFilePaths.addAll(storage.readEventsContent().map { it as String })
         cleanupConsumedFiles()
     }
