@@ -299,6 +299,7 @@ class StreamTrackerTest {
                 durationMillis = 30_000L,
                 contentPositionMillis = 45_000L,
                 contentId = "video-789",
+                mediaItemIndex = 0,
             )
         private val options = PlayerContent(extraProperties = mapOf("ad_campaign" to "summer"))
 

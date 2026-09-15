@@ -181,6 +181,22 @@ class Media3PlayerObserverTest {
         }
 
     @Test
+    fun `should emit Buffering when play resumes while suppressed in ready state`() =
+        runTest {
+            val player = mockk<Player>(relaxed = true)
+            every { player.playWhenReady } returns true
+            every { player.playbackState } returns Player.STATE_READY
+            every { player.isPlaying } returns false
+            val (observer, events) = observerCollectingEvents(player)
+
+            observer.onPlayWhenReadyChanged(true, Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST)
+            runCurrent()
+
+            assertTrue(events.any { it is PlayerEvent.Buffering })
+            assertTrue(events.none { it is PlayerEvent.Paused })
+        }
+
+    @Test
     fun `should not emit Buffering when isPlaying becomes false because the player paused`() =
         runTest {
             val player = mockk<Player>(relaxed = true)
@@ -220,6 +236,26 @@ class Media3PlayerObserverTest {
                 )
 
             assertEquals(MediaType.AUDIO, observer.snapshot().mediaType)
+        }
+
+    @Test
+    fun `should snapshot content timeline while an ad is playing`() =
+        runTest {
+            val player = playingAdPlayer(adGroupIndex = 0, adIndexInAdGroup = 0)
+            every { player.currentPosition } returns 5_000L
+            every { player.duration } returns 15_000L
+            every { player.contentPosition } returns 120_000L
+            every { player.contentDuration } returns 3_600_000L
+            val observer =
+                Media3PlayerObserver(
+                    player = player,
+                    scope = backgroundScope,
+                    playerDispatcher = UnconfinedTestDispatcher(testScheduler),
+                )
+
+            val snapshot = observer.snapshot()
+            assertEquals(120_000L, snapshot.positionMillis)
+            assertEquals(3_600_000L, snapshot.durationMillis)
         }
 
     @Test
@@ -283,6 +319,41 @@ class Media3PlayerObserverTest {
         }
 
     @Test
+    fun `should abandon an active ad when playback leaves the ad without a skip`() =
+        runTest {
+            val player = playingAdPlayer(adGroupIndex = 0, adIndexInAdGroup = 0)
+            val (observer, events) = observerCollectingEvents(player)
+
+            observer.detectAdTransition()
+            every { player.isPlayingAd } returns false
+            observer.detectAdTransition()
+            runCurrent()
+
+            val stopped = events.filterIsInstance<PlayerEvent.AdStopped>()
+            assertEquals(1, stopped.size)
+            assertEquals(false, stopped.first().completed)
+            assertTrue(events.none { it is PlayerEvent.AdSkipped })
+        }
+
+    @Test
+    fun `should treat ads with the same indices on different media item indexes as distinct`() =
+        runTest {
+            val player = playingAdPlayer(adGroupIndex = 0, adIndexInAdGroup = 0, mediaItemIndex = 0)
+            val (observer, events) = observerCollectingEvents(player)
+
+            observer.detectAdTransition()
+            every { player.currentMediaItemIndex } returns 1
+            observer.detectAdTransition()
+            runCurrent()
+
+            assertEquals(
+                listOf(0, 1),
+                events.filterIsInstance<PlayerEvent.AdStarted>().map { it.ad.mediaItemIndex },
+            )
+            assertTrue(events.any { it is PlayerEvent.AdSkipped })
+        }
+
+    @Test
     fun `should complete the previous ad on auto-transition to the next ad`() =
         runTest {
             val player = playingAdPlayer(adGroupIndex = 0, adIndexInAdGroup = 0)
@@ -318,6 +389,7 @@ class Media3PlayerObserverTest {
 
             observer.detectAdTransition()
             every { player.currentMediaItem } returns mediaItem("item-b")
+            every { player.currentMediaItemIndex } returns 1
             observer.detectAdTransition()
             runCurrent()
 
@@ -356,6 +428,7 @@ class Media3PlayerObserverTest {
                 reason = Player.DISCONTINUITY_REASON_AUTO_TRANSITION,
             )
             every { player.currentMediaItem } returns mediaItem("item-b")
+            every { player.currentMediaItemIndex } returns 1
             observer.detectAdTransition()
             runCurrent()
 
@@ -423,6 +496,7 @@ private fun playingAdPlayer(
     adGroupIndex: Int,
     adIndexInAdGroup: Int,
     mediaId: String? = null,
+    mediaItemIndex: Int = 0,
 ): Player {
     val player = mockk<Player>(relaxed = true)
     every { player.isPlayingAd } returns true
@@ -431,6 +505,8 @@ private fun playingAdPlayer(
     every { player.currentPosition } returns 0L
     every { player.duration } returns 15_000L
     every { player.contentPosition } returns 30_000L
+    every { player.contentDuration } returns 3_600_000L
+    every { player.currentMediaItemIndex } returns mediaItemIndex
     every { player.currentMediaItem } returns mediaId?.let { mediaItem(it) }
     return player
 }

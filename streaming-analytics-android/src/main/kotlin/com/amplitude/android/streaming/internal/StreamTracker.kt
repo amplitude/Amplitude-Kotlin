@@ -257,6 +257,7 @@ internal data class AdContext(
     val durationMillis: Long,
     val contentPositionMillis: Long,
     val contentId: String?,
+    val mediaItemIndex: Int,
 ) {
     val adId: String
         get() = "${contentId.orEmpty()}:$adGroupIndex:$adIndexInAdGroup"

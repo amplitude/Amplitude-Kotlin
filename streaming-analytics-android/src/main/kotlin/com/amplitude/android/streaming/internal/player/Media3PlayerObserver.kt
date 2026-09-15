@@ -64,8 +64,8 @@ internal class Media3PlayerObserver(
             val item = player.currentMediaItem
             val metadata = item?.mediaMetadata
             PlayerMediaSnapshot(
-                positionMillis = player.currentPosition.coerceAtLeast(0L),
-                durationMillis = player.duration,
+                positionMillis = player.contentPosition.coerceAtLeast(0L),
+                durationMillis = player.contentDuration,
                 isLive = player.isCurrentMediaItemLive,
                 mediaId = item?.mediaId?.takeIf { it.isNotEmpty() },
                 title = metadata?.title?.toString() ?: metadata?.displayTitle?.toString(),
@@ -88,8 +88,14 @@ internal class Media3PlayerObserver(
         reason: Int,
     ) {
         if (playWhenReady) {
-            if (player.playbackState == Player.STATE_BUFFERING) {
-                startBufferingDebounce()
+            when (player.playbackState) {
+                Player.STATE_BUFFERING -> startBufferingDebounce()
+                Player.STATE_READY -> {
+                    if (!player.isPlaying) {
+                        // Suppressed play: playWhenReady flipped true while output is still blocked.
+                        emit(PlayerEvent.Buffering)
+                    }
+                }
             }
             return
         }
@@ -149,6 +155,7 @@ internal class Media3PlayerObserver(
         ) {
             finishAdForTransition(
                 completed = reason == Player.DISCONTINUITY_REASON_AUTO_TRANSITION,
+                skipped = reason != Player.DISCONTINUITY_REASON_AUTO_TRANSITION,
                 positionMillis = oldPosition.positionMs,
             )
         }
@@ -182,28 +189,29 @@ internal class Media3PlayerObserver(
             val current = adContextFromPlayer()
             val previous = activeAd
             if (previous != null && !previous.isSameAdAs(current)) {
-                finishAdForTransition(completed = false)
+                finishAdForTransition(completed = false, skipped = true)
             }
             if (activeAd == null) {
                 activeAd = current
                 emit(PlayerEvent.AdStarted(current))
             }
         } else if (activeAd != null) {
-            finishAdForTransition(completed = false)
+            finishAdForTransition(completed = false, skipped = false)
         }
     }
 
     internal fun finishAdForTransition(
         completed: Boolean,
+        skipped: Boolean = false,
         positionMillis: Long? = null,
     ) {
         val ad = activeAd ?: return
         activeAd = null
         val finalAd = positionMillis?.let { ad.copy(positionMillis = it) } ?: ad
-        if (completed) {
-            emit(PlayerEvent.AdStopped(finalAd, completed = true))
-        } else {
-            emit(PlayerEvent.AdSkipped(finalAd))
+        when {
+            completed -> emit(PlayerEvent.AdStopped(finalAd, completed = true))
+            skipped -> emit(PlayerEvent.AdSkipped(finalAd))
+            else -> emit(PlayerEvent.AdStopped(finalAd, completed = false))
         }
     }
 
@@ -261,13 +269,15 @@ internal class Media3PlayerObserver(
             durationMillis = player.duration,
             contentPositionMillis = player.contentPosition.coerceAtLeast(0),
             contentId = player.currentMediaItem?.mediaId?.takeIf { it.isNotEmpty() },
+            mediaItemIndex = player.currentMediaItemIndex,
         )
 }
 
 private fun AdContext.isSameAdAs(other: AdContext): Boolean =
     adGroupIndex == other.adGroupIndex &&
         adIndexInAdGroup == other.adIndexInAdGroup &&
-        contentId == other.contentId
+        contentId == other.contentId &&
+        mediaItemIndex == other.mediaItemIndex
 
 internal fun Player.createPlayerDispatcher(): CoroutineDispatcher {
     return Handler(applicationLooper).asCoroutineDispatcher()
