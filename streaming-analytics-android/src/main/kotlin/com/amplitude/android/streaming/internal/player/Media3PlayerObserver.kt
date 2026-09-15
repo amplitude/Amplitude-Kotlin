@@ -1,6 +1,5 @@
 package com.amplitude.android.streaming.internal.player
 
-import android.os.Handler
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
@@ -12,7 +11,6 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.android.asCoroutineDispatcher
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -31,7 +29,7 @@ private const val EVENT_BUFFER_CAPACITY = 64
 internal class Media3PlayerObserver(
     private val player: Player,
     private val scope: CoroutineScope,
-    private val playerDispatcher: CoroutineDispatcher = player.createPlayerDispatcher(),
+    private val playerDispatcher: CoroutineDispatcher,
 ) : Player.Listener,
     PlayerObserver {
     private val _eventFlow =
@@ -268,10 +266,6 @@ private fun AdContext.isSameAdAs(other: AdContext): Boolean =
     adGroupIndex == other.adGroupIndex &&
         adIndexInAdGroup == other.adIndexInAdGroup &&
         contentId == other.contentId
-
-internal fun Player.createPlayerDispatcher(): CoroutineDispatcher {
-    return Handler(applicationLooper).asCoroutineDispatcher()
-}
 
 private fun Player.mediaType(): MediaType {
     val groups = currentTracks.groups
