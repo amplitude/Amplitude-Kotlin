@@ -150,6 +150,7 @@ class StreamingAnalyticsPluginTest {
             val plugin = StreamingAnalyticsPlugin()
             amplitude.add(plugin)
             assertSame(plugin, amplitude.findPlugin<StreamingAnalyticsPlugin>())
+            plugin.streamingAnalytics?.teardown()
             return mockk<StreamingAnalytics>(relaxed = true).also { plugin.streamingAnalytics = it }
         }
 
