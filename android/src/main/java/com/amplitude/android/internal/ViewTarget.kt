@@ -44,16 +44,28 @@ public data class ViewTarget(
     public enum class Type { Clickable }
 }
 
+internal const val ELEMENT_INTERACTED_ACTION_TOUCH: String = "touch"
+internal const val ELEMENT_INTERACTED_ACTION_LONG_PRESS: String = "long press"
+
 /**
  * Builds the base properties for ELEMENT_INTERACTED events.
  * This is the foundation used by both standard element tracking and frustration analytics.
+ *
+ * `[Amplitude] Action` defaults to `"touch"` (taps and frustration analytics).
  */
 public fun buildElementInteractedProperties(
     target: ViewTarget,
     activityName: String,
 ): Map<String, Any?> =
+    buildElementInteractedProperties(target, activityName, ELEMENT_INTERACTED_ACTION_TOUCH)
+
+internal fun buildElementInteractedProperties(
+    target: ViewTarget,
+    activityName: String,
+    action: String,
+): Map<String, Any?> =
     mapOf(
-        ACTION to "touch",
+        ACTION to action,
         TARGET_CLASS to target.className,
         TARGET_RESOURCE to target.resourceName,
         TARGET_TAG to target.tag,
