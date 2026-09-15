@@ -119,7 +119,8 @@ internal class Media3PlayerObserver(
             Player.STATE_IDLE -> {
                 cancelBuffering()
                 // Player.stop() / reset go idle without changing playWhenReady, so pause never fires.
-                if (player.playWhenReady) {
+                // After onPlayerError, Media3 goes idle with playWhenReady still true.
+                if (player.playWhenReady && player.playerError == null) {
                     emit(PlayerEvent.Paused)
                 }
             }
