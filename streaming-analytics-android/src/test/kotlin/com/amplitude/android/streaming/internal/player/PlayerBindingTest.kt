@@ -364,7 +364,7 @@ class PlayerBindingTest {
             }
 
         @Test
-        fun `should upsert delayed Stream Stopped as untracked after pause`() =
+        fun `should preserve paused stop reason when stop is called after pause`() =
             runTest {
                 val binding =
                     PlayerBinding(
@@ -389,12 +389,14 @@ class PlayerBindingTest {
                     assertTrue(paused.isNotEmpty())
                     assertEquals("paused", paused.last().eventProperties?.get("stop_reason"))
                     val insertId = paused.last().insertId
+                    val stoppedCount = paused.size
 
                     binding.stop()
                     runCurrent()
 
                     val samePlay = tracked.filter { it.eventType == STREAM_STOPPED && it.insertId == insertId }
-                    assertEquals("untracked", samePlay.last().eventProperties?.get("stop_reason"))
+                    assertEquals(stoppedCount, samePlay.size)
+                    assertEquals("paused", samePlay.last().eventProperties?.get("stop_reason"))
                 } finally {
                     binding.stop()
                     runCurrent()

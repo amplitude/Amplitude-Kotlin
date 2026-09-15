@@ -381,10 +381,11 @@ internal class PlayerBinding internal constructor(
             }
             is PlaybackState.Idle -> {
                 if (reason == StopReason.UNTRACKED) {
-                    state.lastSegment?.let {
-                        it.stopReason = reason
-                        it.errorMessage = errorMessage
-                        sendStreamStopped(it, time.nowMillis())
+                    state.lastSegment?.let { segment ->
+                        if (segment.stopReason != null) return@let
+                        segment.stopReason = reason
+                        segment.errorMessage = errorMessage
+                        sendStreamStopped(segment, time.nowMillis())
                     }
                 }
             }
