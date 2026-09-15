@@ -7,7 +7,11 @@ import com.amplitude.common.Logger
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -235,6 +239,33 @@ class DelayedEventStorageTest {
                 )
                 assertEquals(9_000L, storage.read("0000000000000000002-bbb")?.timeoutMillis)
             }
+
+        @Test
+        fun `should persist concurrent writes that would evict the same oldest entry`() =
+            runTest {
+                val instanceName = uniqueInstance()
+                val measuring = storage(instanceName)
+                measuring.write("0000000000000000001-aaa", request("view-1"))
+                val size =
+                    File(queueDir(instanceName), "0000000000000000001-aaa.json").length()
+                measuring.write("0000000000000000002-bbb", request("view-2"))
+                val storage =
+                    storage(
+                        instanceName,
+                        ioDispatcher = Dispatchers.IO,
+                        maxStorageBytes = size * 2 + 32,
+                    )
+
+                coroutineScope {
+                    launch { storage.write("0000000000000000003-ccc", request("view-3")) }
+                    launch { storage.write("0000000000000000004-ddd", request("view-4")) }
+                }
+
+                assertEquals(
+                    listOf("0000000000000000003-ccc", "0000000000000000004-ddd"),
+                    storage.keys().sorted(),
+                )
+            }
     }
 
     @Nested
@@ -331,6 +362,7 @@ class DelayedEventStorageTest {
         instanceName: String = uniqueInstance(),
         logger: Logger = mockk(relaxed = true),
         maxStorageBytes: Long = 25L * 1024 * 1024,
+        ioDispatcher: CoroutineDispatcher = StandardTestDispatcher(testScheduler),
     ): DelayedEventStorage =
         DelayedEventStorage(
             context = context,
@@ -341,7 +373,7 @@ class DelayedEventStorageTest {
                     instanceName = instanceName,
                 ),
             logger = logger,
-            ioDispatcher = StandardTestDispatcher(testScheduler),
+            ioDispatcher = ioDispatcher,
             maxStorageBytes = maxStorageBytes,
         )
 

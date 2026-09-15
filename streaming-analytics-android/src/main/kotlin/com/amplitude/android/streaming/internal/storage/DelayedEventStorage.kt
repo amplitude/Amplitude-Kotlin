@@ -7,6 +7,8 @@ import com.amplitude.android.streaming.internal.util.DiGraph.Companion.weak
 import com.amplitude.android.streaming.internal.util.lazySuspend
 import com.amplitude.common.Logger
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
@@ -42,6 +44,7 @@ internal class DelayedEventStorage(
     private val ioDispatcher: CoroutineDispatcher,
     private val maxStorageBytes: Long,
 ) {
+    private val mutex = Mutex()
     private val directory =
         lazySuspend {
             withContext(ioDispatcher) {
@@ -157,10 +160,11 @@ internal class DelayedEventStorage(
                 .toMutableList()
         var used = retained.sumOf { it.length() } + incomingBytes
         while (used > maxStorageBytes && retained.isNotEmpty()) {
-            val victim = retained.removeAt(0)
-            val size = victim.length()
-            val key = victim.nameWithoutExtension
-            if (!victim.delete()) {
+            val oldest = retained.removeAt(0)
+            val size = oldest.length()
+            val key = oldest.nameWithoutExtension
+            // delete() also returns false when a concurrent writer already removed the file.
+            if (!oldest.delete() && oldest.exists()) {
                 logger.error(
                     "Failed to remove delayed-events queue entry $key to stay under disk bound",
                 )
@@ -179,13 +183,15 @@ internal class DelayedEventStorage(
         block: suspend () -> T,
     ): T? =
         withContext(ioDispatcher) {
-            try {
-                block()
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Exception) {
-                logger.error("$message: ${error.message}")
-                null
+            mutex.withLock {
+                try {
+                    block()
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    logger.error("$message: ${error.message}")
+                    null
+                }
             }
         }
 }
