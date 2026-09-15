@@ -16,12 +16,17 @@ internal class TestPlayerObserver : PlayerObserver {
         check(events.tryEmit(event))
     }
 
-    override suspend fun snapshot(): PlayerMediaSnapshot =
-        PlayerMediaSnapshot(
-            positionMillis = POSITION_MILLIS,
+    var snapshotError: Throwable? = null
+    var positionMillis: Long = POSITION_MILLIS
+
+    override suspend fun snapshot(): PlayerMediaSnapshot {
+        snapshotError?.let { throw it }
+        return PlayerMediaSnapshot(
+            positionMillis = positionMillis,
             durationMillis = DURATION_MILLIS,
             mediaType = MediaType.VIDEO,
         )
+    }
 
     private companion object {
         const val EVENT_BUFFER_CAPACITY = 16
