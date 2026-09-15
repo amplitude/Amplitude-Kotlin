@@ -4,7 +4,6 @@ import com.amplitude.common.Logger
 import com.amplitude.core.Amplitude
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.IdentifyOperation
-import com.amplitude.core.platform.intercept.IdentifyInterceptorUtil.filterNonNullValues
 import com.amplitude.core.utilities.EventsFileStorage
 import com.amplitude.core.utilities.runCatchingCancellable
 import com.amplitude.core.utilities.toEvents
@@ -55,21 +54,17 @@ public class IdentifyInterceptFileStorageHandler(
                             return@runCatchingCancellable
                         }
 
+                        val fileUserProperties = IdentifyInterceptorUtil.mergeIdentifyList(eventsList)
+                        val nextUserProperties =
+                            if (identifyEventUserProperties == null) {
+                                fileUserProperties
+                            } else {
+                                identifyEventUserProperties!!.toMutableMap().also { it.putAll(fileUserProperties) }
+                            }
                         if (event == null) {
-                            val firstEvent = eventsList[0]
-                            val firstEventUserProperties =
-                                filterNonNullValues(
-                                    firstEvent.userProperties?.get(IdentifyOperation.SET.operationType) as MutableMap<String, Any?>,
-                                )
-                            val mergedUserProperties =
-                                IdentifyInterceptorUtil.mergeIdentifyList(eventsList.subList(1, eventsList.size))
-                            firstEventUserProperties.putAll(mergedUserProperties)
-                            event = firstEvent
-                            identifyEventUserProperties = firstEventUserProperties
-                        } else {
-                            val mergedUserProperties = IdentifyInterceptorUtil.mergeIdentifyList(eventsList)
-                            identifyEventUserProperties?.putAll(mergedUserProperties)
+                            event = eventsList[0]
                         }
+                        identifyEventUserProperties = nextUserProperties
                     }
                 processed.onSuccess {
                     processedFilePaths.add(eventPath)
