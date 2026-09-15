@@ -75,12 +75,19 @@ internal class DelayedEventStorage(
                     output.write(byteArray)
                     output.fd.sync()
                 }
-                if (!makeRoom(directory, destination, temporary.length())) {
+                val incomingBytes = temporary.length()
+                if (incomingBytes > maxStorageBytes) {
+                    logger.error(
+                        "Dropping delayed-events queue entry ${destination.nameWithoutExtension}: " +
+                            "payload is $incomingBytes bytes, bound is $maxStorageBytes",
+                    )
                     return@runCatchingStorage
                 }
+                // Commit before eviction so a failed rename cannot drop existing queue files.
                 if (!temporary.renameTo(destination)) {
                     error("Failed to commit delayed-events queue entry")
                 }
+                makeRoom(directory, destination)
             } finally {
                 temporary.delete()
             }
@@ -149,21 +156,13 @@ internal class DelayedEventStorage(
     }
 
     /**
-     * Drops oldest committed entries until [incomingBytes] can be stored without exceeding
-     * [maxStorageBytes]. Returns false when the incoming payload itself is over the bound.
+     * Drops oldest committed entries, other than [destination], until the queue is within
+     * [maxStorageBytes]. [destination] must already be the committed payload.
      */
     private fun makeRoom(
         directory: File,
         destination: File,
-        incomingBytes: Long,
-    ): Boolean {
-        if (incomingBytes > maxStorageBytes) {
-            logger.error(
-                "Dropping delayed-events queue entry ${destination.nameWithoutExtension}: " +
-                    "payload is $incomingBytes bytes, bound is $maxStorageBytes",
-            )
-            return false
-        }
+    ) {
         val retained =
             directory
                 .listFiles { candidate ->
@@ -172,7 +171,7 @@ internal class DelayedEventStorage(
                 .orEmpty()
                 .sortedBy { it.name }
                 .toMutableList()
-        var used = retained.sumOf { it.length() } + incomingBytes
+        var used = retained.sumOf { it.length() } + destination.length()
         while (used > maxStorageBytes && retained.isNotEmpty()) {
             val oldest = retained.removeAt(0)
             val size = oldest.length()
@@ -182,14 +181,13 @@ internal class DelayedEventStorage(
                 logger.error(
                     "Failed to remove delayed-events queue entry $key to stay under disk bound",
                 )
-                return false
+                return
             }
             logger.error(
                 "Dropping delayed-events queue entry $key to stay under $maxStorageBytes-byte disk bound",
             )
             used -= size
         }
-        return used <= maxStorageBytes
     }
 
     private suspend fun <T> runCatchingStorage(
