@@ -201,9 +201,11 @@ public fun JSONObject.toBaseEvent(): BaseEvent {
     event.revenue = if (this.has("revenue")) this.getDouble("revenue") else null
     event.productId = this.optionalString("productId", null)
     event.revenueType = this.optionalString("revenueType", null)
+    event.currency = this.optionalString("currency", null)
     event.locationLat = if (this.has("location_lat")) this.getDouble("location_lat") else null
     event.locationLng = if (this.has("location_lng")) this.getDouble("location_lng") else null
     event.ip = this.optionalString("ip", null)
+    event.versionName = this.optionalString("version_name", null)
     event.idfa = this.optionalString("idfa", null)
     event.idfv = this.optionalString("idfv", null)
     event.adid = this.optionalString("adid", null)

@@ -11,6 +11,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 
+/** Safety valve so a stuck uploader cannot fill app storage. Not a working-set target. */
+private const val MAX_STORAGE_BYTES = 25L * 1024 * 1024
+
 /**
  * Dependency graph for streaming analytics.
  *
@@ -19,6 +22,7 @@ import kotlinx.coroutines.SupervisorJob
  */
 internal class StreamingDiGraph(
     val amplitude: Amplitude,
+    val maxStorageBytes: Long = MAX_STORAGE_BYTES,
 ) : DiGraph() {
 
     val configuration: Configuration by lazy { amplitude.configuration as Configuration }
