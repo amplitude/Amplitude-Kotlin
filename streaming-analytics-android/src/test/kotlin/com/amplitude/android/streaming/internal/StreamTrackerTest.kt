@@ -328,15 +328,15 @@ class StreamTrackerTest {
                 options = options,
                 ad = ad,
                 streamSessionId = "stream-ad-1",
-                streamDurationMillis = 30_000L,
-                completed = true,
+                watchDurationMillis = 30_000L,
+                status = AdCompletionStatus.COMPLETED,
             )
 
             val props = events.first().eventProperties!!
             assertEquals("[Amplitude] Ad Stopped", events.first().eventType)
-            assertEquals(30.0, props["ad_stream_duration"])
+            assertEquals(30.0, props["ad_watch_duration"])
             assertEquals("completed", props["ad_completion_status"])
-            assertEquals(33.333, (props["ad_percent_completed"] as Double), 0.01)
+            assertEquals(100.0, props["ad_percent_completed"])
         }
 
         @Test
@@ -345,12 +345,26 @@ class StreamTrackerTest {
                 options = options,
                 ad = ad,
                 streamSessionId = "stream-ad-1",
-                streamDurationMillis = 5_000L,
-                completed = false,
+                watchDurationMillis = 5_000L,
+                status = AdCompletionStatus.ABANDONED,
             )
 
             val props = events.first().eventProperties!!
             assertEquals("abandoned", props["ad_completion_status"])
+            assertEquals(5.0, props["ad_watch_duration"])
+        }
+
+        @Test
+        fun `trackAdStopped records skipped status`() {
+            tracker.trackAdStopped(
+                options = options,
+                ad = ad,
+                streamSessionId = "stream-ad-1",
+                watchDurationMillis = 8_000L,
+                status = AdCompletionStatus.SKIPPED,
+            )
+
+            assertEquals("skipped", events.first().eventProperties!!["ad_completion_status"])
         }
 
         @Test
@@ -364,6 +378,7 @@ class StreamTrackerTest {
             assertEquals(1, events.size)
             assertEquals("[Amplitude] Ad Skipped", events.first().eventType)
             assertEquals("video-789:0:1", events.first().eventProperties?.get("ad_id"))
+            assertEquals(10.0, events.first().eventProperties?.get("skip_position"))
         }
     }
 }
