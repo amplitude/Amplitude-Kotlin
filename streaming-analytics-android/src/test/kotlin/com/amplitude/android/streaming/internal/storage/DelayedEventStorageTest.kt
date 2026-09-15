@@ -102,6 +102,21 @@ class DelayedEventStorageTest {
             }
 
         @Test
+        fun `should remove leftover tmp files on the next write`() =
+            runTest {
+                val instanceName = uniqueInstance()
+                val storage = storage(instanceName)
+                storage.write("key-1", request())
+                val leftover = File(queueDir(instanceName), "key-1-leftover.tmp")
+                leftover.writeText("{not-json")
+
+                storage.write("key-2", request("view-2"))
+
+                assertTrue(!leftover.exists())
+                assertEquals(listOf("key-1", "key-2"), storage.keys().sorted())
+            }
+
+        @Test
         fun `should ignore unknown json keys when reading`() =
             runTest {
                 val instanceName = uniqueInstance()

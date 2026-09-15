@@ -65,6 +65,7 @@ internal class DelayedEventStorage(
             if (!directory.mkdirs() && !directory.isDirectory) {
                 error("Failed to create delayed-events queue directory")
             }
+            removeStaleTemporaryFiles(directory)
             val destination = File(directory, "$key.json")
             val temporary = File(directory, "$key-${UUID.randomUUID()}.tmp")
             try {
@@ -133,6 +134,19 @@ internal class DelayedEventStorage(
             }
             .orEmpty()
             .toList()
+
+    private fun removeStaleTemporaryFiles(directory: File) {
+        directory
+            .listFiles { candidate ->
+                candidate.extension == "tmp"
+            }
+            .orEmpty()
+            .forEach { leftover ->
+                if (!leftover.delete()) {
+                    logger.error("Failed to remove leftover delayed-events temp file ${leftover.name}")
+                }
+            }
+    }
 
     /**
      * Drops oldest committed entries until [incomingBytes] can be stored without exceeding
