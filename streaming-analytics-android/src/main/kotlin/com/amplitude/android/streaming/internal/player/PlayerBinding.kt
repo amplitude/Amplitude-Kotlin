@@ -171,7 +171,12 @@ internal class PlayerBinding internal constructor(
                     pauseWatch()
                     stopReason = StopReason.PAUSED
                 }
-                playback = state.copy(paused = true)
+                playback =
+                    state.copy(
+                        paused = true,
+                        watchDurationMillis = state.watchDurationMillis + adWatchSegmentMillis(state),
+                        watchStartedAt = null,
+                    )
             }
             is PlaybackState.Idle -> Unit
         }
@@ -259,7 +264,7 @@ internal class PlayerBinding internal constructor(
             PlaybackState.Ad(
                 viewSessionId = id,
                 ad = ad,
-                startedAt = time.elapsedRealtime(),
+                watchStartedAt = time.elapsedRealtime(),
                 content = content,
             )
         streamTracker.trackAdStarted(options, ad, id)
@@ -285,9 +290,12 @@ internal class PlayerBinding internal constructor(
         ad: AdContext,
         completed: Boolean,
     ) {
-        val watchDuration = (time.elapsedRealtime() - state.startedAt).coerceAtLeast(0)
+        val watchDuration = state.watchDurationMillis + adWatchSegmentMillis(state)
         streamTracker.trackAdStopped(options, ad, state.viewSessionId, watchDuration, completed)
     }
+
+    private fun adWatchSegmentMillis(state: PlaybackState.Ad): Long =
+        state.watchStartedAt?.let { (time.elapsedRealtime() - it).coerceAtLeast(0) } ?: 0
 
     private suspend fun continueAfterAd(state: PlaybackState.Ad) {
         val content = state.content
@@ -381,7 +389,8 @@ internal class PlayerBinding internal constructor(
         data class Ad(
             override val viewSessionId: String,
             val ad: AdContext,
-            val startedAt: Long,
+            val watchDurationMillis: Long = 0,
+            val watchStartedAt: Long? = null,
             val content: Suspended?,
             val paused: Boolean = false,
         ) : PlaybackState
