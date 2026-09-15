@@ -14,6 +14,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import java.util.UUID
@@ -88,6 +89,45 @@ class IdentifyInterceptStorageHandlerTest {
                     mapOf("key1" to "value1", "amp_flag" to "variant"),
                     transferred.userProperties?.get(IdentifyOperation.SET.operationType),
                 )
+            }
+        }
+
+        @Test
+        fun `transfer removes intercept files before returning`() {
+            val amplitude =
+                FakeAmplitude(
+                    configuration =
+                        Configuration(
+                            apiKey = "test-api-key",
+                            instanceName = "identify-intercept-${UUID.randomUUID()}",
+                            identifyInterceptStorageProvider = FileStorageProvider(),
+                        ),
+                )
+            runTest(amplitude.testDispatcher) {
+                amplitude.isBuilt.await()
+                advanceUntilIdle()
+
+                val storage = amplitude.identifyInterceptStorage
+                val handler =
+                    IdentifyInterceptFileStorageHandler(
+                        storage as EventsFileStorage,
+                        amplitude.logger,
+                        amplitude,
+                    )
+                storage.writeEvent(identifyEvent("first-id", mapOf("key1" to "value1")))
+
+                val first = handler.getTransferIdentifyEvent()
+                assertNotNull(first)
+                assertNull(handler.getTransferIdentifyEvent())
+
+                storage.writeEvent(identifyEvent("second-id", mapOf("amp_flag" to "variant")))
+                val second = handler.getTransferIdentifyEvent()
+                assertNotNull(second)
+                assertEquals(
+                    mapOf("amp_flag" to "variant"),
+                    second!!.userProperties?.get(IdentifyOperation.SET.operationType),
+                )
+                assertNotEquals(first!!.insertId, second.insertId)
             }
         }
     }
