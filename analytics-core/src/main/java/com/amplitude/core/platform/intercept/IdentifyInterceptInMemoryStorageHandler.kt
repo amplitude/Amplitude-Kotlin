@@ -20,7 +20,7 @@ public class IdentifyInterceptInMemoryStorageHandler(
         val userProperties = IdentifyInterceptorUtil.mergeIdentifyList(events.subList(1, events.size))
         identifyEventUserProperties.putAll(userProperties)
         identifyEvent.userProperties!!.put(IdentifyOperation.SET.operationType, identifyEventUserProperties)
-        return identifyEvent
+        return identifyEvent.withFreshInsertId()
     }
 
     override suspend fun clearIdentifyIntercepts() {

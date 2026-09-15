@@ -7,6 +7,7 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.IdentifyOperation
 import com.amplitude.core.utilities.EventsFileStorage
 import com.amplitude.core.utilities.InMemoryStorage
+import java.util.UUID
 
 public interface IdentifyInterceptStorageHandler {
     public suspend fun getTransferIdentifyEvent(): BaseEvent?
@@ -49,4 +50,11 @@ public object IdentifyInterceptorUtil {
     public fun filterNonNullValues(map: MutableMap<String, Any?>): MutableMap<String, Any?> {
         return map.filterValues { it != null }.toMutableMap()
     }
+}
+
+// Transfer reuses an intercepted identify as the carrier, including its insert id.
+// Ingestion deduplicates on insert id, so mint a new one before upload.
+internal fun BaseEvent.withFreshInsertId(): BaseEvent {
+    insertId = UUID.randomUUID().toString()
+    return this
 }
