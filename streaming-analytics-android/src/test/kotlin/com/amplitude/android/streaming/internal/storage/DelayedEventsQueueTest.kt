@@ -9,13 +9,11 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
-import kotlinx.serialization.SerializationException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
-import java.io.FileNotFoundException
 import java.util.concurrent.atomic.AtomicReference
 
 class DelayedEventsQueueTest {
@@ -279,6 +277,33 @@ class DelayedEventsQueueTest {
                     stored.get().instantEvents?.toSet(),
                 )
             }
+
+        @Test
+        fun `replaces an unreadable existing entry instead of merging`() =
+            runTest {
+                val nextDelayed = eventEntity("stopped-new")
+                coEvery { storage.findKey(any()) } returns "existing-key"
+                coEvery { storage.read("existing-key") } returns null
+                coEvery { storage.write(any(), any()) } returns Unit
+
+                queue.enqueue(
+                    DelayedEventsRequestEntity(
+                        id = "stream-1",
+                        timeoutMillis = 8_000L,
+                        events = listOf(nextDelayed),
+                    ),
+                )
+
+                coVerify {
+                    storage.write(
+                        "existing-key",
+                        match { stored ->
+                            stored.events == listOf(nextDelayed) &&
+                                stored.timeoutMillis == 8_000L
+                        },
+                    )
+                }
+            }
     }
 
     @Nested
@@ -319,12 +344,11 @@ class DelayedEventsQueueTest {
             }
 
         @Test
-        fun `drops a corrupt entry and moves to the next one`() =
+        fun `drops an unreadable entry and moves to the next one`() =
             runTest {
                 coEvery { storage.keys() } returns
                     listOf("0000000000000000001-aaa", "0000000000000000002-bbb")
-                coEvery { storage.read("0000000000000000001-aaa") } throws
-                    SerializationException("truncated")
+                coEvery { storage.read("0000000000000000001-aaa") } returns null
                 coEvery { storage.read("0000000000000000002-bbb") } returns request("stream-2")
                 coEvery { storage.delete(any()) } returns Unit
 
@@ -365,9 +389,9 @@ class DelayedEventsQueueTest {
             }
 
         @Test
-        fun `does nothing when the on-disk payload was already removed`() =
+        fun `does nothing when the on-disk payload cannot be read`() =
             runTest {
-                coEvery { storage.read("queue-1") } throws FileNotFoundException()
+                coEvery { storage.read("queue-1") } returns null
 
                 queue.removeIfUnchanged(request("stream-1").copy(queueKey = "queue-1"))
 
