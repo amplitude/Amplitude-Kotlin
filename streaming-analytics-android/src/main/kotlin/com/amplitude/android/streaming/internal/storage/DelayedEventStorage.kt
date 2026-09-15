@@ -58,7 +58,8 @@ internal class DelayedEventStorage(
     ) {
         runCatchingStorage("Failed to persist delayed-events queue entry $key") {
             val directory = directory()
-            if (!directory.exists() && !directory.mkdirs()) {
+            // mkdirs() also returns false when a concurrent write already created the directory.
+            if (!directory.mkdirs() && !directory.isDirectory) {
                 error("Failed to create delayed-events queue directory")
             }
             val destination = File(directory, "$key.json")

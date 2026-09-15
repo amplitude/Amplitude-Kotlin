@@ -61,6 +61,19 @@ class DelayedEventStorageTest {
             }
 
         @Test
+        fun `should persist when the queue directory already exists`() =
+            runTest {
+                val instanceName = uniqueInstance()
+                queueDir(instanceName).mkdirs()
+                val storage = storage(instanceName)
+                val request = request("view-1")
+
+                storage.write("key-1", request)
+
+                assertEquals(request, storage.read("key-1"))
+            }
+
+        @Test
         fun `should replace an existing file for the same key`() =
             runTest {
                 val storage = storage()
