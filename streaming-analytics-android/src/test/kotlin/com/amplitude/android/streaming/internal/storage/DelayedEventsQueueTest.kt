@@ -202,6 +202,40 @@ class DelayedEventsQueueTest {
             }
 
         @Test
+        fun `older delayed update with a new insert id promotes the incoming delayed event`() =
+            runTest {
+                val pausedStop = eventEntity("stopped", insertId = "pause-1", timestamp = 1L)
+                val resumedStop = eventEntity("stopped", insertId = "resume-1", timestamp = 2L)
+                coEvery { storage.findKey(any()) } returns "existing-key"
+                coEvery { storage.read("existing-key") } returns
+                    DelayedEventsRequestEntity(
+                        id = "stream-1",
+                        timeoutMillis = 8_000L,
+                        events = listOf(resumedStop),
+                    )
+                coEvery { storage.write(any(), any()) } returns Unit
+
+                queue.enqueue(
+                    DelayedEventsRequestEntity(
+                        id = "stream-1",
+                        timeoutMillis = 5_000L,
+                        events = listOf(pausedStop),
+                    ),
+                )
+
+                coVerify {
+                    storage.write(
+                        "existing-key",
+                        match { stored ->
+                            stored.events == listOf(resumedStop) &&
+                                stored.timeoutMillis == 8_000L &&
+                                stored.instantEvents == listOf(pausedStop)
+                        },
+                    )
+                }
+            }
+
+        @Test
         fun `concurrent enqueues merge instead of overwriting`() =
             runTest {
                 val delayed = eventEntity("stopped")

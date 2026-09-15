@@ -105,7 +105,16 @@ private fun DelayedEventsRequestEntity.mergedWith(
         )
     }
     if (incoming.eventTime() <= eventTime()) {
-        return copy(instantEvents = mergedInstantEvents(incoming.instantEvents))
+        val existingIds = events.mapNotNull { it.insertId() }.toSet()
+        val promoted =
+            if (existingIds.isEmpty()) {
+                emptyList()
+            } else {
+                incoming.events.filter { it.insertId() !in existingIds }
+            }
+        return copy(
+            instantEvents = mergedInstantEvents(promoted + incoming.instantEvents.orEmpty()),
+        )
     }
     val nextIds = incoming.events.mapNotNull { it.insertId() }.toSet()
     val promoted =
