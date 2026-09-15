@@ -65,7 +65,7 @@ public class IdentifyInterceptFileStorageHandler(
             IdentifyOperation.SET.operationType,
             identifyEventUserProperties,
         )
-        return event
+        return event?.withFreshInsertId()
     }
 
     override suspend fun clearIdentifyIntercepts() {
