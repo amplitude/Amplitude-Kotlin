@@ -98,6 +98,38 @@ class IdentifyInterceptorConcurrencyTest {
     }
 
     @Test
+    fun `failed merge of prior user cannot join a later identity batch`() {
+        val amplitude = FakeAmplitude(Configuration(apiKey = "test-api-key"))
+        val storage = BlockingEventsStorage()
+        val transferred = mutableListOf<BaseEvent>()
+        val destination = mockk<AmplitudeDestination>()
+        every { destination.enqueuePipeline(capture(transferred)) } just runs
+        val interceptor =
+            IdentifyInterceptor(
+                storage,
+                amplitude,
+                amplitude.logger,
+                amplitude.configuration,
+                destination,
+            )
+
+        runTest(amplitude.testDispatcher) {
+            interceptor.intercept(identifyEvent("first-id", mapOf("key1" to "old"), userId = "user-a"))
+            storage.failNextRead()
+            interceptor.intercept(identifyEvent("second-id", mapOf("key2" to "new"), userId = "user-b"))
+            interceptor.transferInterceptedIdentify()
+
+            assertEquals(1, transferred.size)
+            assertEquals("second-id", transferred.single().insertId)
+            assertEquals("user-b", transferred.single().userId)
+            assertEquals(
+                mapOf("key2" to "new"),
+                transferred.single().userProperties?.get(IdentifyOperation.SET.operationType),
+            )
+        }
+    }
+
+    @Test
     fun `identify written during transfer belongs to the next batch`() {
         val amplitude = FakeAmplitude(Configuration(apiKey = "test-api-key"))
         val storage = BlockingEventsStorage()
@@ -147,9 +179,10 @@ class IdentifyInterceptorConcurrencyTest {
     private fun identifyEvent(
         insertId: String,
         properties: Map<String, Any?>,
+        userId: String = "user-id",
     ): IdentifyEvent =
         IdentifyEvent().apply {
-            userId = "user-id"
+            this.userId = userId
             this.insertId = insertId
             userProperties =
                 mutableMapOf(
@@ -162,11 +195,16 @@ class IdentifyInterceptorConcurrencyTest {
         private val currentEvents = mutableListOf<BaseEvent>()
         private var nextFileIndex = 0
         private var shouldBlockNextRead = false
+        private var shouldFailNextRead = false
         val readStarted = CompletableDeferred<Unit>()
         val continueRead = CompletableDeferred<Unit>()
 
         fun blockNextRead() {
             shouldBlockNextRead = true
+        }
+
+        fun failNextRead() {
+            shouldFailNextRead = true
         }
 
         override suspend fun writeEvent(event: BaseEvent) {
@@ -188,6 +226,10 @@ class IdentifyInterceptorConcurrencyTest {
                 shouldBlockNextRead = false
                 readStarted.complete(Unit)
                 continueRead.await()
+            }
+            if (shouldFailNextRead) {
+                shouldFailNextRead = false
+                error("read failed")
             }
             return JSONUtil.eventsToString(files[filePath as String].orEmpty())
         }

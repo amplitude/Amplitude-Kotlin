@@ -75,7 +75,8 @@ public class IdentifyInterceptFileStorageHandler(
                     processedFilePaths.add(eventPath)
                 }.onFailure { e ->
                     logger.warn("Identify Merge error: ${e.message}")
-                    storage.releaseFile(eventPath)
+                    // Discard the file even if delete fails so it cannot join a later batch.
+                    processedFilePaths.add(eventPath)
                 }
             }
         } catch (e: CancellationException) {

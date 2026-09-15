@@ -147,43 +147,41 @@ class IdentifyInterceptStorageHandlerTest {
         }
 
         @Test
-        fun `failed file merge remains eligible for a later transfer`() {
+        fun `failed merge cannot join a later batch`() {
             val amplitude = createAmplitude()
             val files =
                 linkedMapOf(
-                    "batch-a" to listOf(identifyEvent("first-id", mapOf("key1" to "value1"))),
-                    "batch-b" to listOf(identifyEvent("second-id", mapOf("key2" to "value2"))),
+                    "batch-a" to listOf(identifyEvent("first-id", mapOf("key1" to "old"))),
+                    "batch-b" to listOf(identifyEvent("second-id", mapOf("key2" to "new"))),
                 )
-            var failSecondFile = true
+            var failOldBatch = true
             val storage = mockk<EventsFileStorage>()
             coEvery { storage.rollover() } returns Unit
             every { storage.readEventsContent() } answers { files.keys.toList() }
             coEvery { storage.getEventsString(any()) } answers {
                 val file = firstArg<String>()
-                if (file == "batch-b" && failSecondFile) {
+                if (file == "batch-a" && failOldBatch) {
                     error("read failed")
                 }
                 JSONUtil.eventsToString(files[file]!!)
             }
-            every { storage.removeFile(any()) } answers {
-                files.remove(firstArg()) != null
-            }
-            every { storage.releaseFile(any()) } returns Unit
+            every { storage.removeFile(any()) } returns false
             val handler = IdentifyInterceptFileStorageHandler(storage, amplitude.logger, amplitude)
 
             runTest(amplitude.testDispatcher) {
                 val first = handler.getTransferIdentifyEvent()
-                failSecondFile = false
+                failOldBatch = false
+                files["batch-c"] = listOf(identifyEvent("third-id", mapOf("key3" to "later")))
                 val second = handler.getTransferIdentifyEvent()
 
-                assertEquals("first-id", first!!.insertId)
+                assertEquals("second-id", first!!.insertId)
                 assertEquals(
-                    mapOf("key1" to "value1"),
+                    mapOf("key2" to "new"),
                     first.userProperties?.get(IdentifyOperation.SET.operationType),
                 )
-                assertEquals("second-id", second!!.insertId)
+                assertEquals("third-id", second!!.insertId)
                 assertEquals(
-                    mapOf("key2" to "value2"),
+                    mapOf("key3" to "later"),
                     second.userProperties?.get(IdentifyOperation.SET.operationType),
                 )
             }
