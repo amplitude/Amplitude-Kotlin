@@ -77,6 +77,16 @@ class DelayedEventsEndpointTest {
             }
 
         @Test
+        fun `400 is FailureNoRetry`() =
+            runTest {
+                server.enqueue(MockResponse().setResponseCode(400).setBody("invalid json"))
+                assertEquals(
+                    DelayedEventsResult.FailureNoRetry(statusCode = 400, message = "invalid json"),
+                    send(),
+                )
+            }
+
+        @Test
         fun `5xx uses the response body as the failure message`() =
             runTest {
                 server.enqueue(MockResponse().setResponseCode(500).setBody("upstream down"))

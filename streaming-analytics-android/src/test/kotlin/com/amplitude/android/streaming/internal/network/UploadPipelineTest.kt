@@ -4,9 +4,11 @@ import com.amplitude.android.streaming.internal.DelayedEvent
 import com.amplitude.android.streaming.internal.storage.DelayedEventsQueue
 import com.amplitude.android.streaming.internal.storage.DelayedEventsRequestEntity
 import com.amplitude.android.streaming.internal.storage.toEntity
+import com.amplitude.common.Logger
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -22,6 +24,7 @@ import org.junit.jupiter.api.Test
 class UploadPipelineTest {
     private val queue = mockk<DelayedEventsQueue>()
     private val endpoint = mockk<DelayedEventsEndpoint>()
+    private val logger = mockk<Logger>(relaxed = true)
     private var queued: DelayedEventsRequestEntity? = null
 
     @BeforeEach
@@ -58,6 +61,45 @@ class UploadPipelineTest {
                 coVerify { queue.peek(emptySet()) }
                 coVerify { endpoint.send(match { it.id == "stream-1" }) }
                 coVerify { queue.removeIfUnchanged(match { it.id == "stream-1" }) }
+                assertEquals(0L, currentTime)
+            }
+
+        @Test
+        fun `drops an unrecoverable 400 without retrying`() =
+            runTest {
+                coEvery { endpoint.send(any()) } returns
+                    DelayedEventsResult.FailureNoRetry(statusCode = 400, message = "invalid request")
+
+                pipeline().onNewEvent()
+
+                coVerify(exactly = 1) { endpoint.send(any()) }
+                coVerify { queue.removeIfUnchanged(match { it.id == "stream-1" }) }
+                verify {
+                    logger.error(match { it.contains("stream-1") && it.contains("400") })
+                }
+                assertEquals(0L, currentTime)
+            }
+
+        @Test
+        fun `continues draining after dropping an unrecoverable request`() =
+            runTest {
+                val first = queuedRequest("stream-1")
+                val second = queuedRequest("stream-2")
+                queued = first
+                coEvery { queue.removeIfUnchanged(match { it.id == "stream-1" }) } answers { queued = second }
+                coEvery { queue.removeIfUnchanged(match { it.id == "stream-2" }) } answers { queued = null }
+                coEvery { endpoint.send(any()) } returnsMany
+                    listOf(
+                        DelayedEventsResult.FailureNoRetry(statusCode = 400, message = "invalid request"),
+                        DelayedEventsResult.Success,
+                    )
+
+                pipeline().onNewEvent()
+
+                coVerify(exactly = 1) { endpoint.send(match { it.id == "stream-1" }) }
+                coVerify(exactly = 1) { endpoint.send(match { it.id == "stream-2" }) }
+                coVerify { queue.removeIfUnchanged(match { it.id == "stream-1" }) }
+                coVerify { queue.removeIfUnchanged(match { it.id == "stream-2" }) }
                 assertEquals(0L, currentTime)
             }
 
@@ -345,6 +387,7 @@ class UploadPipelineTest {
         UploadPipeline(
             queue = queue,
             endpoint = endpoint,
+            logger = logger,
             currentTimeMs = { currentTime },
         )
 

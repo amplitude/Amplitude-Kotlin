@@ -9,4 +9,9 @@ internal sealed interface DelayedEventsResult {
         val statusCode: Int?,
         val message: String?,
     ) : DelayedEventsResult
+
+    data class FailureNoRetry(
+        val statusCode: Int,
+        val message: String?,
+    ) : DelayedEventsResult
 }

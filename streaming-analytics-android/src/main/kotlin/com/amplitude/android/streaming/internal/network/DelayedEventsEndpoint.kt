@@ -71,16 +71,22 @@ internal class DelayedEventsEndpoint(
                     it.write(requestBody.toByteArray(Charsets.UTF_8))
                 }
                 val statusCode = connection.responseCode
+                val message =
+                    readBody(connection)
+                        ?.takeIf { it.isNotBlank() }
+                        ?: connection.responseMessage
                 when (statusCode) {
                     in 200..299 -> DelayedEventsResult.Success
                     HTTP_TOO_MANY_REQUESTS -> DelayedEventsResult.RateLimited
+                    in 400..499 ->
+                        DelayedEventsResult.FailureNoRetry(
+                            statusCode = statusCode,
+                            message = message,
+                        )
                     else ->
                         DelayedEventsResult.Failure(
                             statusCode = statusCode,
-                            message =
-                                readBody(connection)
-                                    ?.takeIf { it.isNotBlank() }
-                                    ?: connection.responseMessage,
+                            message = message,
                         )
                 }
             } catch (error: IOException) {

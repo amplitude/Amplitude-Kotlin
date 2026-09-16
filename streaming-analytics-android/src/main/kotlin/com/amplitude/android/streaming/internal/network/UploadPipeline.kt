@@ -5,6 +5,7 @@ import com.amplitude.android.streaming.internal.storage.DelayedEventsQueue
 import com.amplitude.android.streaming.internal.storage.delayedEventsQueue
 import com.amplitude.android.streaming.internal.storage.toDto
 import com.amplitude.android.streaming.internal.util.DiGraph.Companion.singleton
+import com.amplitude.common.Logger
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import java.util.concurrent.atomic.AtomicBoolean
@@ -15,6 +16,7 @@ internal val StreamingDiGraph.uploadPipeline: UploadPipeline by singleton {
     UploadPipeline(
         queue = delayedEventsQueue,
         endpoint = delayedEventsEndpoint,
+        logger = logger,
     )
 }
 
@@ -37,6 +39,7 @@ private class SentRequest(
 internal class UploadPipeline(
     private val queue: DelayedEventsQueue,
     private val endpoint: DelayedEventsEndpoint,
+    private val logger: Logger,
     private val currentTimeMs: () -> Long = { System.currentTimeMillis() },
 ) {
     private val mutex = Mutex()
@@ -86,7 +89,7 @@ internal class UploadPipeline(
             waitForBackoff()
             val skipIds = if (ignoreThrottle) emptySet() else throttledIds()
             val request = queue.peek(skipIds = skipIds) ?: return
-            when (endpoint.send(request.toDto())) {
+            when (val result = endpoint.send(request.toDto())) {
                 DelayedEventsResult.Success -> {
                     queue.removeIfUnchanged(request)
                     sent[request.id] =
@@ -99,6 +102,15 @@ internal class UploadPipeline(
                 }
                 DelayedEventsResult.RateLimited -> {
                     scheduleBackoff(minDelayMs = RATE_LIMIT_MIN_DELAY_MS)
+                }
+                is DelayedEventsResult.FailureNoRetry -> {
+                    logger.error(
+                        "Dropping delayed-events request ${request.id}: " +
+                            "unrecoverable HTTP ${result.statusCode} ${result.message}",
+                    )
+                    queue.removeIfUnchanged(request)
+                    attempt = 0
+                    backoffUntilMs = 0L
                 }
                 is DelayedEventsResult.Failure -> {
                     scheduleBackoff(minDelayMs = 0L)
