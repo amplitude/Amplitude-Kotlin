@@ -42,14 +42,14 @@ internal class StreamingAnalytics(
 
     fun onDelayedEvent(event: DelayedEvent) {
         graph.scope.launch(start = CoroutineStart.UNDISPATCHED) {
-            withContext(NonCancellable) {
-                runCatchingCancellable {
+            runCatchingCancellable {
+                withContext(NonCancellable) {
                     graph.storagePipeline.onDelayedEvent(event)
-                }.onFailure {
-                    graph.logger.error("onDelayedEvent error: ${it.localizedMessage}")
                 }
+                graph.uploadPipeline.onNewEvent()
+            }.onFailure {
+                graph.logger.error("onDelayedEvent error: ${it.localizedMessage}")
             }
-            graph.uploadPipeline.onNewEvent()
         }
     }
 
