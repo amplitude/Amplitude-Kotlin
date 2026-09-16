@@ -24,6 +24,7 @@ import com.amplitude.core.utilities.InMemoryStorageProvider
  * Amplitude amplitude = new Amplitude(builder.build());
  * ```
  */
+@Suppress("DEPRECATION")
 public class ConfigurationBuilder(
     apiKey: String,
 ) : Configuration(apiKey) {

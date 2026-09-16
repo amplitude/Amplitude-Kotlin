@@ -15,6 +15,7 @@ public typealias EventCallBack = (BaseEvent, status: Int, message: String) -> Un
  * When adding new constructor parameters, also update [ConfigurationBuilder.build] to pass the
  * new value through.
  */
+@Suppress("DEPRECATION")
 public open class Configuration
     @JvmOverloads
     constructor(

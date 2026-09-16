@@ -18,6 +18,7 @@ import java.io.File
  * When adding new constructor parameters, also update [ConfigurationBuilder.build] to pass the
  * new value through.
  */
+@Suppress("DEPRECATION")
 public open class Configuration(
     apiKey: String,
     public val context: Context,

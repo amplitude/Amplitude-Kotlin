@@ -5,6 +5,8 @@ import com.amplitude.core.events.IdentifyOperation
 import com.amplitude.core.platform.intercept.IdentifyInterceptorUtil.filterNonNullValues
 import com.amplitude.core.utilities.InMemoryStorage
 
+@Deprecated("Not intended for public use. Will be internal in a future release.")
+@Suppress("DEPRECATION")
 public class IdentifyInterceptInMemoryStorageHandler(
     private val storage: InMemoryStorage,
 ) : IdentifyInterceptStorageHandler {

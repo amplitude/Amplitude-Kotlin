@@ -3,6 +3,7 @@ package com.amplitude.id
 /**
  * In Memory Identity Storage
  */
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public class IMIdentityStorage : IdentityStorage {
     public var userId: String? = null
     public var deviceId: String? = null
@@ -28,6 +29,7 @@ public class IMIdentityStorage : IdentityStorage {
 /**
  * In Memory Identity Storage Provider
  */
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public class IMIdentityStorageProvider : IdentityStorageProvider {
     override fun getIdentityStorage(configuration: IdentityConfiguration): IdentityStorage {
         return IMIdentityStorage()

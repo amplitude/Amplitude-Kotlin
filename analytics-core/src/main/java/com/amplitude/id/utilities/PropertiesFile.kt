@@ -6,6 +6,7 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.util.Properties
 
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public class PropertiesFile(
     directory: File,
     fileNameWithoutExtension: String,

@@ -12,6 +12,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import java.io.FileNotFoundException
 
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public class IdentifyInterceptFileStorageHandler(
     private val storage: EventsFileStorage,
     private val logger: Logger,

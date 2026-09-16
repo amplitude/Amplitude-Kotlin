@@ -20,6 +20,7 @@ import kotlinx.coroutines.CoroutineScope
 import org.json.JSONArray
 
 @OptIn(RestrictedAmplitudeFeature::class)
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public class AndroidStorage
     internal constructor(
         context: Context,

@@ -29,6 +29,7 @@ import java.lang.ref.WeakReference
 import com.amplitude.android.Amplitude as AndroidAmplitude
 
 @OptIn(GuardedAmplitudeFeature::class, RestrictedAmplitudeFeature::class)
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public class AndroidLifecyclePlugin(
     private val activityLifecycleObserver: ActivityLifecycleObserver,
 ) : Application.ActivityLifecycleCallbacks,

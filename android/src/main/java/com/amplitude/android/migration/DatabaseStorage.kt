@@ -18,6 +18,7 @@ import java.util.Locale
  * Store the database related constants.
  * Align with com/amplitude/api/DatabaseHelper.java in previous SDK.
  */
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public object DatabaseConstants {
     public const val DATABASE_NAME: String = "com.amplitude.api"
     public const val DATABASE_VERSION: Int = 4
@@ -40,6 +41,7 @@ public object DatabaseConstants {
  * The SDK doesn't need to write/read from local sqlite database.
  * This storage class is used for migrating events only.
  */
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public class DatabaseStorage(
     context: Context,
     databaseName: String,
@@ -330,9 +332,11 @@ public class DatabaseStorage(
     }
 }
 
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public class CursorWindowAllocationException(description: String?) :
     java.lang.RuntimeException(description)
 
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public object DatabaseStorageProvider {
     private val instances: MutableMap<String, DatabaseStorage> = mutableMapOf()
 

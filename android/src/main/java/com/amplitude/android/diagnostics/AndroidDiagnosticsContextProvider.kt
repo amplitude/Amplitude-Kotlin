@@ -5,6 +5,7 @@ import android.os.Build
 import com.amplitude.core.diagnostics.DiagnosticsContextInfo
 import com.amplitude.core.diagnostics.DiagnosticsContextProvider
 
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public class AndroidDiagnosticsContextProvider(
     private val context: Context,
 ) : DiagnosticsContextProvider {

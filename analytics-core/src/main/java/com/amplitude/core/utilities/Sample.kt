@@ -1,5 +1,6 @@
 package com.amplitude.core.utilities
 
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public object Sample {
     public fun isInSample(
         seed: String,

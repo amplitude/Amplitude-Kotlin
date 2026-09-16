@@ -7,6 +7,8 @@ import com.amplitude.core.Storage
 import com.amplitude.core.utilities.toEvents
 import org.json.JSONArray
 
+@Deprecated("Not intended for public use. Will be internal in a future release.")
+@Suppress("DEPRECATION")
 public class AndroidStorageMigration(
     private val source: AndroidStorageV2,
     private val destination: AndroidStorageV2,
