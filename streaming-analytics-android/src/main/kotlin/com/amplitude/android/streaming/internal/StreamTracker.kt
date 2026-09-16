@@ -260,7 +260,7 @@ internal data class AdContext(
     val mediaItemIndex: Int,
 ) {
     val adId: String
-        get() = "${contentId.orEmpty()}:$adGroupIndex:$adIndexInAdGroup"
+        get() = "${contentId.orEmpty()}:$mediaItemIndex:$adGroupIndex:$adIndexInAdGroup"
 }
 
 internal fun AdContext.percentCompleted(): Double? {

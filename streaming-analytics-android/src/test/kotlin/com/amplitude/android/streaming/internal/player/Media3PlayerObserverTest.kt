@@ -4,6 +4,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.Timeline
 import androidx.media3.common.Tracks
 import com.amplitude.android.streaming.internal.MediaType
 import com.google.common.collect.ImmutableList
@@ -275,6 +276,8 @@ class Media3PlayerObserverTest {
             every { player.duration } returns 15_000L
             every { player.contentPosition } returns 120_000L
             every { player.contentDuration } returns 3_600_000L
+            every { player.currentTimeline } returns Timeline.EMPTY
+            every { player.isCurrentMediaItemLive } returns true
             val observer =
                 Media3PlayerObserver(
                     player = player,
@@ -285,6 +288,7 @@ class Media3PlayerObserverTest {
             val snapshot = observer.snapshot()
             assertEquals(120_000L, snapshot.positionMillis)
             assertEquals(3_600_000L, snapshot.durationMillis)
+            assertEquals(true, snapshot.isLive)
         }
 
     @Test

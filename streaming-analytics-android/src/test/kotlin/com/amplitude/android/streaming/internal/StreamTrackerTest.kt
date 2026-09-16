@@ -315,12 +315,20 @@ class StreamTrackerTest {
             val event = events.first()
             assertEquals("[Amplitude] Ad Started", event.eventType)
             val props = event.eventProperties!!
-            assertEquals("video-789:0:1", props["ad_id"])
+            assertEquals("video-789:0:0:1", props["ad_id"])
             assertEquals("video-789", props["content_id"])
             assertEquals("stream-ad-1", props["stream_session_id"])
             assertEquals(45.0, props["ad_position"])
             assertEquals(30.0, props["ad_duration"])
             assertEquals("summer", props["ad_campaign"])
+        }
+
+        @Test
+        fun `ad_id includes media item index so playlist ads do not collide`() {
+            assertEquals(
+                "video-789:1:0:1",
+                ad.copy(mediaItemIndex = 1).adId,
+            )
         }
 
         @Test
@@ -364,7 +372,7 @@ class StreamTrackerTest {
 
             assertEquals(1, events.size)
             assertEquals("[Amplitude] Ad Skipped", events.first().eventType)
-            assertEquals("video-789:0:1", events.first().eventProperties?.get("ad_id"))
+            assertEquals("video-789:0:0:1", events.first().eventProperties?.get("ad_id"))
         }
     }
 }

@@ -5,6 +5,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.Timeline
 import androidx.media3.common.Tracks
 import com.amplitude.android.streaming.internal.AdContext
 import com.amplitude.android.streaming.internal.MediaType
@@ -66,7 +67,7 @@ internal class Media3PlayerObserver(
             PlayerMediaSnapshot(
                 positionMillis = player.contentPosition.coerceAtLeast(0L),
                 durationMillis = player.contentDuration,
-                isLive = player.isCurrentMediaItemLive,
+                isLive = player.contentIsLive(),
                 mediaId = item?.mediaId?.takeIf { it.isNotEmpty() },
                 title = metadata?.title?.toString() ?: metadata?.displayTitle?.toString(),
                 mediaType = player.mediaType(),
@@ -289,6 +290,15 @@ private fun AdContext.isSameAdAs(other: AdContext): Boolean =
 
 internal fun Player.createPlayerDispatcher(): CoroutineDispatcher {
     return Handler(applicationLooper).asCoroutineDispatcher()
+}
+
+private fun Player.contentIsLive(): Boolean {
+    val timeline = currentTimeline
+    val index = currentMediaItemIndex
+    if (timeline.isEmpty || index !in 0 until timeline.windowCount) {
+        return isCurrentMediaItemLive
+    }
+    return timeline.getWindow(index, Timeline.Window()).isLive
 }
 
 private fun Player.mediaType(): MediaType {
