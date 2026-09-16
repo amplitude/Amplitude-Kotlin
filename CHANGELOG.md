@@ -1,3 +1,17 @@
+# [1.32.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.31.0...v1.32.0) (2026-09-16)
+
+
+### Bug Fixes
+
+* consume identify batches exactly once (SDKA-117) ([#503](https://github.com/amplitude/Amplitude-Kotlin/issues/503)) ([a8f5e02](https://github.com/amplitude/Amplitude-Kotlin/commit/a8f5e02f9efceb899c0ffbd0eefb9c6e9f8ec03e)), closes [#502](https://github.com/amplitude/Amplitude-Kotlin/issues/502)
+* unique insert_id for batched identify transfers (SDKA-117) ([#502](https://github.com/amplitude/Amplitude-Kotlin/issues/502)) ([11559a9](https://github.com/amplitude/Amplitude-Kotlin/commit/11559a948ff998b27c979a28200c406988c5ae39))
+
+
+### Features
+
+* Steaming - Storage ([#489](https://github.com/amplitude/Amplitude-Kotlin/issues/489)) ([fda5185](https://github.com/amplitude/Amplitude-Kotlin/commit/fda5185c12e9349d1848d0368d54538b3a2e1adb))
+* Streaming - Delayed Events Queue ([#494](https://github.com/amplitude/Amplitude-Kotlin/issues/494)) ([d0e3d0c](https://github.com/amplitude/Amplitude-Kotlin/commit/d0e3d0c810b8d67457162d3049978f5b8c1a7651))
+
 # [1.31.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.30.1...v1.31.0) (2026-09-14)
 
 
