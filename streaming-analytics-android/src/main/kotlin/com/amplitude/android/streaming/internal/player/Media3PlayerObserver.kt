@@ -9,6 +9,7 @@ import androidx.media3.common.Timeline
 import androidx.media3.common.Tracks
 import com.amplitude.android.streaming.internal.AdContext
 import com.amplitude.android.streaming.internal.MediaType
+import com.amplitude.android.streaming.internal.util.runCatchingCancellable
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -225,30 +226,38 @@ internal class Media3PlayerObserver(
     }
 
     private suspend fun attach() {
-        withContext(playerDispatcher) {
-            mutex.withLock {
-                if (observing) return@withLock
-                observing = true
-                player.addListener(this@Media3PlayerObserver)
-                if (player.isPlaying) {
-                    emit(PlayerEvent.Playing)
+        runCatchingCancellable {
+            withContext(playerDispatcher) {
+                mutex.withLock {
+                    if (observing) return@withLock
+                    player.addListener(this@Media3PlayerObserver)
+                    observing = true
+                    if (player.isPlaying) {
+                        emit(PlayerEvent.Playing)
+                    }
+                    handlePlaybackStateChanged(player.playbackState, emitIdlePause = false)
+                    detectAdTransition()
                 }
-                handlePlaybackStateChanged(player.playbackState, emitIdlePause = false)
-                detectAdTransition()
             }
         }
     }
 
     private suspend fun detach() {
-        withContext(playerDispatcher) {
-            mutex.withLock {
-                if (observing) {
-                    observing = false
-                    player.removeListener(this@Media3PlayerObserver)
+        runCatchingCancellable {
+            withContext(playerDispatcher) {
+                mutex.withLock {
+                    if (observing) {
+                        observing = false
+                        player.removeListener(this@Media3PlayerObserver)
+                    }
+                    activeAd = null
+                    cancelBuffering()
                 }
-                activeAd = null
-                cancelBuffering()
             }
+        }.onFailure {
+            observing = false
+            activeAd = null
+            cancelBuffering()
         }
     }
 

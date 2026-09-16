@@ -53,6 +53,88 @@ class Media3PlayerObserverTest {
         }
 
     @Test
+    fun `should retry attach after addListener fails`() =
+        runTest {
+            val player = mockk<Player>(relaxed = true)
+            every { player.addListener(any()) } throws IllegalStateException("released")
+            val observer =
+                Media3PlayerObserver(
+                    player = player,
+                    scope = backgroundScope,
+                    playerDispatcher = UnconfinedTestDispatcher(testScheduler),
+                )
+
+            val first = launch { observer.eventFlow.collect {} }
+            runCurrent()
+            verify(exactly = 1) { player.addListener(observer) }
+
+            first.cancel()
+            runCurrent()
+            every { player.addListener(any()) } returns Unit
+
+            val second = launch { observer.eventFlow.collect {} }
+            runCurrent()
+            verify(exactly = 2) { player.addListener(observer) }
+
+            second.cancel()
+            runCurrent()
+        }
+
+    @Test
+    fun `should keep observing when seeding attach state fails`() =
+        runTest {
+            val player = mockk<Player>(relaxed = true)
+            every { player.isPlaying } throws IllegalStateException("released")
+            val events = mutableListOf<PlayerEvent>()
+            val observer =
+                Media3PlayerObserver(
+                    player = player,
+                    scope = backgroundScope,
+                    playerDispatcher = UnconfinedTestDispatcher(testScheduler),
+                )
+            val job =
+                launch {
+                    observer.eventFlow.collect { events.add(it) }
+                }
+            runCurrent()
+            verify(exactly = 1) { player.addListener(observer) }
+
+            observer.onIsPlayingChanged(true)
+            runCurrent()
+            assertTrue(events.any { it is PlayerEvent.Playing })
+
+            job.cancel()
+            runCurrent()
+            verify(exactly = 1) { player.removeListener(observer) }
+        }
+
+    @Test
+    fun `should finish detach when removeListener fails`() =
+        runTest {
+            val player = mockk<Player>(relaxed = true)
+            every { player.removeListener(any()) } throws IllegalStateException("released")
+            val observer =
+                Media3PlayerObserver(
+                    player = player,
+                    scope = backgroundScope,
+                    playerDispatcher = UnconfinedTestDispatcher(testScheduler),
+                )
+
+            val first = launch { observer.eventFlow.collect {} }
+            runCurrent()
+            first.cancel()
+            runCurrent()
+            verify(exactly = 1) { player.removeListener(observer) }
+
+            val second = launch { observer.eventFlow.collect {} }
+            runCurrent()
+            verify(exactly = 2) { player.addListener(observer) }
+
+            second.cancel()
+            runCurrent()
+        }
+
+    @Test
     fun `should not emit Paused when playback ends`() =
         runTest {
             val player = mockk<Player>(relaxed = true)
