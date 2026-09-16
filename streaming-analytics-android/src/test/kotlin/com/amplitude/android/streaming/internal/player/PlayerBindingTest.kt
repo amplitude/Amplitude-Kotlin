@@ -4,6 +4,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import com.amplitude.android.streaming.PlayerContent
 import com.amplitude.android.streaming.internal.AdContext
+import com.amplitude.android.streaming.internal.DelayedEvent
 import com.amplitude.android.streaming.internal.StreamTracker
 import com.amplitude.android.streaming.internal.util.Time
 import com.amplitude.core.Amplitude
@@ -67,6 +68,20 @@ class PlayerBindingTest {
                     runCurrent()
 
                     assertEquals(1, startedEvents().size)
+                }
+            }
+
+        @Test
+        fun `should enqueue heartbeat Stream Stopped as delayed timeouts`() =
+            runTest {
+                withBinding {
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+
+                    val heartbeat = tracked.filter { it.eventType == STREAM_STOPPED }
+                    assertEquals(1, heartbeat.size)
+                    assertEquals(DelayedEvent.Kind.DELAYED, (heartbeat.single() as DelayedEvent).kind)
+                    assertEquals("timeout", heartbeat.single().eventProperties?.get("stop_reason"))
                 }
             }
 
@@ -332,7 +347,7 @@ class PlayerBindingTest {
 
                     val afterReady =
                         tracked.filter { it.eventType == STREAM_STOPPED }.last()
-                    assertEquals(null, afterReady.eventProperties?.get("stop_reason"))
+                    assertEquals("timeout", afterReady.eventProperties?.get("stop_reason"))
                 }
             }
     }
@@ -394,6 +409,7 @@ class PlayerBindingTest {
                                 durationMillis = 15_000L,
                                 contentPositionMillis = 1_000L,
                                 contentId = "media-1",
+                                mediaItemIndex = 0,
                             ),
                         ),
                     )
@@ -598,7 +614,7 @@ class PlayerBindingTest {
                 every { time.nowMillis() } answers { elapsed }
                 val player = mockk<Player>(relaxed = true)
                 every { player.isPlaying } returns true
-                withBinding(player, time) {
+                withBinding(player, time = time) {
                     observer.emit(PlayerEvent.Playing)
                     runCurrent()
                     elapsed = 5_000L
@@ -744,7 +760,6 @@ class PlayerBindingTest {
 
     private fun TestScope.withBinding(
         player: Player = mockk(relaxed = true),
-        time: Time = Time(),
         contentProvider: (MediaItem?) -> PlayerContent = { PlayerContent() },
         time: Time = Time(),
         block: () -> Unit,

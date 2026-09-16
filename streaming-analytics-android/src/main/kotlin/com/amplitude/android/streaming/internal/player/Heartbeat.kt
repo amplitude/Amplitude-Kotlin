@@ -1,14 +1,16 @@
 package com.amplitude.android.streaming.internal.player
 
 import com.amplitude.android.streaming.internal.util.Time
-import kotlinx.coroutines.CancellationException
+import com.amplitude.android.streaming.internal.util.runCatchingCancellable
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -16,7 +18,7 @@ private const val HEARTBEAT_INTERVAL_MILLIS = 1_000L
 
 internal class Heartbeat internal constructor(
     private val scope: CoroutineScope,
-    private val stoppedEvent: suspend (timestamp: Long) -> Unit,
+    private val stoppedEvent: suspend (timestamp: Long, isFinal: Boolean) -> Unit,
     private val time: Time,
 ) {
     private val sendMutex = Mutex()
@@ -28,12 +30,8 @@ internal class Heartbeat internal constructor(
         job =
             scope.launch {
                 while (true) {
-                    try {
+                    runCatchingCancellable {
                         sendHeartbeat()
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (_: Exception) {
-                        // Keep upserting; a single snapshot/track failure must not end the play.
                     }
                     delay(HEARTBEAT_INTERVAL_MILLIS.milliseconds)
                 }
@@ -47,18 +45,23 @@ internal class Heartbeat internal constructor(
     }
 
     suspend fun stop() {
-        if (!stopped.compareAndSet(false, true)) return
-        job?.cancelAndJoin()
-        job = null
-        sendMutex.withLock {
-            stoppedEvent(time.nowMillis())
+        stopped.set(true)
+        try {
+            job?.cancelAndJoin()
+        } finally {
+            job = null
+            withContext(NonCancellable) {
+                sendMutex.withLock {
+                    stoppedEvent(time.nowMillis(), true)
+                }
+            }
         }
     }
 
     private suspend fun sendHeartbeat() {
         sendMutex.withLock {
             if (stopped.get()) return
-            stoppedEvent(time.nowMillis())
+            stoppedEvent(time.nowMillis(), false)
         }
     }
 }

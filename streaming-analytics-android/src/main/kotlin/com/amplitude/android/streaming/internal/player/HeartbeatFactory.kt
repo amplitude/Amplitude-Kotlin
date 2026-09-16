@@ -17,7 +17,7 @@ internal class HeartbeatFactory(
 ) {
     fun create(
         scope: CoroutineScope,
-        stoppedEvent: suspend (timestamp: Long) -> Unit,
+        stoppedEvent: suspend (timestamp: Long, isFinal: Boolean) -> Unit,
     ): Heartbeat =
         Heartbeat(
             scope = scope,

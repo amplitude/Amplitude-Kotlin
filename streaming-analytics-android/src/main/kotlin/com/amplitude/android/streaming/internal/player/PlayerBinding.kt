@@ -365,8 +365,12 @@ internal class PlayerBinding internal constructor(
         heartbeatFactory
             .create(
                 scope = scope,
-                stoppedEvent = { timestamp ->
-                    sendStreamStopped(segment, timestamp)
+                stoppedEvent = { timestamp, isFinal ->
+                    sendStreamStopped(
+                        segment = segment,
+                        timestamp = timestamp,
+                        stopReason = if (isFinal) segment.stopReason else StopReason.TIMEOUT,
+                    )
                 },
             ).also { it.start() }
 
@@ -422,42 +426,36 @@ internal class PlayerBinding internal constructor(
         if (heartbeat == null) {
             sendFinalStreamStopped(segment)
         } else {
-            try {
+            runCatchingCancellable {
                 heartbeat.stop()
-            } catch (_: Exception) {
-                // The segment is frozen and the heartbeat job is stopped.
             }
         }
     }
 
     private suspend fun sendFinalStreamStopped(segment: StreamSession) {
-        try {
+        runCatchingCancellable {
             sendStreamStopped(segment, time.nowMillis())
-        } catch (_: Exception) {
-            // A final upsert failure must not prevent the state transition.
         }
     }
 
     private suspend fun freezeSegment(segment: StreamSession) {
-        try {
-            segment.freeze(snapshot())
-        } catch (_: Exception) {
-            segment.freeze(segment.snapshot)
-        }
+        segment.freeze(snapshot() ?: segment.snapshot)
     }
 
     private suspend fun sendStreamStopped(
         segment: StreamSession,
         timestamp: Long,
+        stopReason: StopReason? = segment.stopReason,
     ) {
+        val snapshot =
+            if (segment.frozen) {
+                segment.snapshot
+            } else {
+                snapshot()?.also { segment.updateSnapshot(it) } ?: segment.snapshot
+            }
         streamTracker.trackStreamStopped(
             options = segment.options,
-            snapshot =
-                if (segment.frozen) {
-                    segment.snapshot
-                } else {
-                    snapshot().also { segment.updateSnapshot(it) }
-                },
+            snapshot = snapshot,
             playerState = playerState,
             mediaType = segment.mediaType,
             streamSessionId = segment.streamSessionId,
@@ -466,7 +464,7 @@ internal class PlayerBinding internal constructor(
             streamDurationMillis = segment.durationMillis(),
             timestamp = timestamp,
             insertId = segment.stoppedInsertId,
-            stopReason = segment.stopReason,
+            stopReason = stopReason,
             errorMessage = segment.errorMessage,
         )
     }

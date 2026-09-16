@@ -20,7 +20,7 @@ class HeartbeatTest {
             val heartbeat =
                 Heartbeat(
                     scope = this,
-                    stoppedEvent = { timestamps.add(it) },
+                    stoppedEvent = { timestamp, _ -> timestamps.add(timestamp) },
                     time = time { now },
                 )
 
@@ -44,7 +44,7 @@ class HeartbeatTest {
             val heartbeat =
                 Heartbeat(
                     scope = this,
-                    stoppedEvent = { timestamps.add(it) },
+                    stoppedEvent = { timestamp, _ -> timestamps.add(timestamp) },
                     time = time { now },
                 )
 
@@ -64,7 +64,7 @@ class HeartbeatTest {
             val heartbeat =
                 Heartbeat(
                     scope = this,
-                    stoppedEvent = {
+                    stoppedEvent = { _, _ ->
                         calls++
                         if (calls == 1) error("snapshot failed")
                     },
@@ -87,7 +87,7 @@ class HeartbeatTest {
             val heartbeat =
                 Heartbeat(
                     scope = this,
-                    stoppedEvent = { timestamps.add(it) },
+                    stoppedEvent = { timestamp, _ -> timestamps.add(timestamp) },
                     time = time { 0L },
                 )
 
@@ -111,7 +111,7 @@ class HeartbeatTest {
             val heartbeat =
                 Heartbeat(
                     scope = this,
-                    stoppedEvent = { timestamps.add(it) },
+                    stoppedEvent = { timestamp, _ -> timestamps.add(timestamp) },
                     time = time { now },
                 )
 
@@ -123,6 +123,52 @@ class HeartbeatTest {
             runCurrent()
 
             assertEquals(1, timestamps.size)
+        }
+
+    @Test
+    fun `should send a final event on stop after cancel`() =
+        runTest {
+            val events = mutableListOf<Pair<Long, Boolean>>()
+            var now = 10_000L
+            val heartbeat =
+                Heartbeat(
+                    scope = this,
+                    stoppedEvent = { timestamp, isFinal -> events.add(timestamp to isFinal) },
+                    time = time { now },
+                )
+
+            heartbeat.start()
+            runCurrent()
+            heartbeat.cancel()
+            runCurrent()
+            now = 10_500L
+            heartbeat.stop()
+            runCurrent()
+
+            assertEquals(listOf(10_000L to false, 10_500L to true), events)
+        }
+
+    @Test
+    fun `should send again on a second stop`() =
+        runTest {
+            val finals = mutableListOf<Long>()
+            var now = 10_000L
+            val heartbeat =
+                Heartbeat(
+                    scope = this,
+                    stoppedEvent = { timestamp, isFinal -> if (isFinal) finals.add(timestamp) },
+                    time = time { now },
+                )
+
+            heartbeat.start()
+            runCurrent()
+            heartbeat.stop()
+            runCurrent()
+            now = 10_500L
+            heartbeat.stop()
+            runCurrent()
+
+            assertEquals(listOf(10_000L, 10_500L), finals)
         }
 }
 
