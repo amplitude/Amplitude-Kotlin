@@ -352,23 +352,100 @@ class PlayerBindingTest {
                     assertEquals(0, tracked.count { it.eventType == AD_SKIPPED })
                 }
             }
+
+        @Test
+        fun `should not start content between ads in a pod`() =
+            runTest {
+                val player = mockk<Player>(relaxed = true)
+                every { player.isPlaying } returns true
+                every { player.isPlayingAd } returns true
+                withBinding(player) {
+                    observer.emit(PlayerEvent.AdStarted(testAd()))
+                    runCurrent()
+                    observer.emit(PlayerEvent.AdStopped(testAd(), completed = true))
+                    runCurrent()
+                    observer.emit(PlayerEvent.AdStarted(testAd(adIndexInAdGroup = 1)))
+                    runCurrent()
+
+                    assertEquals(0, startedEvents().size)
+                    assertEquals(2, tracked.count { it.eventType == AD_STARTED })
+                }
+            }
+
+        @Test
+        fun `should resume content after an ad when playback resumed during the ad`() =
+            runTest {
+                val player = mockk<Player>(relaxed = true)
+                every { player.isPlaying } returns true
+                withBinding(player) {
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+                    every { player.isPlayingAd } returns true
+                    observer.emit(PlayerEvent.AdStarted(testAd()))
+                    runCurrent()
+                    observer.emit(PlayerEvent.Paused)
+                    runCurrent()
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+                    every { player.isPlayingAd } returns false
+                    observer.emit(PlayerEvent.AdStopped(testAd(), completed = true))
+                    runCurrent()
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+
+                    assertEquals(1, startedEvents().size)
+                }
+            }
+
+        @Test
+        fun `should exclude paused time from ad stream duration`() =
+            runTest {
+                val player = mockk<Player>(relaxed = true)
+                every { player.isPlayingAd } returns true
+                var elapsed = 1_000L
+                val time = mockk<Time>()
+                every { time.elapsedRealtime() } answers { elapsed }
+                every { time.nowMillis() } answers { elapsed }
+                withBinding(player, time = time) {
+                    observer.emit(PlayerEvent.AdStarted(testAd()))
+                    runCurrent()
+                    elapsed += 2_000L
+                    observer.emit(PlayerEvent.Paused)
+                    runCurrent()
+                    elapsed += 5_000L
+                    every { player.isPlaying } returns true
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+                    elapsed += 1_000L
+                    observer.emit(PlayerEvent.AdStopped(testAd(), completed = true))
+                    runCurrent()
+
+                    assertEquals(
+                        3.0,
+                        tracked.single { it.eventType == AD_STOPPED }
+                            .eventProperties?.get("ad_stream_duration"),
+                    )
+                }
+            }
     }
 
     private fun startedEvents(): List<BaseEvent> = tracked.filter { it.eventType == STREAM_STARTED }
 
-    private fun testAd() =
+    private fun testAd(adIndexInAdGroup: Int = 0) =
         AdContext(
             adGroupIndex = 0,
-            adIndexInAdGroup = 0,
+            adIndexInAdGroup = adIndexInAdGroup,
             positionMillis = 0L,
             durationMillis = 15_000L,
             contentPositionMillis = 1_000L,
             contentId = "media-1",
+            mediaItemIndex = 0,
         )
 
     private fun TestScope.withBinding(
         player: Player = mockk(relaxed = true),
         contentProvider: (MediaItem?) -> PlayerContent = { PlayerContent() },
+        time: Time = Time(),
         block: () -> Unit,
     ) {
         val binding =
@@ -377,7 +454,7 @@ class PlayerBindingTest {
                 contentProvider = contentProvider,
                 playerObserverFactory = PlayerObserverFactory { _, _, _ -> observer },
                 streamTracker = StreamTracker(amplitude),
-                time = Time(),
+                time = time,
                 parentScope = this,
                 playerDispatcher = UnconfinedTestDispatcher(testScheduler),
             )
