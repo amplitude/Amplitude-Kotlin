@@ -135,6 +135,34 @@ class Media3PlayerObserverTest {
         }
 
     @Test
+    fun `should not throw when a listener callback cannot read the player`() =
+        runTest {
+            val player = mockk<Player>(relaxed = true)
+            every { player.playWhenReady } throws IllegalStateException("released")
+            val (observer, events) = observerCollectingEvents(player)
+
+            observer.onIsPlayingChanged(false)
+            runCurrent()
+
+            assertTrue(events.none { it is PlayerEvent.Buffering })
+        }
+
+    @Test
+    fun `should return a null snapshot when the player cannot be read`() =
+        runTest {
+            val player = mockk<Player>(relaxed = true)
+            every { player.currentMediaItem } throws IllegalStateException("released")
+            val observer =
+                Media3PlayerObserver(
+                    player = player,
+                    scope = backgroundScope,
+                    playerDispatcher = UnconfinedTestDispatcher(testScheduler),
+                )
+
+            assertEquals(null, observer.snapshot())
+        }
+
+    @Test
     fun `should not emit Paused when playback ends`() =
         runTest {
             val player = mockk<Player>(relaxed = true)
@@ -334,7 +362,7 @@ class Media3PlayerObserverTest {
                     playerDispatcher = UnconfinedTestDispatcher(testScheduler),
                 )
 
-            assertEquals(MediaType.VIDEO, observer.snapshot().mediaType)
+            assertEquals(MediaType.VIDEO, observer.snapshot()?.mediaType)
         }
 
     @Test
@@ -347,7 +375,7 @@ class Media3PlayerObserverTest {
                     playerDispatcher = UnconfinedTestDispatcher(testScheduler),
                 )
 
-            assertEquals(MediaType.AUDIO, observer.snapshot().mediaType)
+            assertEquals(MediaType.AUDIO, observer.snapshot()?.mediaType)
         }
 
     @Test
@@ -368,9 +396,9 @@ class Media3PlayerObserverTest {
                 )
 
             val snapshot = observer.snapshot()
-            assertEquals(120_000L, snapshot.positionMillis)
-            assertEquals(3_600_000L, snapshot.durationMillis)
-            assertEquals(true, snapshot.isLive)
+            assertEquals(120_000L, snapshot?.positionMillis)
+            assertEquals(3_600_000L, snapshot?.durationMillis)
+            assertEquals(true, snapshot?.isLive)
         }
 
     @Test

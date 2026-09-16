@@ -8,6 +8,7 @@ import com.amplitude.android.streaming.internal.AdContext
 import com.amplitude.android.streaming.internal.StopReason
 import com.amplitude.android.streaming.internal.StreamTracker
 import com.amplitude.android.streaming.internal.util.Time
+import com.amplitude.android.streaming.internal.util.runCatchingCancellable
 import com.amplitude.core.AmplitudePreview
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -57,18 +58,20 @@ internal class PlayerBinding internal constructor(
     fun start() {
         if (eventJob != null) return
         scope.launch {
-            if (stopped.get() || eventJob != null) return@launch
-            options = resolveOptions(player.currentMediaItem)
-            eventJob =
-                scope.launch {
-                    observer.eventFlow.collect { event ->
-                        if (stopped.get()) return@collect
-                        mutex.withLock {
-                            if (stopped.get()) return@withLock
-                            handlePlayerEvent(event)
+            runCatchingCancellable {
+                if (stopped.get() || eventJob != null) return@runCatchingCancellable
+                options = resolveOptions(player.currentMediaItem)
+                eventJob =
+                    scope.launch {
+                        observer.eventFlow.collect { event ->
+                            if (stopped.get()) return@collect
+                            mutex.withLock {
+                                if (stopped.get()) return@withLock
+                                runCatchingCancellable { handlePlayerEvent(event) }
+                            }
                         }
                     }
-                }
+            }
         }
     }
 
@@ -137,7 +140,7 @@ internal class PlayerBinding internal constructor(
 
     private suspend fun startContent(viewSessionId: String?) {
         val id = viewSessionId ?: newViewSessionId()
-        val snapshot = snapshot()
+        val snapshot = snapshot() ?: return
         val segment =
             StreamSession(
                 streamSessionId = id,
@@ -375,7 +378,8 @@ internal class PlayerBinding internal constructor(
         segment.errorMessage = errorMessage
     }
 
-    private suspend fun snapshot(): PlayerMediaSnapshot = observer.snapshot()
+    private suspend fun snapshot(): PlayerMediaSnapshot? =
+        runCatchingCancellable { observer.snapshot() }.getOrNull()
 
     private fun newViewSessionId(): String = UUID.randomUUID().toString()
 

@@ -166,6 +166,51 @@ class PlayerBindingTest {
                     assertEquals(1, startedEvents().size)
                 }
             }
+
+        @Test
+        fun `should not crash start when the player cannot be read`() =
+            runTest {
+                val player = mockk<Player>(relaxed = true)
+                every { player.currentMediaItem } throws IllegalStateException("released")
+                withBinding(player) {
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+
+                    assertEquals(0, startedEvents().size)
+                }
+            }
+
+        @Test
+        fun `should skip Stream Started when snapshot fails`() =
+            runTest {
+                val failingObserver =
+                    object : PlayerObserver {
+                        override val eventFlow = observer.eventFlow
+
+                        override suspend fun snapshot(): PlayerMediaSnapshot? = null
+                    }
+                val binding =
+                    PlayerBinding(
+                        player = mockk(relaxed = true),
+                        contentProvider = { PlayerContent() },
+                        playerObserverFactory = PlayerObserverFactory { _, _, _ -> failingObserver },
+                        streamTracker = StreamTracker(amplitude),
+                        time = Time(),
+                        parentScope = this,
+                        playerDispatcher = UnconfinedTestDispatcher(testScheduler),
+                    )
+                binding.start()
+                runCurrent()
+                try {
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+
+                    assertEquals(0, startedEvents().size)
+                } finally {
+                    binding.stop()
+                    runCurrent()
+                }
+            }
     }
 
     @Nested

@@ -40,10 +40,14 @@ internal class StreamingAnalytics(
         contentProvider: PlayerContentProvider,
     ) {
         graph?.apply {
-            playerBindingFactory.getOrCreate(
-                player = player,
-                contentProvider = contentProvider,
-            )
+            runCatchingCancellable {
+                playerBindingFactory.getOrCreate(
+                    player = player,
+                    contentProvider = contentProvider,
+                )
+            }.onFailure {
+                logger.error("trackPlayer error: ${it.localizedMessage}")
+            }
         }
     }
 

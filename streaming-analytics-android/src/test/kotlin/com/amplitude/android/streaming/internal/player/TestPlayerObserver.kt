@@ -16,7 +16,7 @@ internal class TestPlayerObserver : PlayerObserver {
         check(events.tryEmit(event))
     }
 
-    override suspend fun snapshot(): PlayerMediaSnapshot =
+    override suspend fun snapshot(): PlayerMediaSnapshot? =
         PlayerMediaSnapshot(
             positionMillis = POSITION_MILLIS,
             durationMillis = DURATION_MILLIS,

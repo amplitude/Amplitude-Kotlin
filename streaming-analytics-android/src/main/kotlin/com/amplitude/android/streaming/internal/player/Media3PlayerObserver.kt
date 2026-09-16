@@ -59,27 +59,31 @@ internal class Media3PlayerObserver(
         }
     }
 
-    override suspend fun snapshot(): PlayerMediaSnapshot =
-        withContext(playerDispatcher) {
-            val item = player.currentMediaItem
-            val metadata = item?.mediaMetadata
-            PlayerMediaSnapshot(
-                positionMillis = player.contentPosition.coerceAtLeast(0L),
-                durationMillis = player.contentDuration,
-                isLive = player.contentIsLive(),
-                mediaId = item?.mediaId?.takeIf { it.isNotEmpty() },
-                title = metadata?.title?.toString() ?: metadata?.displayTitle?.toString(),
-                mediaType = player.mediaType(),
-            )
-        }
+    override suspend fun snapshot(): PlayerMediaSnapshot? =
+        runCatchingCancellable {
+            withContext(playerDispatcher) {
+                val item = player.currentMediaItem
+                val metadata = item?.mediaMetadata
+                PlayerMediaSnapshot(
+                    positionMillis = player.contentPosition.coerceAtLeast(0L),
+                    durationMillis = player.contentDuration,
+                    isLive = player.contentIsLive(),
+                    mediaId = item?.mediaId?.takeIf { it.isNotEmpty() },
+                    title = metadata?.title?.toString() ?: metadata?.displayTitle?.toString(),
+                    mediaType = player.mediaType(),
+                )
+            }
+        }.getOrNull()
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
-        if (isPlaying) {
-            emit(PlayerEvent.Playing)
-        } else if (player.playWhenReady && player.playbackState == Player.STATE_READY) {
-            // Suppression (audio focus, unsuitable output, scrubbing): still READY and
-            // intending to play, but isPlaying flipped false with no pause callback.
-            emit(PlayerEvent.Buffering)
+        runCatchingCancellable {
+            if (isPlaying) {
+                emit(PlayerEvent.Playing)
+            } else if (player.playWhenReady && player.playbackState == Player.STATE_READY) {
+                // Suppression (audio focus, unsuitable output, scrubbing): still READY and
+                // intending to play, but isPlaying flipped false with no pause callback.
+                emit(PlayerEvent.Buffering)
+            }
         }
     }
 
@@ -87,26 +91,28 @@ internal class Media3PlayerObserver(
         playWhenReady: Boolean,
         reason: Int,
     ) {
-        if (playWhenReady) {
-            when (player.playbackState) {
-                Player.STATE_BUFFERING -> startBufferingDebounce()
-                Player.STATE_READY -> {
-                    if (!player.isPlaying) {
-                        // Suppressed play: playWhenReady flipped true while output is still blocked.
-                        emit(PlayerEvent.Buffering)
+        runCatchingCancellable {
+            if (playWhenReady) {
+                when (player.playbackState) {
+                    Player.STATE_BUFFERING -> startBufferingDebounce()
+                    Player.STATE_READY -> {
+                        if (!player.isPlaying) {
+                            // Suppressed play: playWhenReady flipped true while output is still blocked.
+                            emit(PlayerEvent.Buffering)
+                        }
                     }
                 }
+                return@runCatchingCancellable
             }
-            return
-        }
-        if (player.playbackState != Player.STATE_ENDED) {
-            cancelBuffering()
-            emit(PlayerEvent.Paused)
+            if (player.playbackState != Player.STATE_ENDED) {
+                cancelBuffering()
+                emit(PlayerEvent.Paused)
+            }
         }
     }
 
     override fun onPlaybackStateChanged(playbackState: Int) {
-        handlePlaybackStateChanged(playbackState, emitIdlePause = true)
+        runCatchingCancellable { handlePlaybackStateChanged(playbackState, emitIdlePause = true) }
     }
 
     private fun handlePlaybackStateChanged(
@@ -141,8 +147,10 @@ internal class Media3PlayerObserver(
     }
 
     override fun onPlayerError(error: PlaybackException) {
-        cancelBuffering()
-        emit(PlayerEvent.Error(error.message))
+        runCatchingCancellable {
+            cancelBuffering()
+            emit(PlayerEvent.Error(error.message))
+        }
     }
 
     override fun onPositionDiscontinuity(
@@ -150,22 +158,24 @@ internal class Media3PlayerObserver(
         newPosition: Player.PositionInfo,
         reason: Int,
     ) {
-        if (reason == Player.DISCONTINUITY_REASON_SEEK) {
-            emit(PlayerEvent.Seeking)
-        }
-        if (oldPosition.adGroupIndex != C.INDEX_UNSET &&
-            (
-                newPosition.adGroupIndex == C.INDEX_UNSET ||
-                    oldPosition.adGroupIndex != newPosition.adGroupIndex ||
-                    oldPosition.adIndexInAdGroup != newPosition.adIndexInAdGroup ||
-                    oldPosition.mediaItemIndex != newPosition.mediaItemIndex
-            )
-        ) {
-            finishAdForTransition(
-                completed = reason == Player.DISCONTINUITY_REASON_AUTO_TRANSITION,
-                skipped = reason != Player.DISCONTINUITY_REASON_AUTO_TRANSITION,
-                positionMillis = oldPosition.positionMs,
-            )
+        runCatchingCancellable {
+            if (reason == Player.DISCONTINUITY_REASON_SEEK) {
+                emit(PlayerEvent.Seeking)
+            }
+            if (oldPosition.adGroupIndex != C.INDEX_UNSET &&
+                (
+                    newPosition.adGroupIndex == C.INDEX_UNSET ||
+                        oldPosition.adGroupIndex != newPosition.adGroupIndex ||
+                        oldPosition.adIndexInAdGroup != newPosition.adIndexInAdGroup ||
+                        oldPosition.mediaItemIndex != newPosition.mediaItemIndex
+                )
+            ) {
+                finishAdForTransition(
+                    completed = reason == Player.DISCONTINUITY_REASON_AUTO_TRANSITION,
+                    skipped = reason != Player.DISCONTINUITY_REASON_AUTO_TRANSITION,
+                    positionMillis = oldPosition.positionMs,
+                )
+            }
         }
     }
 
@@ -173,14 +183,14 @@ internal class Media3PlayerObserver(
         mediaItem: MediaItem?,
         reason: Int,
     ) {
-        emit(PlayerEvent.MediaChanged(mediaItem))
+        runCatchingCancellable { emit(PlayerEvent.MediaChanged(mediaItem)) }
     }
 
     override fun onEvents(
         player: Player,
         events: Player.Events,
     ) {
-        detectAdTransition()
+        runCatchingCancellable { detectAdTransition() }
     }
 
     internal fun detectAdTransition() {
