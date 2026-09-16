@@ -26,6 +26,13 @@ public enum class AutocaptureOption {
 
     /**
      * Enable element interaction tracking.
+     *
+     * When enabled, Amplitude emits `[Amplitude] Element Interacted` for:
+     * - **tap** — `[Amplitude] Action` is `"touch"`
+     * - **long-press** — `[Amplitude] Action` is `"long press"`
+     *
+     * Only clickable, visible views (the same targets as taps) are captured.
+     * Scroll, fling, and long-click-only views are not captured.
      */
     ELEMENT_INTERACTIONS,
 
