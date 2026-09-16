@@ -491,7 +491,10 @@ class Media3PlayerObserverTest {
 
             val started = events.filterIsInstance<PlayerEvent.AdStarted>()
             assertEquals(listOf(0, 1), started.map { it.ad.adIndexInAdGroup })
-            assertTrue(events.any { it is PlayerEvent.AdSkipped })
+            val stopped = events.filterIsInstance<PlayerEvent.AdStopped>()
+            assertEquals(1, stopped.size)
+            assertEquals(false, stopped.first().completed)
+            assertTrue(events.none { it is PlayerEvent.AdSkipped })
         }
 
     @Test
@@ -526,7 +529,10 @@ class Media3PlayerObserverTest {
                 listOf(0, 1),
                 events.filterIsInstance<PlayerEvent.AdStarted>().map { it.ad.mediaItemIndex },
             )
-            assertTrue(events.any { it is PlayerEvent.AdSkipped })
+            val stopped = events.filterIsInstance<PlayerEvent.AdStopped>()
+            assertEquals(1, stopped.size)
+            assertEquals(false, stopped.first().completed)
+            assertTrue(events.none { it is PlayerEvent.AdSkipped })
         }
 
     @Test
@@ -573,7 +579,10 @@ class Media3PlayerObserverTest {
                 listOf("item-a", "item-b"),
                 events.filterIsInstance<PlayerEvent.AdStarted>().map { it.ad.contentId },
             )
-            assertTrue(events.any { it is PlayerEvent.AdSkipped })
+            val stopped = events.filterIsInstance<PlayerEvent.AdStopped>()
+            assertEquals(1, stopped.size)
+            assertEquals(false, stopped.first().completed)
+            assertTrue(events.none { it is PlayerEvent.AdSkipped })
         }
 
     @Test
@@ -670,6 +679,38 @@ class Media3PlayerObserverTest {
             assertEquals(1, skipped.size)
             assertEquals(4_000L, skipped.first().ad.positionMillis)
             assertTrue(events.none { it is PlayerEvent.AdStopped })
+        }
+
+    @Test
+    fun `should abandon an ad on a non-skip discontinuity`() =
+        runTest {
+            val player = playingAdPlayer(adGroupIndex = 0, adIndexInAdGroup = 0)
+            val (observer, events) = observerCollectingEvents(player)
+
+            observer.onPositionDiscontinuity(
+                oldPosition = adPosition(adGroupIndex = 0, adIndexInAdGroup = 0, positionMs = 4_000L),
+                newPosition =
+                    Player.PositionInfo(
+                        /* windowUid= */ null,
+                        /* mediaItemIndex= */ 0,
+                        /* mediaItem= */ null,
+                        /* periodUid= */ null,
+                        /* periodIndex= */ 0,
+                        /* positionMs= */ 30_000L,
+                        /* contentPositionMs= */ 30_000L,
+                        /* adGroupIndex= */ C.INDEX_UNSET,
+                        /* adIndexInAdGroup= */ C.INDEX_UNSET,
+                    ),
+                reason = Player.DISCONTINUITY_REASON_SEEK,
+            )
+            every { player.isPlayingAd } returns false
+            observer.detectAdTransition()
+            runCurrent()
+
+            val stopped = events.filterIsInstance<PlayerEvent.AdStopped>()
+            assertEquals(1, stopped.size)
+            assertEquals(false, stopped.first().completed)
+            assertTrue(events.none { it is PlayerEvent.AdSkipped })
         }
 
     private fun TestScope.observerCollectingEvents(

@@ -305,12 +305,14 @@ internal class PlayerBinding internal constructor(
                 is PlaybackState.Idle -> null
             }
         val id = current.viewSessionId ?: newViewSessionId()
+        val playing = playerIsPlaying()
         playback =
             PlaybackState.Ad(
                 viewSessionId = id,
                 ad = ad,
-                watchStartedAt = time.elapsedRealtime(),
+                watchStartedAt = if (playing) time.elapsedRealtime() else null,
                 content = content,
+                paused = !playing,
             )
         streamTracker.trackAdStarted(options, ad, id)
     }
