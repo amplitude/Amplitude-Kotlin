@@ -2,6 +2,8 @@ package com.amplitude.android.streaming.internal
 
 import androidx.media3.common.C
 import com.amplitude.android.streaming.PlayerContent
+import com.amplitude.android.streaming.internal.player.PlayerMediaSnapshot
+import com.amplitude.android.streaming.internal.player.PlayerState
 import com.amplitude.core.Amplitude
 import com.amplitude.core.AmplitudePreview
 import com.amplitude.core.events.BaseEvent
@@ -48,6 +50,10 @@ class StreamTrackerTest {
                 durationMillis = 60_000L,
                 mediaId = "media-123",
                 title = "Test Video",
+                mediaType = MediaType.VIDEO,
+            )
+        private val playerState =
+            PlayerState(
                 isInPictureInPicture = true,
                 isInBackground = false,
             )
@@ -63,6 +69,7 @@ class StreamTrackerTest {
             tracker.trackStreamStarted(
                 options = options,
                 snapshot = snapshot,
+                playerState = playerState,
                 mediaType = MediaType.VIDEO,
                 streamSessionId = "stream-1",
                 playId = "play-1",
@@ -101,6 +108,7 @@ class StreamTrackerTest {
             tracker.trackStreamStopped(
                 options = options,
                 snapshot = snapshot,
+                playerState = playerState,
                 mediaType = MediaType.VIDEO,
                 streamSessionId = "stream-1",
                 playId = "play-1",
@@ -142,6 +150,7 @@ class StreamTrackerTest {
                 streamDurationMillis = 5_000L,
                 timestamp = 6_000L,
                 insertId = "timeout-stop",
+                playerState = playerState,
                 stopReason = StopReason.TIMEOUT,
             )
             assertEquals(DelayedEvent.Kind.DELAYED, (events.last() as DelayedEvent).kind)
@@ -168,6 +177,7 @@ class StreamTrackerTest {
                     streamDurationMillis = 5_000L,
                     timestamp = 6_000L,
                     insertId = "stop-${reason.value}",
+                    playerState = playerState,
                     stopReason = reason,
                 )
                 assertEquals(DelayedEvent.Kind.INSTANT, (events.last() as DelayedEvent).kind)
@@ -180,6 +190,7 @@ class StreamTrackerTest {
             tracker.trackStreamStarted(
                 options = PlayerContent(),
                 snapshot = snapshot,
+                playerState = playerState,
                 mediaType = MediaType.AUDIO,
                 streamSessionId = "stream-audio",
                 playId = "play-audio",
@@ -190,6 +201,7 @@ class StreamTrackerTest {
             tracker.trackStreamStopped(
                 options = PlayerContent(),
                 snapshot = snapshot,
+                playerState = playerState,
                 mediaType = MediaType.AUDIO,
                 streamSessionId = "stream-audio",
                 playId = "play-audio",
@@ -217,6 +229,7 @@ class StreamTrackerTest {
             tracker.trackStreamStopped(
                 options = PlayerContent(),
                 snapshot = liveSnapshot,
+                playerState = playerState,
                 mediaType = MediaType.VIDEO,
                 streamSessionId = "stream-live",
                 playId = "play-live",
@@ -238,6 +251,7 @@ class StreamTrackerTest {
             tracker.trackStreamStopped(
                 options = PlayerContent(),
                 snapshot = unknownDurationSnapshot,
+                playerState = playerState,
                 mediaType = MediaType.VIDEO,
                 streamSessionId = "stream-unknown",
                 playId = "play-unknown",
@@ -265,6 +279,7 @@ class StreamTrackerTest {
                 streamDurationMillis = 0L,
                 timestamp = 5_000L,
                 insertId = "stop-zero",
+                playerState = playerState,
                 stopReason = StopReason.COMPLETED,
             )
 
@@ -284,6 +299,7 @@ class StreamTrackerTest {
                 durationMillis = 30_000L,
                 contentPositionMillis = 45_000L,
                 contentId = "video-789",
+                mediaItemIndex = 0,
             )
         private val options = PlayerContent(extraProperties = mapOf("ad_campaign" to "summer"))
 
@@ -299,12 +315,20 @@ class StreamTrackerTest {
             val event = events.first()
             assertEquals("[Amplitude] Ad Started", event.eventType)
             val props = event.eventProperties!!
-            assertEquals("video-789:0:1", props["ad_id"])
+            assertEquals("video-789:0:0:1", props["ad_id"])
             assertEquals("video-789", props["content_id"])
             assertEquals("stream-ad-1", props["stream_session_id"])
             assertEquals(45.0, props["ad_position"])
             assertEquals(30.0, props["ad_duration"])
             assertEquals("summer", props["ad_campaign"])
+        }
+
+        @Test
+        fun `ad_id includes media item index so playlist ads do not collide`() {
+            assertEquals(
+                "video-789:1:0:1",
+                ad.copy(mediaItemIndex = 1).adId,
+            )
         }
 
         @Test
@@ -348,7 +372,7 @@ class StreamTrackerTest {
 
             assertEquals(1, events.size)
             assertEquals("[Amplitude] Ad Skipped", events.first().eventType)
-            assertEquals("video-789:0:1", events.first().eventProperties?.get("ad_id"))
+            assertEquals("video-789:0:0:1", events.first().eventProperties?.get("ad_id"))
         }
     }
 }
