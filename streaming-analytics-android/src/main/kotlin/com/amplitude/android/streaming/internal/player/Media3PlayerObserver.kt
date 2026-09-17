@@ -8,6 +8,7 @@ import androidx.media3.common.Timeline
 import androidx.media3.common.Tracks
 import com.amplitude.android.streaming.internal.AdContext
 import com.amplitude.android.streaming.internal.MediaType
+import com.amplitude.android.streaming.internal.StopReason
 import com.amplitude.android.streaming.internal.util.runCatchingCancellable
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -214,6 +215,7 @@ internal class Media3PlayerObserver(
                 PlayerEvent.MediaChanged(
                     mediaItem = mediaItem,
                     previousSnapshot = outgoingSnapshot ?: lastSnapshot,
+                    stopReason = mediaChangeStopReason(reason),
                 ),
             )
             outgoingSnapshot = null
@@ -335,6 +337,14 @@ internal class Media3PlayerObserver(
             mediaItemIndex = player.currentMediaItemIndex,
         )
 }
+
+private fun mediaChangeStopReason(reason: Int): StopReason =
+    when (reason) {
+        Player.MEDIA_ITEM_TRANSITION_REASON_AUTO,
+        Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT,
+        -> StopReason.COMPLETED
+        else -> StopReason.CONTENT_CHANGED
+    }
 
 private fun AdContext.isSameAdAs(other: AdContext): Boolean =
     adGroupIndex == other.adGroupIndex &&

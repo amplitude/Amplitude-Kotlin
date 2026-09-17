@@ -7,6 +7,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.Tracks
 import com.amplitude.android.streaming.internal.MediaType
+import com.amplitude.android.streaming.internal.StopReason
 import com.google.common.collect.ImmutableList
 import io.mockk.every
 import io.mockk.mockk
@@ -464,6 +465,24 @@ class Media3PlayerObserverTest {
             assertEquals("previous", event.previousSnapshot.mediaId)
             assertEquals(10_000L, event.previousSnapshot.positionMillis)
             assertEquals(10_000L, event.previousSnapshot.durationMillis)
+            assertEquals(StopReason.COMPLETED, event.stopReason)
+        }
+
+    @Test
+    fun `should mark playlist replacements as content changed`() =
+        runTest {
+            val previousItem = mediaItem("previous")
+            val nextItem = mediaItem("next")
+            val player = mockk<Player>(relaxed = true)
+            every { player.currentMediaItem } returns previousItem
+            val (observer, events) = observerCollectingEvents(player)
+            observer.snapshot()
+
+            observer.onMediaItemTransition(nextItem, Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED)
+            runCurrent()
+
+            val event = events.filterIsInstance<PlayerEvent.MediaChanged>().single()
+            assertEquals(StopReason.CONTENT_CHANGED, event.stopReason)
         }
 
     @Test

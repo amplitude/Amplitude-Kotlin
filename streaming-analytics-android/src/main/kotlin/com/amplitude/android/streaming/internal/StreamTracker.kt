@@ -327,6 +327,7 @@ internal enum class StopReason(
     WAITING("waiting"),
     ERROR("error"),
     UNTRACKED("untracked"),
+    CONTENT_CHANGED("content_changed"),
 }
 
 private fun StopReason?.eventKind(): DelayedEvent.Kind =

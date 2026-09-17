@@ -165,6 +165,7 @@ class StreamTrackerTest {
                     StopReason.WAITING,
                     StopReason.ERROR,
                     StopReason.UNTRACKED,
+                    StopReason.CONTENT_CHANGED,
                 )
             for (reason in instantReasons) {
                 events.clear()

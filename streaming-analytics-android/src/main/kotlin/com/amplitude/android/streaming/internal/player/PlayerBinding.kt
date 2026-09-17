@@ -143,7 +143,7 @@ internal class PlayerBinding internal constructor(
             is PlayerEvent.Error -> finishSession(StopReason.ERROR, event.message)
             is PlayerEvent.MediaChanged -> {
                 freezeCurrentSegment(event.previousSnapshot)
-                finishSession(null)
+                finishSession(event.stopReason)
                 options = resolveOptions(event.mediaItem)
                 if (playerReference.get()?.isPlaying == true) onPlaying()
             }

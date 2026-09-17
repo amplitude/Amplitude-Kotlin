@@ -6,6 +6,7 @@ import com.amplitude.android.streaming.PlayerContent
 import com.amplitude.android.streaming.internal.AdContext
 import com.amplitude.android.streaming.internal.DelayedEvent
 import com.amplitude.android.streaming.internal.MediaType
+import com.amplitude.android.streaming.internal.StopReason
 import com.amplitude.android.streaming.internal.StreamTracker
 import com.amplitude.android.streaming.internal.util.Time
 import com.amplitude.core.Amplitude
@@ -149,6 +150,7 @@ class PlayerBindingTest {
                                     mediaId = "previous-media",
                                     mediaType = MediaType.VIDEO,
                                 ),
+                            stopReason = StopReason.COMPLETED,
                         ),
                     )
                     runCurrent()
@@ -162,11 +164,37 @@ class PlayerBindingTest {
                     val stopped =
                         tracked.single {
                             it.eventType == STREAM_STOPPED &&
-                                it.eventProperties?.get("stop_reason") == null
+                                it.eventProperties?.get("stop_reason") == "completed"
                         }
                     assertEquals(9.9, stopped.eventProperties?.get("position"))
                     assertEquals(10.0, stopped.eventProperties?.get("duration"))
                     assertEquals(99.0, stopped.eventProperties?.get("percent_completed"))
+                }
+            }
+
+        @Test
+        fun `should stop the previous stream as content_changed when media is replaced`() =
+            runTest {
+                val player = mockk<Player>(relaxed = true)
+                every { player.isPlaying } returns true
+                withBinding(player) {
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+                    observer.emit(
+                        PlayerEvent.MediaChanged(
+                            mediaItem = null,
+                            previousSnapshot = previousSnapshot(),
+                            stopReason = StopReason.CONTENT_CHANGED,
+                        ),
+                    )
+                    runCurrent()
+
+                    val stopped =
+                        tracked.single {
+                            it.eventType == STREAM_STOPPED &&
+                                it.eventProperties?.get("stop_reason") != "timeout"
+                        }
+                    assertEquals("content_changed", stopped.eventProperties?.get("stop_reason"))
                 }
             }
     }
@@ -205,7 +233,7 @@ class PlayerBindingTest {
                     every { player.isPlaying } returns false
                     observer.emit(PlayerEvent.Paused)
                     runCurrent()
-                    observer.emit(PlayerEvent.MediaChanged(null, previousSnapshot()))
+                    observer.emit(PlayerEvent.MediaChanged(null, previousSnapshot(), StopReason.CONTENT_CHANGED))
                     runCurrent()
 
                     assertEquals(1, startedEvents().size)
@@ -758,7 +786,7 @@ class PlayerBindingTest {
                     runCurrent()
                     observer.emit(PlayerEvent.AdStarted(testAd()))
                     runCurrent()
-                    observer.emit(PlayerEvent.MediaChanged(null, previousSnapshot()))
+                    observer.emit(PlayerEvent.MediaChanged(null, previousSnapshot(), StopReason.CONTENT_CHANGED))
                     runCurrent()
                     observer.emit(PlayerEvent.AdSkipped(testAd()))
                     runCurrent()
