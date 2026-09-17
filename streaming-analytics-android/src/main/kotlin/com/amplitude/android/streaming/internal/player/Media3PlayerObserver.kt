@@ -1,11 +1,13 @@
 package com.amplitude.android.streaming.internal.player
 
+import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.Tracks
+import androidx.media3.common.util.UnstableApi
 import com.amplitude.android.streaming.internal.AdContext
 import com.amplitude.android.streaming.internal.MediaType
 import com.amplitude.android.streaming.internal.StopReason
@@ -166,6 +168,7 @@ internal class Media3PlayerObserver(
         }
     }
 
+    @OptIn(UnstableApi::class)
     override fun onPositionDiscontinuity(
         oldPosition: Player.PositionInfo,
         newPosition: Player.PositionInfo,
