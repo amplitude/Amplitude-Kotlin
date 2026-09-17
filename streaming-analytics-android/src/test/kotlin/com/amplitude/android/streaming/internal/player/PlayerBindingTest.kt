@@ -254,6 +254,14 @@ class PlayerBindingTest {
                     runCurrent()
 
                     assertEquals(1, startedEvents().size)
+                    assertEquals(
+                        "waiting",
+                        tracked
+                            .filter { it.eventType == STREAM_STOPPED }
+                            .last()
+                            .eventProperties
+                            ?.get("stop_reason"),
+                    )
                 }
             }
 
@@ -381,9 +389,11 @@ class PlayerBindingTest {
             }
 
         @Test
-        fun `should not keep stop_reason seeking on heartbeats after playback is ready`() =
+        fun `should emit seeking then clear it after playback resumes`() =
             runTest {
-                withBinding {
+                val player = mockk<Player>(relaxed = true)
+                every { player.isPlaying } returns true
+                withBinding(player) {
                     observer.emit(PlayerEvent.Playing)
                     runCurrent()
                     observer.emit(PlayerEvent.Seeking)
@@ -393,9 +403,15 @@ class PlayerBindingTest {
                     advanceTimeBy(1_000)
                     runCurrent()
 
-                    val afterReady =
-                        tracked.filter { it.eventType == STREAM_STOPPED }.last()
+                    val stopped = tracked.filter { it.eventType == STREAM_STOPPED }
+                    assertTrue(
+                        stopped.any {
+                            it.eventProperties?.get("stop_reason") == "seeking"
+                        },
+                    )
+                    val afterReady = stopped.last()
                     assertEquals("timeout", afterReady.eventProperties?.get("stop_reason"))
+                    assertEquals(2, startedEvents().size)
                 }
             }
     }

@@ -228,44 +228,38 @@ internal class PlayerBinding internal constructor(
         }
     }
 
-    private fun onBuffering() {
-        interruptContent(ContentPhase.WAITING, StopReason.WAITING)
+    private suspend fun onBuffering() {
+        interruptContent(StopReason.WAITING)
     }
 
-    private fun onSeeking() {
-        interruptContent(ContentPhase.SEEKING, StopReason.SEEKING)
+    private suspend fun onSeeking() {
+        interruptContent(StopReason.SEEKING)
     }
 
-    private fun interruptContent(
-        phase: ContentPhase,
-        reason: StopReason,
-    ) {
+    private suspend fun interruptContent(reason: StopReason) {
         when (val state = playback) {
             is PlaybackState.Content -> {
-                state.segment.pauseWatch()
-                state.segment.stopReason = reason
-                playback = state.copy(phase = phase)
+                finishSegment(state.segment, state.heartbeat, reason)
+                playback = PlaybackState.Idle(state.viewSessionId, state.segment)
             }
             is PlaybackState.Suspended -> {
-                state.segment.pauseWatch()
-                state.segment.stopReason = reason
-                playback = state.copy(phase = phase)
+                finishSegment(state.segment, heartbeat = null, reason = reason)
+                playback = PlaybackState.Idle(state.viewSessionId, state.segment)
             }
             is PlaybackState.Ad -> {
-                state.content?.segment?.apply {
-                    pauseWatch()
-                    stopReason = reason
+                state.content?.let {
+                    finishSegment(it.segment, heartbeat = null, reason = reason)
                 }
                 playback =
                     state.pauseWatch(time.elapsedRealtime()).copy(
-                        content = state.content?.copy(phase = phase),
+                        content = null,
                     )
             }
             is PlaybackState.Idle -> Unit
         }
     }
 
-    private fun onReady() {
+    private suspend fun onReady() {
         when (val state = playback) {
             is PlaybackState.Content -> {
                 if (state.phase == ContentPhase.PLAYING) return
@@ -282,7 +276,9 @@ internal class PlayerBinding internal constructor(
                     playback = state.resumeWatch(time.elapsedRealtime())
                 }
             }
-            is PlaybackState.Idle -> Unit
+            is PlaybackState.Idle -> {
+                if (playerIsPlaying()) startContent(state.viewSessionId)
+            }
         }
     }
 
@@ -544,8 +540,6 @@ internal class PlayerBinding internal constructor(
 
     private enum class ContentPhase {
         PLAYING,
-        WAITING,
-        SEEKING,
     }
 
     private sealed interface PlaybackState {
