@@ -29,6 +29,7 @@ internal class DemoPlayerFactory(
                 contentId = item.id,
                 title = item.title,
                 deliveryMode = item.deliveryMode,
+                extraProperties = item.extraProperties,
             )
         }
         return player

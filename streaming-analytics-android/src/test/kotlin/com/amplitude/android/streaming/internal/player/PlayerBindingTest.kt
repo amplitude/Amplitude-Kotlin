@@ -632,6 +632,77 @@ class PlayerBindingTest {
             }
 
         @Test
+        fun `should not count paused ad time toward ad watch duration`() =
+            runTest {
+                var elapsed = 0L
+                val time = mockk<Time>()
+                every { time.elapsedRealtime() } answers { elapsed }
+                every { time.nowMillis() } answers { elapsed }
+                val player = mockk<Player>(relaxed = true)
+                every { player.isPlaying } returns true
+                withBinding(player, time = time) {
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+                    elapsed = 5_000L
+                    observer.emit(PlayerEvent.AdStarted(testAd()))
+                    runCurrent()
+                    elapsed = 8_000L
+                    observer.emit(PlayerEvent.Paused)
+                    runCurrent()
+                    elapsed = 20_000L
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+                    elapsed = 22_000L
+                    observer.emit(PlayerEvent.AdStopped(testAd(), completed = true))
+                    runCurrent()
+
+                    val adStopped = tracked.single { it.eventType == AD_STOPPED }
+                    assertEquals(5.0, adStopped.eventProperties?.get("ad_watch_duration"))
+                    assertEquals("completed", adStopped.eventProperties?.get("ad_completion_status"))
+                }
+            }
+
+        @Test
+        fun `should not count ad watch time when an ad starts while paused`() =
+            runTest {
+                var elapsed = 0L
+                val time = mockk<Time>()
+                every { time.elapsedRealtime() } answers { elapsed }
+                every { time.nowMillis() } answers { elapsed }
+                val player = mockk<Player>(relaxed = true)
+                every { player.isPlaying } returns false
+                withBinding(player, time = time) {
+                    observer.emit(PlayerEvent.AdStarted(testAd()))
+                    runCurrent()
+                    elapsed = 10_000L
+                    observer.emit(PlayerEvent.AdStopped(testAd(), completed = true))
+                    runCurrent()
+
+                    val adStopped = tracked.single { it.eventType == AD_STOPPED }
+                    assertEquals(0.0, adStopped.eventProperties?.get("ad_watch_duration"))
+                }
+            }
+
+        @Test
+        fun `should mark an incomplete ad stop as abandoned not skipped`() =
+            runTest {
+                withBinding {
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+                    observer.emit(PlayerEvent.AdStarted(testAd()))
+                    runCurrent()
+                    observer.emit(PlayerEvent.AdStopped(testAd(), completed = false))
+                    runCurrent()
+
+                    assertEquals(0, tracked.count { it.eventType == AD_SKIPPED })
+                    assertEquals(
+                        "abandoned",
+                        tracked.single { it.eventType == AD_STOPPED }.eventProperties?.get("ad_completion_status"),
+                    )
+                }
+            }
+
+        @Test
         fun `should track Ad Skipped for an in-session skip`() =
             runTest {
                 withBinding {
@@ -643,7 +714,15 @@ class PlayerBindingTest {
                     runCurrent()
 
                     assertEquals(1, tracked.count { it.eventType == AD_SKIPPED })
-                    assertEquals(0, tracked.count { it.eventType == AD_STOPPED })
+                    assertEquals(1, tracked.count { it.eventType == AD_STOPPED })
+                    assertEquals(
+                        "skipped",
+                        tracked.single { it.eventType == AD_STOPPED }.eventProperties?.get("ad_completion_status"),
+                    )
+                    assertEquals(
+                        0.0,
+                        tracked.single { it.eventType == AD_SKIPPED }.eventProperties?.get("skip_position"),
+                    )
                     assertEquals(
                         startedEvents().single().eventProperties?.get(STREAM_SESSION_ID),
                         tracked.single { it.eventType == AD_SKIPPED }.eventProperties?.get(STREAM_SESSION_ID),
@@ -718,6 +797,7 @@ class PlayerBindingTest {
             runTest {
                 val player = mockk<Player>(relaxed = true)
                 every { player.isPlayingAd } returns true
+                every { player.isPlaying } returns true
                 var elapsed = 1_000L
                 val time = mockk<Time>()
                 every { time.elapsedRealtime() } answers { elapsed }
@@ -739,7 +819,7 @@ class PlayerBindingTest {
                     assertEquals(
                         3.0,
                         tracked.single { it.eventType == AD_STOPPED }
-                            .eventProperties?.get("ad_stream_duration"),
+                            .eventProperties?.get("ad_watch_duration"),
                     )
                 }
             }

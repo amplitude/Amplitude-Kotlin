@@ -183,7 +183,7 @@ internal class Media3PlayerObserver(
             ) {
                 finishAdForTransition(
                     completed = reason == Player.DISCONTINUITY_REASON_AUTO_TRANSITION,
-                    skipped = reason != Player.DISCONTINUITY_REASON_AUTO_TRANSITION,
+                    skipped = reason == Player.DISCONTINUITY_REASON_SKIP,
                     positionMillis = oldPosition.positionMs,
                 )
             }
@@ -219,7 +219,7 @@ internal class Media3PlayerObserver(
             val current = adContextFromPlayer(player)
             val previous = activeAd
             if (previous != null && !previous.isSameAdAs(current)) {
-                finishAdForTransition(completed = false, skipped = true)
+                finishAdForTransition(completed = false, skipped = false)
             }
             if (activeAd == null) {
                 activeAd = current

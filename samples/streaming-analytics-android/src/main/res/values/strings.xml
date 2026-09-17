@@ -16,6 +16,7 @@
     <string name="audio_label">Audio</string>
     <string name="retry">Retry</string>
     <string name="playback_error">Playback error: %1$s</string>
+    <string name="status_ad">Ad</string>
     <string name="status_playing">Playing</string>
     <string name="status_paused">Paused</string>
     <string name="status_buffering">Buffering</string>
