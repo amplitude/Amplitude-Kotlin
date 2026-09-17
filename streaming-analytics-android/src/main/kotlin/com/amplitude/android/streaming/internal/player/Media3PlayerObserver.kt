@@ -175,9 +175,10 @@ internal class Media3PlayerObserver(
         reason: Int,
     ) {
         runCatchingCancellable {
-            if (oldPosition.mediaItemIndex != newPosition.mediaItemIndex ||
-                oldPosition.mediaItem != newPosition.mediaItem
-            ) {
+            val mediaChanged =
+                oldPosition.mediaItemIndex != newPosition.mediaItemIndex ||
+                    oldPosition.mediaItem != newPosition.mediaItem
+            if (mediaChanged) {
                 val oldMetadata = oldPosition.mediaItem?.mediaMetadata
                 outgoingSnapshot =
                     lastSnapshot.copy(
@@ -189,7 +190,7 @@ internal class Media3PlayerObserver(
                             ?: lastSnapshot.title,
                     )
             }
-            if (reason == Player.DISCONTINUITY_REASON_SEEK) {
+            if (reason == Player.DISCONTINUITY_REASON_SEEK && !mediaChanged) {
                 emit(PlayerEvent.Seeking)
             }
             if (oldPosition.adGroupIndex != C.INDEX_UNSET &&

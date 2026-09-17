@@ -486,6 +486,56 @@ class Media3PlayerObserverTest {
         }
 
     @Test
+    fun `should not emit Seeking when a seek changes the media item`() =
+        runTest {
+            val previousItem = mediaItem("previous")
+            val nextItem = mediaItem("next")
+            val player = mockk<Player>(relaxed = true)
+            every { player.currentMediaItem } returns previousItem
+            every { player.currentMediaItemIndex } returns 0
+            every { player.contentPosition } returns 4_000L
+            every { player.contentDuration } returns 10_000L
+            every { player.currentTimeline } returns Timeline.EMPTY
+            val (observer, events) = observerCollectingEvents(player)
+            observer.snapshot()
+
+            observer.onPositionDiscontinuity(
+                oldPosition = contentPosition(previousItem, mediaItemIndex = 0, positionMs = 4_000L),
+                newPosition = contentPosition(nextItem, mediaItemIndex = 1, positionMs = 0L),
+                reason = Player.DISCONTINUITY_REASON_SEEK,
+            )
+            every { player.currentMediaItem } returns nextItem
+            every { player.currentMediaItemIndex } returns 1
+            every { player.contentPosition } returns 0L
+            observer.onMediaItemTransition(nextItem, Player.MEDIA_ITEM_TRANSITION_REASON_SEEK)
+            runCurrent()
+
+            assertTrue(events.none { it is PlayerEvent.Seeking })
+            val event = events.filterIsInstance<PlayerEvent.MediaChanged>().single()
+            assertEquals("previous", event.previousSnapshot.mediaId)
+            assertEquals(4_000L, event.previousSnapshot.positionMillis)
+            assertEquals(StopReason.CONTENT_CHANGED, event.stopReason)
+        }
+
+    @Test
+    fun `should emit Seeking when a seek stays on the same media item`() =
+        runTest {
+            val item = mediaItem("episode")
+            val player = mockk<Player>(relaxed = true)
+            val (observer, events) = observerCollectingEvents(player)
+
+            observer.onPositionDiscontinuity(
+                oldPosition = contentPosition(item, mediaItemIndex = 0, positionMs = 4_000L),
+                newPosition = contentPosition(item, mediaItemIndex = 0, positionMs = 20_000L),
+                reason = Player.DISCONTINUITY_REASON_SEEK,
+            )
+            runCurrent()
+
+            assertEquals(1, events.filterIsInstance<PlayerEvent.Seeking>().size)
+            assertTrue(events.none { it is PlayerEvent.MediaChanged })
+        }
+
+    @Test
     fun `should emit AdStarted on attach when an ad is already playing`() =
         runTest {
             val player = playingAdPlayer(adGroupIndex = 0, adIndexInAdGroup = 2)
