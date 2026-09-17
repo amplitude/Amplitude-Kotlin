@@ -594,6 +594,60 @@ class PlayerBindingTest {
             }
 
         @Test
+        fun `should not finish suspended content when buffering during an ad`() =
+            runTest {
+                val player = mockk<Player>(relaxed = true)
+                every { player.isPlaying } returns true
+                withBinding(player) {
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+                    every { player.isPlayingAd } returns true
+                    observer.emit(PlayerEvent.AdStarted(testAd()))
+                    runCurrent()
+                    observer.emit(PlayerEvent.Buffering)
+                    runCurrent()
+                    every { player.isPlayingAd } returns false
+                    observer.emit(PlayerEvent.AdStopped(testAd(), completed = true))
+                    runCurrent()
+
+                    assertTrue(
+                        tracked.none {
+                            it.eventType == STREAM_STOPPED &&
+                                it.eventProperties?.get("stop_reason") == "waiting"
+                        },
+                    )
+                    assertEquals(1, startedEvents().size)
+                }
+            }
+
+        @Test
+        fun `should not finish suspended content when seeking during an ad`() =
+            runTest {
+                val player = mockk<Player>(relaxed = true)
+                every { player.isPlaying } returns true
+                withBinding(player) {
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+                    every { player.isPlayingAd } returns true
+                    observer.emit(PlayerEvent.AdStarted(testAd()))
+                    runCurrent()
+                    observer.emit(PlayerEvent.Seeking)
+                    runCurrent()
+                    every { player.isPlayingAd } returns false
+                    observer.emit(PlayerEvent.AdStopped(testAd(), completed = true))
+                    runCurrent()
+
+                    assertTrue(
+                        tracked.none {
+                            it.eventType == STREAM_STOPPED &&
+                                it.eventProperties?.get("stop_reason") == "seeking"
+                        },
+                    )
+                    assertEquals(1, startedEvents().size)
+                }
+            }
+
+        @Test
         fun `should finish a suspended content segment when an ad ends paused`() =
             runTest {
                 val player = mockk<Player>(relaxed = true)

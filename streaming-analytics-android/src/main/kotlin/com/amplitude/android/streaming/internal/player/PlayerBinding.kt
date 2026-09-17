@@ -247,13 +247,7 @@ internal class PlayerBinding internal constructor(
                 playback = PlaybackState.Idle(state.viewSessionId, state.segment)
             }
             is PlaybackState.Ad -> {
-                state.content?.let {
-                    finishSegment(it.segment, heartbeat = null, reason = reason)
-                }
-                playback =
-                    state.pauseWatch(time.elapsedRealtime()).copy(
-                        content = null,
-                    )
+                playback = state.pauseWatch(time.elapsedRealtime())
             }
             is PlaybackState.Idle -> Unit
         }
