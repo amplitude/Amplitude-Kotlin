@@ -80,6 +80,62 @@ class PlayerBindingFactoryTest {
         }
 
     @Test
+    fun `detach stops the binding and does not reuse it`() =
+        runTest {
+            val events = mutableListOf<BaseEvent>()
+            val amplitude =
+                mockk<Amplitude>(relaxed = true).also { amplitude ->
+                    every { amplitude.track(any<BaseEvent>(), any(), any()) } answers {
+                        events.add(firstArg())
+                        amplitude
+                    }
+                }
+            val observers = mutableListOf<TestPlayerObserver>()
+            val factory =
+                playerBindingFactory(
+                    streamTracker = StreamTracker(amplitude),
+                    playerObserverFactory =
+                        PlayerObserverFactory { _, _, _ ->
+                            TestPlayerObserver().also { observers.add(it) }
+                        },
+                )
+            val player = mockk<Player>(relaxed = true)
+            val binding = factory.getOrCreate(player) { PlayerContent() }
+            try {
+                runCurrent()
+                observers.single().emit(PlayerEvent.Playing)
+                runCurrent()
+
+                factory.detach(player)
+                runCurrent()
+
+                assertTrue(
+                    events.any {
+                        it.eventType == "[Amplitude] Stream Stopped" &&
+                            it.eventProperties?.get("stop_reason") == "untracked"
+                    },
+                )
+                assertNotSame(binding, factory.getOrCreate(player) { PlayerContent() })
+            } finally {
+                factory.detachAll()
+                runCurrent()
+            }
+        }
+
+    @Test
+    fun `detach is a no-op when the player is not tracked`() =
+        runTest {
+            val amplitude = mockk<Amplitude>(relaxed = true)
+            val factory = playerBindingFactory(streamTracker = StreamTracker(amplitude))
+            val player = mockk<Player>(relaxed = true)
+
+            factory.detach(player)
+            runCurrent()
+
+            verify(exactly = 0) { amplitude.track(any<BaseEvent>(), any(), any()) }
+        }
+
+    @Test
     fun `should not start a second collector when getOrCreate races`() =
         runTest {
             val events = mutableListOf<BaseEvent>()

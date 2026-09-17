@@ -4,6 +4,7 @@ import androidx.media3.common.Player
 import com.amplitude.android.streaming.internal.DelayedEvent
 import com.amplitude.android.streaming.internal.StreamingAnalytics
 import com.amplitude.android.trackPlayer
+import com.amplitude.android.untrackPlayer
 import com.amplitude.core.AmplitudePreview
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
@@ -101,6 +102,49 @@ class StreamingAnalyticsPluginTest {
                 advanceUntilIdle()
 
                 verify { streamingAnalytics.trackPlayer(player, contentProvider) }
+            }
+
+        @Test
+        fun `untrackPlayer uses registered plugin`() =
+            runTest {
+                val isBuilt = CompletableDeferred<Boolean>()
+                val amplitude = androidAmplitude(isBuilt)
+                val streamingAnalytics = installMockedPlugin(amplitude)
+
+                val player = mockk<Player>(relaxed = true)
+                amplitude.untrackPlayer(player)
+                isBuilt.complete(true)
+                advanceUntilIdle()
+
+                verify { streamingAnalytics.untrackPlayer(player) }
+            }
+
+        @Test
+        fun `untrackPlayer waits for the instance to finish building`() =
+            runTest {
+                val isBuilt = CompletableDeferred<Boolean>()
+                val amplitude = androidAmplitude(isBuilt)
+                val player = mockk<Player>(relaxed = true)
+
+                amplitude.untrackPlayer(player)
+                advanceUntilIdle()
+
+                val streamingAnalytics = installMockedPlugin(amplitude)
+                isBuilt.complete(true)
+                advanceUntilIdle()
+
+                verify { streamingAnalytics.untrackPlayer(player) }
+            }
+
+        @Test
+        fun `untrackPlayer logs an error when the plugin is not installed`() =
+            runTest {
+                val amplitude = androidAmplitude(CompletableDeferred(true))
+
+                amplitude.untrackPlayer(mockk<Player>(relaxed = true))
+                advanceUntilIdle()
+
+                verify { amplitude.logger.error("StreamingAnalyticsPlugin is not installed.") }
             }
 
         @Test

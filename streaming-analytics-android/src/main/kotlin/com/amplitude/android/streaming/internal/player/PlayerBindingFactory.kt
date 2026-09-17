@@ -69,6 +69,21 @@ internal class PlayerBindingFactory(
         return binding
     }
 
+    fun detach(player: Player) {
+        val orphaned: List<PlayerBinding>
+        val binding: PlayerBinding?
+        synchronized(lock) {
+            orphaned = bindingRegistry.filter { it.isOrphaned() }
+            bindingRegistry.removeAll(orphaned.toSet())
+            binding = bindingRegistry.firstOrNull { it.isBoundTo(player) }
+            if (binding != null) {
+                bindingRegistry.remove(binding)
+            }
+        }
+        orphaned.forEach { it.stop() }
+        binding?.stop()
+    }
+
     fun detachAll() {
         synchronized(lock) {
             val toFlush = bindingRegistry.toList()

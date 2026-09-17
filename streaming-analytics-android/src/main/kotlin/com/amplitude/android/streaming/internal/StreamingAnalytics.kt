@@ -51,6 +51,16 @@ internal class StreamingAnalytics(
         }
     }
 
+    fun untrackPlayer(player: Player) {
+        graph?.apply {
+            runCatchingCancellable {
+                playerBindingFactory.detach(player)
+            }.onFailure {
+                logger.error("untrackPlayer error: ${it.localizedMessage}")
+            }
+        }
+    }
+
     fun onDelayedEvent(event: DelayedEvent) {
         graph?.apply {
             scope.launch(start = CoroutineStart.UNDISPATCHED) {
