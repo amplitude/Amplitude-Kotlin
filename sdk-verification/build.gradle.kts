@@ -9,6 +9,10 @@ val sessionReplayVersion =
     providers.gradleProperty("sdkVerificationSessionReplayVersion")
         .orElse("0.30.0")
 val engagementVersion = providers.gradleProperty("sdkVerificationEngagementVersion").orElse("3.15.0")
+val includeEngagement =
+    providers.gradleProperty("sdkVerificationIncludeEngagement")
+        .map { it.toBoolean() }
+        .orElse(false)
 val engagementNativeLibPath = providers.gradleProperty("sdkVerificationEngagementNativeLibPath")
 
 android {
@@ -39,7 +43,9 @@ dependencies {
         exclude(group = "com.amplitude", module = "analytics-core")
     }
     testImplementation("com.amplitude:plugin-session-replay-android:${sessionReplayVersion.get()}")
-    testImplementation("com.amplitude:amplitude-engagement-android:${engagementVersion.get()}")
+    if (includeEngagement.get()) {
+        testImplementation("com.amplitude:amplitude-engagement-android:${engagementVersion.get()}")
+    }
     testImplementation(libs.coroutines.test)
     testImplementation(libs.mockk)
     testImplementation(libs.mockwebserver)
@@ -53,6 +59,19 @@ dependencies {
     testRuntimeOnly(libs.junit.vintage.engine)
     testRuntimeOnly(libs.junit.platform.launcher)
     testImplementation(libs.junit4)
+}
+
+if (!includeEngagement.get()) {
+    tasks.withType<JavaCompile>().configureEach {
+        if (name.contains("UnitTest")) {
+            exclude("**/engagement/**")
+        }
+    }
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+        if (name.contains("UnitTest")) {
+            exclude("**/engagement/**")
+        }
+    }
 }
 
 tasks.withType<Test> {
@@ -84,8 +103,10 @@ val verifySdkVerificationCoordinates =
                     "experiment-android-client" to experimentVersion.get(),
                     "plugin-session-replay-android" to sessionReplayVersion.get(),
                     "session-replay-android" to sessionReplayVersion.get(),
-                    "amplitude-engagement-android" to engagementVersion.get(),
                 )
+            if (includeEngagement.get()) {
+                expectedVersions["amplitude-engagement-android"] = engagementVersion.get()
+            }
             val resolvedVersions =
                 configurations
                     .getByName("debugUnitTestRuntimeClasspath")

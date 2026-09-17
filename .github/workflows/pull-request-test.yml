@@ -22,7 +22,9 @@ jobs:
           cache: 'gradle'
 
       - name: Build
-        run: ./gradlew build -x test
+        # sdk-verification resolves Maven blade artifacts, including unpublished Engagement.
+        # Keep it out of the SDK build gate; it runs in the sdk-verification job.
+        run: ./gradlew build -x test -x :sdk-verification:build
 
       - name: Upload build results
         if: always()

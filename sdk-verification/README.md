@@ -16,7 +16,7 @@ This phase verifies the individual Experiment, Session Replay, and Engagement bl
 
 `NonAmplitudeAnalyticsHost` is a minimal test provider. It opts into guarded Kotlin SDK host APIs to exercise the integration boundary intended for Unified and third-party analytics providers.
 
-Engagement runtime tests use a host-native QuickJS library. Without that host library, the suite still compiles every Engagement test and runs its Java/API compatibility gate.
+Engagement 3.15.0 is still unpublished. Default CI compiles Experiment and Session Replay only. Opt into Engagement with `-PsdkVerificationIncludeEngagement=true` once that artifact exists. Runtime Engagement tests also need a host-native QuickJS library (`-PsdkVerificationEngagementNativeLibPath`).
 
 ## Experiment coverage
 
@@ -49,7 +49,7 @@ Engagement runtime tests use a host-native QuickJS library. Without that host li
 | `EngagementPluginIntegrationTest` | Duplicate registration keeps the first plugin | Host-native |
 | `EngagementPluginIntegrationTest` | Removal and re-registration create a usable client | Host-native |
 | `EngagementPluginIntegrationTest` | Operational client calls through the host accessor | Host-native |
-| `EngagementPluginJavaCompatibilityTest` | Java factory and `UniversalPlugin` compatibility | Yes |
+| `EngagementPluginJavaCompatibilityTest` | Java factory and `UniversalPlugin` compatibility | Opt-in |
 | `EngagementPluginNonAmplitudeHostTest` | Third-party lifecycle and event pipeline | Host-native |
 
 ## Blade combination coverage
