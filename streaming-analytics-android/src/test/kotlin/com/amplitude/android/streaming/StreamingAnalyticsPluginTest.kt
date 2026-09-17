@@ -12,6 +12,7 @@ import com.amplitude.core.platform.Timeline
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import io.mockk.verifyOrder
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -111,6 +112,26 @@ class StreamingAnalyticsPluginTest {
                 advanceUntilIdle()
 
                 verify { streamingAnalytics.trackPlayer(player, contentProvider) }
+            }
+
+        @Test
+        fun `trackPlayer then untrackPlayer apply in call order`() =
+            runTest {
+                val isBuilt = CompletableDeferred<Boolean>()
+                val amplitude = androidAmplitude(isBuilt)
+                val streamingAnalytics = installMockedPlugin(amplitude)
+                val player = mockk<Player>(relaxed = true)
+                val contentProvider = PlayerContentProvider { PlayerContent() }
+
+                amplitude.trackPlayer(player, contentProvider)
+                amplitude.untrackPlayer(player)
+                isBuilt.complete(true)
+                advanceUntilIdle()
+
+                verifyOrder {
+                    streamingAnalytics.trackPlayer(player, contentProvider)
+                    streamingAnalytics.untrackPlayer(player)
+                }
             }
 
         @Test

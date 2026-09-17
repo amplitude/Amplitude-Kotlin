@@ -30,11 +30,11 @@ internal class StreamingAnalytics(
         }
     }
 
-    fun trackPlayer(
+    suspend fun trackPlayer(
         player: Player,
         contentProvider: PlayerContentProvider,
     ) {
-        launchSafeAsync("trackPlayer error") {
+        runSafe("trackPlayer error") {
             playerBindingFactory.getOrCreate(
                 player = player,
                 contentProvider = contentProvider,
@@ -42,8 +42,8 @@ internal class StreamingAnalytics(
         }
     }
 
-    fun untrackPlayer(player: Player) {
-        launchSafeAsync("untrackPlayer error") {
+    suspend fun untrackPlayer(player: Player) {
+        runSafe("untrackPlayer error") {
             playerBindingFactory.detach(player)
         }
     }
@@ -87,6 +87,19 @@ internal class StreamingAnalytics(
                 graph.logger.error("teardown error: ${it.localizedMessage}")
             }
             graph.scope.cancel()
+        }
+    }
+
+    private suspend inline fun runSafe(
+        errorMsg: String,
+        crossinline block: suspend StreamingDiGraph.() -> Unit,
+    ) {
+        graph?.run {
+            runCatchingCancellable {
+                block()
+            }.onFailure {
+                logger.error("$errorMsg: ${it.localizedMessage}")
+            }
         }
     }
 
