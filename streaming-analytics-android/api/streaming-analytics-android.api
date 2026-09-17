@@ -1,5 +1,6 @@
 public final class com/amplitude/android/AmplitudeStreamingAnalytics {
 	public static final fun trackPlayer (Lcom/amplitude/android/Amplitude;Landroidx/media3/common/Player;Lcom/amplitude/android/streaming/PlayerContentProvider;)V
+	public static final fun untrackPlayer (Lcom/amplitude/android/Amplitude;Landroidx/media3/common/Player;)V
 }
 
 public final class com/amplitude/android/streaming/PlayerContent {

@@ -13,6 +13,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentLinkedQueue
 
 /**
  * Per-Amplitude Streaming Analytics state.
@@ -24,65 +25,97 @@ internal class StreamingAnalytics(
     private var graph: StreamingDiGraph? = StreamingDiGraph(amplitude)
 
     init {
-        graph?.let { graph ->
-            graph.scope.launch {
-                runCatchingCancellable {
-                    graph.uploadPipeline.onNewEvent()
-                }.onFailure {
-                    graph.logger.error("startup upload drain error: ${it.localizedMessage}")
-                }
-            }
+        launchSafeAsync("startup upload drain error") {
+            uploadPipeline.onNewEvent()
         }
     }
 
-    fun trackPlayer(
+    suspend fun trackPlayer(
         player: Player,
         contentProvider: PlayerContentProvider,
     ) {
-        graph?.apply {
-            runCatchingCancellable {
-                playerBindingFactory.getOrCreate(
-                    player = player,
-                    contentProvider = contentProvider,
-                )
-            }.onFailure {
-                logger.error("trackPlayer error: ${it.localizedMessage}")
-            }
+        runSafe("trackPlayer error") {
+            playerBindingFactory.getOrCreate(
+                player = player,
+                contentProvider = contentProvider,
+            )
+        }
+    }
+
+    suspend fun untrackPlayer(player: Player) {
+        runSafe("untrackPlayer error") {
+            playerBindingFactory.detach(player)
         }
     }
 
     fun onDelayedEvent(event: DelayedEvent) {
-        graph?.apply {
-            scope.launch(start = CoroutineStart.UNDISPATCHED) {
-                runCatchingCancellable {
-                    withContext(NonCancellable) {
-                        storagePipeline.onDelayedEvent(event)
-                    }
-                    uploadPipeline.onNewEvent()
-                }.onFailure {
-                    logger.error("onDelayedEvent error: ${it.localizedMessage}")
-                }
+        launchSafeAsync("onDelayedEvent error", CoroutineStart.UNDISPATCHED) {
+            withContext(NonCancellable) {
+                storagePipeline.onDelayedEvent(event)
             }
+            uploadPipeline.onNewEvent()
         }
     }
 
     fun flush() {
-        graph?.apply {
-            scope.launch {
-                runCatchingCancellable {
-                    uploadPipeline.flush()
-                }.onFailure {
-                    logger.error("flush error: ${it.localizedMessage}")
+        launchSafeAsync("flush error") {
+            uploadPipeline.flush()
+        }
+    }
+
+    /**
+     * Stops every tracked player and drains their terminal events.
+     *
+     * Asynchronous: the final stop reads the player on its own looper, which is the caller's
+     * thread when an app removes the plugin from the main thread.
+     */
+    fun teardown() {
+        val graph = this.graph ?: return
+        this.graph = null
+        val terminalEvents = ConcurrentLinkedQueue<DelayedEvent>()
+        graph.streamTracker.routeDelayedEvents { terminalEvents.add(it) }
+        graph.amplitude.amplitudeScope.launch(graph.ioDispatcher) {
+            runCatchingCancellable {
+                withContext(NonCancellable) {
+                    // Closes the factory, so an in-flight trackPlayer that is still waiting on
+                    // its lock cannot open a session after this drain.
+                    graph.playerBindingFactory.detachAll()
+                    terminalEvents.forEach { graph.storagePipeline.onDelayedEvent(it) }
+                    graph.uploadPipeline.flush()
                 }
+            }.onFailure {
+                graph.logger.error("teardown error: ${it.localizedMessage}")
+            }
+            graph.scope.cancel()
+        }
+    }
+
+    private suspend inline fun runSafe(
+        errorMsg: String,
+        crossinline block: suspend StreamingDiGraph.() -> Unit,
+    ) {
+        graph?.run {
+            runCatchingCancellable {
+                block()
+            }.onFailure {
+                logger.error("$errorMsg: ${it.localizedMessage}")
             }
         }
     }
 
-    fun teardown() {
+    private inline fun launchSafeAsync(
+        errorMsg: String,
+        start: CoroutineStart = CoroutineStart.DEFAULT,
+        crossinline block: suspend StreamingDiGraph.() -> Unit,
+    ) {
         graph?.apply {
-            playerBindingFactory.detachAll()
-            scope.cancel()
+            scope.launch(start = start) {
+                runCatchingCancellable {
+                    block()
+                }.onFailure {
+                    logger.error("$errorMsg: ${it.localizedMessage}")
+                }
+            }
         }
-        graph = null
     }
 }

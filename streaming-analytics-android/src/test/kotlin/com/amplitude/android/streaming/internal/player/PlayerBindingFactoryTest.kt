@@ -17,6 +17,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -26,6 +29,7 @@ import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNotSame
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Assertions.fail
@@ -80,6 +84,218 @@ class PlayerBindingFactoryTest {
         }
 
     @Test
+    fun `detach stops the binding and does not reuse it`() =
+        runTest {
+            val events = mutableListOf<BaseEvent>()
+            val amplitude =
+                mockk<Amplitude>(relaxed = true).also { amplitude ->
+                    every { amplitude.track(any<BaseEvent>(), any(), any()) } answers {
+                        events.add(firstArg())
+                        amplitude
+                    }
+                }
+            val observers = mutableListOf<TestPlayerObserver>()
+            val factory =
+                playerBindingFactory(
+                    streamTracker = StreamTracker(amplitude),
+                    playerObserverFactory =
+                        PlayerObserverFactory { _, _, _ ->
+                            TestPlayerObserver().also { observers.add(it) }
+                        },
+                )
+            val player = mockk<Player>(relaxed = true)
+            val binding = factory.getOrCreate(player) { PlayerContent() }
+            try {
+                runCurrent()
+                observers.single().emit(PlayerEvent.Playing)
+                runCurrent()
+
+                factory.detach(player)
+
+                assertTrue(
+                    events.any {
+                        it.eventType == "[Amplitude] Stream Stopped" &&
+                            it.eventProperties?.get("stop_reason") == "untracked"
+                    },
+                )
+                assertNotSame(binding, factory.getOrCreate(player) { PlayerContent() })
+            } finally {
+                factory.detachAll()
+                runCurrent()
+            }
+        }
+
+    @Test
+    fun `detach is a no-op when the player is not tracked`() =
+        runTest {
+            val amplitude = mockk<Amplitude>(relaxed = true)
+            val factory = playerBindingFactory(streamTracker = StreamTracker(amplitude))
+            val player = mockk<Player>(relaxed = true)
+
+            factory.detach(player)
+
+            verify(exactly = 0) { amplitude.track(any<BaseEvent>(), any(), any()) }
+        }
+
+    @Test
+    fun `getOrCreate after detach does not overlap the previous session`() =
+        runTest {
+            val events = mutableListOf<BaseEvent>()
+            val amplitude =
+                mockk<Amplitude>(relaxed = true).also { amplitude ->
+                    every { amplitude.track(any<BaseEvent>(), any(), any()) } answers {
+                        events.add(firstArg())
+                        amplitude
+                    }
+                }
+            val observers = mutableListOf<TestPlayerObserver>()
+            val factory =
+                playerBindingFactory(
+                    streamTracker = StreamTracker(amplitude),
+                    playerObserverFactory =
+                        PlayerObserverFactory { _, _, _ ->
+                            TestPlayerObserver().also { observers.add(it) }
+                        },
+                )
+            val player = mockk<Player>(relaxed = true)
+            try {
+                factory.getOrCreate(player) { PlayerContent() }
+                runCurrent()
+                observers.single().emit(PlayerEvent.Playing)
+                runCurrent()
+
+                factory.detach(player)
+                factory.getOrCreate(player) { PlayerContent() }
+                runCurrent()
+                observers.last().emit(PlayerEvent.Playing)
+                runCurrent()
+
+                val started = events.filter { it.eventType == "[Amplitude] Stream Started" }
+                val untrackedStops =
+                    events.filter {
+                        it.eventType == "[Amplitude] Stream Stopped" &&
+                            it.eventProperties?.get("stop_reason") == "untracked"
+                    }
+                assertEquals(2, started.size)
+                assertEquals(1, untrackedStops.size)
+                assertTrue(events.indexOf(untrackedStops.single()) < events.indexOf(started.last()))
+            } finally {
+                factory.detachAll()
+            }
+        }
+
+    @Test
+    fun `detachAll tracks stream stopped before returning`() =
+        runTest {
+            val events = mutableListOf<BaseEvent>()
+            val amplitude =
+                mockk<Amplitude>(relaxed = true).also { amplitude ->
+                    every { amplitude.track(any<BaseEvent>(), any(), any()) } answers {
+                        events.add(firstArg())
+                        amplitude
+                    }
+                }
+            val observers = mutableListOf<TestPlayerObserver>()
+            val factory =
+                playerBindingFactory(
+                    streamTracker = StreamTracker(amplitude),
+                    playerObserverFactory =
+                        PlayerObserverFactory { _, _, _ ->
+                            TestPlayerObserver().also { observers.add(it) }
+                        },
+                )
+            val player = mockk<Player>(relaxed = true)
+            factory.getOrCreate(player) { PlayerContent() }
+            runCurrent()
+            observers.single().emit(PlayerEvent.Playing)
+            runCurrent()
+
+            factory.detachAll()
+
+            assertTrue(
+                events.any {
+                    it.eventType == "[Amplitude] Stream Stopped" &&
+                        it.eventProperties?.get("stop_reason") == "untracked"
+                },
+            )
+        }
+
+    @Test
+    fun `detach finishes the stop even when its caller is cancelled`() =
+        runTest {
+            val events = mutableListOf<BaseEvent>()
+            val amplitude =
+                mockk<Amplitude>(relaxed = true).also { amplitude ->
+                    every { amplitude.track(any<BaseEvent>(), any(), any()) } answers {
+                        events.add(firstArg())
+                        amplitude
+                    }
+                }
+            val observers = mutableListOf<TestPlayerObserver>()
+            val factory =
+                playerBindingFactory(
+                    playerDispatcher = StandardTestDispatcher(testScheduler),
+                    streamTracker = StreamTracker(amplitude),
+                    playerObserverFactory =
+                        PlayerObserverFactory { _, _, _ ->
+                            TestPlayerObserver().also { observers.add(it) }
+                        },
+                )
+            val player = mockk<Player>(relaxed = true)
+            factory.getOrCreate(player) { PlayerContent() }
+            runCurrent()
+            observers.single().emit(PlayerEvent.Playing)
+            runCurrent()
+
+            val caller = launch { factory.detach(player) }
+            runCurrent()
+            caller.cancel()
+            runCurrent()
+
+            assertTrue(
+                events.any {
+                    it.eventType == "[Amplitude] Stream Stopped" &&
+                        it.eventProperties?.get("stop_reason") == "untracked"
+                },
+            )
+        }
+
+    @Test
+    fun `getOrCreate after detachAll does not start a new binding`() =
+        runTest {
+            val events = mutableListOf<BaseEvent>()
+            val amplitude =
+                mockk<Amplitude>(relaxed = true).also { amplitude ->
+                    every { amplitude.track(any<BaseEvent>(), any(), any()) } answers {
+                        events.add(firstArg())
+                        amplitude
+                    }
+                }
+            val observers = mutableListOf<TestPlayerObserver>()
+            val factory =
+                playerBindingFactory(
+                    streamTracker = StreamTracker(amplitude),
+                    playerObserverFactory =
+                        PlayerObserverFactory { _, _, _ ->
+                            TestPlayerObserver().also { observers.add(it) }
+                        },
+                )
+            val player = mockk<Player>(relaxed = true)
+            factory.getOrCreate(player) { PlayerContent() }
+            runCurrent()
+            observers.single().emit(PlayerEvent.Playing)
+            runCurrent()
+
+            factory.detachAll()
+            val started = events.count { it.eventType == "[Amplitude] Stream Started" }
+
+            assertNull(factory.getOrCreate(player) { PlayerContent() })
+            runCurrent()
+            assertEquals(started, events.count { it.eventType == "[Amplitude] Stream Started" })
+            assertEquals(1, observers.size)
+        }
+
+    @Test
     fun `should not start a second collector when getOrCreate races`() =
         runTest {
             val events = mutableListOf<BaseEvent>()
@@ -106,7 +322,7 @@ class PlayerBindingFactoryTest {
                 List(callers) {
                     Thread {
                         barrier.await()
-                        factory.getOrCreate(player) { PlayerContent() }
+                        runBlocking { factory.getOrCreate(player) { PlayerContent() } }
                     }
                 }
             try {
@@ -197,6 +413,7 @@ class PlayerBindingFactoryTest {
                         it.eventProperties?.get("stop_reason") == "untracked"
                 },
             )
+            assertEquals(0, factory.trackedCount())
         }
 
     @Test
@@ -274,9 +491,9 @@ class PlayerBindingFactoryTest {
         )
     }
 
-    private fun PlayerBindingFactory.createAbandonedBinding(): Pair<PlayerBinding, WeakReference<Player>> {
+    private suspend fun PlayerBindingFactory.createAbandonedBinding(): Pair<PlayerBinding, WeakReference<Player>> {
         val player = playerProxy()
-        val binding = getOrCreate(player) { PlayerContent() }
+        val binding = checkNotNull(getOrCreate(player) { PlayerContent() })
         // MockK records create(player); drop that so the proxy can be collected.
         clearMocks(dispatcherFactory, answers = false, recordedCalls = true)
         return binding to WeakReference(player)

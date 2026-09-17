@@ -11,6 +11,7 @@ import com.amplitude.android.streaming.internal.StreamTracker
 import com.amplitude.android.streaming.internal.util.Time
 import com.amplitude.android.streaming.internal.util.runCatchingCancellable
 import com.amplitude.core.AmplitudePreview
+import kotlinx.coroutines.CompletableJob
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -60,6 +61,7 @@ internal class PlayerBinding internal constructor(
     private var playback: PlaybackState = PlaybackState.Idle()
     private val started = AtomicBoolean(false)
     private val stopped = AtomicBoolean(false)
+    private val stoppedCompletion: CompletableJob = Job()
 
     // TODO: wire picture-in-picture and background from the host app.
     private val playerState = PlayerState()
@@ -92,12 +94,17 @@ internal class PlayerBinding internal constructor(
         }
     }
 
-    fun stop() {
-        if (!stopped.compareAndSet(false, true)) return
+    /**
+     * Starts the terminal stop once and returns a job completing when its events are tracked.
+     *
+     * The stop runs on a scope of its own, independent of both the graph and the caller, so
+     * cancelling either cannot leave a stream session without its Stream Stopped.
+     */
+    fun stop(): Job {
+        if (!stopped.compareAndSet(false, true)) return stoppedCompletion
         val rewriteIdleLastSegment = !isOrphaned()
         eventJob?.cancel()
         eventJob = null
-        // Independent of the graph job so teardown's scope.cancel() cannot drop finishAd.
         val cleanupScope = CoroutineScope(scope.coroutineContext.minusKey(Job))
         cleanupScope.launch {
             try {
@@ -109,10 +116,16 @@ internal class PlayerBinding internal constructor(
                 }
             } finally {
                 this@PlayerBinding.scope.cancel()
+                stoppedCompletion.complete()
                 cleanupScope.cancel()
                 onStopped(this@PlayerBinding)
             }
         }
+        return stoppedCompletion
+    }
+
+    internal suspend fun stopAndJoin() {
+        stop().join()
     }
 
     private suspend fun handlePlayerEvent(event: PlayerEvent) {
@@ -507,6 +520,8 @@ internal class PlayerBinding internal constructor(
     internal fun isBoundTo(player: Player): Boolean = playerReference.get() === player
 
     internal fun isOrphaned(): Boolean = playerReference.get() == null
+
+    internal fun hasStopped(): Boolean = stopped.get()
 
     private fun newViewSessionId(): String = UUID.randomUUID().toString()
 

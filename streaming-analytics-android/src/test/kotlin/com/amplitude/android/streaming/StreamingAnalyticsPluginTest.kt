@@ -4,12 +4,15 @@ import androidx.media3.common.Player
 import com.amplitude.android.streaming.internal.DelayedEvent
 import com.amplitude.android.streaming.internal.StreamingAnalytics
 import com.amplitude.android.trackPlayer
+import com.amplitude.android.untrackPlayer
 import com.amplitude.core.AmplitudePreview
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
 import com.amplitude.core.platform.Timeline
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.coVerify
+import io.mockk.coVerifyOrder
 import io.mockk.verify
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -85,6 +88,15 @@ class StreamingAnalyticsPluginTest {
 
             plugin.teardown()
             assertNull(plugin.streamingAnalytics)
+
+            val delayed =
+                DelayedEvent(
+                    eventType = "[Amplitude] Stream Stopped",
+                    kind = DelayedEvent.Kind.INSTANT,
+                    timestamp = 1L,
+                    eventProperties = mutableMapOf("stream_session_id" to "s-1"),
+                )
+            assertNull(plugin.execute(delayed))
         }
 
         @Test
@@ -100,7 +112,70 @@ class StreamingAnalyticsPluginTest {
                 isBuilt.complete(true)
                 advanceUntilIdle()
 
-                verify { streamingAnalytics.trackPlayer(player, contentProvider) }
+                coVerify { streamingAnalytics.trackPlayer(player, contentProvider) }
+            }
+
+        @Test
+        fun `trackPlayer then untrackPlayer apply in call order`() =
+            runTest {
+                val isBuilt = CompletableDeferred<Boolean>()
+                val amplitude = androidAmplitude(isBuilt)
+                val streamingAnalytics = installMockedPlugin(amplitude)
+                val player = mockk<Player>(relaxed = true)
+                val contentProvider = PlayerContentProvider { PlayerContent() }
+
+                amplitude.trackPlayer(player, contentProvider)
+                amplitude.untrackPlayer(player)
+                isBuilt.complete(true)
+                advanceUntilIdle()
+
+                coVerifyOrder {
+                    streamingAnalytics.trackPlayer(player, contentProvider)
+                    streamingAnalytics.untrackPlayer(player)
+                }
+            }
+
+        @Test
+        fun `untrackPlayer uses registered plugin`() =
+            runTest {
+                val isBuilt = CompletableDeferred<Boolean>()
+                val amplitude = androidAmplitude(isBuilt)
+                val streamingAnalytics = installMockedPlugin(amplitude)
+
+                val player = mockk<Player>(relaxed = true)
+                amplitude.untrackPlayer(player)
+                isBuilt.complete(true)
+                advanceUntilIdle()
+
+                coVerify { streamingAnalytics.untrackPlayer(player) }
+            }
+
+        @Test
+        fun `untrackPlayer waits for the instance to finish building`() =
+            runTest {
+                val isBuilt = CompletableDeferred<Boolean>()
+                val amplitude = androidAmplitude(isBuilt)
+                val player = mockk<Player>(relaxed = true)
+
+                amplitude.untrackPlayer(player)
+                advanceUntilIdle()
+
+                val streamingAnalytics = installMockedPlugin(amplitude)
+                isBuilt.complete(true)
+                advanceUntilIdle()
+
+                coVerify { streamingAnalytics.untrackPlayer(player) }
+            }
+
+        @Test
+        fun `untrackPlayer logs an error when the plugin is not installed`() =
+            runTest {
+                val amplitude = androidAmplitude(CompletableDeferred(true))
+
+                amplitude.untrackPlayer(mockk<Player>(relaxed = true))
+                advanceUntilIdle()
+
+                verify { amplitude.logger.error("StreamingAnalyticsPlugin is not installed.") }
             }
 
         @Test
@@ -118,7 +193,7 @@ class StreamingAnalyticsPluginTest {
                 isBuilt.complete(true)
                 advanceUntilIdle()
 
-                verify { streamingAnalytics.trackPlayer(player, contentProvider) }
+                coVerify { streamingAnalytics.trackPlayer(player, contentProvider) }
             }
 
         @Test
