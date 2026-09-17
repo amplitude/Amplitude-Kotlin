@@ -8,6 +8,8 @@ import com.amplitude.android.streaming.internal.util.DiGraph.Companion.weak
 import com.amplitude.android.streaming.internal.util.millisToSeconds
 import com.amplitude.core.Amplitude
 import com.amplitude.core.AmplitudePreview
+import com.amplitude.core.platform.Plugin
+import java.util.concurrent.atomic.AtomicReference
 
 private const val AD_STARTED = "[Amplitude] Ad Started"
 private const val AD_STOPPED = "[Amplitude] Ad Stopped"
@@ -25,6 +27,19 @@ internal val StreamingDiGraph.streamTracker: StreamTracker by weak {
 internal class StreamTracker(
     private val amplitude: Amplitude,
 ) {
+    private val delayedEventSink = AtomicReference<((DelayedEvent) -> Unit)?>(null)
+
+    /**
+     * Sends delayed events to [sink] instead of tracking them on the timeline.
+     *
+     * Teardown needs this: the timeline removes [com.amplitude.android.streaming.StreamingAnalyticsPlugin]
+     * before it calls the plugin's teardown, so a delayed event tracked from then on would reach
+     * the standard event destination instead of the delayed-events pipeline.
+     */
+    fun routeDelayedEvents(sink: (DelayedEvent) -> Unit) {
+        delayedEventSink.set(sink)
+    }
+
     fun trackAdStarted(
         options: PlayerContent,
         ad: AdContext,
@@ -90,23 +105,22 @@ internal class StreamTracker(
         timestamp: Long,
         insertId: String,
     ) {
-        amplitude.track(
-            event =
-                DelayedEvent(
-                    eventType = STREAM_STARTED,
-                    kind = DelayedEvent.Kind.INSTANT,
-                    timestamp = timestamp,
-                    eventProperties =
-                        contentProperties(
-                            options = options,
-                            snapshot = snapshot,
-                            playerState = playerState,
-                            mediaType = mediaType,
-                            streamSessionId = streamSessionId,
-                            playId = playId,
-                            startTimeMillis = startTimeMillis,
-                        ),
-                ).also { it.insertId = insertId },
+        trackDelayed(
+            DelayedEvent(
+                eventType = STREAM_STARTED,
+                kind = DelayedEvent.Kind.INSTANT,
+                timestamp = timestamp,
+                eventProperties =
+                    contentProperties(
+                        options = options,
+                        snapshot = snapshot,
+                        playerState = playerState,
+                        mediaType = mediaType,
+                        streamSessionId = streamSessionId,
+                        playId = playId,
+                        startTimeMillis = startTimeMillis,
+                    ),
+            ).also { it.insertId = insertId },
         )
     }
 
@@ -124,27 +138,39 @@ internal class StreamTracker(
         stopReason: StopReason? = null,
         errorMessage: String? = null,
     ) {
-        amplitude.track(
-            event =
-                DelayedEvent(
-                    eventType = STREAM_STOPPED,
-                    kind = stopReason.eventKind(),
-                    timestamp = timestamp,
-                    eventProperties =
-                        stoppedContentProperties(
-                            options = options,
-                            snapshot = snapshot,
-                            playerState = playerState,
-                            mediaType = mediaType,
-                            streamSessionId = streamSessionId,
-                            playId = playId,
-                            startTimeMillis = startTimeMillis,
-                            streamDurationMillis = streamDurationMillis,
-                            stopReason = stopReason,
-                            errorMessage = errorMessage,
-                        ),
-                ).also { it.insertId = insertId },
+        trackDelayed(
+            DelayedEvent(
+                eventType = STREAM_STOPPED,
+                kind = stopReason.eventKind(),
+                timestamp = timestamp,
+                eventProperties =
+                    stoppedContentProperties(
+                        options = options,
+                        snapshot = snapshot,
+                        playerState = playerState,
+                        mediaType = mediaType,
+                        streamSessionId = streamSessionId,
+                        playId = playId,
+                        startTimeMillis = startTimeMillis,
+                        streamDurationMillis = streamDurationMillis,
+                        stopReason = stopReason,
+                        errorMessage = errorMessage,
+                    ),
+            ).also { it.insertId = insertId },
         )
+    }
+
+    private fun trackDelayed(event: DelayedEvent) {
+        val sink = delayedEventSink.get()
+        if (sink == null) {
+            amplitude.track(event)
+            return
+        }
+        if (amplitude.optOut) return
+        // Stands in for the enrichment the timeline would have applied on the way to the plugin.
+        event.sessionId = event.sessionId ?: amplitude.sessionId
+        if (amplitude.timeline.applyPlugins(Plugin.Type.Before, event) == null) return
+        sink(event)
     }
 }
 

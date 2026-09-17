@@ -10,6 +10,9 @@ import com.amplitude.android.streaming.internal.util.Time
 import com.amplitude.android.streaming.internal.util.time
 import com.amplitude.core.AmplitudePreview
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 internal val StreamingDiGraph.playerBindingFactory: PlayerBindingFactory by DiGraph.singleton {
     PlayerBindingFactory(
@@ -31,70 +34,70 @@ internal class PlayerBindingFactory(
     private val scope: CoroutineScope,
     private val playerDispatcherFactory: PlayerDispatcherFactory,
 ) {
-    private val lock = Any()
+    private val mutex = Mutex()
     private val bindingRegistry = mutableListOf<PlayerBinding>()
+    private var closed = false
 
-    fun getOrCreate(
+    suspend fun getOrCreate(
         player: Player,
         contentProvider: PlayerContentProvider,
-    ): PlayerBinding {
-        val orphaned: List<PlayerBinding>
-        val binding: PlayerBinding
-        val created: Boolean
-        synchronized(lock) {
-            orphaned = bindingRegistry.filter { it.isOrphaned() }
-            bindingRegistry.removeAll(orphaned.toSet())
+    ): PlayerBinding? =
+        mutex.withLock {
+            if (closed) return@withLock null
+            sweepInactive()
             val existing = bindingRegistry.firstOrNull { it.isBoundTo(player) }
             if (existing != null) {
-                binding = existing
-                created = false
-            } else {
-                binding =
-                    PlayerBinding(
-                        player = player,
-                        contentProvider = contentProvider,
-                        playerObserverFactory = playerObserverFactory,
-                        streamTracker = streamTracker,
-                        heartbeatFactory = heartbeatFactory,
-                        time = time,
-                        parentScope = scope,
-                        playerDispatcher = playerDispatcherFactory.create(player),
-                        onStopped = ::unregister,
-                    ).also { bindingRegistry.add(it) }
-                created = true
+                return@withLock existing
             }
-            if (created) binding.start()
+            PlayerBinding(
+                player = player,
+                contentProvider = contentProvider,
+                playerObserverFactory = playerObserverFactory,
+                streamTracker = streamTracker,
+                heartbeatFactory = heartbeatFactory,
+                time = time,
+                parentScope = scope,
+                playerDispatcher = playerDispatcherFactory.create(player),
+                onStopped = ::unregister,
+            ).also {
+                bindingRegistry.add(it)
+                it.start()
+            }
         }
-        orphaned.forEach { it.stop() }
-        return binding
-    }
 
-    fun detach(player: Player) {
-        val orphaned: List<PlayerBinding>
-        val binding: PlayerBinding?
-        synchronized(lock) {
-            orphaned = bindingRegistry.filter { it.isOrphaned() }
-            bindingRegistry.removeAll(orphaned.toSet())
-            binding = bindingRegistry.firstOrNull { it.isBoundTo(player) }
+    suspend fun detach(player: Player) {
+        mutex.withLock {
+            sweepInactive()
+            val binding = bindingRegistry.firstOrNull { it.isBoundTo(player) }
             if (binding != null) {
                 bindingRegistry.remove(binding)
             }
+            binding?.stopAndJoin()
         }
-        orphaned.forEach { it.stop() }
-        binding?.stop()
     }
 
-    fun detachAll() {
-        synchronized(lock) {
+    suspend fun detachAll() {
+        mutex.withLock {
+            closed = true
             val toFlush = bindingRegistry.toList()
             bindingRegistry.clear()
-            toFlush
-        }.forEach { it.stop() }
+            toFlush.forEach { it.stopAndJoin() }
+        }
+    }
+
+    internal suspend fun trackedCount(): Int = mutex.withLock { bindingRegistry.size }
+
+    private suspend fun sweepInactive() {
+        val inactive = bindingRegistry.filter { it.isOrphaned() || it.hasStopped() }
+        bindingRegistry.removeAll(inactive.toSet())
+        inactive.forEach { it.stopAndJoin() }
     }
 
     private fun unregister(binding: PlayerBinding) {
-        synchronized(lock) {
-            bindingRegistry.remove(binding)
+        scope.launch {
+            mutex.withLock {
+                bindingRegistry.remove(binding)
+            }
         }
     }
 }

@@ -7,6 +7,7 @@ import com.amplitude.android.streaming.internal.player.PlayerState
 import com.amplitude.core.Amplitude
 import com.amplitude.core.AmplitudePreview
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.platform.Timeline
 import io.mockk.every
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -388,6 +389,107 @@ class StreamTrackerTest {
             assertEquals("[Amplitude] Ad Skipped", events.first().eventType)
             assertEquals("video-789:0:0:1", events.first().eventProperties?.get("ad_id"))
             assertEquals(10.0, events.first().eventProperties?.get("skip_position"))
+        }
+    }
+
+    @Nested
+    inner class RoutedDelayedEvents {
+        private val snapshot =
+            PlayerMediaSnapshot(
+                positionMillis = 15_000L,
+                durationMillis = 60_000L,
+                mediaType = MediaType.VIDEO,
+            )
+        private val routed = mutableListOf<DelayedEvent>()
+
+        @BeforeEach
+        fun routeOffTimeline() {
+            routed.clear()
+            every { amplitude.sessionId } returns 4_200L
+            every { amplitude.timeline } returns Timeline().also { it.amplitude = amplitude }
+            tracker.routeDelayedEvents { routed.add(it) }
+        }
+
+        @Test
+        fun `stream events reach the sink instead of the timeline`() {
+            tracker.trackStreamStopped(
+                options = PlayerContent(),
+                snapshot = snapshot,
+                playerState = PlayerState(),
+                mediaType = MediaType.VIDEO,
+                streamSessionId = "stream-1",
+                playId = "play-1",
+                startTimeMillis = 10_000L,
+                streamDurationMillis = 5_000L,
+                timestamp = 6_000L,
+                insertId = "insert-stop-1",
+                stopReason = StopReason.UNTRACKED,
+            )
+
+            assertEquals(emptyList<BaseEvent>(), events)
+            assertEquals(1, routed.size)
+            assertEquals("[Amplitude] Stream Stopped", routed.single().eventType)
+            assertEquals("untracked", routed.single().eventProperties?.get("stop_reason"))
+        }
+
+        @Test
+        fun `routed events carry the session id the timeline would have assigned`() {
+            tracker.trackStreamStarted(
+                options = PlayerContent(),
+                snapshot = snapshot,
+                playerState = PlayerState(),
+                mediaType = MediaType.VIDEO,
+                streamSessionId = "stream-1",
+                playId = "play-1",
+                startTimeMillis = 15_000L,
+                timestamp = 1_000L,
+                insertId = "insert-start-1",
+            )
+
+            assertEquals(4_200L, routed.single().sessionId)
+        }
+
+        @Test
+        fun `ad events still go through the timeline`() {
+            tracker.trackAdStarted(
+                options = PlayerContent(),
+                ad =
+                    AdContext(
+                        adGroupIndex = 0,
+                        adIndexInAdGroup = 0,
+                        positionMillis = 0L,
+                        durationMillis = 30_000L,
+                        contentPositionMillis = 0L,
+                        contentId = "video-789",
+                        mediaItemIndex = 0,
+                    ),
+                streamSessionId = "stream-1",
+            )
+
+            assertEquals(1, events.size)
+            assertEquals(emptyList<DelayedEvent>(), routed)
+        }
+
+        @Test
+        fun `opted out users do not reach the sink`() {
+            every { amplitude.optOut } returns true
+
+            tracker.trackStreamStopped(
+                options = PlayerContent(),
+                snapshot = snapshot,
+                playerState = PlayerState(),
+                mediaType = MediaType.VIDEO,
+                streamSessionId = "stream-1",
+                playId = "play-1",
+                startTimeMillis = 10_000L,
+                streamDurationMillis = 5_000L,
+                timestamp = 6_000L,
+                insertId = "insert-stop-1",
+                stopReason = StopReason.UNTRACKED,
+            )
+
+            assertEquals(emptyList<BaseEvent>(), events)
+            assertEquals(emptyList<DelayedEvent>(), routed)
         }
     }
 }

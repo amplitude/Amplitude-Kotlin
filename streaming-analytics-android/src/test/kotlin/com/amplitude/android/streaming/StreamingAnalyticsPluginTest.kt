@@ -86,6 +86,15 @@ class StreamingAnalyticsPluginTest {
 
             plugin.teardown()
             assertNull(plugin.streamingAnalytics)
+
+            val delayed =
+                DelayedEvent(
+                    eventType = "[Amplitude] Stream Stopped",
+                    kind = DelayedEvent.Kind.INSTANT,
+                    timestamp = 1L,
+                    eventProperties = mutableMapOf("stream_session_id" to "s-1"),
+                )
+            assertNull(plugin.execute(delayed))
         }
 
         @Test
