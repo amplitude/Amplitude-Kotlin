@@ -16,7 +16,13 @@ plugins {
 }
 
 apiValidation {
-    ignoredProjects += listOf("kotlin-android-app", "streaming-app")
+    ignoredProjects += listOf("kotlin-android-app", "sdk-verification", "streaming-app")
+}
+
+tasks.register("sdkVerificationTest") {
+    group = "verification"
+    description = "Runs customer-style verification against Maven-published SDK artifacts."
+    dependsOn(":sdk-verification:testDebugUnitTest")
 }
 
 allprojects {
