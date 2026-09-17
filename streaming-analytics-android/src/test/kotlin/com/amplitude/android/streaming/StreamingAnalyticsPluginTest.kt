@@ -11,8 +11,9 @@ import com.amplitude.core.platform.Plugin
 import com.amplitude.core.platform.Timeline
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.coVerify
+import io.mockk.coVerifyOrder
 import io.mockk.verify
-import io.mockk.verifyOrder
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -111,7 +112,7 @@ class StreamingAnalyticsPluginTest {
                 isBuilt.complete(true)
                 advanceUntilIdle()
 
-                verify { streamingAnalytics.trackPlayer(player, contentProvider) }
+                coVerify { streamingAnalytics.trackPlayer(player, contentProvider) }
             }
 
         @Test
@@ -128,7 +129,7 @@ class StreamingAnalyticsPluginTest {
                 isBuilt.complete(true)
                 advanceUntilIdle()
 
-                verifyOrder {
+                coVerifyOrder {
                     streamingAnalytics.trackPlayer(player, contentProvider)
                     streamingAnalytics.untrackPlayer(player)
                 }
@@ -146,7 +147,7 @@ class StreamingAnalyticsPluginTest {
                 isBuilt.complete(true)
                 advanceUntilIdle()
 
-                verify { streamingAnalytics.untrackPlayer(player) }
+                coVerify { streamingAnalytics.untrackPlayer(player) }
             }
 
         @Test
@@ -163,7 +164,7 @@ class StreamingAnalyticsPluginTest {
                 isBuilt.complete(true)
                 advanceUntilIdle()
 
-                verify { streamingAnalytics.untrackPlayer(player) }
+                coVerify { streamingAnalytics.untrackPlayer(player) }
             }
 
         @Test
@@ -192,7 +193,7 @@ class StreamingAnalyticsPluginTest {
                 isBuilt.complete(true)
                 advanceUntilIdle()
 
-                verify { streamingAnalytics.trackPlayer(player, contentProvider) }
+                coVerify { streamingAnalytics.trackPlayer(player, contentProvider) }
             }
 
         @Test
