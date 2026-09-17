@@ -15,18 +15,23 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.lang.ref.WeakReference
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.time.Duration.Companion.milliseconds
+
+private const val ORPHAN_CHECK_MILLIS = 1_000L
 
 /**
  * Turns player events into stream sessions, Stream Started, and ad events.
  */
 @OptIn(AmplitudePreview::class)
 internal class PlayerBinding internal constructor(
-    val player: Player,
+    player: Player,
     private val contentProvider: PlayerContentProvider,
     playerObserverFactory: PlayerObserverFactory,
     private val streamTracker: StreamTracker,
@@ -34,7 +39,9 @@ internal class PlayerBinding internal constructor(
     private val time: Time,
     parentScope: CoroutineScope,
     playerDispatcher: CoroutineDispatcher,
+    private val onStopped: (PlayerBinding) -> Unit = {},
 ) {
+    private val playerReference = WeakReference(player)
     private val scope =
         CoroutineScope(
             playerDispatcher +
@@ -49,6 +56,7 @@ internal class PlayerBinding internal constructor(
         )
     private var eventJob: Job? = null
     private var playback: PlaybackState = PlaybackState.Idle()
+    private val started = AtomicBoolean(false)
     private val stopped = AtomicBoolean(false)
 
     // TODO: wire picture-in-picture and background from the host app.
@@ -57,11 +65,11 @@ internal class PlayerBinding internal constructor(
     private var options: PlayerContent = PlayerContent()
 
     fun start() {
-        if (eventJob != null) return
+        if (!started.compareAndSet(false, true)) return
         scope.launch {
             runCatchingCancellable {
                 if (stopped.get() || eventJob != null) return@runCatchingCancellable
-                options = resolveOptions(player.currentMediaItem)
+                options = resolveOptions(playerReference.get()?.currentMediaItem)
                 eventJob =
                     scope.launch {
                         observer.eventFlow.collect { event ->
@@ -74,10 +82,17 @@ internal class PlayerBinding internal constructor(
                     }
             }
         }
+        scope.launch {
+            while (!stopped.get()) {
+                delay(ORPHAN_CHECK_MILLIS.milliseconds)
+                if (isOrphaned()) stop()
+            }
+        }
     }
 
     fun stop() {
         if (!stopped.compareAndSet(false, true)) return
+        val rewriteIdleLastSegment = !isOrphaned()
         eventJob?.cancel()
         eventJob = null
         // Independent of the graph job so teardown's scope.cancel() cannot drop finishAd.
@@ -85,16 +100,24 @@ internal class PlayerBinding internal constructor(
         cleanupScope.launch {
             try {
                 mutex.withLock {
-                    finishPlayback(StopReason.UNTRACKED)
+                    finishPlayback(
+                        StopReason.UNTRACKED,
+                        rewriteIdleLastSegment = rewriteIdleLastSegment,
+                    )
                 }
             } finally {
                 this@PlayerBinding.scope.cancel()
                 cleanupScope.cancel()
+                onStopped(this@PlayerBinding)
             }
         }
     }
 
     private suspend fun handlePlayerEvent(event: PlayerEvent) {
+        if (isOrphaned()) {
+            stop()
+            return
+        }
         when (event) {
             PlayerEvent.Playing -> onPlaying()
             PlayerEvent.Paused -> onPaused()
@@ -106,7 +129,7 @@ internal class PlayerBinding internal constructor(
             is PlayerEvent.MediaChanged -> {
                 finishSession(null)
                 options = resolveOptions(event.mediaItem)
-                if (player.isPlaying) onPlaying()
+                if (playerReference.get()?.isPlaying == true) onPlaying()
             }
             is PlayerEvent.AdStarted -> onAdStarted(event.ad)
             is PlayerEvent.AdStopped -> finishAd(event.ad, completed = event.completed)
@@ -115,17 +138,18 @@ internal class PlayerBinding internal constructor(
     }
 
     private suspend fun onPlaying() {
+        val player = playerReference.get()
         val current = playback
         if (current is PlaybackState.Ad) {
             playback =
-                if (player.isPlayingAd) {
+                if (player?.isPlayingAd == true) {
                     resumeAdWatch(current)
                 } else {
                     current.copy(paused = false)
                 }
             return
         }
-        if (player.isPlayingAd) return
+        if (player?.isPlayingAd == true) return
         when (current) {
             is PlaybackState.Content -> {
                 current.segment.resumeWatch()
@@ -311,7 +335,8 @@ internal class PlayerBinding internal constructor(
 
     private suspend fun continueAfterAd(state: PlaybackState.Ad) {
         val content = state.content
-        val playingContent = player.isPlaying && !player.isPlayingAd
+        val player = playerReference.get()
+        val playingContent = player != null && player.isPlaying && !player.isPlayingAd
         if (content == null) {
             playback = PlaybackState.Idle(state.viewSessionId)
             if (playingContent) startContent(state.viewSessionId)
@@ -377,6 +402,7 @@ internal class PlayerBinding internal constructor(
     private suspend fun finishPlayback(
         reason: StopReason?,
         errorMessage: String? = null,
+        rewriteIdleLastSegment: Boolean = true,
     ) {
         when (val state = playback) {
             is PlaybackState.Content -> {
@@ -402,7 +428,7 @@ internal class PlayerBinding internal constructor(
                 }
             }
             is PlaybackState.Idle -> {
-                if (reason == StopReason.UNTRACKED) {
+                if (reason == StopReason.UNTRACKED && rewriteIdleLastSegment) {
                     state.lastSegment?.let {
                         it.stopReason = reason
                         it.errorMessage = errorMessage
@@ -448,7 +474,8 @@ internal class PlayerBinding internal constructor(
         stopReason: StopReason? = segment.stopReason,
     ) {
         val snapshot =
-            if (segment.frozen) {
+            if (segment.frozen || isOrphaned()) {
+                if (!segment.frozen) segment.freeze(segment.snapshot)
                 segment.snapshot
             } else {
                 snapshot()?.also { segment.updateSnapshot(it) } ?: segment.snapshot
@@ -471,6 +498,10 @@ internal class PlayerBinding internal constructor(
 
     private suspend fun snapshot(): PlayerMediaSnapshot? =
         runCatchingCancellable { observer.snapshot() }.getOrNull()
+
+    internal fun isBoundTo(player: Player): Boolean = playerReference.get() === player
+
+    internal fun isOrphaned(): Boolean = playerReference.get() == null
 
     private fun newViewSessionId(): String = UUID.randomUUID().toString()
 
