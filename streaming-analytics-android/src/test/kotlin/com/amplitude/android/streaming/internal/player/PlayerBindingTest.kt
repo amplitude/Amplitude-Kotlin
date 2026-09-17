@@ -5,6 +5,7 @@ import androidx.media3.common.Player
 import com.amplitude.android.streaming.PlayerContent
 import com.amplitude.android.streaming.internal.AdContext
 import com.amplitude.android.streaming.internal.DelayedEvent
+import com.amplitude.android.streaming.internal.MediaType
 import com.amplitude.android.streaming.internal.StreamTracker
 import com.amplitude.android.streaming.internal.util.Time
 import com.amplitude.core.Amplitude
@@ -138,7 +139,18 @@ class PlayerBindingTest {
                 withBinding(player) {
                     observer.emit(PlayerEvent.Playing)
                     runCurrent()
-                    observer.emit(PlayerEvent.MediaChanged(null))
+                    observer.emit(
+                        PlayerEvent.MediaChanged(
+                            mediaItem = null,
+                            previousSnapshot =
+                                PlayerMediaSnapshot(
+                                    positionMillis = 9_900L,
+                                    durationMillis = 10_000L,
+                                    mediaId = "previous-media",
+                                    mediaType = MediaType.VIDEO,
+                                ),
+                        ),
+                    )
                     runCurrent()
 
                     val started = startedEvents()
@@ -147,6 +159,14 @@ class PlayerBindingTest {
                         started[0].eventProperties?.get(STREAM_SESSION_ID),
                         started[1].eventProperties?.get(STREAM_SESSION_ID),
                     )
+                    val stopped =
+                        tracked.single {
+                            it.eventType == STREAM_STOPPED &&
+                                it.eventProperties?.get("stop_reason") == null
+                        }
+                    assertEquals(9.9, stopped.eventProperties?.get("position"))
+                    assertEquals(10.0, stopped.eventProperties?.get("duration"))
+                    assertEquals(99.0, stopped.eventProperties?.get("percent_completed"))
                 }
             }
     }
@@ -185,7 +205,7 @@ class PlayerBindingTest {
                     every { player.isPlaying } returns false
                     observer.emit(PlayerEvent.Paused)
                     runCurrent()
-                    observer.emit(PlayerEvent.MediaChanged(null))
+                    observer.emit(PlayerEvent.MediaChanged(null, previousSnapshot()))
                     runCurrent()
 
                     assertEquals(1, startedEvents().size)
@@ -738,7 +758,7 @@ class PlayerBindingTest {
                     runCurrent()
                     observer.emit(PlayerEvent.AdStarted(testAd()))
                     runCurrent()
-                    observer.emit(PlayerEvent.MediaChanged(null))
+                    observer.emit(PlayerEvent.MediaChanged(null, previousSnapshot()))
                     runCurrent()
                     observer.emit(PlayerEvent.AdSkipped(testAd()))
                     runCurrent()
@@ -836,6 +856,13 @@ class PlayerBindingTest {
             contentPositionMillis = 1_000L,
             contentId = "media-1",
             mediaItemIndex = 0,
+        )
+
+    private fun previousSnapshot() =
+        PlayerMediaSnapshot(
+            positionMillis = 1_000L,
+            durationMillis = 10_000L,
+            mediaType = MediaType.VIDEO,
         )
 
     private fun TestScope.withBinding(

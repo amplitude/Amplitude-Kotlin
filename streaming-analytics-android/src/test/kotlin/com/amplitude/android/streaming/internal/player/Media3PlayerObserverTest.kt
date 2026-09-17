@@ -435,6 +435,38 @@ class Media3PlayerObserverTest {
         }
 
     @Test
+    fun `should include the outgoing media snapshot in a media change`() =
+        runTest {
+            val previousItem = mediaItem("previous")
+            val nextItem = mediaItem("next")
+            val player = mockk<Player>(relaxed = true)
+            every { player.currentMediaItem } returns previousItem
+            every { player.currentMediaItemIndex } returns 0
+            every { player.contentPosition } returns 8_000L
+            every { player.contentDuration } returns 10_000L
+            every { player.currentTimeline } returns Timeline.EMPTY
+            val (observer, events) = observerCollectingEvents(player)
+            observer.snapshot()
+
+            observer.onPositionDiscontinuity(
+                oldPosition = contentPosition(previousItem, mediaItemIndex = 0, positionMs = 10_000L),
+                newPosition = contentPosition(nextItem, mediaItemIndex = 0, positionMs = 0L),
+                reason = Player.DISCONTINUITY_REASON_AUTO_TRANSITION,
+            )
+            every { player.currentMediaItem } returns nextItem
+            every { player.currentMediaItemIndex } returns 0
+            every { player.contentPosition } returns 0L
+            every { player.contentDuration } returns 25_000L
+            observer.onMediaItemTransition(nextItem, Player.MEDIA_ITEM_TRANSITION_REASON_AUTO)
+            runCurrent()
+
+            val event = events.filterIsInstance<PlayerEvent.MediaChanged>().single()
+            assertEquals("previous", event.previousSnapshot.mediaId)
+            assertEquals(10_000L, event.previousSnapshot.positionMillis)
+            assertEquals(10_000L, event.previousSnapshot.durationMillis)
+        }
+
+    @Test
     fun `should emit AdStarted on attach when an ad is already playing`() =
         runTest {
             val player = playingAdPlayer(adGroupIndex = 0, adIndexInAdGroup = 2)
@@ -808,4 +840,21 @@ private fun adPosition(
         positionMs,
         adGroupIndex,
         adIndexInAdGroup,
+    )
+
+private fun contentPosition(
+    mediaItem: MediaItem,
+    mediaItemIndex: Int,
+    positionMs: Long,
+): Player.PositionInfo =
+    Player.PositionInfo(
+        /* windowUid= */ null,
+        mediaItemIndex,
+        mediaItem,
+        /* periodUid= */ null,
+        /* periodIndex= */ mediaItemIndex,
+        positionMs,
+        positionMs,
+        C.INDEX_UNSET,
+        C.INDEX_UNSET,
     )

@@ -22,6 +22,7 @@ internal sealed interface PlayerEvent {
 
     data class MediaChanged(
         val mediaItem: MediaItem?,
+        val previousSnapshot: PlayerMediaSnapshot,
     ) : PlayerEvent
 
     data class AdStarted(

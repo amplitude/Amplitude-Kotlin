@@ -43,6 +43,7 @@ internal class Media3PlayerObserver(
     private var bufferingJob: Job? = null
     private var observing = false
     private var activeAd: AdContext? = null
+    private var outgoingSnapshot: PlayerMediaSnapshot? = null
     private var lastSnapshot =
         PlayerMediaSnapshot(
             positionMillis = 0L,
@@ -170,6 +171,20 @@ internal class Media3PlayerObserver(
         reason: Int,
     ) {
         runCatchingCancellable {
+            if (oldPosition.mediaItemIndex != newPosition.mediaItemIndex ||
+                oldPosition.mediaItem != newPosition.mediaItem
+            ) {
+                val oldMetadata = oldPosition.mediaItem?.mediaMetadata
+                outgoingSnapshot =
+                    lastSnapshot.copy(
+                        positionMillis = oldPosition.positionMs.coerceAtLeast(0L),
+                        mediaId = oldPosition.mediaItem?.mediaId?.takeIf { it.isNotEmpty() }
+                            ?: lastSnapshot.mediaId,
+                        title = oldMetadata?.title?.toString()
+                            ?: oldMetadata?.displayTitle?.toString()
+                            ?: lastSnapshot.title,
+                    )
+            }
             if (reason == Player.DISCONTINUITY_REASON_SEEK) {
                 emit(PlayerEvent.Seeking)
             }
@@ -194,7 +209,15 @@ internal class Media3PlayerObserver(
         mediaItem: MediaItem?,
         reason: Int,
     ) {
-        runCatchingCancellable { emit(PlayerEvent.MediaChanged(mediaItem)) }
+        runCatchingCancellable {
+            emit(
+                PlayerEvent.MediaChanged(
+                    mediaItem = mediaItem,
+                    previousSnapshot = outgoingSnapshot ?: lastSnapshot,
+                ),
+            )
+            outgoingSnapshot = null
+        }
     }
 
     override fun onEvents(

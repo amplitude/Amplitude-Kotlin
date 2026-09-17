@@ -142,6 +142,7 @@ internal class PlayerBinding internal constructor(
             PlayerEvent.Seeking -> onSeeking()
             is PlayerEvent.Error -> finishSession(StopReason.ERROR, event.message)
             is PlayerEvent.MediaChanged -> {
+                freezeCurrentSegment(event.previousSnapshot)
                 finishSession(null)
                 options = resolveOptions(event.mediaItem)
                 if (playerReference.get()?.isPlaying == true) onPlaying()
@@ -291,6 +292,15 @@ internal class PlayerBinding internal constructor(
     ) {
         finishPlayback(reason, errorMessage)
         playback = PlaybackState.Idle()
+    }
+
+    private fun freezeCurrentSegment(snapshot: PlayerMediaSnapshot) {
+        when (val state = playback) {
+            is PlaybackState.Content -> state.segment.freeze(snapshot)
+            is PlaybackState.Suspended -> state.segment.freeze(snapshot)
+            is PlaybackState.Ad -> state.content?.segment?.freeze(snapshot)
+            is PlaybackState.Idle -> Unit
+        }
     }
 
     private suspend fun onAdStarted(ad: AdContext) {
