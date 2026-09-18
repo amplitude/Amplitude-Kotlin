@@ -1115,3 +1115,4 @@ public final class com/amplitude/common/android/LogcatLogger : com/amplitude/com
 public final class com/amplitude/common/android/LogcatLogger$Companion {
 	public final fun getLogger ()Lcom/amplitude/common/android/LogcatLogger;
 }
+
