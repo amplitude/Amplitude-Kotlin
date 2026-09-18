@@ -27,6 +27,13 @@ internal val StreamingDiGraph.streamTracker: StreamTracker by weak {
 internal class StreamTracker(
     private val amplitude: Amplitude,
 ) {
+    companion object {
+        /**
+         * Ad events stay off until further validation.
+         */
+        var adsEventsEnabled: Boolean = false
+    }
+
     private val delayedEventSink = AtomicReference<((DelayedEvent) -> Unit)?>(null)
 
     /**
@@ -45,6 +52,7 @@ internal class StreamTracker(
         ad: AdContext,
         streamSessionId: String,
     ) {
+        if (!adsEventsEnabled) return
         amplitude.track(
             eventType = AD_STARTED,
             eventProperties =
@@ -63,6 +71,7 @@ internal class StreamTracker(
         watchDurationMillis: Long,
         status: AdCompletionStatus,
     ) {
+        if (!adsEventsEnabled) return
         amplitude.track(
             eventType = AD_STOPPED,
             eventProperties =
@@ -81,6 +90,7 @@ internal class StreamTracker(
         ad: AdContext,
         streamSessionId: String,
     ) {
+        if (!adsEventsEnabled) return
         amplitude.track(
             eventType = AD_SKIPPED,
             eventProperties =
@@ -327,6 +337,7 @@ internal enum class StopReason(
     WAITING("waiting"),
     ERROR("error"),
     UNTRACKED("untracked"),
+    CONTENT_CHANGED("content_changed"),
 }
 
 private fun StopReason?.eventKind(): DelayedEvent.Kind =

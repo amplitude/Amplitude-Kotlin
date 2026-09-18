@@ -1,13 +1,16 @@
 package com.amplitude.android.streaming.internal.player
 
+import androidx.annotation.OptIn
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.Tracks
+import androidx.media3.common.util.UnstableApi
 import com.amplitude.android.streaming.internal.AdContext
 import com.amplitude.android.streaming.internal.MediaType
+import com.amplitude.android.streaming.internal.StopReason
 import com.amplitude.android.streaming.internal.util.runCatchingCancellable
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -43,6 +46,7 @@ internal class Media3PlayerObserver(
     private var bufferingJob: Job? = null
     private var observing = false
     private var activeAd: AdContext? = null
+    private var outgoingSnapshot: PlayerMediaSnapshot? = null
     private var lastSnapshot =
         PlayerMediaSnapshot(
             positionMillis = 0L,
@@ -164,14 +168,21 @@ internal class Media3PlayerObserver(
         }
     }
 
+    @OptIn(UnstableApi::class)
     override fun onPositionDiscontinuity(
         oldPosition: Player.PositionInfo,
         newPosition: Player.PositionInfo,
         reason: Int,
     ) {
         runCatchingCancellable {
-            if (reason == Player.DISCONTINUITY_REASON_SEEK) {
-                emit(PlayerEvent.Seeking)
+            val mediaChanged =
+                oldPosition.mediaItemIndex != newPosition.mediaItemIndex ||
+                    oldPosition.mediaItem != newPosition.mediaItem
+            if (mediaChanged || reason == Player.DISCONTINUITY_REASON_AUTO_TRANSITION) {
+                outgoingSnapshot = snapshotAtDiscontinuity(oldPosition)
+            }
+            if (reason == Player.DISCONTINUITY_REASON_SEEK && !mediaChanged) {
+                emit(PlayerEvent.Seeking(snapshotAtDiscontinuity(oldPosition)))
             }
             if (oldPosition.adGroupIndex != C.INDEX_UNSET &&
                 (
@@ -194,7 +205,16 @@ internal class Media3PlayerObserver(
         mediaItem: MediaItem?,
         reason: Int,
     ) {
-        runCatchingCancellable { emit(PlayerEvent.MediaChanged(mediaItem)) }
+        runCatchingCancellable {
+            emit(
+                PlayerEvent.MediaChanged(
+                    mediaItem = mediaItem,
+                    previousSnapshot = outgoingSnapshot ?: lastSnapshot,
+                    stopReason = mediaChangeStopReason(reason),
+                ),
+            )
+            outgoingSnapshot = null
+        }
     }
 
     override fun onEvents(
@@ -301,6 +321,25 @@ internal class Media3PlayerObserver(
         bufferingJob = null
     }
 
+    @OptIn(UnstableApi::class)
+    private fun snapshotAtDiscontinuity(oldPosition: Player.PositionInfo): PlayerMediaSnapshot {
+        val oldMetadata = oldPosition.mediaItem?.mediaMetadata
+        val positionMillis =
+            if (oldPosition.adGroupIndex != C.INDEX_UNSET) {
+                oldPosition.contentPositionMs
+            } else {
+                oldPosition.positionMs
+            }
+        return lastSnapshot.copy(
+            positionMillis = positionMillis.coerceAtLeast(0L),
+            mediaId = oldPosition.mediaItem?.mediaId?.takeIf { it.isNotEmpty() }
+                ?: lastSnapshot.mediaId,
+            title = oldMetadata?.title?.toString()
+                ?: oldMetadata?.displayTitle?.toString()
+                ?: lastSnapshot.title,
+        )
+    }
+
     private fun adContextFromPlayer(player: Player): AdContext =
         AdContext(
             adGroupIndex = player.currentAdGroupIndex,
@@ -312,6 +351,14 @@ internal class Media3PlayerObserver(
             mediaItemIndex = player.currentMediaItemIndex,
         )
 }
+
+private fun mediaChangeStopReason(reason: Int): StopReason =
+    when (reason) {
+        Player.MEDIA_ITEM_TRANSITION_REASON_AUTO,
+        Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT,
+        -> StopReason.COMPLETED
+        else -> StopReason.CONTENT_CHANGED
+    }
 
 private fun AdContext.isSameAdAs(other: AdContext): Boolean =
     adGroupIndex == other.adGroupIndex &&

@@ -2,6 +2,7 @@ package com.amplitude.android.streaming.internal.player
 
 import androidx.media3.common.MediaItem
 import com.amplitude.android.streaming.internal.AdContext
+import com.amplitude.android.streaming.internal.StopReason
 
 internal sealed interface PlayerEvent {
     data object Playing : PlayerEvent
@@ -14,7 +15,9 @@ internal sealed interface PlayerEvent {
 
     data object Ended : PlayerEvent
 
-    data object Seeking : PlayerEvent
+    data class Seeking(
+        val previousSnapshot: PlayerMediaSnapshot,
+    ) : PlayerEvent
 
     data class Error(
         val message: String?,
@@ -22,6 +25,8 @@ internal sealed interface PlayerEvent {
 
     data class MediaChanged(
         val mediaItem: MediaItem?,
+        val previousSnapshot: PlayerMediaSnapshot,
+        val stopReason: StopReason,
     ) : PlayerEvent
 
     data class AdStarted(

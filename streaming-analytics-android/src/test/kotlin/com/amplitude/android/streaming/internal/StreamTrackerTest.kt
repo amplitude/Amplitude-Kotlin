@@ -10,6 +10,7 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Timeline
 import io.mockk.every
 import io.mockk.mockk
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.BeforeEach
@@ -165,6 +166,7 @@ class StreamTrackerTest {
                     StopReason.WAITING,
                     StopReason.ERROR,
                     StopReason.UNTRACKED,
+                    StopReason.CONTENT_CHANGED,
                 )
             for (reason in instantReasons) {
                 events.clear()
@@ -303,6 +305,33 @@ class StreamTrackerTest {
                 mediaItemIndex = 0,
             )
         private val options = PlayerContent(extraProperties = mapOf("ad_campaign" to "summer"))
+
+        @BeforeEach
+        fun enableAdEvents() {
+            StreamTracker.adsEventsEnabled = true
+        }
+
+        @AfterEach
+        fun disableAdEvents() {
+            StreamTracker.adsEventsEnabled = false
+        }
+
+        @Test
+        fun `ad methods are no-ops when adsEventsEnabled is false`() {
+            StreamTracker.adsEventsEnabled = false
+
+            tracker.trackAdStarted(options = options, ad = ad, streamSessionId = "stream-ad-1")
+            tracker.trackAdStopped(
+                options = options,
+                ad = ad,
+                streamSessionId = "stream-ad-1",
+                watchDurationMillis = 1_000L,
+                status = AdCompletionStatus.COMPLETED,
+            )
+            tracker.trackAdSkipped(options = options, ad = ad, streamSessionId = "stream-ad-1")
+
+            assertEquals(emptyList<BaseEvent>(), events)
+        }
 
         @Test
         fun `trackAdStarted emits Ad Started with ad properties`() {
@@ -451,23 +480,28 @@ class StreamTrackerTest {
 
         @Test
         fun `ad events still go through the timeline`() {
-            tracker.trackAdStarted(
-                options = PlayerContent(),
-                ad =
-                    AdContext(
-                        adGroupIndex = 0,
-                        adIndexInAdGroup = 0,
-                        positionMillis = 0L,
-                        durationMillis = 30_000L,
-                        contentPositionMillis = 0L,
-                        contentId = "video-789",
-                        mediaItemIndex = 0,
-                    ),
-                streamSessionId = "stream-1",
-            )
+            StreamTracker.adsEventsEnabled = true
+            try {
+                tracker.trackAdStarted(
+                    options = PlayerContent(),
+                    ad =
+                        AdContext(
+                            adGroupIndex = 0,
+                            adIndexInAdGroup = 0,
+                            positionMillis = 0L,
+                            durationMillis = 30_000L,
+                            contentPositionMillis = 0L,
+                            contentId = "video-789",
+                            mediaItemIndex = 0,
+                        ),
+                    streamSessionId = "stream-1",
+                )
 
-            assertEquals(1, events.size)
-            assertEquals(emptyList<DelayedEvent>(), routed)
+                assertEquals(1, events.size)
+                assertEquals(emptyList<DelayedEvent>(), routed)
+            } finally {
+                StreamTracker.adsEventsEnabled = false
+            }
         }
 
         @Test

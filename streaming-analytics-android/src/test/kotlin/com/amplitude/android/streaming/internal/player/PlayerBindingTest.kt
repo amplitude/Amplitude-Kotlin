@@ -5,6 +5,8 @@ import androidx.media3.common.Player
 import com.amplitude.android.streaming.PlayerContent
 import com.amplitude.android.streaming.internal.AdContext
 import com.amplitude.android.streaming.internal.DelayedEvent
+import com.amplitude.android.streaming.internal.MediaType
+import com.amplitude.android.streaming.internal.StopReason
 import com.amplitude.android.streaming.internal.StreamTracker
 import com.amplitude.android.streaming.internal.util.Time
 import com.amplitude.core.Amplitude
@@ -22,9 +24,11 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 
@@ -138,7 +142,19 @@ class PlayerBindingTest {
                 withBinding(player) {
                     observer.emit(PlayerEvent.Playing)
                     runCurrent()
-                    observer.emit(PlayerEvent.MediaChanged(null))
+                    observer.emit(
+                        PlayerEvent.MediaChanged(
+                            mediaItem = null,
+                            previousSnapshot =
+                                PlayerMediaSnapshot(
+                                    positionMillis = 9_900L,
+                                    durationMillis = 10_000L,
+                                    mediaId = "previous-media",
+                                    mediaType = MediaType.VIDEO,
+                                ),
+                            stopReason = StopReason.COMPLETED,
+                        ),
+                    )
                     runCurrent()
 
                     val started = startedEvents()
@@ -147,6 +163,40 @@ class PlayerBindingTest {
                         started[0].eventProperties?.get(STREAM_SESSION_ID),
                         started[1].eventProperties?.get(STREAM_SESSION_ID),
                     )
+                    val stopped =
+                        tracked.single {
+                            it.eventType == STREAM_STOPPED &&
+                                it.eventProperties?.get("stop_reason") == "completed"
+                        }
+                    assertEquals(9.9, stopped.eventProperties?.get("position"))
+                    assertEquals(10.0, stopped.eventProperties?.get("duration"))
+                    assertEquals(99.0, stopped.eventProperties?.get("percent_completed"))
+                }
+            }
+
+        @Test
+        fun `should stop the previous stream as content_changed when media is replaced`() =
+            runTest {
+                val player = mockk<Player>(relaxed = true)
+                every { player.isPlaying } returns true
+                withBinding(player) {
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+                    observer.emit(
+                        PlayerEvent.MediaChanged(
+                            mediaItem = null,
+                            previousSnapshot = previousSnapshot(),
+                            stopReason = StopReason.CONTENT_CHANGED,
+                        ),
+                    )
+                    runCurrent()
+
+                    val stopped =
+                        tracked.single {
+                            it.eventType == STREAM_STOPPED &&
+                                it.eventProperties?.get("stop_reason") != "timeout"
+                        }
+                    assertEquals("content_changed", stopped.eventProperties?.get("stop_reason"))
                 }
             }
     }
@@ -185,7 +235,7 @@ class PlayerBindingTest {
                     every { player.isPlaying } returns false
                     observer.emit(PlayerEvent.Paused)
                     runCurrent()
-                    observer.emit(PlayerEvent.MediaChanged(null))
+                    observer.emit(PlayerEvent.MediaChanged(null, previousSnapshot(), StopReason.CONTENT_CHANGED))
                     runCurrent()
 
                     assertEquals(1, startedEvents().size)
@@ -200,12 +250,20 @@ class PlayerBindingTest {
                     runCurrent()
                     observer.emit(PlayerEvent.Buffering)
                     runCurrent()
-                    observer.emit(PlayerEvent.Seeking)
+                    observer.emit(PlayerEvent.Seeking(previousSnapshot()))
                     runCurrent()
                     observer.emit(PlayerEvent.Ready)
                     runCurrent()
 
                     assertEquals(1, startedEvents().size)
+                    assertEquals(
+                        "waiting",
+                        tracked
+                            .filter { it.eventType == STREAM_STOPPED }
+                            .last()
+                            .eventProperties
+                            ?.get("stop_reason"),
+                    )
                 }
             }
 
@@ -333,21 +391,75 @@ class PlayerBindingTest {
             }
 
         @Test
-        fun `should not keep stop_reason seeking on heartbeats after playback is ready`() =
+        fun `should emit seeking then clear it after playback resumes`() =
             runTest {
-                withBinding {
+                val player = mockk<Player>(relaxed = true)
+                every { player.isPlaying } returns true
+                withBinding(player) {
                     observer.emit(PlayerEvent.Playing)
                     runCurrent()
-                    observer.emit(PlayerEvent.Seeking)
+                    observer.emit(PlayerEvent.Seeking(previousSnapshot()))
                     runCurrent()
                     observer.emit(PlayerEvent.Ready)
                     runCurrent()
                     advanceTimeBy(1_000)
                     runCurrent()
 
-                    val afterReady =
-                        tracked.filter { it.eventType == STREAM_STOPPED }.last()
+                    val stopped = tracked.filter { it.eventType == STREAM_STOPPED }
+                    assertTrue(
+                        stopped.any {
+                            it.eventProperties?.get("stop_reason") == "seeking"
+                        },
+                    )
+                    val afterReady = stopped.last()
                     assertEquals("timeout", afterReady.eventProperties?.get("stop_reason"))
+                    assertEquals(2, startedEvents().size)
+                }
+            }
+
+        @Test
+        fun `should freeze the pre-seek position on Stream Stopped`() =
+            runTest {
+                withBinding {
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+                    observer.positionMillis = 9_000L
+                    observer.emit(
+                        PlayerEvent.Seeking(
+                            previousSnapshot().copy(positionMillis = 5_000L),
+                        ),
+                    )
+                    runCurrent()
+
+                    val seekingStop =
+                        tracked.single {
+                            it.eventType == STREAM_STOPPED &&
+                                it.eventProperties?.get("stop_reason") == "seeking"
+                        }
+                    assertEquals(5.0, seekingStop.eventProperties?.get("position"))
+                }
+            }
+
+        @Test
+        fun `should keep tracking after a seek without a Ready event`() =
+            runTest {
+                val player = mockk<Player>(relaxed = true)
+                every { player.isPlaying } returns true
+                withBinding(player) {
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+                    observer.emit(PlayerEvent.Seeking(previousSnapshot()))
+                    runCurrent()
+                    observer.emit(PlayerEvent.Paused)
+                    runCurrent()
+
+                    assertEquals(2, startedEvents().size)
+                    assertTrue(
+                        tracked.any {
+                            it.eventType == STREAM_STOPPED &&
+                                it.eventProperties?.get("stop_reason") == "paused"
+                        },
+                    )
                 }
             }
     }
@@ -385,43 +497,48 @@ class PlayerBindingTest {
         @Test
         fun `should track Ad Stopped when the graph scope is cancelled during stop`() =
             runTest {
-                val parentJob = SupervisorJob()
-                val binding =
-                    PlayerBinding(
-                        player = mockk(relaxed = true),
-                        contentProvider = { PlayerContent() },
-                        playerObserverFactory = PlayerObserverFactory { _, _, _ -> observer },
-                        streamTracker = StreamTracker(amplitude),
-                        heartbeatFactory = HeartbeatFactory(time = Time()),
-                        time = Time(),
-                        parentScope = CoroutineScope(coroutineContext + parentJob),
-                        playerDispatcher = UnconfinedTestDispatcher(testScheduler),
-                    )
-                binding.start()
-                runCurrent()
+                StreamTracker.adsEventsEnabled = true
                 try {
-                    observer.emit(
-                        PlayerEvent.AdStarted(
-                            AdContext(
-                                adGroupIndex = 0,
-                                adIndexInAdGroup = 0,
-                                positionMillis = 0L,
-                                durationMillis = 15_000L,
-                                contentPositionMillis = 1_000L,
-                                contentId = "media-1",
-                                mediaItemIndex = 0,
+                    val parentJob = SupervisorJob()
+                    val binding =
+                        PlayerBinding(
+                            player = mockk(relaxed = true),
+                            contentProvider = { PlayerContent() },
+                            playerObserverFactory = PlayerObserverFactory { _, _, _ -> observer },
+                            streamTracker = StreamTracker(amplitude),
+                            heartbeatFactory = HeartbeatFactory(time = Time()),
+                            time = Time(),
+                            parentScope = CoroutineScope(coroutineContext + parentJob),
+                            playerDispatcher = UnconfinedTestDispatcher(testScheduler),
+                        )
+                    binding.start()
+                    runCurrent()
+                    try {
+                        observer.emit(
+                            PlayerEvent.AdStarted(
+                                AdContext(
+                                    adGroupIndex = 0,
+                                    adIndexInAdGroup = 0,
+                                    positionMillis = 0L,
+                                    durationMillis = 15_000L,
+                                    contentPositionMillis = 1_000L,
+                                    contentId = "media-1",
+                                    mediaItemIndex = 0,
+                                ),
                             ),
-                        ),
-                    )
-                    runCurrent()
-                    binding.stop()
-                    parentJob.cancel()
-                    runCurrent()
+                        )
+                        runCurrent()
+                        binding.stop()
+                        parentJob.cancel()
+                        runCurrent()
 
-                    assertEquals(1, tracked.count { it.eventType == AD_STOPPED })
+                        assertEquals(1, tracked.count { it.eventType == AD_STOPPED })
+                    } finally {
+                        binding.stop()
+                        runCurrent()
+                    }
                 } finally {
-                    binding.stop()
-                    runCurrent()
+                    StreamTracker.adsEventsEnabled = false
                 }
             }
 
@@ -466,6 +583,16 @@ class PlayerBindingTest {
 
     @Nested
     inner class Ads {
+        @BeforeEach
+        fun enableAdEvents() {
+            StreamTracker.adsEventsEnabled = true
+        }
+
+        @AfterEach
+        fun disableAdEvents() {
+            StreamTracker.adsEventsEnabled = false
+        }
+
         @Test
         fun `should not track Stream Started while an ad is playing`() =
             runTest {
@@ -526,6 +653,60 @@ class PlayerBindingTest {
                                 it.eventProperties?.get("stop_reason") == "paused"
                         },
                     )
+                }
+            }
+
+        @Test
+        fun `should not finish suspended content when buffering during an ad`() =
+            runTest {
+                val player = mockk<Player>(relaxed = true)
+                every { player.isPlaying } returns true
+                withBinding(player) {
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+                    every { player.isPlayingAd } returns true
+                    observer.emit(PlayerEvent.AdStarted(testAd()))
+                    runCurrent()
+                    observer.emit(PlayerEvent.Buffering)
+                    runCurrent()
+                    every { player.isPlayingAd } returns false
+                    observer.emit(PlayerEvent.AdStopped(testAd(), completed = true))
+                    runCurrent()
+
+                    assertTrue(
+                        tracked.none {
+                            it.eventType == STREAM_STOPPED &&
+                                it.eventProperties?.get("stop_reason") == "waiting"
+                        },
+                    )
+                    assertEquals(1, startedEvents().size)
+                }
+            }
+
+        @Test
+        fun `should not finish suspended content when seeking during an ad`() =
+            runTest {
+                val player = mockk<Player>(relaxed = true)
+                every { player.isPlaying } returns true
+                withBinding(player) {
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+                    every { player.isPlayingAd } returns true
+                    observer.emit(PlayerEvent.AdStarted(testAd()))
+                    runCurrent()
+                    observer.emit(PlayerEvent.Seeking(previousSnapshot()))
+                    runCurrent()
+                    every { player.isPlayingAd } returns false
+                    observer.emit(PlayerEvent.AdStopped(testAd(), completed = true))
+                    runCurrent()
+
+                    assertTrue(
+                        tracked.none {
+                            it.eventType == STREAM_STOPPED &&
+                                it.eventProperties?.get("stop_reason") == "seeking"
+                        },
+                    )
+                    assertEquals(1, startedEvents().size)
                 }
             }
 
@@ -602,6 +783,32 @@ class PlayerBindingTest {
                     runCurrent()
 
                     assertEquals(1, startedEvents().size)
+                }
+            }
+
+        @Test
+        fun `should not start content from Ready while an ad is playing`() =
+            runTest {
+                val player = mockk<Player>(relaxed = true)
+                every { player.isPlaying } returns true
+                withBinding(player) {
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+                    observer.emit(PlayerEvent.Buffering)
+                    runCurrent()
+                    every { player.isPlayingAd } returns true
+                    observer.emit(PlayerEvent.Ready)
+                    runCurrent()
+                    observer.emit(PlayerEvent.AdStarted(testAd()))
+                    runCurrent()
+
+                    assertEquals(1, startedEvents().size)
+
+                    every { player.isPlayingAd } returns false
+                    observer.emit(PlayerEvent.AdStopped(testAd(), completed = true))
+                    runCurrent()
+
+                    assertEquals(2, startedEvents().size)
                 }
             }
 
@@ -738,7 +945,7 @@ class PlayerBindingTest {
                     runCurrent()
                     observer.emit(PlayerEvent.AdStarted(testAd()))
                     runCurrent()
-                    observer.emit(PlayerEvent.MediaChanged(null))
+                    observer.emit(PlayerEvent.MediaChanged(null, previousSnapshot(), StopReason.CONTENT_CHANGED))
                     runCurrent()
                     observer.emit(PlayerEvent.AdSkipped(testAd()))
                     runCurrent()
@@ -836,6 +1043,13 @@ class PlayerBindingTest {
             contentPositionMillis = 1_000L,
             contentId = "media-1",
             mediaItemIndex = 0,
+        )
+
+    private fun previousSnapshot() =
+        PlayerMediaSnapshot(
+            positionMillis = 1_000L,
+            durationMillis = 10_000L,
+            mediaType = MediaType.VIDEO,
         )
 
     private fun TestScope.withBinding(
