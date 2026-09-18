@@ -34,6 +34,17 @@ dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
         mavenLocal()
+        listOf(
+            "amplitude.experiment.sdk.repository" to "amplitudeExperimentPrototype",
+            "amplitude.engagement.sdk.repository" to "amplitudeEngagementPrototype",
+        ).forEach { (propertyName, repositoryName) ->
+            providers.gradleProperty(propertyName).orNull?.let {
+                maven {
+                    name = repositoryName
+                    url = uri(it)
+                }
+            }
+        }
         google()
         mavenCentral()
     }
@@ -44,9 +55,34 @@ include("analytics-core")
 project(":analytics-core").projectDir = file("analytics-core")
 include("android")
 project(":android").projectDir = file("android")
+include("unified")
+project(":unified").projectDir = file("unified")
 include("streaming-analytics-android")
 project(":streaming-analytics-android").projectDir = file("streaming-analytics-android")
 include("samples:kotlin-android-app")
 project(":samples:kotlin-android-app").projectDir = file("samples/kotlin-android-app")
 include("samples:streaming-app")
 project(":samples:streaming-app").projectDir = file("samples/streaming-analytics-android")
+
+fun includePrototypeBuild(
+    propertyName: String,
+    buildName: String,
+    projectPath: String,
+    coordinate: String,
+) {
+    providers.gradleProperty(propertyName).orNull?.let { buildPath ->
+        includeBuild(buildPath) {
+            name = buildName
+            dependencySubstitution {
+                substitute(module(coordinate)).using(project(projectPath))
+            }
+        }
+    }
+}
+
+includePrototypeBuild(
+    propertyName = "amplitude.session.replay.sdk.path",
+    buildName = "amplitude-session-replay-sdk",
+    projectPath = ":plugin-session-replay",
+    coordinate = "com.amplitude:plugin-session-replay-android",
+)
