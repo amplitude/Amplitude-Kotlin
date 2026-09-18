@@ -2,7 +2,9 @@ package com.amplitude.unified
 
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
+import com.amplitude.android.engagement.AmplitudeEngagementPluginFactory
 import com.amplitude.android.engagement.engagement
+import com.amplitude.android.plugins.AndroidContextPlugin
 import com.amplitude.android.plugins.SessionReplayPlugin
 import com.amplitude.android.sessionreplay.SessionReplay
 import com.amplitude.common.Logger
@@ -15,12 +17,15 @@ import com.amplitude.core.platform.PluginHost
 import com.amplitude.core.platform.UniversalPlugin
 import com.amplitude.experiment.AmplitudeExperimentPlugin
 import com.amplitude.experiment.ExperimentClient
+import com.amplitude.experiment.ExperimentConfig
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.unmockkStatic
+import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertThrows
@@ -179,13 +184,118 @@ internal class AmplitudeUnifiedTest {
     }
 
     @Test
-    fun `should attribute events to unified before analytics context`() {
+    fun `should return null experiment when multiple experiment plugins are installed`() {
+        val firstClient = mockk<ExperimentClient>(relaxed = true)
+        val secondClient = mockk<ExperimentClient>(relaxed = true)
+        val builder = builder("multi-experiment")
+        builder.sessionReplay.enabled = false
+        builder.engagement.enabled = false
+        val amplitude =
+            AmplitudeUnified(
+                builder.buildSnapshot(),
+                object : UnifiedPluginFactory {
+                    override fun sessionReplay(configuration: SessionReplayConfiguration): UniversalPlugin =
+                        RecordingPlugin("com.amplitude.android.sessionreplay", mutableListOf())
+
+                    override fun experiment(configuration: ExperimentConfiguration): UniversalPlugin =
+                        AmplitudeExperimentPlugin(firstClient)
+
+                    override fun engagement(configuration: EngagementConfiguration): UniversalPlugin =
+                        RecordingPlugin("com.amplitude.android.engagement", mutableListOf())
+                },
+            )
+
+        amplitude.add(AmplitudeExperimentPlugin(secondClient))
+
+        assertNull(amplitude.experiment)
+    }
+
+    @Test
+    fun `should install real blades through the default plugin factory`() {
+        val amplitude =
+            AmplitudeUnified("api-key", application) {
+                analytics {
+                    instanceName = "default-factory"
+                    offline = true
+                    autocapture = emptySet()
+                }
+                sessionReplay {
+                    autoStart = false
+                    enableRemoteConfig = false
+                }
+                experiment {
+                    config = ExperimentConfig.builder().fetchOnStart(false).pollOnStart(false).build()
+                }
+            }
+
+        assertTrue(amplitude.plugin(SessionReplayPlugin.PLUGIN_NAME) is SessionReplayPlugin)
+        assertTrue(amplitude.plugin(AmplitudeExperimentPlugin.PLUGIN_NAME) is AmplitudeExperimentPlugin)
+        assertEquals(
+            AmplitudeEngagementPluginFactory.NAME,
+            amplitude.plugin(AmplitudeEngagementPluginFactory.NAME)?.name,
+        )
+        assertNotNull(amplitude.sessionReplay)
+        assertNotNull(amplitude.experiment)
+    }
+
+    @Test
+    fun `should attribute events to unified during enrichment when library is empty`() {
         val amplitude = disabledAmplitude("attribution")
         val event = BaseEvent().apply { eventType = "attribution" }
 
-        amplitude.timeline.applyPlugins(Plugin.Type.Before, event)
+        amplitude.timeline.applyPlugins(Plugin.Type.Enrichment, event)
 
-        assertEquals("amplitude-unified-android/1.30.1", event.library)
+        assertEquals("amplitude-android-unified/${BuildConfig.UNIFIED_VERSION}", event.library)
+    }
+
+    @Test
+    fun `should prefix an existing analytics library during enrichment`() {
+        val amplitude = disabledAmplitude("existing-library")
+        val event =
+            BaseEvent().apply {
+                eventType = "attribution"
+                library = "amplitude-android/1.21.1"
+            }
+
+        amplitude.timeline.applyPlugins(Plugin.Type.Enrichment, event)
+
+        assertEquals(
+            "amplitude-android-unified/${BuildConfig.UNIFIED_VERSION}-amplitude-android/1.21.1",
+            event.library,
+        )
+    }
+
+    @Test
+    fun `should not duplicate unified library prefix when already attributed`() {
+        val amplitude = disabledAmplitude("idempotent-library")
+        val alreadyPrefixed =
+            "amplitude-android-unified/${BuildConfig.UNIFIED_VERSION}-amplitude-android/1.21.1"
+        val event =
+            BaseEvent().apply {
+                eventType = "attribution"
+                library = alreadyPrefixed
+            }
+
+        amplitude.timeline.applyPlugins(Plugin.Type.Enrichment, event)
+        amplitude.timeline.applyPlugins(Plugin.Type.Enrichment, event)
+
+        assertEquals(alreadyPrefixed, event.library)
+    }
+
+    @Test
+    fun `should prefix analytics context library after before plugins`() {
+        val amplitude = disabledAmplitude("context-prefix")
+        runBlocking { amplitude.isBuilt.await() }
+        val event = BaseEvent().apply { eventType = "attribution" }
+
+        amplitude.timeline.applyPlugins(Plugin.Type.Before, event)
+        amplitude.timeline.applyPlugins(Plugin.Type.Enrichment, event)
+
+        assertEquals(
+            "amplitude-android-unified/${BuildConfig.UNIFIED_VERSION}-" +
+                "${AndroidContextPlugin.SDK_LIBRARY}/${AndroidContextPlugin.SDK_VERSION}",
+            event.library,
+        )
     }
 
     private fun disabledAmplitude(instanceName: String): AmplitudeUnified {

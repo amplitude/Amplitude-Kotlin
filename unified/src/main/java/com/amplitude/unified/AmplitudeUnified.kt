@@ -14,6 +14,7 @@ import com.amplitude.core.platform.PluginHost
 import com.amplitude.core.platform.UniversalPlugin
 import com.amplitude.experiment.AmplitudeExperimentPlugin
 import com.amplitude.experiment.ExperimentClient
+import com.amplitude.experiment.experiment
 import java.util.concurrent.CancellationException
 
 /**
@@ -61,9 +62,7 @@ public open class AmplitudeUnified internal constructor(
 
     /** The installed Experiment client, or `null` when unavailable. */
     public val experiment: ExperimentClient?
-        get() =
-            (plugin(AmplitudeExperimentPlugin.PLUGIN_NAME) as? AmplitudeExperimentPlugin)
-                ?.experimentClient
+        get() = (this as PluginHost).experiment
 
     /** The installed Guides and Surveys facade, or `null` when unavailable. */
     public val engagement: AmplitudeEngagementPlugin?
@@ -144,13 +143,19 @@ private class DefaultUnifiedPluginFactory(
 }
 
 private class UnifiedLibraryPlugin : Plugin {
-    override val type: Plugin.Type = Plugin.Type.Before
+    override val type: Plugin.Type = Plugin.Type.Enrichment
     override val name: String = "com.amplitude.unified"
     override lateinit var amplitude: com.amplitude.core.Amplitude
 
     override fun execute(event: BaseEvent): BaseEvent {
-        if (event.library == null) {
-            event.library = "amplitude-unified-android/${BuildConfig.UNIFIED_VERSION}"
+        val existing = event.library
+        if (existing?.startsWith("amplitude-android-unified/") == true) {
+            return event
+        }
+        if (existing.isNullOrEmpty()) {
+            event.library = "amplitude-android-unified/${BuildConfig.UNIFIED_VERSION}"
+        } else {
+            event.library = "amplitude-android-unified/${BuildConfig.UNIFIED_VERSION}-$existing"
         }
         return event
     }
