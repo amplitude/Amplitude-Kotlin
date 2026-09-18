@@ -356,7 +356,7 @@ private fun mediaChangeStopReason(reason: Int): StopReason =
     when (reason) {
         Player.MEDIA_ITEM_TRANSITION_REASON_AUTO,
         Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT,
-        -> StopReason.COMPLETED
+        -> StopReason.ENDED
         else -> StopReason.CONTENT_CHANGED
     }
 

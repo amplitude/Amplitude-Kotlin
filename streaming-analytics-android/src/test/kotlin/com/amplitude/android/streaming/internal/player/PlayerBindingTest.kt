@@ -152,7 +152,7 @@ class PlayerBindingTest {
                                     mediaId = "previous-media",
                                     mediaType = MediaType.VIDEO,
                                 ),
-                            stopReason = StopReason.COMPLETED,
+                            stopReason = StopReason.ENDED,
                         ),
                     )
                     runCurrent()
@@ -166,7 +166,7 @@ class PlayerBindingTest {
                     val stopped =
                         tracked.single {
                             it.eventType == STREAM_STOPPED &&
-                                it.eventProperties?.get("stop_reason") == "completed"
+                                it.eventProperties?.get("stop_reason") == "ended"
                         }
                     assertEquals(9.9, stopped.eventProperties?.get("position"))
                     assertEquals(10.0, stopped.eventProperties?.get("duration"))
@@ -220,7 +220,7 @@ class PlayerBindingTest {
 
                     val stopped = tracked.filter { it.eventType == STREAM_STOPPED }
                     assertEquals(5.0, stopped.last().eventProperties?.get("stream_duration"))
-                    assertEquals("completed", stopped.last().eventProperties?.get("stop_reason"))
+                    assertEquals("ended", stopped.last().eventProperties?.get("stop_reason"))
                 }
             }
 
@@ -765,7 +765,7 @@ class PlayerBindingTest {
                         tracked
                             .filter { it.eventType == STREAM_STOPPED }
                             .last()
-                    assertEquals("completed", stopped.eventProperties?.get("stop_reason"))
+                    assertEquals("ended", stopped.eventProperties?.get("stop_reason"))
                 }
             }
 
@@ -865,7 +865,7 @@ class PlayerBindingTest {
 
                     val adStopped = tracked.single { it.eventType == AD_STOPPED }
                     assertEquals(5.0, adStopped.eventProperties?.get("ad_watch_duration"))
-                    assertEquals("completed", adStopped.eventProperties?.get("ad_completion_status"))
+                    assertEquals("ended", adStopped.eventProperties?.get("ad_completion_status"))
                 }
             }
 

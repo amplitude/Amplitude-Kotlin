@@ -138,7 +138,7 @@ internal class PlayerBinding internal constructor(
             PlayerEvent.Paused -> onPaused()
             PlayerEvent.Buffering -> onBuffering()
             PlayerEvent.Ready -> onReady()
-            PlayerEvent.Ended -> finishSession(StopReason.COMPLETED)
+            PlayerEvent.Ended -> finishSession(StopReason.ENDED)
             is PlayerEvent.Seeking -> onSeeking(event)
             is PlayerEvent.Error -> finishSession(StopReason.ERROR, event.message)
             is PlayerEvent.MediaChanged -> {
@@ -357,7 +357,7 @@ internal class PlayerBinding internal constructor(
         val state = playback as? PlaybackState.Ad ?: return
         val finished = state.pauseWatch(time.elapsedRealtime())
         val status =
-            if (completed) AdCompletionStatus.COMPLETED else AdCompletionStatus.ABANDONED
+            if (completed) AdCompletionStatus.ENDED else AdCompletionStatus.ABANDONED
         trackAdFinished(finished, ad, status)
         continueAfterAd(finished)
     }

@@ -465,7 +465,7 @@ class Media3PlayerObserverTest {
             assertEquals("previous", event.previousSnapshot.mediaId)
             assertEquals(10_000L, event.previousSnapshot.positionMillis)
             assertEquals(10_000L, event.previousSnapshot.durationMillis)
-            assertEquals(StopReason.COMPLETED, event.stopReason)
+            assertEquals(StopReason.ENDED, event.stopReason)
         }
 
     @Test
@@ -561,7 +561,7 @@ class Media3PlayerObserverTest {
             val event = events.filterIsInstance<PlayerEvent.MediaChanged>().single()
             assertEquals("episode", event.previousSnapshot.mediaId)
             assertEquals(10_000L, event.previousSnapshot.positionMillis)
-            assertEquals(StopReason.COMPLETED, event.stopReason)
+            assertEquals(StopReason.ENDED, event.stopReason)
         }
 
     @Test
