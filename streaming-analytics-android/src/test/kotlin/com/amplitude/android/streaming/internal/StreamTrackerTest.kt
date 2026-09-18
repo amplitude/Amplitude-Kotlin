@@ -161,7 +161,7 @@ class StreamTrackerTest {
             val instantReasons =
                 listOf(
                     StopReason.PAUSED,
-                    StopReason.COMPLETED,
+                    StopReason.ENDED,
                     StopReason.SEEKING,
                     StopReason.WAITING,
                     StopReason.ERROR,
@@ -283,7 +283,7 @@ class StreamTrackerTest {
                 timestamp = 5_000L,
                 insertId = "stop-zero",
                 playerState = playerState,
-                stopReason = StopReason.COMPLETED,
+                stopReason = StopReason.ENDED,
             )
 
             val props = events.first().eventProperties!!
@@ -326,7 +326,7 @@ class StreamTrackerTest {
                 ad = ad,
                 streamSessionId = "stream-ad-1",
                 watchDurationMillis = 1_000L,
-                status = AdCompletionStatus.COMPLETED,
+                status = AdCompletionStatus.ENDED,
             )
             tracker.trackAdSkipped(options = options, ad = ad, streamSessionId = "stream-ad-1")
 
@@ -368,13 +368,13 @@ class StreamTrackerTest {
                 ad = ad,
                 streamSessionId = "stream-ad-1",
                 watchDurationMillis = 30_000L,
-                status = AdCompletionStatus.COMPLETED,
+                status = AdCompletionStatus.ENDED,
             )
 
             val props = events.first().eventProperties!!
             assertEquals("[Amplitude] Ad Stopped", events.first().eventType)
             assertEquals(30.0, props["ad_watch_duration"])
-            assertEquals("completed", props["ad_completion_status"])
+            assertEquals("ended", props["ad_completion_status"])
             assertEquals(100.0, props["ad_percent_completed"])
         }
 

@@ -315,7 +315,7 @@ internal fun AdContext.percentWatched(watchDurationMillis: Long): Double? {
 internal enum class AdCompletionStatus(
     val value: String,
 ) {
-    COMPLETED("completed"),
+    ENDED("ended"),
     SKIPPED("skipped"),
     ABANDONED("abandoned"),
 }
@@ -332,7 +332,7 @@ internal enum class StopReason(
 ) {
     TIMEOUT("timeout"),
     PAUSED("paused"),
-    COMPLETED("completed"),
+    ENDED("ended"),
     SEEKING("seeking"),
     WAITING("waiting"),
     ERROR("error"),
