@@ -2,7 +2,7 @@
 
 Customer-style contract tests for a Kotlin SDK release candidate consumed through Maven coordinates.
 
-This phase verifies the individual Experiment, Session Replay, and Engagement blades. Unified Wrapper verification is the next phase and will use the same customer-oriented structure when its API is available.
+The suite verifies the individual Experiment, Session Replay, and Engagement blades, then verifies the same products through the Unified Wrapper entry point.
 
 ## Verification model
 
@@ -13,10 +13,11 @@ This phase verifies the individual Experiment, Session Replay, and Engagement bl
 | Third-party analytics host | Verifies blades against `AnalyticsClient`, `PluginHost`, and `UniversalPlugin` without the Amplitude Analytics implementation |
 | Java compatibility | Verifies Java constructors, factories, and `UniversalPlugin` compatibility |
 | Blade combinations | Verifies realistic multi-blade registration, enrichment, lookup, and removal |
+| Unified Wrapper | Verifies customer configuration, optional blades, shared identity, isolation, and cross-blade behavior through one entry point |
 
 `NonAmplitudeAnalyticsHost` is a minimal test provider. It opts into guarded Kotlin SDK host APIs to exercise the integration boundary intended for Unified and third-party analytics providers.
 
-Engagement 3.15.0 is still unpublished. Default CI compiles Experiment and Session Replay only. Opt into Engagement with `-PsdkVerificationIncludeEngagement=true` once that artifact exists. Runtime Engagement tests also need a host-native QuickJS library (`-PsdkVerificationEngagementNativeLibPath`).
+Engagement 3.15.0 is still unpublished. Default CI runs the Experiment and Session Replay behavior tests; the Unified Wrapper still resolves Engagement as a required transitive dependency. Opt into Engagement behavior tests with `-PsdkVerificationIncludeEngagement=true` once that artifact exists. Runtime Engagement tests also need a host-native QuickJS library (`-PsdkVerificationEngagementNativeLibPath`).
 
 ## Experiment coverage
 
@@ -61,13 +62,18 @@ Engagement 3.15.0 is still unpublished. Default CI compiles Experiment and Sessi
 | `AllBladesNonAmplitudeHostTest` | Experiment + Session Replay + Engagement on one third-party host | Host-native |
 | `AllBladesNonAmplitudeHostTest` | Removing one blade leaves the remaining accessors usable | Host-native |
 
-## Unified Wrapper next phase
+## Unified Wrapper coverage
 
-| Combination | Intent |
-|---|---|
-| All blades enabled | One initialization exposes every configured blade |
-| Any single blade disabled | Optional products do not block the remaining products |
-| Repeated or concurrent initialization | One effective initialization; all callers converge |
-| Multiple Experiment deployments | Keyed access stays deterministic; ambiguous default access is explicit |
-| Partial initialization failure | Healthy blades remain available and the failed blade is observable |
-| Existing Analytics client | Wrapper adopts caller-owned Analytics without duplicating lifecycle |
+| Test file | Customer setup | Gate |
+|---|---|---:|
+| `UnifiedWrapperIntegrationTest` | Single-entry Analytics + Experiment + Session Replay initialization | Yes |
+| `UnifiedWrapperIntegrationTest` | Enabled/disabled Experiment and Session Replay combinations | Yes |
+| `UnifiedWrapperIntegrationTest` | Shared identity propagation | Yes |
+| `UnifiedWrapperIntegrationTest` | Multiple wrapper instances remain isolated | Yes |
+| `UnifiedWrapperIntegrationTest` | Removing one blade leaves other blades usable | Yes |
+| `UnifiedWrapperIntegrationTest` | Experiment exposure includes the Session Replay ID | Yes |
+| `UnifiedWrapperIntegrationTest` | Multiple Experiment plugins make the unkeyed accessor explicitly ambiguous | Yes |
+| `UnifiedWrapperIntegrationTest` | Unified library attribution is applied once | Yes |
+| `UnifiedWrapperJavaCompatibilityTest` | Java builder construction and blade accessors | Yes |
+| `UnifiedWrapperEngagementIntegrationTest` | All blades enabled and each single blade disabled | Host-native |
+| `UnifiedWrapperEngagementIntegrationTest` | Shared identity reaches Experiment, Session Replay, and Engagement | Host-native |

@@ -4,6 +4,7 @@ plugins {
 }
 
 val kotlinSdkVersion = providers.gradleProperty("sdkVerificationKotlinVersion").orElse(rootProject.version.toString())
+val unifiedVersion = providers.gradleProperty("sdkVerificationUnifiedVersion").orElse(kotlinSdkVersion.get())
 val experimentVersion = providers.gradleProperty("sdkVerificationExperimentVersion").orElse("1.17.0")
 val sessionReplayVersion =
     providers.gradleProperty("sdkVerificationSessionReplayVersion")
@@ -39,6 +40,7 @@ dependencies {
     // Deliberately consume Maven coordinates instead of project dependencies. This catches the
     // same metadata and dependency-resolution failures a customer would see before release.
     testImplementation("com.amplitude:analytics-android:${kotlinSdkVersion.get()}")
+    testImplementation("com.amplitude:unified-android:${unifiedVersion.get()}")
     testImplementation("com.amplitude:experiment-android-client:${experimentVersion.get()}") {
         exclude(group = "com.amplitude", module = "analytics-core")
     }
@@ -83,6 +85,7 @@ tasks.withType<Test> {
             excludeTestsMatching("com.amplitude.verification.engagement.EngagementPluginIntegrationTest")
             excludeTestsMatching("com.amplitude.verification.engagement.EngagementPluginNonAmplitudeHostTest")
             excludeTestsMatching("com.amplitude.verification.engagement.AllBladesNonAmplitudeHostTest")
+            excludeTestsMatching("com.amplitude.verification.unified.engagement.UnifiedWrapperEngagementIntegrationTest")
         }
     }
     testLogging {
@@ -100,19 +103,16 @@ val verifySdkVerificationCoordinates =
                 mutableMapOf(
                     "analytics-android" to kotlinSdkVersion.get(),
                     "analytics-core" to kotlinSdkVersion.get(),
+                    "unified-android" to unifiedVersion.get(),
                     "experiment-android-client" to experimentVersion.get(),
                     "plugin-session-replay-android" to sessionReplayVersion.get(),
                     "session-replay-android" to sessionReplayVersion.get(),
+                    "amplitude-engagement-android" to engagementVersion.get(),
                 )
-            if (includeEngagement.get()) {
-                expectedVersions["amplitude-engagement-android"] = engagementVersion.get()
-            }
+            val resolutionResult =
+                configurations.getByName("debugUnitTestRuntimeClasspath").incoming.resolutionResult
             val resolvedVersions =
-                configurations
-                    .getByName("debugUnitTestRuntimeClasspath")
-                    .incoming
-                    .resolutionResult
-                    .allComponents
+                resolutionResult.allComponents
                     .mapNotNull { it.id as? org.gradle.api.artifacts.component.ModuleComponentIdentifier }
                     .filter { it.group == "com.amplitude" }
                     .associate { it.module to it.version }
@@ -122,6 +122,31 @@ val verifySdkVerificationCoordinates =
                 check(resolvedVersion == expectedVersion) {
                     "Expected com.amplitude:$artifact:$expectedVersion but resolved $resolvedVersion"
                 }
+            }
+
+            val unifiedComponent =
+                resolutionResult.allComponents.single { component ->
+                    (component.id as? org.gradle.api.artifacts.component.ModuleComponentIdentifier)
+                        ?.let { it.group == "com.amplitude" && it.module == "unified-android" } == true
+                }
+            val unifiedDependencies =
+                unifiedComponent.dependencies
+                    .mapNotNull { dependency ->
+                        (dependency as? org.gradle.api.artifacts.result.ResolvedDependencyResult)
+                            ?.selected
+                            ?.id as? org.gradle.api.artifacts.component.ModuleComponentIdentifier
+                    }.filter { it.group == "com.amplitude" }
+                    .map { it.module }
+                    .toSet()
+            val expectedUnifiedDependencies =
+                setOf(
+                    "analytics-android",
+                    "experiment-android-client",
+                    "plugin-session-replay-android",
+                    "amplitude-engagement-android",
+                )
+            check(unifiedDependencies.containsAll(expectedUnifiedDependencies)) {
+                "Expected unified-android metadata to declare $expectedUnifiedDependencies but found $unifiedDependencies"
             }
         }
     }
