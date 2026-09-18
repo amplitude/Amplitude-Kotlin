@@ -24,9 +24,11 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 
@@ -449,43 +451,48 @@ class PlayerBindingTest {
         @Test
         fun `should track Ad Stopped when the graph scope is cancelled during stop`() =
             runTest {
-                val parentJob = SupervisorJob()
-                val binding =
-                    PlayerBinding(
-                        player = mockk(relaxed = true),
-                        contentProvider = { PlayerContent() },
-                        playerObserverFactory = PlayerObserverFactory { _, _, _ -> observer },
-                        streamTracker = StreamTracker(amplitude),
-                        heartbeatFactory = HeartbeatFactory(time = Time()),
-                        time = Time(),
-                        parentScope = CoroutineScope(coroutineContext + parentJob),
-                        playerDispatcher = UnconfinedTestDispatcher(testScheduler),
-                    )
-                binding.start()
-                runCurrent()
+                StreamTracker.adsEventsEnabled = true
                 try {
-                    observer.emit(
-                        PlayerEvent.AdStarted(
-                            AdContext(
-                                adGroupIndex = 0,
-                                adIndexInAdGroup = 0,
-                                positionMillis = 0L,
-                                durationMillis = 15_000L,
-                                contentPositionMillis = 1_000L,
-                                contentId = "media-1",
-                                mediaItemIndex = 0,
+                    val parentJob = SupervisorJob()
+                    val binding =
+                        PlayerBinding(
+                            player = mockk(relaxed = true),
+                            contentProvider = { PlayerContent() },
+                            playerObserverFactory = PlayerObserverFactory { _, _, _ -> observer },
+                            streamTracker = StreamTracker(amplitude),
+                            heartbeatFactory = HeartbeatFactory(time = Time()),
+                            time = Time(),
+                            parentScope = CoroutineScope(coroutineContext + parentJob),
+                            playerDispatcher = UnconfinedTestDispatcher(testScheduler),
+                        )
+                    binding.start()
+                    runCurrent()
+                    try {
+                        observer.emit(
+                            PlayerEvent.AdStarted(
+                                AdContext(
+                                    adGroupIndex = 0,
+                                    adIndexInAdGroup = 0,
+                                    positionMillis = 0L,
+                                    durationMillis = 15_000L,
+                                    contentPositionMillis = 1_000L,
+                                    contentId = "media-1",
+                                    mediaItemIndex = 0,
+                                ),
                             ),
-                        ),
-                    )
-                    runCurrent()
-                    binding.stop()
-                    parentJob.cancel()
-                    runCurrent()
+                        )
+                        runCurrent()
+                        binding.stop()
+                        parentJob.cancel()
+                        runCurrent()
 
-                    assertEquals(1, tracked.count { it.eventType == AD_STOPPED })
+                        assertEquals(1, tracked.count { it.eventType == AD_STOPPED })
+                    } finally {
+                        binding.stop()
+                        runCurrent()
+                    }
                 } finally {
-                    binding.stop()
-                    runCurrent()
+                    StreamTracker.adsEventsEnabled = false
                 }
             }
 
@@ -530,6 +537,16 @@ class PlayerBindingTest {
 
     @Nested
     inner class Ads {
+        @BeforeEach
+        fun enableAdEvents() {
+            StreamTracker.adsEventsEnabled = true
+        }
+
+        @AfterEach
+        fun disableAdEvents() {
+            StreamTracker.adsEventsEnabled = false
+        }
+
         @Test
         fun `should not track Stream Started while an ad is playing`() =
             runTest {
