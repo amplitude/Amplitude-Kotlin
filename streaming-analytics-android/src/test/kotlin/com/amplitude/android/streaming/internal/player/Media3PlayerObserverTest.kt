@@ -532,7 +532,70 @@ class Media3PlayerObserverTest {
             runCurrent()
 
             assertEquals(1, events.filterIsInstance<PlayerEvent.Seeking>().size)
+            assertEquals(4_000L, events.filterIsInstance<PlayerEvent.Seeking>().single().previousSnapshot.positionMillis)
             assertTrue(events.none { it is PlayerEvent.MediaChanged })
+        }
+
+    @Test
+    fun `should include the outgoing position when repeating the same media item`() =
+        runTest {
+            val item = mediaItem("episode")
+            val player = mockk<Player>(relaxed = true)
+            every { player.currentMediaItem } returns item
+            every { player.currentMediaItemIndex } returns 0
+            every { player.contentPosition } returns 10_000L
+            every { player.contentDuration } returns 10_000L
+            every { player.currentTimeline } returns Timeline.EMPTY
+            val (observer, events) = observerCollectingEvents(player)
+            observer.snapshot()
+
+            observer.onPositionDiscontinuity(
+                oldPosition = contentPosition(item, mediaItemIndex = 0, positionMs = 10_000L),
+                newPosition = contentPosition(item, mediaItemIndex = 0, positionMs = 0L),
+                reason = Player.DISCONTINUITY_REASON_AUTO_TRANSITION,
+            )
+            every { player.contentPosition } returns 0L
+            observer.onMediaItemTransition(item, Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT)
+            runCurrent()
+
+            val event = events.filterIsInstance<PlayerEvent.MediaChanged>().single()
+            assertEquals("episode", event.previousSnapshot.mediaId)
+            assertEquals(10_000L, event.previousSnapshot.positionMillis)
+            assertEquals(StopReason.COMPLETED, event.stopReason)
+        }
+
+    @Test
+    fun `should freeze content position when media changes during an ad`() =
+        runTest {
+            val previousItem = mediaItem("episode")
+            val nextItem = mediaItem("next")
+            val player = mockk<Player>(relaxed = true)
+            every { player.currentMediaItem } returns previousItem
+            every { player.currentMediaItemIndex } returns 0
+            every { player.contentPosition } returns 30_000L
+            every { player.contentDuration } returns 60_000L
+            every { player.currentTimeline } returns Timeline.EMPTY
+            val (observer, events) = observerCollectingEvents(player)
+            observer.snapshot()
+
+            observer.onPositionDiscontinuity(
+                oldPosition =
+                    adPosition(
+                        adGroupIndex = 0,
+                        adIndexInAdGroup = 0,
+                        positionMs = 2_000L,
+                        mediaItem = previousItem,
+                        contentPositionMs = 30_000L,
+                    ),
+                newPosition = contentPosition(nextItem, mediaItemIndex = 1, positionMs = 0L),
+                reason = Player.DISCONTINUITY_REASON_SEEK,
+            )
+            observer.onMediaItemTransition(nextItem, Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED)
+            runCurrent()
+
+            val event = events.filterIsInstance<PlayerEvent.MediaChanged>().single()
+            assertEquals("episode", event.previousSnapshot.mediaId)
+            assertEquals(30_000L, event.previousSnapshot.positionMillis)
         }
 
     @Test
@@ -898,6 +961,7 @@ private fun adPosition(
     positionMs: Long,
     mediaItemIndex: Int = 0,
     mediaItem: MediaItem? = null,
+    contentPositionMs: Long = positionMs,
 ): Player.PositionInfo =
     Player.PositionInfo(
         /* windowUid= */ null,
@@ -906,7 +970,7 @@ private fun adPosition(
         /* periodUid= */ null,
         /* periodIndex= */ 0,
         positionMs,
-        positionMs,
+        contentPositionMs,
         adGroupIndex,
         adIndexInAdGroup,
     )

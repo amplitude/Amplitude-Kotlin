@@ -178,20 +178,11 @@ internal class Media3PlayerObserver(
             val mediaChanged =
                 oldPosition.mediaItemIndex != newPosition.mediaItemIndex ||
                     oldPosition.mediaItem != newPosition.mediaItem
-            if (mediaChanged) {
-                val oldMetadata = oldPosition.mediaItem?.mediaMetadata
-                outgoingSnapshot =
-                    lastSnapshot.copy(
-                        positionMillis = oldPosition.positionMs.coerceAtLeast(0L),
-                        mediaId = oldPosition.mediaItem?.mediaId?.takeIf { it.isNotEmpty() }
-                            ?: lastSnapshot.mediaId,
-                        title = oldMetadata?.title?.toString()
-                            ?: oldMetadata?.displayTitle?.toString()
-                            ?: lastSnapshot.title,
-                    )
+            if (mediaChanged || reason == Player.DISCONTINUITY_REASON_AUTO_TRANSITION) {
+                outgoingSnapshot = snapshotAtDiscontinuity(oldPosition)
             }
             if (reason == Player.DISCONTINUITY_REASON_SEEK && !mediaChanged) {
-                emit(PlayerEvent.Seeking)
+                emit(PlayerEvent.Seeking(snapshotAtDiscontinuity(oldPosition)))
             }
             if (oldPosition.adGroupIndex != C.INDEX_UNSET &&
                 (
@@ -328,6 +319,25 @@ internal class Media3PlayerObserver(
     private fun cancelBuffering() {
         bufferingJob?.cancel()
         bufferingJob = null
+    }
+
+    @OptIn(UnstableApi::class)
+    private fun snapshotAtDiscontinuity(oldPosition: Player.PositionInfo): PlayerMediaSnapshot {
+        val oldMetadata = oldPosition.mediaItem?.mediaMetadata
+        val positionMillis =
+            if (oldPosition.adGroupIndex != C.INDEX_UNSET) {
+                oldPosition.contentPositionMs
+            } else {
+                oldPosition.positionMs
+            }
+        return lastSnapshot.copy(
+            positionMillis = positionMillis.coerceAtLeast(0L),
+            mediaId = oldPosition.mediaItem?.mediaId?.takeIf { it.isNotEmpty() }
+                ?: lastSnapshot.mediaId,
+            title = oldMetadata?.title?.toString()
+                ?: oldMetadata?.displayTitle?.toString()
+                ?: lastSnapshot.title,
+        )
     }
 
     private fun adContextFromPlayer(player: Player): AdContext =

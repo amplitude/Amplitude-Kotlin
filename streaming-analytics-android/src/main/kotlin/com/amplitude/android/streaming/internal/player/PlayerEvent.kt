@@ -15,7 +15,9 @@ internal sealed interface PlayerEvent {
 
     data object Ended : PlayerEvent
 
-    data object Seeking : PlayerEvent
+    data class Seeking(
+        val previousSnapshot: PlayerMediaSnapshot,
+    ) : PlayerEvent
 
     data class Error(
         val message: String?,

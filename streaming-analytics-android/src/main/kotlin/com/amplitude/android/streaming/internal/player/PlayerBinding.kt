@@ -139,7 +139,7 @@ internal class PlayerBinding internal constructor(
             PlayerEvent.Buffering -> onBuffering()
             PlayerEvent.Ready -> onReady()
             PlayerEvent.Ended -> finishSession(StopReason.COMPLETED)
-            PlayerEvent.Seeking -> onSeeking()
+            is PlayerEvent.Seeking -> onSeeking(event)
             is PlayerEvent.Error -> finishSession(StopReason.ERROR, event.message)
             is PlayerEvent.MediaChanged -> {
                 freezeCurrentSegment(event.previousSnapshot)
@@ -232,17 +232,36 @@ internal class PlayerBinding internal constructor(
         interruptContent(StopReason.WAITING)
     }
 
-    private suspend fun onSeeking() {
+    private suspend fun onSeeking(event: PlayerEvent.Seeking) {
+        if (playback !is PlaybackState.Ad) {
+            freezeCurrentSegment(event.previousSnapshot)
+        }
         interruptContent(StopReason.SEEKING)
+        val state = playback
+        if (state is PlaybackState.Idle && playerIsPlaying() && !playerIsPlayingAd()) {
+            startContent(state.viewSessionId)
+        }
     }
 
     private suspend fun interruptContent(reason: StopReason) {
         when (val state = playback) {
             is PlaybackState.Content -> {
+                if (playerIsPlayingAd()) {
+                    state.segment.pauseWatch()
+                    state.heartbeat.cancel()
+                    playback =
+                        PlaybackState.Suspended(
+                            viewSessionId = state.viewSessionId,
+                            segment = state.segment,
+                            phase = state.phase,
+                        )
+                    return
+                }
                 finishSegment(state.segment, state.heartbeat, reason)
                 playback = PlaybackState.Idle(state.viewSessionId, state.segment)
             }
             is PlaybackState.Suspended -> {
+                if (playerIsPlayingAd()) return
                 finishSegment(state.segment, heartbeat = null, reason = reason)
                 playback = PlaybackState.Idle(state.viewSessionId, state.segment)
             }
@@ -271,7 +290,8 @@ internal class PlayerBinding internal constructor(
                 }
             }
             is PlaybackState.Idle -> {
-                if (playerIsPlaying()) startContent(state.viewSessionId)
+                if (!playerIsPlaying() || playerIsPlayingAd()) return
+                startContent(state.viewSessionId)
             }
         }
     }

@@ -250,7 +250,7 @@ class PlayerBindingTest {
                     runCurrent()
                     observer.emit(PlayerEvent.Buffering)
                     runCurrent()
-                    observer.emit(PlayerEvent.Seeking)
+                    observer.emit(PlayerEvent.Seeking(previousSnapshot()))
                     runCurrent()
                     observer.emit(PlayerEvent.Ready)
                     runCurrent()
@@ -398,7 +398,7 @@ class PlayerBindingTest {
                 withBinding(player) {
                     observer.emit(PlayerEvent.Playing)
                     runCurrent()
-                    observer.emit(PlayerEvent.Seeking)
+                    observer.emit(PlayerEvent.Seeking(previousSnapshot()))
                     runCurrent()
                     observer.emit(PlayerEvent.Ready)
                     runCurrent()
@@ -414,6 +414,52 @@ class PlayerBindingTest {
                     val afterReady = stopped.last()
                     assertEquals("timeout", afterReady.eventProperties?.get("stop_reason"))
                     assertEquals(2, startedEvents().size)
+                }
+            }
+
+        @Test
+        fun `should freeze the pre-seek position on Stream Stopped`() =
+            runTest {
+                withBinding {
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+                    observer.positionMillis = 9_000L
+                    observer.emit(
+                        PlayerEvent.Seeking(
+                            previousSnapshot().copy(positionMillis = 5_000L),
+                        ),
+                    )
+                    runCurrent()
+
+                    val seekingStop =
+                        tracked.single {
+                            it.eventType == STREAM_STOPPED &&
+                                it.eventProperties?.get("stop_reason") == "seeking"
+                        }
+                    assertEquals(5.0, seekingStop.eventProperties?.get("position"))
+                }
+            }
+
+        @Test
+        fun `should keep tracking after a seek without a Ready event`() =
+            runTest {
+                val player = mockk<Player>(relaxed = true)
+                every { player.isPlaying } returns true
+                withBinding(player) {
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+                    observer.emit(PlayerEvent.Seeking(previousSnapshot()))
+                    runCurrent()
+                    observer.emit(PlayerEvent.Paused)
+                    runCurrent()
+
+                    assertEquals(2, startedEvents().size)
+                    assertTrue(
+                        tracked.any {
+                            it.eventType == STREAM_STOPPED &&
+                                it.eventProperties?.get("stop_reason") == "paused"
+                        },
+                    )
                 }
             }
     }
@@ -648,7 +694,7 @@ class PlayerBindingTest {
                     every { player.isPlayingAd } returns true
                     observer.emit(PlayerEvent.AdStarted(testAd()))
                     runCurrent()
-                    observer.emit(PlayerEvent.Seeking)
+                    observer.emit(PlayerEvent.Seeking(previousSnapshot()))
                     runCurrent()
                     every { player.isPlayingAd } returns false
                     observer.emit(PlayerEvent.AdStopped(testAd(), completed = true))
@@ -737,6 +783,32 @@ class PlayerBindingTest {
                     runCurrent()
 
                     assertEquals(1, startedEvents().size)
+                }
+            }
+
+        @Test
+        fun `should not start content from Ready while an ad is playing`() =
+            runTest {
+                val player = mockk<Player>(relaxed = true)
+                every { player.isPlaying } returns true
+                withBinding(player) {
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+                    observer.emit(PlayerEvent.Buffering)
+                    runCurrent()
+                    every { player.isPlayingAd } returns true
+                    observer.emit(PlayerEvent.Ready)
+                    runCurrent()
+                    observer.emit(PlayerEvent.AdStarted(testAd()))
+                    runCurrent()
+
+                    assertEquals(1, startedEvents().size)
+
+                    every { player.isPlayingAd } returns false
+                    observer.emit(PlayerEvent.AdStopped(testAd(), completed = true))
+                    runCurrent()
+
+                    assertEquals(2, startedEvents().size)
                 }
             }
 
