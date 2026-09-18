@@ -17,5 +17,7 @@ Please visit our :100:[Developer Center](https://amplitude.com/docs/sdks/analyti
 ## Doc
 See our [Kotlin SDK Reference](http://amplitude.github.io/Amplitude-Kotlin/) for a list and description of all available SDK methods.
 
+Streaming Analytics for Media3 / ExoPlayer is published as [`com.amplitude:streaming-analytics-android`](https://mvnrepository.com/artifact/com.amplitude/streaming-analytics-android). Setup and event taxonomy: [streaming-analytics-android/README.md](streaming-analytics-android/README.md).
+
 ## Need Help?
 If you have any problems or issues over our SDK, feel free to [create a github issue](https://github.com/amplitude/Amplitude-Kotlin/issues/new) or submit a request on [Amplitude Help](https://help.amplitude.com/hc/en-us/requests/new).
