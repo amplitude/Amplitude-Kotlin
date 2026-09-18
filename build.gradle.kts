@@ -17,6 +17,9 @@ plugins {
 
 apiValidation {
     ignoredProjects += listOf("kotlin-android-app", "streaming-app")
+    // Preview APIs may change in a minor release. Once @AmplitudePreview is
+    // removed, the declaration enters the dump and is covered by apiCheck.
+    nonPublicMarkers += "com.amplitude.core.AmplitudePreview"
 }
 
 allprojects {

@@ -35,6 +35,7 @@ public class PlayerContent @JvmOverloads constructor(
      */
     public val extraProperties: Map<String, Any?>? = extraProperties?.deepCopy()
 
+    @AmplitudePreview
     public companion object {
         public const val DELIVERY_MODE_LIVE: String = "live"
         public const val DELIVERY_MODE_ON_DEMAND: String = "on_demand"
