@@ -16,10 +16,16 @@ plugins {
 }
 
 apiValidation {
-    ignoredProjects += listOf("kotlin-android-app", "streaming-app")
+    ignoredProjects += listOf("kotlin-android-app", "sdk-verification", "streaming-app")
     // Preview APIs may change in a minor release. Once @AmplitudePreview is
     // removed, the declaration enters the dump and is covered by apiCheck.
     nonPublicMarkers += "com.amplitude.core.AmplitudePreview"
+}
+
+tasks.register("sdkVerificationTest") {
+    group = "verification"
+    description = "Runs customer-style verification against Maven-published SDK artifacts."
+    dependsOn(":sdk-verification:testDebugUnitTest")
 }
 
 allprojects {
