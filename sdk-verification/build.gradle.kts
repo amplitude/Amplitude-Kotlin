@@ -8,8 +8,6 @@ val experimentVersion = providers.gradleProperty("sdkVerificationExperimentVersi
 val sessionReplayVersion =
     providers.gradleProperty("sdkVerificationSessionReplayVersion")
         .orElse("0.30.0")
-val engagementVersion = providers.gradleProperty("sdkVerificationEngagementVersion").orElse("3.15.0")
-val engagementNativeLibPath = providers.gradleProperty("sdkVerificationEngagementNativeLibPath")
 
 android {
     namespace = "com.amplitude.sdk.verification"
@@ -39,7 +37,6 @@ dependencies {
         exclude(group = "com.amplitude", module = "analytics-core")
     }
     testImplementation("com.amplitude:plugin-session-replay-android:${sessionReplayVersion.get()}")
-    testImplementation("com.amplitude:amplitude-engagement-android:${engagementVersion.get()}")
     testImplementation(libs.coroutines.test)
     testImplementation(libs.mockk)
     testImplementation(libs.mockwebserver)
@@ -57,15 +54,6 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
-    if (engagementNativeLibPath.isPresent) {
-        jvmArgs("-Djava.library.path=${engagementNativeLibPath.get()}")
-    } else {
-        filter {
-            excludeTestsMatching("com.amplitude.verification.engagement.EngagementPluginIntegrationTest")
-            excludeTestsMatching("com.amplitude.verification.engagement.EngagementPluginNonAmplitudeHostTest")
-            excludeTestsMatching("com.amplitude.verification.engagement.AllBladesNonAmplitudeHostTest")
-        }
-    }
     testLogging {
         events("passed", "skipped", "failed")
     }
@@ -78,13 +66,12 @@ val verifySdkVerificationCoordinates =
 
         doLast {
             val expectedVersions =
-                mutableMapOf(
+                mapOf(
                     "analytics-android" to kotlinSdkVersion.get(),
                     "analytics-core" to kotlinSdkVersion.get(),
                     "experiment-android-client" to experimentVersion.get(),
                     "plugin-session-replay-android" to sessionReplayVersion.get(),
                     "session-replay-android" to sessionReplayVersion.get(),
-                    "amplitude-engagement-android" to engagementVersion.get(),
                 )
             val resolvedVersions =
                 configurations
