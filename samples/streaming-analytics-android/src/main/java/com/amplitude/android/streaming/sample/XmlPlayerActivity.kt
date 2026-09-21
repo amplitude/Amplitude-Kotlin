@@ -27,7 +27,8 @@ class XmlPlayerActivity : AppCompatActivity() {
         viewModel.player.attachPlayerView(playerView)
         bindTitle()
 
-        findViewById<Button>(R.id.play).setOnClickListener { viewModel.player.play() }
+        val playButton = findViewById<Button>(R.id.play)
+        playButton.setOnClickListener { viewModel.player.play() }
         findViewById<Button>(R.id.pause).setOnClickListener { viewModel.player.pause() }
         findViewById<Button>(R.id.seek_back).setOnClickListener { viewModel.player.seekBy(-10_000L) }
         findViewById<Button>(R.id.seek_forward).setOnClickListener { viewModel.player.seekBy(10_000L) }
@@ -36,6 +37,9 @@ class XmlPlayerActivity : AppCompatActivity() {
             bindTitle()
         }
         findViewById<Button>(R.id.enter_pip).setOnClickListener { enterPipIfPossible() }
+        if (isTelevision) {
+            playButton.requestFocus()
+        }
     }
 
     override fun onStop() {

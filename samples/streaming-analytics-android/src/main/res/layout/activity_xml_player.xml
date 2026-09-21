@@ -19,6 +19,7 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
+        android:nextFocusDown="@id/play"
         app:show_buffering="when_playing"
         app:use_controller="true" />
 
@@ -34,24 +35,35 @@
             android:id="@+id/play"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:nextFocusRight="@id/pause"
+            android:nextFocusUp="@id/player_view"
             android:text="@string/play" />
 
         <Button
             android:id="@+id/pause"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:nextFocusLeft="@id/play"
+            android:nextFocusRight="@id/seek_back"
+            android:nextFocusUp="@id/player_view"
             android:text="@string/pause" />
 
         <Button
             android:id="@+id/seek_back"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:nextFocusLeft="@id/pause"
+            android:nextFocusRight="@id/seek_forward"
+            android:nextFocusUp="@id/player_view"
             android:text="@string/seek_back" />
 
         <Button
             android:id="@+id/seek_forward"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:nextFocusDown="@id/swap_media"
+            android:nextFocusLeft="@id/seek_back"
+            android:nextFocusUp="@id/player_view"
             android:text="@string/seek_forward" />
     </LinearLayout>
 
@@ -59,11 +71,14 @@
         android:id="@+id/swap_media"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:nextFocusDown="@id/enter_pip"
+        android:nextFocusUp="@id/seek_forward"
         android:text="@string/swap_media" />
 
     <Button
         android:id="@+id/enter_pip"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:nextFocusUp="@id/swap_media"
         android:text="@string/enter_pip" />
 </LinearLayout>
