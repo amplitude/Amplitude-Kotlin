@@ -1,13 +1,8 @@
 package com.amplitude.android.streaming.sample
 
-import com.amplitude.android.streaming.PlayerContent
-import com.amplitude.core.AmplitudePreview
-
-@OptIn(AmplitudePreview::class)
 internal data class SampleMedia(
     val id: String,
     val title: String,
-    val deliveryMode: String,
     val uri: String,
     val adTagUri: String? = null,
     val extraProperties: Map<String, Any?>? = null,
@@ -23,7 +18,6 @@ internal data class SampleMedia(
                 SampleMedia(
                     id = "big-buck-bunny",
                     title = "Big Buck Bunny · skippable preroll",
-                    deliveryMode = PlayerContent.DELIVERY_MODE_ON_DEMAND,
                     uri = "https://storage.googleapis.com/exoplayer-test-media-0/BigBuckBunny_320x180.mp4",
                     adTagUri = SKIPPABLE_PREROLL,
                     extraProperties = mapOf("ad_campaign" to "ima-skippable-preroll"),
@@ -31,7 +25,6 @@ internal data class SampleMedia(
                 SampleMedia(
                     id = "frame-counter",
                     title = "Frame counter · VMAP pre/mid/post",
-                    deliveryMode = PlayerContent.DELIVERY_MODE_ON_DEMAND,
                     uri = "https://storage.googleapis.com/exoplayer-test-media-1/mp4/frame-counter-one-hour.mp4",
                     adTagUri = VMAP_PRE_MID_POST,
                     extraProperties = mapOf("ad_campaign" to "ima-vmap-premidpost"),
@@ -43,13 +36,11 @@ internal data class SampleMedia(
                 SampleMedia(
                     id = "jazz-in-paris",
                     title = "Jazz in Paris",
-                    deliveryMode = PlayerContent.DELIVERY_MODE_ON_DEMAND,
                     uri = "https://storage.googleapis.com/exoplayer-test-media-0/Jazz_In_Paris.mp3",
                 ),
                 SampleMedia(
                     id = "play-mp3",
                     title = "ExoPlayer test tone",
-                    deliveryMode = PlayerContent.DELIVERY_MODE_ON_DEMAND,
                     uri = "https://storage.googleapis.com/exoplayer-test-media-0/play.mp3",
                 ),
             )

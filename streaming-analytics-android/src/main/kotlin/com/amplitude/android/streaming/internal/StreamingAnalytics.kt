@@ -2,7 +2,6 @@ package com.amplitude.android.streaming.internal
 
 import androidx.media3.common.Player
 import com.amplitude.android.Amplitude
-import com.amplitude.android.streaming.PlayerContentProvider
 import com.amplitude.android.streaming.internal.network.uploadPipeline
 import com.amplitude.android.streaming.internal.player.playerBindingFactory
 import com.amplitude.android.streaming.internal.storage.storagePipeline
@@ -30,15 +29,9 @@ internal class StreamingAnalytics(
         }
     }
 
-    suspend fun trackPlayer(
-        player: Player,
-        contentProvider: PlayerContentProvider,
-    ) {
+    suspend fun trackPlayer(player: Player) {
         runSafe("trackPlayer error") {
-            playerBindingFactory.getOrCreate(
-                player = player,
-                contentProvider = contentProvider,
-            )
+            playerBindingFactory.getOrCreate(player)
         }
     }
 

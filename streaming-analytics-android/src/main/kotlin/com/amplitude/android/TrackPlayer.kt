@@ -3,7 +3,6 @@
 package com.amplitude.android
 
 import androidx.media3.common.Player
-import com.amplitude.android.streaming.PlayerContentProvider
 import com.amplitude.android.streaming.StreamingAnalyticsPlugin
 import com.amplitude.android.streaming.internal.StreamingAnalytics
 import com.amplitude.core.AmplitudePreview
@@ -17,8 +16,7 @@ private val playerCommands = Mutex()
 /**
  * Starts Streaming Analytics on [androidx.media3.common.Player].
  *
- * If [player] is already tracked by this Amplitude instance, this function is a no-op
- * and [contentProvider] is ignored.
+ * If [player] is already tracked by this Amplitude instance, this function is a no-op.
  *
  * The player is held only with a [java.lang.ref.WeakReference], so dropping your own
  * reference does not leak. Call [untrackPlayer] only when you want a terminal stream
@@ -27,21 +25,35 @@ private val playerCommands = Mutex()
  * Tracking starts asynchronously, but [trackPlayer] and [untrackPlayer] apply in the
  * order they are called.
  *
+ * Content identity is read from the current [androidx.media3.common.MediaItem]:
+ * [androidx.media3.common.MediaItem.mediaId] is `content_id`,
+ * [androidx.media3.common.MediaMetadata.title] (or `displayTitle`) is `title`, and
+ * JSON-safe primitives in [androidx.media3.common.MediaMetadata.extras] are merged onto
+ * the event. Blank media IDs and playback URIs are not captured.
+ *
  * ```
- * amplitude.trackPlayer(exoPlayer) { mediaItem ->
- *     PlayerContent(
- *         contentId = mediaItem?.mediaId ?: "ep-1",
- *         title = "Episode 1",
+ * val mediaItem = MediaItem.Builder()
+ *     .setUri(playbackUri)
+ *     .setMediaId("ep-42")
+ *     .setMediaMetadata(
+ *         MediaMetadata.Builder()
+ *             .setTitle("Episode 42")
+ *             .setExtras(
+ *                 bundleOf(
+ *                     "show_id" to "show-7",
+ *                     "season" to 2,
+ *                 ),
+ *             )
+ *             .build(),
  *     )
- * }
+ *     .build()
+ * exoPlayer.setMediaItem(mediaItem)
+ * amplitude.trackPlayer(exoPlayer)
  * ```
  */
 @AmplitudePreview
-public fun Amplitude.trackPlayer(
-    player: Player,
-    contentProvider: PlayerContentProvider,
-) {
-    launchPlayerCommand { trackPlayer(player, contentProvider) }
+public fun Amplitude.trackPlayer(player: Player) {
+    launchPlayerCommand { trackPlayer(player) }
 }
 
 /**

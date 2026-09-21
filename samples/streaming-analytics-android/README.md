@@ -6,7 +6,7 @@ Android sample for `com.amplitude:streaming-analytics-android`.
 
 * **XML** — one Media3 `PlayerView` (VoD). PiP and background playback stay on this player.
 * **Compose** — two VoD `PlayerView`s plus one audio-only player. PiP and background playback stay on video 1 only.
-* Amplitude is created in a Metro `AppGraph`. Each screen is an Activity plus a ViewModel that owns `DemoPlayer`s and calls `trackPlayer`. Metro is pinned to `0.6.5` so it matches Kotlin `2.2.10` without requiring JDK 21.
+* Amplitude is created in a Metro `AppGraph`. Each screen is an Activity plus a ViewModel that owns `DemoPlayer`s and calls `trackPlayer`. Catalog IDs, titles, and extra properties are stored on each `MediaItem`. Metro is pinned to `0.6.5` so it matches Kotlin `2.2.10` without requiring JDK 21.
 * **IMA ads** — both VoD items use Google IMA sample tags via `ImaAdsLoader`. Swap media to switch tags. Audio stays ad-free.
 
 ### Ads to exercise

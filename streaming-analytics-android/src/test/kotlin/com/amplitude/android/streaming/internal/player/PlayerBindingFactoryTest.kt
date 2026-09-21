@@ -2,7 +2,6 @@ package com.amplitude.android.streaming.internal.player
 
 import android.os.Looper
 import androidx.media3.common.Player
-import com.amplitude.android.streaming.PlayerContent
 import com.amplitude.android.streaming.internal.StreamTracker
 import com.amplitude.android.streaming.internal.util.Time
 import com.amplitude.core.Amplitude
@@ -56,7 +55,7 @@ class PlayerBindingFactoryTest {
 
             val callerThread = Thread.currentThread()
             withContext(Dispatchers.IO) {
-                factory.getOrCreate(player) { PlayerContent() }
+                factory.getOrCreate(player)
             }
             playerExecutor.submit { }.get()
 
@@ -75,9 +74,9 @@ class PlayerBindingFactoryTest {
             val player = mockk<Player>(relaxed = true)
             val factory = playerBindingFactory(playerDispatcher, scope = CoroutineScope(Dispatchers.IO))
 
-            val binding = factory.getOrCreate(player) { PlayerContent() }
+            val binding = factory.getOrCreate(player)
 
-            assertSame(binding, factory.getOrCreate(player) { PlayerContent() })
+            assertSame(binding, factory.getOrCreate(player))
 
             playerDispatcher.close()
             playerExecutor.shutdown()
@@ -104,7 +103,7 @@ class PlayerBindingFactoryTest {
                         },
                 )
             val player = mockk<Player>(relaxed = true)
-            val binding = factory.getOrCreate(player) { PlayerContent() }
+            val binding = factory.getOrCreate(player)
             try {
                 runCurrent()
                 observers.single().emit(PlayerEvent.Playing)
@@ -118,7 +117,7 @@ class PlayerBindingFactoryTest {
                             it.eventProperties?.get("stop_reason") == "untracked"
                     },
                 )
-                assertNotSame(binding, factory.getOrCreate(player) { PlayerContent() })
+                assertNotSame(binding, factory.getOrCreate(player))
             } finally {
                 factory.detachAll()
                 runCurrent()
@@ -159,13 +158,13 @@ class PlayerBindingFactoryTest {
                 )
             val player = mockk<Player>(relaxed = true)
             try {
-                factory.getOrCreate(player) { PlayerContent() }
+                factory.getOrCreate(player)
                 runCurrent()
                 observers.single().emit(PlayerEvent.Playing)
                 runCurrent()
 
                 factory.detach(player)
-                factory.getOrCreate(player) { PlayerContent() }
+                factory.getOrCreate(player)
                 runCurrent()
                 observers.last().emit(PlayerEvent.Playing)
                 runCurrent()
@@ -205,7 +204,7 @@ class PlayerBindingFactoryTest {
                         },
                 )
             val player = mockk<Player>(relaxed = true)
-            factory.getOrCreate(player) { PlayerContent() }
+            factory.getOrCreate(player)
             runCurrent()
             observers.single().emit(PlayerEvent.Playing)
             runCurrent()
@@ -242,7 +241,7 @@ class PlayerBindingFactoryTest {
                         },
                 )
             val player = mockk<Player>(relaxed = true)
-            factory.getOrCreate(player) { PlayerContent() }
+            factory.getOrCreate(player)
             runCurrent()
             observers.single().emit(PlayerEvent.Playing)
             runCurrent()
@@ -281,7 +280,7 @@ class PlayerBindingFactoryTest {
                         },
                 )
             val player = mockk<Player>(relaxed = true)
-            factory.getOrCreate(player) { PlayerContent() }
+            factory.getOrCreate(player)
             runCurrent()
             observers.single().emit(PlayerEvent.Playing)
             runCurrent()
@@ -289,7 +288,7 @@ class PlayerBindingFactoryTest {
             factory.detachAll()
             val started = events.count { it.eventType == "[Amplitude] Stream Started" }
 
-            assertNull(factory.getOrCreate(player) { PlayerContent() })
+            assertNull(factory.getOrCreate(player))
             runCurrent()
             assertEquals(started, events.count { it.eventType == "[Amplitude] Stream Started" })
             assertEquals(1, observers.size)
@@ -322,7 +321,7 @@ class PlayerBindingFactoryTest {
                 List(callers) {
                     Thread {
                         barrier.await()
-                        runBlocking { factory.getOrCreate(player) { PlayerContent() } }
+                        runBlocking { factory.getOrCreate(player) }
                     }
                 }
             try {
@@ -359,7 +358,7 @@ class PlayerBindingFactoryTest {
             runCurrent()
 
             awaitCollected(playerReference)
-            factory.getOrCreate(playerProxy()) { PlayerContent() }
+            factory.getOrCreate(playerProxy())
             runCurrent()
             observers.first().emit(PlayerEvent.Playing)
             runCurrent()
@@ -493,7 +492,7 @@ class PlayerBindingFactoryTest {
 
     private suspend fun PlayerBindingFactory.createAbandonedBinding(): Pair<PlayerBinding, WeakReference<Player>> {
         val player = playerProxy()
-        val binding = checkNotNull(getOrCreate(player) { PlayerContent() })
+        val binding = checkNotNull(getOrCreate(player))
         // MockK records create(player); drop that so the proxy can be collected.
         clearMocks(dispatcherFactory, answers = false, recordedCalls = true)
         return binding to WeakReference(player)

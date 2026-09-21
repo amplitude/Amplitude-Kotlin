@@ -106,6 +106,23 @@ class StreamTrackerTest {
         }
 
         @Test
+        fun `omits whitespace-only content ids from snapshot fallback`() {
+            tracker.trackStreamStarted(
+                options = PlayerContent(),
+                snapshot = snapshot.copy(mediaId = "  "),
+                playerState = playerState,
+                mediaType = MediaType.VIDEO,
+                streamSessionId = "stream-1",
+                playId = "play-1",
+                startTimeMillis = 15_000L,
+                timestamp = 1_000L,
+                insertId = "insert-blank-id",
+            )
+
+            assertFalse(events.first().eventProperties!!.containsKey("content_id"))
+        }
+
+        @Test
         fun `trackStreamStopped sends Stream Stopped with progress and reason`() {
             tracker.trackStreamStopped(
                 options = options,

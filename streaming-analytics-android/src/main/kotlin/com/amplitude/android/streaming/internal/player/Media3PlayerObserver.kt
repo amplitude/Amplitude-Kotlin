@@ -80,7 +80,7 @@ internal class Media3PlayerObserver(
                     positionMillis = player.contentPosition.coerceAtLeast(0L),
                     durationMillis = player.contentDuration,
                     isLive = player.contentIsLive(),
-                    mediaId = item?.mediaId?.takeIf { it.isNotEmpty() },
+                    mediaId = item?.mediaId.nonBlankId(),
                     title = metadata?.title?.toString() ?: metadata?.displayTitle?.toString(),
                     mediaType = player.mediaType(),
                 ).also { lastSnapshot = it }
@@ -332,7 +332,7 @@ internal class Media3PlayerObserver(
             }
         return lastSnapshot.copy(
             positionMillis = positionMillis.coerceAtLeast(0L),
-            mediaId = oldPosition.mediaItem?.mediaId?.takeIf { it.isNotEmpty() }
+            mediaId = oldPosition.mediaItem?.mediaId.nonBlankId()
                 ?: lastSnapshot.mediaId,
             title = oldMetadata?.title?.toString()
                 ?: oldMetadata?.displayTitle?.toString()
@@ -347,7 +347,7 @@ internal class Media3PlayerObserver(
             positionMillis = player.currentPosition.coerceAtLeast(0),
             durationMillis = player.duration,
             contentPositionMillis = player.contentPosition.coerceAtLeast(0),
-            contentId = player.currentMediaItem?.mediaId?.takeIf { it.isNotEmpty() },
+            contentId = player.currentMediaItem?.mediaId.nonBlankId(),
             mediaItemIndex = player.currentMediaItemIndex,
         )
 }
@@ -387,3 +387,5 @@ private fun Player.mediaType(): MediaType {
 }
 
 private fun Tracks.Group.isType(trackType: Int): Boolean = type == trackType
+
+private fun String?.nonBlankId(): String? = this?.takeIf { it.isNotBlank() }
