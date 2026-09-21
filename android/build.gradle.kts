@@ -36,9 +36,7 @@ android {
         targetCompatibility = JavaConfig.JAVA_VERSION
     }
     testOptions {
-        // Cap unit-test targetSdk to Robolectric's supported ceiling. Robolectric 4.15.1
-        // rejects test APKs with targetSdk > 35. Bump this alongside any Robolectric upgrade.
-        targetSdk = 35
+        targetSdk = AndroidVersions.TARGET_SDK
         unitTests.isIncludeAndroidResources = true
         unitTests.isReturnDefaultValues = true
     }
