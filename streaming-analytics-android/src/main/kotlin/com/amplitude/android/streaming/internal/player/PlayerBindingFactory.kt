@@ -1,7 +1,6 @@
 package com.amplitude.android.streaming.internal.player
 
 import androidx.media3.common.Player
-import com.amplitude.android.streaming.PlayerContentProvider
 import com.amplitude.android.streaming.internal.StreamTracker
 import com.amplitude.android.streaming.internal.StreamingDiGraph
 import com.amplitude.android.streaming.internal.streamTracker
@@ -38,10 +37,7 @@ internal class PlayerBindingFactory(
     private val bindingRegistry = mutableListOf<PlayerBinding>()
     private var closed = false
 
-    suspend fun getOrCreate(
-        player: Player,
-        contentProvider: PlayerContentProvider,
-    ): PlayerBinding? =
+    suspend fun getOrCreate(player: Player): PlayerBinding? =
         mutex.withLock {
             if (closed) return@withLock null
             sweepInactive()
@@ -51,7 +47,6 @@ internal class PlayerBindingFactory(
             }
             PlayerBinding(
                 player = player,
-                contentProvider = contentProvider,
                 playerObserverFactory = playerObserverFactory,
                 streamTracker = streamTracker,
                 heartbeatFactory = heartbeatFactory,

@@ -18,9 +18,7 @@ private const val NAME: String = "AmplitudeStreamingAnalytics"
  * [teardown] calls [StreamingAnalytics.teardown].
  *
  * ```
- * amplitude.trackPlayer(exoPlayer) { mediaItem ->
- *     PlayerContent(contentId = mediaItem?.mediaId)
- * }
+ * amplitude.trackPlayer(exoPlayer)
  * ```
  */
 @AmplitudePreview

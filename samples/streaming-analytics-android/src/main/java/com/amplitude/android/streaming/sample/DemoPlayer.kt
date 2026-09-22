@@ -2,9 +2,11 @@ package com.amplitude.android.streaming.sample
 
 import android.content.Context
 import android.net.Uri
+import android.os.Bundle
 import androidx.annotation.OptIn
 import androidx.media3.common.AdViewProvider
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
@@ -127,6 +129,12 @@ internal class DemoPlayer(
             MediaItem.Builder()
                 .setUri(item.uri)
                 .setMediaId(item.id)
+                .setMediaMetadata(
+                    MediaMetadata.Builder()
+                        .setTitle(item.title)
+                        .setExtras(item.extraProperties.toBundle())
+                        .build(),
+                )
         item.adTagUri?.let { tag ->
             builder.setAdsConfiguration(
                 MediaItem.AdsConfiguration.Builder(Uri.parse(tag)).build(),
@@ -139,3 +147,17 @@ internal class DemoPlayer(
         }
     }
 }
+
+private fun Map<String, Any?>?.toBundle(): Bundle =
+    Bundle().also { bundle ->
+        this.orEmpty().forEach { (key, value) ->
+            when (value) {
+                is String -> bundle.putString(key, value)
+                is Int -> bundle.putInt(key, value)
+                is Long -> bundle.putLong(key, value)
+                is Float -> bundle.putFloat(key, value)
+                is Double -> bundle.putDouble(key, value)
+                is Boolean -> bundle.putBoolean(key, value)
+            }
+        }
+    }

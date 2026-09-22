@@ -3,7 +3,7 @@ package com.amplitude.android.streaming.internal.player
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import com.amplitude.android.streaming.PlayerContent
-import com.amplitude.android.streaming.PlayerContentProvider
+import com.amplitude.android.streaming.toPlayerContent
 import com.amplitude.android.streaming.internal.AdContext
 import com.amplitude.android.streaming.internal.AdCompletionStatus
 import com.amplitude.android.streaming.internal.StopReason
@@ -35,7 +35,6 @@ private const val ORPHAN_CHECK_MILLIS = 1_000L
 @OptIn(AmplitudePreview::class)
 internal class PlayerBinding internal constructor(
     player: Player,
-    private val contentProvider: PlayerContentProvider,
     playerObserverFactory: PlayerObserverFactory,
     private val streamTracker: StreamTracker,
     private val heartbeatFactory: HeartbeatFactory,
@@ -73,7 +72,7 @@ internal class PlayerBinding internal constructor(
         scope.launch {
             runCatchingCancellable {
                 if (stopped.get() || eventJob != null) return@runCatchingCancellable
-                options = resolveOptions(playerReference.get()?.currentMediaItem)
+                options = playerReference.get()?.currentMediaItem?.toPlayerContent() ?: PlayerContent()
                 eventJob =
                     scope.launch {
                         observer.eventFlow.collect { event ->
@@ -144,7 +143,7 @@ internal class PlayerBinding internal constructor(
             is PlayerEvent.MediaChanged -> {
                 freezeCurrentSegment(event.previousSnapshot)
                 finishSession(event.stopReason)
-                options = resolveOptions(event.mediaItem)
+                options = event.mediaItem?.toPlayerContent() ?: PlayerContent()
                 if (playerReference.get()?.isPlaying == true) onPlaying()
             }
             is PlayerEvent.AdStarted -> onAdStarted(event.ad)
@@ -544,13 +543,6 @@ internal class PlayerBinding internal constructor(
     internal fun hasStopped(): Boolean = stopped.get()
 
     private fun newViewSessionId(): String = UUID.randomUUID().toString()
-
-    private fun resolveOptions(mediaItem: MediaItem?): PlayerContent =
-        try {
-            contentProvider.optionsFor(mediaItem)
-        } catch (_: Exception) {
-            PlayerContent()
-        }
 
     private enum class ContentPhase {
         PLAYING,

@@ -1,6 +1,5 @@
 package com.amplitude.android.streaming.internal.player
 
-import com.amplitude.android.streaming.PlayerContent
 import com.amplitude.android.streaming.internal.StreamTracker
 import com.amplitude.android.streaming.internal.util.Time
 import com.amplitude.core.Amplitude
@@ -36,7 +35,6 @@ class PlayerBindingInsertIdTest {
                 val binding =
                     PlayerBinding(
                         player = mockk(relaxed = true),
-                        contentProvider = { PlayerContent() },
                         playerObserverFactory = PlayerObserverFactory { _, _, _ -> observer },
                         streamTracker = StreamTracker(amplitude),
                         heartbeatFactory = HeartbeatFactory(time = Time()),

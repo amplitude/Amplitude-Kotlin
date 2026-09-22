@@ -7,8 +7,8 @@ import com.amplitude.core.ServerZone
 import java.net.URI
 import java.net.URL
 
-private const val US_DEFAULT_HOST = "https://delayed-events.prod.us-west-2.amplitude.com/2/httpapi"
-private const val EU_DEFAULT_HOST = "https://delayed-events.prod.eu-central-1.amplitude.com/2/httpapi"
+private const val US_DEFAULT_HOST = "https://delayed-api.amplitude.com/2/httpapi"
+private const val EU_DEFAULT_HOST = "https://delayed-api.eu.amplitude.com/2/httpapi"
 
 internal val StreamingDiGraph.delayedEventsBaseUrl: DelayedEventsBaseUrl by weak {
     DelayedEventsBaseUrl(configuration)

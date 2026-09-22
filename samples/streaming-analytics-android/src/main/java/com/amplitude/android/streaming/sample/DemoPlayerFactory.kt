@@ -3,7 +3,6 @@ package com.amplitude.android.streaming.sample
 import android.app.Application
 import com.amplitude.android.Amplitude
 import com.amplitude.android.trackPlayer
-import com.amplitude.android.streaming.PlayerContent
 import com.amplitude.core.AmplitudePreview
 import dev.zacsweers.metro.Inject
 
@@ -23,15 +22,7 @@ internal class DemoPlayerFactory(
                 catalog = catalog,
                 keepPlayingWhenBackgrounded = keepPlayingWhenBackgrounded,
             )
-        amplitude.trackPlayer(player.exoPlayer) { mediaItem ->
-            val item = catalog.firstOrNull { it.id == mediaItem?.mediaId } ?: player.currentItem
-            PlayerContent(
-                contentId = item.id,
-                title = item.title,
-                deliveryMode = item.deliveryMode,
-                extraProperties = item.extraProperties,
-            )
-        }
+        amplitude.trackPlayer(player.exoPlayer)
         return player
     }
 }

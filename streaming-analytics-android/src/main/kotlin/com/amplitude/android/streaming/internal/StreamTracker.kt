@@ -214,9 +214,9 @@ private fun contentProperties(
         put("stream_session_id", streamSessionId)
         put("play_id", playId)
         put("media_type", mediaType.value)
-        (options.contentId ?: snapshot.mediaId)?.let { put("content_id", it) }
+        (options.contentId ?: snapshot.mediaId)?.takeIf { it.isNotBlank() }?.let { put("content_id", it) }
         (options.title ?: snapshot.title)?.let { put("title", it) }
-        put("delivery_mode", deliveryMode(options = options, snapshot = snapshot))
+        put("delivery_mode", snapshot.deliveryMode())
         put("is_in_picture_in_picture", playerState.isInPictureInPicture)
         put("is_in_background", playerState.isInBackground)
         if (snapshot.hasKnownDuration()) {
@@ -257,19 +257,11 @@ private fun stoppedContentProperties(
     }
 
 @OptIn(AmplitudePreview::class)
-private fun deliveryMode(
-    options: PlayerContent,
-    snapshot: PlayerMediaSnapshot,
-): String =
-    when (options.deliveryMode) {
-        PlayerContent.DELIVERY_MODE_LIVE -> PlayerContent.DELIVERY_MODE_LIVE
-        PlayerContent.DELIVERY_MODE_ON_DEMAND -> PlayerContent.DELIVERY_MODE_ON_DEMAND
-        else ->
-            if (snapshot.isLive) {
-                PlayerContent.DELIVERY_MODE_LIVE
-            } else {
-                PlayerContent.DELIVERY_MODE_ON_DEMAND
-            }
+private fun PlayerMediaSnapshot.deliveryMode(): String =
+    if (isLive) {
+        PlayerContent.DELIVERY_MODE_LIVE
+    } else {
+        PlayerContent.DELIVERY_MODE_ON_DEMAND
     }
 
 private fun PlayerMediaSnapshot.hasKnownDuration(): Boolean =

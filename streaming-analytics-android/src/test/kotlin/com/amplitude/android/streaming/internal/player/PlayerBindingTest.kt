@@ -1,8 +1,8 @@
 package com.amplitude.android.streaming.internal.player
 
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
-import com.amplitude.android.streaming.PlayerContent
 import com.amplitude.android.streaming.internal.AdContext
 import com.amplitude.android.streaming.internal.DelayedEvent
 import com.amplitude.android.streaming.internal.MediaType
@@ -90,25 +90,31 @@ class PlayerBindingTest {
             }
 
         @Test
-        fun `should resolve PlayerContent from the current media item when tracking starts`() =
+        fun `should resolve content identity from the current media item when tracking starts`() =
             runTest {
                 val mediaItem =
                     MediaItem.Builder()
                         .setMediaId("ep-1")
                         .setUri("https://example.com/ep-1")
+                        .setMediaMetadata(
+                            MediaMetadata.Builder()
+                                .setTitle("Episode 1")
+                                .build(),
+                        )
                         .build()
                 val player = mockk<Player>(relaxed = true)
                 every { player.currentMediaItem } returns mediaItem
-                withBinding(
-                    player = player,
-                    contentProvider = { item -> PlayerContent(contentId = item?.mediaId) },
-                ) {
+                withBinding(player = player) {
                     observer.emit(PlayerEvent.Playing)
                     runCurrent()
 
                     assertEquals(
                         "ep-1",
                         startedEvents().single().eventProperties?.get("content_id"),
+                    )
+                    assertEquals(
+                        "Episode 1",
+                        startedEvents().single().eventProperties?.get("title"),
                     )
                 }
             }
@@ -292,7 +298,6 @@ class PlayerBindingTest {
                 val binding =
                     PlayerBinding(
                         player = mockk(relaxed = true),
-                        contentProvider = { PlayerContent() },
                         playerObserverFactory = PlayerObserverFactory { _, _, _ -> failingObserver },
                         streamTracker = StreamTracker(amplitude),
                         heartbeatFactory = HeartbeatFactory(time = Time()),
@@ -473,7 +478,6 @@ class PlayerBindingTest {
                 val binding =
                     PlayerBinding(
                         player = mockk(relaxed = true),
-                        contentProvider = { PlayerContent() },
                         playerObserverFactory = PlayerObserverFactory { _, _, _ -> observer },
                         streamTracker = StreamTracker(amplitude),
                         heartbeatFactory = HeartbeatFactory(time = Time()),
@@ -503,7 +507,6 @@ class PlayerBindingTest {
                     val binding =
                         PlayerBinding(
                             player = mockk(relaxed = true),
-                            contentProvider = { PlayerContent() },
                             playerObserverFactory = PlayerObserverFactory { _, _, _ -> observer },
                             streamTracker = StreamTracker(amplitude),
                             heartbeatFactory = HeartbeatFactory(time = Time()),
@@ -548,7 +551,6 @@ class PlayerBindingTest {
                 val binding =
                     PlayerBinding(
                         player = mockk(relaxed = true),
-                        contentProvider = { PlayerContent() },
                         playerObserverFactory = PlayerObserverFactory { _, _, _ -> observer },
                         streamTracker = StreamTracker(amplitude),
                         heartbeatFactory = HeartbeatFactory(time = Time()),
@@ -1054,14 +1056,12 @@ class PlayerBindingTest {
 
     private fun TestScope.withBinding(
         player: Player = mockk(relaxed = true),
-        contentProvider: (MediaItem?) -> PlayerContent = { PlayerContent() },
         time: Time = Time(),
         block: () -> Unit,
     ) {
         val binding =
             PlayerBinding(
                 player = player,
-                contentProvider = contentProvider,
                 playerObserverFactory = PlayerObserverFactory { _, _, _ -> observer },
                 streamTracker = StreamTracker(amplitude),
                 heartbeatFactory = HeartbeatFactory(time = time),

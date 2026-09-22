@@ -436,6 +436,21 @@ class Media3PlayerObserverTest {
         }
 
     @Test
+    fun `should omit whitespace-only media ids from snapshots`() =
+        runTest {
+            val player = mockk<Player>(relaxed = true)
+            every { player.currentMediaItem } returns mediaItem("  ")
+            val observer =
+                Media3PlayerObserver(
+                    player = player,
+                    scope = backgroundScope,
+                    playerDispatcher = UnconfinedTestDispatcher(testScheduler),
+                )
+
+            assertEquals(null, observer.snapshot()?.mediaId)
+        }
+
+    @Test
     fun `should include the outgoing media snapshot in a media change`() =
         runTest {
             val previousItem = mediaItem("previous")

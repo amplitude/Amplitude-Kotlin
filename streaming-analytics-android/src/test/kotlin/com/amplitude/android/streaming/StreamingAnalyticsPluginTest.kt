@@ -107,12 +107,11 @@ class StreamingAnalyticsPluginTest {
                 val streamingAnalytics = installMockedPlugin(amplitude)
 
                 val player = mockk<Player>(relaxed = true)
-                val contentProvider = PlayerContentProvider { PlayerContent() }
-                amplitude.trackPlayer(player, contentProvider)
+                amplitude.trackPlayer(player)
                 isBuilt.complete(true)
                 advanceUntilIdle()
 
-                coVerify { streamingAnalytics.trackPlayer(player, contentProvider) }
+                coVerify { streamingAnalytics.trackPlayer(player) }
             }
 
         @Test
@@ -122,15 +121,14 @@ class StreamingAnalyticsPluginTest {
                 val amplitude = androidAmplitude(isBuilt)
                 val streamingAnalytics = installMockedPlugin(amplitude)
                 val player = mockk<Player>(relaxed = true)
-                val contentProvider = PlayerContentProvider { PlayerContent() }
 
-                amplitude.trackPlayer(player, contentProvider)
+                amplitude.trackPlayer(player)
                 amplitude.untrackPlayer(player)
                 isBuilt.complete(true)
                 advanceUntilIdle()
 
                 coVerifyOrder {
-                    streamingAnalytics.trackPlayer(player, contentProvider)
+                    streamingAnalytics.trackPlayer(player)
                     streamingAnalytics.untrackPlayer(player)
                 }
             }
@@ -184,16 +182,15 @@ class StreamingAnalyticsPluginTest {
                 val isBuilt = CompletableDeferred<Boolean>()
                 val amplitude = androidAmplitude(isBuilt)
                 val player = mockk<Player>(relaxed = true)
-                val contentProvider = PlayerContentProvider { PlayerContent() }
 
-                amplitude.trackPlayer(player, contentProvider)
+                amplitude.trackPlayer(player)
                 advanceUntilIdle()
 
                 val streamingAnalytics = installMockedPlugin(amplitude)
                 isBuilt.complete(true)
                 advanceUntilIdle()
 
-                coVerify { streamingAnalytics.trackPlayer(player, contentProvider) }
+                coVerify { streamingAnalytics.trackPlayer(player) }
             }
 
         @Test
@@ -201,7 +198,7 @@ class StreamingAnalyticsPluginTest {
             runTest {
                 val amplitude = androidAmplitude(CompletableDeferred(true))
 
-                amplitude.trackPlayer(mockk<Player>(relaxed = true)) { PlayerContent() }
+                amplitude.trackPlayer(mockk<Player>(relaxed = true))
                 advanceUntilIdle()
 
                 verify { amplitude.logger.error("StreamingAnalyticsPlugin is not installed.") }
@@ -215,7 +212,7 @@ class StreamingAnalyticsPluginTest {
                 amplitude.add(plugin)
                 plugin.teardown()
 
-                amplitude.trackPlayer(mockk<Player>(relaxed = true)) { PlayerContent() }
+                amplitude.trackPlayer(mockk<Player>(relaxed = true))
                 advanceUntilIdle()
 
                 verify { amplitude.logger.error("StreamingAnalyticsPlugin is not installed.") }
