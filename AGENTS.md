@@ -74,6 +74,7 @@ The SDK uses three dispatchers: `amplitudeDispatcher` (general), `networkIODispa
 ### PRs
 
 - Titles follow [conventional commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `perf:`, `refactor:`, `test:`, `docs:`, `chore:`. Drives `semantic-release` version bumps.
+- Use the `unified` scope (`feat(unified): ...`) for `:unified` changes. Those release `unified-android` only; every other commit releases core.
 - Always use the repo's PR template (`.github/pull_request_template.md`). Don't replace it with free-form text.
 - Keep descriptions succinct. Lead with the problem, then the solution. Reference Jira tickets when applicable.
 
@@ -81,3 +82,4 @@ The SDK uses three dispatchers: `amplitudeDispatcher` (general), `networkIODispa
 
 - Version catalog: `gradle/libs.versions.toml`
 - Version tracked in `gradle.properties` (`VERSION_NAME`)
+- `:unified` versions independently: `unified/gradle.properties` overrides `VERSION_NAME`, released by `release-unified.yml` with `unified-v*` tags. Core releases never publish it.

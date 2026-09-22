@@ -15,6 +15,14 @@ To manually trigger a release:
 
 The published artifacts will be available at: https://central.sonatype.com/publishing/deployments
 
+### Unified Release
+
+`com.amplitude:unified-android` releases separately with the "Release Unified" workflow:
+
+- Version lives in `unified/gradle.properties`; tags are `unified-v<version>`.
+- Only `type(unified): ...` commits bump it. The core release ignores them and never publishes `:unified`.
+- Release core first when `analytics-core`/`android` changed. The workflow fails otherwise, since unified's POM points at the latest core release.
+
 ## CI PUBLISHING
 
 CI publishing relies on the following environment variables:

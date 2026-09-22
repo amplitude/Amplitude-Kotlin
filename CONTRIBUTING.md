@@ -15,3 +15,7 @@ PR titles should follow [conventional commit standards](https://www.conventional
 - `ci(<optional scope>)`: Changes to our CI configuration files and scripts
 - `chore(<optional scope>)`: Other changes that don't modify src or test files
 - `revert(<optional scope>)`: Revert commit
+
+#### Unified scope
+
+Use the `unified` scope (e.g. `feat(unified): ...`) for changes to `com.amplitude:unified-android`. These commits bump the unified version only; all other commits bump analytics-core/android.
