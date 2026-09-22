@@ -161,6 +161,28 @@ internal class AmplitudeUnifiedTest {
     }
 
     @Test
+    fun `should tear down a blade after setup fails`() {
+        var wasTornDown = false
+        val builder = builder("setup-failure-cleanup")
+        builder.experiment.enabled = false
+        val factory =
+            object : UnifiedPluginFactory {
+                override fun sessionReplay(configuration: SessionReplayConfiguration): UniversalPlugin =
+                    ThrowingPlugin(
+                        name = "com.amplitude.android.sessionreplay",
+                        onTeardown = { wasTornDown = true },
+                    )
+
+                override fun experiment(configuration: ExperimentConfiguration): UniversalPlugin =
+                    RecordingPlugin("com.amplitude.experiment", mutableListOf())
+            }
+
+        AmplitudeUnified(builder.buildSnapshot(), factory)
+
+        assertTrue(wasTornDown)
+    }
+
+    @Test
     fun `should not swallow fatal blade errors`() {
         val factory =
             object : UnifiedPluginFactory {
@@ -348,12 +370,19 @@ private open class RecordingPlugin(
     }
 }
 
-private class ThrowingPlugin(name: String) : RecordingPlugin(name, mutableListOf()) {
+private class ThrowingPlugin(
+    name: String,
+    private val onTeardown: () -> Unit = {},
+) : RecordingPlugin(name, mutableListOf()) {
     override fun setup(
         client: AnalyticsClient,
         context: AmplitudeContext,
     ) {
         error("setup failed")
+    }
+
+    override fun teardown() {
+        onTeardown()
     }
 }
 

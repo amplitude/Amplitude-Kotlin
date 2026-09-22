@@ -3,6 +3,7 @@ public class com/amplitude/unified/AmplitudeUnified : com/amplitude/android/Ampl
 	public fun <init> (Ljava/lang/String;Landroid/content/Context;)V
 	public fun <init> (Ljava/lang/String;Landroid/content/Context;Lkotlin/jvm/functions/Function1;)V
 	public synthetic fun <init> (Ljava/lang/String;Landroid/content/Context;Lkotlin/jvm/functions/Function1;ILkotlin/jvm/internal/DefaultConstructorMarker;)V
+	protected fun build ()Lkotlinx/coroutines/Deferred;
 	public final fun getAnalytics ()Lcom/amplitude/unified/AmplitudeUnified;
 	public final fun getExperiment ()Lcom/amplitude/experiment/ExperimentClient;
 	public final fun getSessionReplay ()Lcom/amplitude/android/sessionreplay/SessionReplay;

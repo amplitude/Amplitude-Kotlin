@@ -12,6 +12,7 @@ import com.amplitude.core.platform.UniversalPlugin
 import com.amplitude.experiment.AmplitudeExperimentPlugin
 import com.amplitude.experiment.ExperimentClient
 import com.amplitude.experiment.experiment
+import kotlinx.coroutines.Deferred
 import java.util.concurrent.CancellationException
 
 /**
@@ -24,6 +25,8 @@ public open class AmplitudeUnified internal constructor(
     private val unifiedConfiguration: UnifiedConfiguration,
     private val pluginFactory: UnifiedPluginFactory,
 ) : Amplitude(unifiedConfiguration.analytics) {
+    private lateinit var installationGuard: UnifiedInstallationGuard
+
     /**
      * Creates a unified client and applies [configure] before installing blades.
      */
@@ -61,8 +64,16 @@ public open class AmplitudeUnified internal constructor(
     public val experiment: ExperimentClient?
         get() = (this as PluginHost).experiment
 
+    // Core Amplitude invokes build before subclass initializers. Installing this sentinel before
+    // Android claims the instance name lets retirement close the guard before any late blade setup.
+    override fun build(): Deferred<Boolean> {
+        installationGuard = UnifiedInstallationGuard()
+        installationGuard.activate(this)
+        installationGuard.install(UnifiedLibraryPlugin(installationGuard::deactivate))
+        return super.build()
+    }
+
     init {
-        add(UnifiedLibraryPlugin())
         installBlades()
     }
 
@@ -84,7 +95,7 @@ public open class AmplitudeUnified internal constructor(
         createPlugin: () -> UniversalPlugin,
     ) {
         try {
-            add(createPlugin())
+            installationGuard.install(createPlugin())
         } catch (exception: CancellationException) {
             throw exception
         } catch (exception: Exception) {
@@ -124,7 +135,9 @@ private class DefaultUnifiedPluginFactory(
         )
 }
 
-private class UnifiedLibraryPlugin : Plugin {
+private class UnifiedLibraryPlugin(
+    private val onTeardown: () -> Unit,
+) : Plugin {
     override val type: Plugin.Type = Plugin.Type.Enrichment
     override val name: String = "com.amplitude.unified"
     override lateinit var amplitude: com.amplitude.core.Amplitude
@@ -140,5 +153,65 @@ private class UnifiedLibraryPlugin : Plugin {
             event.library = "amplitude-android-unified/${BuildConfig.UNIFIED_VERSION}-$existing"
         }
         return event
+    }
+
+    override fun teardown() {
+        onTeardown()
+    }
+}
+
+private class UnifiedInstallationGuard {
+    private val lock = Any()
+    private var active = false
+    private var amplitude: AmplitudeUnified? = null
+    private val installedPlugins = mutableListOf<UniversalPlugin>()
+
+    fun activate(amplitude: AmplitudeUnified) {
+        synchronized(lock) {
+            this.amplitude = amplitude
+            active = true
+        }
+    }
+
+    fun install(plugin: UniversalPlugin) {
+        val amplitude =
+            synchronized(lock) {
+                if (!active) return
+                checkNotNull(amplitude)
+            }
+
+        try {
+            amplitude.add(plugin)
+        } catch (setupFailure: Throwable) {
+            try {
+                plugin.teardown()
+            } catch (teardownFailure: Throwable) {
+                setupFailure.addSuppressed(teardownFailure)
+            }
+            throw setupFailure
+        }
+
+        val shouldKeep =
+            synchronized(lock) {
+                if (active) {
+                    installedPlugins.add(plugin)
+                    true
+                } else {
+                    false
+                }
+            }
+        if (!shouldKeep) {
+            amplitude.remove(plugin)
+        }
+    }
+
+    fun deactivate() {
+        val installation =
+            synchronized(lock) {
+                if (!active) return
+                active = false
+                checkNotNull(amplitude) to installedPlugins.asReversed().toList().also { installedPlugins.clear() }
+            }
+        installation.second.forEach(installation.first::remove)
     }
 }
