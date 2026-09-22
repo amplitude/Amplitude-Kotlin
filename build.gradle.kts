@@ -28,6 +28,14 @@ allprojects {
     group = project.findProperty("GROUP") ?: ""
     version = project.findProperty("VERSION_NAME") ?: "0.0.1-SNAPSHOT"
 
+    // Blades depend on the published analytics-android. Resolve it to this build's :android
+    // so only one copy of the SDK lands on in-repo classpaths.
+    configurations.configureEach {
+        resolutionStrategy.dependencySubstitution {
+            substitute(module("com.amplitude:analytics-android")).using(project(":android"))
+        }
+    }
+
     tasks.withType<KotlinCompile>().configureEach {
         compilerOptions {
             jvmTarget.set(JvmTarget.fromTarget(KotlinConfig.JVM_TARGET))
