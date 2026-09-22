@@ -74,18 +74,16 @@ jobs:
           echo "::error::Unified releases run from main only."
           exit 1
 
-      # Unified's POM depends on analytics-android at the root VERSION_NAME, but compiles
-      # against this checkout. They only match when core is released and published at HEAD.
-      - name: Verify core is released at HEAD
+      - name: Verify Analytics dependency is released
         run: |
-          core_version="$(sed -n 's/^VERSION_NAME=//p' gradle.properties)"
-          if ! git diff --quiet "v$core_version" HEAD -- analytics-core android ':!*/src/test'; then
-            echo "::error::analytics-core/android changed since v$core_version. Run the core Release workflow first."
+          analytics_version="$(sed -n 's/^unifiedAnalyticsAndroid = "\(.*\)"$/\1/p' gradle/libs.versions.toml)"
+          if [ -z "$analytics_version" ]; then
+            echo "::error::Could not read unifiedAnalyticsAndroid from gradle/libs.versions.toml."
             exit 1
           fi
-          pom="https://repo1.maven.org/maven2/com/amplitude/analytics-android/$core_version/analytics-android-$core_version.pom"
+          pom="https://repo1.maven.org/maven2/com/amplitude/analytics-android/$analytics_version/analytics-android-$analytics_version.pom"
           if ! curl --silent --fail --head "$pom" > /dev/null; then
-            echo "::error::analytics-android $core_version is not on Maven Central yet. Retry once it syncs."
+            echo "::error::analytics-android $analytics_version is not on Maven Central yet."
             exit 1
           fi
 

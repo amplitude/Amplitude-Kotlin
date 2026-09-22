@@ -21,7 +21,7 @@ The published artifacts will be available at: https://central.sonatype.com/publi
 
 - Version lives in `unified/gradle.properties`; tags are `unified-v<version>`.
 - Only `type(unified): ...` commits bump it. The core release ignores them and never publishes `:unified`.
-- Release core first when `analytics-core`/`android` changed. The workflow fails otherwise, since unified's POM points at the latest core release.
+- Analytics and blade versions are pinned in `gradle/libs.versions.toml`; update them only after compatible releases are available.
 
 ## CI PUBLISHING
 

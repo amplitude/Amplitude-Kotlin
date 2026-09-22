@@ -80,9 +80,15 @@ dependencies {
 }
 
 // Unified releases on its own cadence (release-unified.yml), so core releases must not publish it.
-val isUnifiedRelease = providers.gradleProperty("amplitude.unified.release").isPresent
+val isUnifiedRelease =
+    providers.gradleProperty("amplitude.unified.release")
+        .map(String::toBooleanStrict)
+        .getOrElse(false)
 tasks.withType<PublishToMavenRepository>().configureEach {
-    onlyIf("unified publishes only with -Pamplitude.unified.release") { isUnifiedRelease }
+    onlyIf("unified publishes only with -Pamplitude.unified.release=true") { isUnifiedRelease }
+}
+tasks.matching { it.name == "createStagingRepository" }.configureEach {
+    onlyIf("unified stages only with -Pamplitude.unified.release=true") { isUnifiedRelease }
 }
 
 tasks.withType<Test> {
