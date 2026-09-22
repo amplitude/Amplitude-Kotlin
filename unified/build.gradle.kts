@@ -1,8 +1,10 @@
+import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
 import kotlinx.validation.KotlinApiBuildTask
 import kotlinx.validation.KotlinApiCompareTask
 
 plugins {
     alias(libs.plugins.android.library)
+    alias(libs.plugins.mavenPublish)
     alias(libs.plugins.android.junit5)
 }
 
@@ -42,6 +44,23 @@ kotlin {
     explicitApi()
 }
 
+mavenPublishing {
+    coordinates(artifactId = "unified-android")
+
+    pom {
+        name.set("Amplitude Unified Android SDK")
+        description.set("Unified entry point for Amplitude Android SDKs")
+    }
+
+    configure(
+        AndroidSingleVariantLibrary(
+            variant = "release",
+            sourcesJar = true,
+            publishJavadocJar = true,
+        ),
+    )
+}
+
 dependencies {
     api(project(":android"))
     api(libs.unified.session.replay.android)
@@ -56,6 +75,12 @@ dependencies {
     testImplementation(libs.junit4)
     testImplementation(libs.robolectric)
     testImplementation(libs.test.core)
+}
+
+// Unified releases on its own cadence (release-unified.yml), so core releases must not publish it.
+val isUnifiedRelease = providers.gradleProperty("amplitude.unified.release").isPresent
+tasks.withType<PublishToMavenRepository>().configureEach {
+    onlyIf("unified publishes only with -Pamplitude.unified.release") { isUnifiedRelease }
 }
 
 tasks.withType<Test> {
