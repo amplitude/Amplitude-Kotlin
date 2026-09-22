@@ -14,9 +14,6 @@ curtains = "1.2.5"
 dokka = "2.0.0"
 espressoCore = "3.7.0"
 experimentAndroidClient = "1.6.3"
-# Replace these prototype versions with the first released UniversalPlugin versions before publishing.
-unifiedExperimentAndroidClient = "1.17.0"
-unifiedSessionReplayAndroid = "0.30.0"
 fragmentKtx = "1.8.9"
 gson = "2.14.0"
 json = "20211205"
@@ -41,6 +38,8 @@ robolectric = "4.15.1"
 testCore = "1.7.0"
 testExtJunit = "1.3.0"
 testRunner = "1.7.0"
+unifiedExperimentAndroidClient = "1.17.0"
+unifiedSessionReplayAndroid = "0.30.0"
 
 [libraries]
 activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
@@ -56,8 +55,6 @@ coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", ve
 curtains = { module = "com.squareup.curtains:curtains", version.ref = "curtains" }
 espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "espressoCore" }
 experiment-android-client = { module = "com.amplitude:experiment-android-client", version.ref = "experimentAndroidClient" } # Added
-unified-experiment-android-client = { module = "com.amplitude:experiment-android-client", version.ref = "unifiedExperimentAndroidClient" }
-unified-session-replay-android = { module = "com.amplitude:plugin-session-replay-android", version.ref = "unifiedSessionReplayAndroid" }
 fragment-ktx = { module = "androidx.fragment:fragment-ktx", version.ref = "fragmentKtx" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" } # Added
 json = { module = "org.json:json", version.ref = "json" }
@@ -88,6 +85,8 @@ robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectr
 test-core = { module = "androidx.test:core", version.ref = "testCore" }
 test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "testExtJunit" }
 test-runner = { module = "androidx.test:runner", version.ref = "testRunner" }
+unified-experiment-android-client = { module = "com.amplitude:experiment-android-client", version.ref = "unifiedExperimentAndroidClient" }
+unified-session-replay-android = { module = "com.amplitude:plugin-session-replay-android", version.ref = "unifiedSessionReplayAndroid" }
 ui = { module = "androidx.compose.ui:ui" }
 ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }
 ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
