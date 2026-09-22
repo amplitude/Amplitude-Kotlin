@@ -6,8 +6,8 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 
-private const val US_DEFAULT_HOST = "https://delayed-events.prod.us-west-2.amplitude.com/2/httpapi"
-private const val EU_DEFAULT_HOST = "https://delayed-events.prod.eu-central-1.amplitude.com/2/httpapi"
+private const val US_DEFAULT_HOST = "https://delayed-api.amplitude.com/2/httpapi"
+private const val EU_DEFAULT_HOST = "https://delayed-api.eu.amplitude.com/2/httpapi"
 
 class DelayedEventsBaseUrlTest {
     @Nested
