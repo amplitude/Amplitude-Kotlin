@@ -226,6 +226,28 @@ internal class AmplitudeUnifiedTest {
     }
 
     @Test
+    fun `should use a separate Experiment deployment key when configured`() {
+        val amplitude =
+            AmplitudeUnified("analytics-api-key", application) {
+                analytics {
+                    instanceName = "experiment-deployment-key"
+                    offline = true
+                    autocapture = emptySet()
+                }
+                sessionReplay { enabled = false }
+                experiment {
+                    deploymentKey = "experiment-deployment-key"
+                    config = ExperimentConfig.builder().fetchOnStart(false).pollOnStart(false).build()
+                }
+            }
+
+        assertTrue(
+            amplitude.plugin("${AmplitudeExperimentPlugin.PLUGIN_NAME}_experiment-deployment-key") is AmplitudeExperimentPlugin,
+        )
+        assertNotNull(amplitude.experiment)
+    }
+
+    @Test
     fun `should attribute events to unified during enrichment when library is empty`() {
         val amplitude = disabledAmplitude("attribution")
         val event = BaseEvent().apply { eventType = "attribution" }

@@ -19,8 +19,10 @@ public final class com/amplitude/unified/BuildConfig {
 public class com/amplitude/unified/ExperimentConfigurationBuilder {
 	public fun <init> ()V
 	public final fun getConfig ()Lcom/amplitude/experiment/ExperimentConfig;
+	public final fun getDeploymentKey ()Ljava/lang/String;
 	public final fun getEnabled ()Z
 	public final fun setConfig (Lcom/amplitude/experiment/ExperimentConfig;)V
+	public final fun setDeploymentKey (Ljava/lang/String;)V
 	public final fun setEnabled (Z)V
 }
 

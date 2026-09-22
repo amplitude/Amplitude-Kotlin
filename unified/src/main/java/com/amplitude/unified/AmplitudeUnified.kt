@@ -120,6 +120,7 @@ private class DefaultUnifiedPluginFactory(
         AmplitudeExperimentPlugin(
             context = applicationContext,
             config = configuration.config,
+            deploymentKey = configuration.deploymentKey,
         )
 }
 

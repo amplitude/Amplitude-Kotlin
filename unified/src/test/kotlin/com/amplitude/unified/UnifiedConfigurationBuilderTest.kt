@@ -8,6 +8,7 @@ import com.amplitude.experiment.ExperimentConfig
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -33,6 +34,7 @@ internal class UnifiedConfigurationBuilderTest {
             }
             builder.experiment {
                 enabled = false
+                deploymentKey = "experiment-deployment-key"
                 config = experimentConfig
             }
 
@@ -45,6 +47,7 @@ internal class UnifiedConfigurationBuilderTest {
             assertEquals(0.5, configuration.sessionReplay.sampleRate)
             assertEquals(MaskLevel.LIGHT, configuration.sessionReplay.privacyConfig.maskLevel)
             assertFalse(configuration.experiment.enabled)
+            assertEquals("experiment-deployment-key", configuration.experiment.deploymentKey)
             assertEquals(experimentConfig, configuration.experiment.config)
         }
     }
@@ -58,6 +61,7 @@ internal class UnifiedConfigurationBuilderTest {
             assertTrue(configuration.sessionReplay.enabled)
             assertEquals(0.0, configuration.sessionReplay.sampleRate)
             assertTrue(configuration.experiment.enabled)
+            assertNull(configuration.experiment.deploymentKey)
         }
     }
 

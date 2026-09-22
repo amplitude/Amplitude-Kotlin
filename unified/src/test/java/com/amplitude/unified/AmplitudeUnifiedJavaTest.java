@@ -7,6 +7,7 @@ import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 
 @RunWith(RobolectricTestRunner.class)
@@ -20,9 +21,11 @@ public class AmplitudeUnifiedJavaTest {
         builder.getAnalytics().setOffline(true);
         builder.getSessionReplay().setEnabled(false);
         builder.getExperiment().setEnabled(false);
+        builder.getExperiment().setDeploymentKey("experiment-deployment-key");
 
         AmplitudeUnified amplitude = new AmplitudeUnified(builder);
 
+        assertEquals("experiment-deployment-key", builder.getExperiment().getDeploymentKey());
         assertSame(amplitude, amplitude.getAnalytics());
         assertSame(amplitude, amplitude.track("java inherited track"));
     }

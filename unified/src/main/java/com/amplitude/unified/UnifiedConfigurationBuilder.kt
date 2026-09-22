@@ -110,12 +110,16 @@ public open class ExperimentConfigurationBuilder {
     /** Whether Experiment is installed. */
     public var enabled: Boolean = true
 
+    /** Optional Experiment deployment key. Defaults to the Analytics API key. */
+    public var deploymentKey: String? = null
+
     /** Product-specific Experiment configuration. Shared host values override matching fields. */
     public var config: ExperimentConfig = ExperimentConfig()
 
     internal fun buildSnapshot(): ExperimentConfiguration =
         ExperimentConfiguration(
             enabled = enabled,
+            deploymentKey = deploymentKey,
             config = config,
         )
 }
@@ -142,5 +146,6 @@ internal data class SessionReplayConfiguration(
 
 internal data class ExperimentConfiguration(
     val enabled: Boolean,
+    val deploymentKey: String?,
     val config: ExperimentConfig,
 )
