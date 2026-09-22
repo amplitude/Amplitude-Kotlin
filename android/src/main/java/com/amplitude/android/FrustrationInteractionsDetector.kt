@@ -25,7 +25,11 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
 import java.util.ArrayDeque
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 import kotlin.time.Duration.Companion.milliseconds
 
 /**
@@ -54,6 +58,15 @@ public class FrustrationInteractionsDetector(
         private const val MAX_RECENT_UI_CHANGES: Int = 32
         private const val RAGE_CLICK_THRESHOLD: Int = 4
         private const val RAGE_CLICK_TIME_WINDOW: Long = 1_000L // 1 second
+        private const val ISO_8601_TIMESTAMP_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"
+
+        private val iso8601Utc: ThreadLocal<SimpleDateFormat> =
+            object : ThreadLocal<SimpleDateFormat>() {
+                override fun initialValue(): SimpleDateFormat =
+                    SimpleDateFormat(ISO_8601_TIMESTAMP_FORMAT, Locale.US).apply {
+                        timeZone = TimeZone.getTimeZone("UTC")
+                    }
+            }
     }
 
     // Convert pt to pixels for density-independent behavior
@@ -451,8 +464,8 @@ public class FrustrationInteractionsDetector(
      */
     private fun buildRageClickProperties(session: RageClickSession): Map<String, Any?> =
         mapOf(
-            BEGIN_TIME to session.firstClickTime,
-            END_TIME to session.lastClickTime,
+            BEGIN_TIME to formatIso8601Timestamp(session.firstClickTime),
+            END_TIME to formatIso8601Timestamp(session.lastClickTime),
             DURATION to (session.lastClickTime - session.firstClickTime),
             COORDINATE_X to session.firstClickX.toInt(),
             COORDINATE_Y to session.firstClickY.toInt(),
@@ -462,18 +475,23 @@ public class FrustrationInteractionsDetector(
                     mapOf(
                         COORDINATE_X to it.x.toInt(),
                         COORDINATE_Y to it.y.toInt(),
-                        "timestamp" to it.timestamp,
+                        "Time" to formatIso8601Timestamp(it.timestamp),
                     )
                 },
         )
+
+    internal fun formatIso8601Timestamp(timestamp: Long): String =
+        iso8601Utc.get()!!.format(Date(timestamp))
+
+    internal fun formatRageClickTimestamp(timestamp: Long): String = formatIso8601Timestamp(timestamp)
 
     /**
      * Builds only the dead-click specific properties.
      */
     private fun buildDeadClickProperties(session: DeadClickSession): Map<String, Any?> =
         mapOf(
-            BEGIN_TIME to session.clickInfo.timestamp,
-            END_TIME to (session.clickInfo.timestamp + DEAD_CLICK_TIMEOUT),
+            BEGIN_TIME to formatIso8601Timestamp(session.clickInfo.timestamp),
+            END_TIME to formatIso8601Timestamp(session.clickInfo.timestamp + DEAD_CLICK_TIMEOUT),
             DURATION to DEAD_CLICK_TIMEOUT,
             COORDINATE_X to session.clickInfo.x.toInt(),
             COORDINATE_Y to session.clickInfo.y.toInt(),
