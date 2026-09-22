@@ -109,7 +109,13 @@ private fun ComposePlayerScreen(
                 demoPlayer = audio,
                 showSurface = false,
             )
-            Button(onClick = onEnterPip, modifier = Modifier.fillMaxWidth()) {
+            Button(
+                onClick = onEnterPip,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .tvFocusIndicator(),
+            ) {
                 Text(stringResource(R.string.enter_pip))
             }
         }

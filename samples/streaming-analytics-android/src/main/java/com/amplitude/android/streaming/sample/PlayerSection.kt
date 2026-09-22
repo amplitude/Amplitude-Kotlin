@@ -175,7 +175,10 @@ internal fun PlayerSection(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                FilledTonalButton(onClick = { demoPlayer.togglePlayPause() }) {
+                FilledTonalButton(
+                    onClick = { demoPlayer.togglePlayPause() },
+                    modifier = Modifier.tvFocusIndicator(),
+                ) {
                     Text(
                         stringResource(
                             if (state.playWhenReady && !state.hasEnded) {
@@ -186,13 +189,22 @@ internal fun PlayerSection(
                         ),
                     )
                 }
-                OutlinedButton(onClick = { demoPlayer.seekBy(-SEEK_STEP_MS) }) {
+                OutlinedButton(
+                    onClick = { demoPlayer.seekBy(-SEEK_STEP_MS) },
+                    modifier = Modifier.tvFocusIndicator(),
+                ) {
                     Text(stringResource(R.string.seek_back))
                 }
-                OutlinedButton(onClick = { demoPlayer.seekBy(SEEK_STEP_MS) }) {
+                OutlinedButton(
+                    onClick = { demoPlayer.seekBy(SEEK_STEP_MS) },
+                    modifier = Modifier.tvFocusIndicator(),
+                ) {
                     Text(stringResource(R.string.seek_forward))
                 }
-                OutlinedButton(onClick = { demoPlayer.swapMedia() }) {
+                OutlinedButton(
+                    onClick = { demoPlayer.swapMedia() },
+                    modifier = Modifier.tvFocusIndicator(),
+                ) {
                     Text(stringResource(R.string.swap_media))
                 }
             }
@@ -203,7 +215,10 @@ internal fun PlayerSection(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )
-                OutlinedButton(onClick = { demoPlayer.retry() }) {
+                OutlinedButton(
+                    onClick = { demoPlayer.retry() },
+                    modifier = Modifier.tvFocusIndicator(),
+                ) {
                     Text(stringResource(R.string.retry))
                 }
             }
