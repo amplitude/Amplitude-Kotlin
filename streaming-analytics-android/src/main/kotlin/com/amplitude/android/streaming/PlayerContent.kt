@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import com.amplitude.android.streaming.internal.util.deepCopy
+import com.amplitude.android.streaming.internal.util.nonBlank
 
 /**
  * Metadata resolved from the current [androidx.media3.common.MediaItem].
@@ -32,8 +33,9 @@ internal fun MediaItem.toPlayerContent(): PlayerContent {
     val id: String? = mediaId
     val metadata: MediaMetadata? = mediaMetadata
     return PlayerContent(
-        contentId = id?.takeIf { it.isNotBlank() },
-        title = metadata?.title?.toString() ?: metadata?.displayTitle?.toString(),
+        contentId = id?.nonBlank(),
+        title = metadata?.title?.toString()?.nonBlank()
+            ?: metadata?.displayTitle?.toString().nonBlank(),
         extraProperties = metadata?.extras?.jsonSafeProperties(),
     )
 }

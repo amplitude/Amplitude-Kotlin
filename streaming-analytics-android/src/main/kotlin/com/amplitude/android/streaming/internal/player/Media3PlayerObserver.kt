@@ -11,6 +11,7 @@ import androidx.media3.common.util.UnstableApi
 import com.amplitude.android.streaming.internal.AdContext
 import com.amplitude.android.streaming.internal.MediaType
 import com.amplitude.android.streaming.internal.StopReason
+import com.amplitude.android.streaming.internal.util.nonBlank
 import com.amplitude.android.streaming.internal.util.runCatchingCancellable
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -80,8 +81,9 @@ internal class Media3PlayerObserver(
                     positionMillis = player.contentPosition.coerceAtLeast(0L),
                     durationMillis = player.contentDuration,
                     isLive = player.contentIsLive(),
-                    mediaId = item?.mediaId.nonBlankId(),
-                    title = metadata?.title?.toString() ?: metadata?.displayTitle?.toString(),
+                    mediaId = item?.mediaId.nonBlank(),
+                    title = metadata?.title?.toString().nonBlank()
+                        ?: metadata?.displayTitle?.toString().nonBlank(),
                     mediaType = player.mediaType(),
                 ).also { lastSnapshot = it }
             }
@@ -332,10 +334,10 @@ internal class Media3PlayerObserver(
             }
         return lastSnapshot.copy(
             positionMillis = positionMillis.coerceAtLeast(0L),
-            mediaId = oldPosition.mediaItem?.mediaId.nonBlankId()
+            mediaId = oldPosition.mediaItem?.mediaId.nonBlank()
                 ?: lastSnapshot.mediaId,
-            title = oldMetadata?.title?.toString()
-                ?: oldMetadata?.displayTitle?.toString()
+            title = oldMetadata?.title?.toString().nonBlank()
+                ?: oldMetadata?.displayTitle?.toString().nonBlank()
                 ?: lastSnapshot.title,
         )
     }
@@ -347,7 +349,7 @@ internal class Media3PlayerObserver(
             positionMillis = player.currentPosition.coerceAtLeast(0),
             durationMillis = player.duration,
             contentPositionMillis = player.contentPosition.coerceAtLeast(0),
-            contentId = player.currentMediaItem?.mediaId.nonBlankId(),
+            contentId = player.currentMediaItem?.mediaId.nonBlank(),
             mediaItemIndex = player.currentMediaItemIndex,
         )
 }
@@ -387,5 +389,3 @@ private fun Player.mediaType(): MediaType {
 }
 
 private fun Tracks.Group.isType(trackType: Int): Boolean = type == trackType
-
-private fun String?.nonBlankId(): String? = this?.takeIf { it.isNotBlank() }

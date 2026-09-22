@@ -90,6 +90,18 @@ class PlayerContentTest {
     }
 
     @Test
+    fun `falls back to displayTitle when title is blank`() {
+        val metadata =
+            MediaMetadata.Builder()
+                .setTitle(" ")
+                .setDisplayTitle("Fallback")
+                .build()
+        val item = MediaItem.Builder().setMediaMetadata(metadata).build()
+
+        assertEquals("Fallback", item.toPlayerContent().title)
+    }
+
+    @Test
     fun `drops extras that cannot be read`() {
         val extras =
             mockk<Bundle> {

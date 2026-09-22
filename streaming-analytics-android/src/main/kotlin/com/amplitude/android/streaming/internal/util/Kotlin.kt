@@ -47,3 +47,5 @@ internal inline fun <T, R> T.runCatchingCancellable(
         finally()
     }
 }
+
+internal fun String?.nonBlank(): String? = this?.takeIf { it.isNotBlank() }
