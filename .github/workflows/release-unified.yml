@@ -76,9 +76,9 @@ jobs:
 
       - name: Verify Analytics dependency is released
         run: |
-          analytics_version="$(sed -n 's/^unifiedAnalyticsAndroid = "\(.*\)"$/\1/p' gradle/libs.versions.toml)"
+          analytics_version="$(sed -n 's/^analyticsAndroid = "\(.*\)"$/\1/p' unified/gradle/libs.versions.toml)"
           if [ -z "$analytics_version" ]; then
-            echo "::error::Could not read unifiedAnalyticsAndroid from gradle/libs.versions.toml."
+            echo "::error::Could not read analyticsAndroid from unified/gradle/libs.versions.toml."
             exit 1
           fi
           pom="https://repo1.maven.org/maven2/com/amplitude/analytics-android/$analytics_version/analytics-android-$analytics_version.pom"

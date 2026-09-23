@@ -37,6 +37,12 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
     }
+
+    versionCatalogs {
+        create("unifiedLibs") {
+            from(files("unified/gradle/libs.versions.toml"))
+        }
+    }
 }
 
 rootProject.name = "kotlin-sdk"
