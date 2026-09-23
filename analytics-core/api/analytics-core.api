@@ -119,6 +119,7 @@ public class com/amplitude/core/Amplitude : com/amplitude/core/platform/PluginHo
 
 public class com/amplitude/core/AmplitudeContext {
 	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lcom/amplitude/core/ServerZone;Lcom/amplitude/common/Logger;Lcom/amplitude/core/remoteconfig/RemoteConfigClient;Lcom/amplitude/core/diagnostics/DiagnosticsClient;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lcom/amplitude/core/ServerZone;Lcom/amplitude/common/Logger;Ljava/io/File;)V
 	public final fun getApiKey ()Ljava/lang/String;
 	public final fun getDiagnosticsClient ()Lcom/amplitude/core/diagnostics/DiagnosticsClient;
 	public final fun getInstanceName ()Ljava/lang/String;
@@ -378,7 +379,6 @@ public abstract interface class com/amplitude/core/StorageProvider {
 }
 
 public abstract interface class com/amplitude/core/diagnostics/DiagnosticsClient {
-	public static final field Companion Lcom/amplitude/core/diagnostics/DiagnosticsClient$Companion;
 	public abstract fun close ()V
 	public abstract fun flush ()V
 	public abstract fun increment (Ljava/lang/String;J)V
@@ -388,13 +388,6 @@ public abstract interface class com/amplitude/core/diagnostics/DiagnosticsClient
 	public abstract fun recordHistogram (Ljava/lang/String;D)V
 	public abstract fun setTag (Ljava/lang/String;Ljava/lang/String;)V
 	public abstract fun setTags (Ljava/util/Map;)V
-}
-
-public final class com/amplitude/core/diagnostics/DiagnosticsClient$Companion {
-	public final fun create (Ljava/lang/String;Lcom/amplitude/core/ServerZone;Ljava/lang/String;Ljava/io/File;Lcom/amplitude/common/Logger;)Lcom/amplitude/core/diagnostics/DiagnosticsClient;
-	public final fun create (Ljava/lang/String;Lcom/amplitude/core/ServerZone;Ljava/lang/String;Ljava/io/File;Lcom/amplitude/common/Logger;Lcom/amplitude/core/remoteconfig/RemoteConfigClient;)Lcom/amplitude/core/diagnostics/DiagnosticsClient;
-	public final fun create (Ljava/lang/String;Lcom/amplitude/core/ServerZone;Ljava/lang/String;Ljava/io/File;Lcom/amplitude/common/Logger;Lcom/amplitude/core/remoteconfig/RemoteConfigClient;Lcom/amplitude/core/diagnostics/DiagnosticsContextProvider;)Lcom/amplitude/core/diagnostics/DiagnosticsClient;
-	public static synthetic fun create$default (Lcom/amplitude/core/diagnostics/DiagnosticsClient$Companion;Ljava/lang/String;Lcom/amplitude/core/ServerZone;Ljava/lang/String;Ljava/io/File;Lcom/amplitude/common/Logger;Lcom/amplitude/core/remoteconfig/RemoteConfigClient;Lcom/amplitude/core/diagnostics/DiagnosticsContextProvider;ILjava/lang/Object;)Lcom/amplitude/core/diagnostics/DiagnosticsClient;
 }
 
 public abstract interface class com/amplitude/core/diagnostics/DiagnosticsClientProvider {
