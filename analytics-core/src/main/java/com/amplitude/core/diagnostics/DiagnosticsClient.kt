@@ -1,6 +1,18 @@
 package com.amplitude.core.diagnostics
 
+import com.amplitude.common.Logger
+import com.amplitude.core.Configuration
 import com.amplitude.core.RestrictedAmplitudeFeature
+import com.amplitude.core.ServerZone
+import com.amplitude.core.remoteconfig.RemoteConfigClient
+import com.amplitude.core.remoteconfig.RemoteConfigClientImpl
+import com.amplitude.core.utilities.InMemoryStorage
+import com.amplitude.core.utilities.http.HttpClient
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import java.io.File
 
 /**
  * Interface for diagnostic tracking operations.
@@ -9,6 +21,67 @@ import com.amplitude.core.RestrictedAmplitudeFeature
  */
 @RestrictedAmplitudeFeature
 public interface DiagnosticsClient {
+    public companion object {
+        /**
+         * Creates a diagnostics client for use outside an [com.amplitude.core.Amplitude] instance.
+         *
+         * When [remoteConfigClient] is not provided, the client creates an analytics-core
+         * remote config client and subscribes to `diagnostics.androidSDK`.
+         */
+        @RestrictedAmplitudeFeature
+        @JvmOverloads
+        public fun create(
+            apiKey: String,
+            serverZone: ServerZone,
+            instanceName: String,
+            storageDirectory: File,
+            logger: Logger,
+            remoteConfigClient: RemoteConfigClient? = null,
+            diagnosticsContextProvider: DiagnosticsContextProvider? = null,
+        ): DiagnosticsClient {
+            val configuration =
+                Configuration(
+                    apiKey = apiKey,
+                    instanceName = instanceName,
+                    serverZone = serverZone,
+                )
+            val httpClient = HttpClient(configuration, logger)
+            val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+            val resolvedRemoteConfigClient =
+                remoteConfigClient ?: RemoteConfigClientImpl(
+                    apiKey = apiKey,
+                    serverZone = serverZone,
+                    coroutineScope = coroutineScope,
+                    networkIODispatcher = Dispatchers.IO,
+                    storageIODispatcher = Dispatchers.IO,
+                    storage = InMemoryStorage(),
+                    httpClient = httpClient,
+                    logger = logger,
+                )
+
+            val client =
+                DiagnosticsClientImpl(
+                    apiKey = apiKey,
+                    serverZone = serverZone,
+                    instanceName = instanceName,
+                    storageDirectory = storageDirectory,
+                    logger = logger,
+                    coroutineScope = coroutineScope,
+                    networkIODispatcher = Dispatchers.IO,
+                    storageIODispatcher = Dispatchers.IO,
+                    remoteConfigClient = resolvedRemoteConfigClient,
+                    httpClient = httpClient,
+                    contextProvider = diagnosticsContextProvider,
+                )
+            return object : DiagnosticsClient by client {
+                override fun close() {
+                    client.close()
+                    coroutineScope.cancel()
+                }
+            }
+        }
+    }
+
     /**
      * Set a tag with the given name and value.
      * Tags are metadata labels associated with diagnostics data.
