@@ -120,6 +120,11 @@ class FrustrationInteractionsDetectorTest {
 
     //region Rage Click Tests
 
+    private fun flushPendingRageClicks() {
+        testDispatcher.scheduler.advanceTimeBy(1_000L)
+        testDispatcher.scheduler.runCurrent()
+    }
+
     @Test
     fun `rage click - triggers after threshold clicks within distance`() {
         val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
@@ -127,6 +132,7 @@ class FrustrationInteractionsDetectorTest {
         repeat(4) {
             detector.processClick(clickInfo, testTargetInfo, mockViewTarget, testActivityName)
         }
+        flushPendingRageClicks()
 
         verify { mockAmplitude.track(RAGE_CLICK, any()) }
     }
@@ -142,16 +148,18 @@ class FrustrationInteractionsDetectorTest {
         detector.processClick(nearbyClick, testTargetInfo, mockViewTarget, testActivityName)
         detector.processClick(baseClick, testTargetInfo, mockViewTarget, testActivityName)
         detector.processClick(nearbyClick, testTargetInfo, mockViewTarget, testActivityName)
+        flushPendingRageClicks()
 
         verify { mockAmplitude.track(RAGE_CLICK, any()) }
 
-        clearMocks(mockAmplitude)
+        clearMocks(mockAmplitude, answers = false)
 
         // Far click should start new session (no rage click)
         detector.processClick(baseClick, testTargetInfo, mockViewTarget, testActivityName)
         detector.processClick(farClick, testTargetInfo, mockViewTarget, testActivityName)
         detector.processClick(baseClick, testTargetInfo, mockViewTarget, testActivityName)
         detector.processClick(farClick, testTargetInfo, mockViewTarget, testActivityName)
+        flushPendingRageClicks()
 
         verify(exactly = 0) { mockAmplitude.track(RAGE_CLICK, any()) }
     }
@@ -167,6 +175,7 @@ class FrustrationInteractionsDetectorTest {
         repeat(4) {
             detector.processClick(clickInfo, ignoredTargetInfo, ignoredViewTarget, testActivityName)
         }
+        flushPendingRageClicks()
 
         verify(exactly = 0) { mockAmplitude.track(RAGE_CLICK, any()) }
         verify { mockLogger.debug(match { it.contains("Skipping rage click processing") }) }
@@ -179,6 +188,7 @@ class FrustrationInteractionsDetectorTest {
         repeat(4) {
             detector.processClick(clickInfo, testTargetInfo, mockViewTarget, testActivityName)
         }
+        flushPendingRageClicks()
 
         val capturedProperties = slot<Map<String, Any?>>()
         verify { mockAmplitude.track(RAGE_CLICK, capture(capturedProperties)) }
@@ -331,8 +341,7 @@ class FrustrationInteractionsDetectorTest {
         detector3x.processClick(distantClick, testTargetInfo, mockViewTarget, testActivityName)
         detector3x.processClick(baseClick, testTargetInfo, mockViewTarget, testActivityName)
         detector3x.processClick(distantClick, testTargetInfo, mockViewTarget, testActivityName)
-
-        // Verify 1x density detector doesn't trigger rage click
+        flushPendingRageClicks()
         verify(exactly = 0) { mockAmplitude1x.track(RAGE_CLICK, any()) }
 
         // Verify 3x density detector does trigger rage click
@@ -351,9 +360,46 @@ class FrustrationInteractionsDetectorTest {
         repeat(5) {
             detector.processClick(clickInfo, testTargetInfo, mockViewTarget, testActivityName)
         }
+        flushPendingRageClicks()
 
-        // Should track exactly one rage click (not multiple)
-        verify(exactly = 1) { mockAmplitude.track(RAGE_CLICK, any()) }
+        val capturedProperties = slot<Map<String, Any?>>()
+        verify(exactly = 1) { mockAmplitude.track(RAGE_CLICK, capture(capturedProperties)) }
+        assertEquals(5, capturedProperties.captured[CLICK_COUNT])
+    }
+
+    @Test
+    fun `rage click - reports full burst instead of capping at threshold`() {
+        val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
+
+        repeat(15) {
+            detector.processClick(clickInfo, testTargetInfo, mockViewTarget, testActivityName)
+        }
+        flushPendingRageClicks()
+
+        val capturedProperties = slot<Map<String, Any?>>()
+        verify(exactly = 1) { mockAmplitude.track(RAGE_CLICK, capture(capturedProperties)) }
+        assertEquals(15, capturedProperties.captured[CLICK_COUNT])
+        @Suppress("UNCHECKED_CAST")
+        val clicks = capturedProperties.captured[CLICKS] as List<Map<String, Any?>>
+        assertEquals(15, clicks.size)
+    }
+
+    @Test
+    fun `rage click - does not emit leftover clicks below threshold after burst`() {
+        val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
+
+        repeat(15) {
+            detector.processClick(clickInfo, testTargetInfo, mockViewTarget, testActivityName)
+        }
+        flushPendingRageClicks()
+        clearMocks(mockAmplitude, answers = false)
+
+        repeat(3) {
+            detector.processClick(clickInfo, testTargetInfo, mockViewTarget, testActivityName)
+        }
+        flushPendingRageClicks()
+
+        verify(exactly = 0) { mockAmplitude.track(RAGE_CLICK, any()) }
     }
 
     @Test
@@ -367,8 +413,7 @@ class FrustrationInteractionsDetectorTest {
 
         // 4 clicks on second target
         repeat(4) { detector.processClick(clickInfo, targetInfo2, mockViewTarget, testActivityName) }
-
-        // Should trigger rage click for both targets
+        flushPendingRageClicks()
         verify(exactly = 2) { mockAmplitude.track(RAGE_CLICK, any()) }
     }
 
@@ -694,8 +739,7 @@ class FrustrationInteractionsDetectorTest {
         repeat(4) {
             detectorWithOptions.processClick(clickInfo, testTargetInfo, mockViewTarget, testActivityName)
         }
-
-        // Verify no rage click was tracked
+        flushPendingRageClicks()
         verify(exactly = 0) { mockAmplitude.track(RAGE_CLICK, any()) }
     }
 
@@ -777,8 +821,7 @@ class FrustrationInteractionsDetectorTest {
         repeat(4) {
             detectorWithOptions.processClick(rageClickInfo, testTargetInfo, mockViewTarget, testActivityName)
         }
-
-        // Verify rage click was tracked
+        flushPendingRageClicks()
         verify(exactly = 1) { mockAmplitude.track(RAGE_CLICK, any()) }
     }
 
@@ -830,8 +873,7 @@ class FrustrationInteractionsDetectorTest {
         repeat(4) {
             detectorWithDefaultOptions.processClick(rageClickInfo, testTargetInfo, mockViewTarget, testActivityName)
         }
-
-        // Verify rage click was tracked (default behavior)
+        flushPendingRageClicks()
         verify(exactly = 1) { mockAmplitude.track(RAGE_CLICK, any()) }
     }
 

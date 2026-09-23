@@ -119,6 +119,7 @@ public class FrustrationInteractionsDetector(
             synchronized(stateLock) {
                 val pendingJobs =
                     buildList {
+                        addAll(pendingRageClicks.values.mapNotNull { it.job })
                         addAll(pendingDeadClicks.values.mapNotNull { it.job })
                         uiChangeCollectionJob?.let(::add)
                     }
@@ -180,40 +181,53 @@ public class FrustrationInteractionsDetector(
         clickTime: Long,
     ) {
         val locationKey = generateLocationKey(clickInfo, targetInfo)
+        var jobToCancel: Job? = null
+        var jobToStart: Job? = null
+        var completedSession: RageClickSession? = null
 
-        val completedSession =
-            synchronized(stateLock) {
-                val existingSession = pendingRageClicks[locationKey]
-                if (existingSession == null ||
-                    clickTime - existingSession.firstClickTime > RAGE_CLICK_TIME_WINDOW ||
-                    !isWithinDistanceThreshold(
-                        clickInfo.x,
-                        clickInfo.y,
-                        existingSession.firstClickX,
-                        existingSession.firstClickY,
-                    )
-                ) {
-                    startNewRageClickSession(locationKey, clickInfo, targetInfo, clickTime)
-                    null
-                } else {
-                    existingSession.apply {
-                        clickCount++
-                        lastClickTime = clickTime
-                        clicks.add(clickInfo.copy(timestamp = clickTime))
-                    }
-
+        synchronized(stateLock) {
+            val existingSession = pendingRageClicks[locationKey]
+            if (existingSession != null &&
+                clickTime - existingSession.firstClickTime <= RAGE_CLICK_TIME_WINDOW &&
+                isWithinDistanceThreshold(
+                    clickInfo.x,
+                    clickInfo.y,
+                    existingSession.firstClickX,
+                    existingSession.firstClickY,
+                )
+            ) {
+                existingSession.clickCount++
+                existingSession.lastClickTime = clickTime
+                existingSession.clicks.add(clickInfo.copy(timestamp = clickTime))
+                jobToCancel = existingSession.job
+                jobToStart = createRageClickTimeoutJob(locationKey, existingSession)
+                existingSession.job = jobToStart
+            } else {
+                if (existingSession != null) {
+                    pendingRageClicks.remove(locationKey)
+                    jobToCancel = existingSession.job
+                    existingSession.job = null
                     if (existingSession.clickCount >= RAGE_CLICK_THRESHOLD) {
-                        pendingRageClicks.remove(locationKey)
-                        existingSession
-                    } else {
-                        null
+                        completedSession = existingSession
                     }
                 }
+                val session =
+                    startNewRageClickSession(
+                        locationKey,
+                        clickInfo,
+                        targetInfo,
+                        target,
+                        activityName,
+                        clickTime,
+                    )
+                jobToStart = createRageClickTimeoutJob(locationKey, session)
+                session.job = jobToStart
             }
-
-        if (completedSession != null) {
-            trackRageClick(completedSession, target, activityName)
         }
+
+        jobToCancel?.cancel()
+        jobToStart?.start()
+        completedSession?.let(::trackRageClick)
     }
 
     private fun processDeadClick(
@@ -349,8 +363,10 @@ public class FrustrationInteractionsDetector(
         locationKey: String,
         clickInfo: ClickInfo,
         targetInfo: TargetInfo,
+        target: ViewTarget,
+        activityName: String,
         clickTime: Long,
-    ) {
+    ): RageClickSession {
         val session =
             RageClickSession(
                 firstClickTime = clickTime,
@@ -360,18 +376,42 @@ public class FrustrationInteractionsDetector(
                 firstClickY = clickInfo.y,
                 targetInfo = targetInfo,
                 clicks = mutableListOf(clickInfo.copy(timestamp = clickTime)),
+                target = target,
+                activityName = activityName,
             )
         pendingRageClicks[locationKey] = session
+        return session
     }
 
-    private fun trackRageClick(
+    private fun createRageClickTimeoutJob(
+        locationKey: String,
         session: RageClickSession,
-        target: ViewTarget,
-        activityName: String,
-    ) {
+    ): Job =
+        amplitude.amplitudeScope.launch(
+            amplitude.amplitudeDispatcher,
+            start = CoroutineStart.LAZY,
+        ) {
+            delay(RAGE_CLICK_TIME_WINDOW.milliseconds)
+
+            val toTrack =
+                synchronized(stateLock) {
+                    val current = pendingRageClicks[locationKey]
+                    if (current === session) {
+                        pendingRageClicks.remove(locationKey)
+                        current.takeIf { it.clickCount >= RAGE_CLICK_THRESHOLD }
+                    } else {
+                        null
+                    }
+                }
+            if (toTrack != null) {
+                trackRageClick(toTrack)
+            }
+        }
+
+    private fun trackRageClick(session: RageClickSession) {
         // Build final properties: ELEMENT_INTERACTED + RAGE_CLICK specific
         val properties =
-            buildElementInteractedProperties(target, activityName) +
+            buildElementInteractedProperties(session.target, session.activityName) +
                 buildRageClickProperties(session)
 
         amplitude.track(RAGE_CLICK, properties)
@@ -447,6 +487,9 @@ public class FrustrationInteractionsDetector(
         val firstClickY: Float,
         val targetInfo: TargetInfo,
         val clicks: MutableList<ClickInfo>,
+        val target: ViewTarget,
+        val activityName: String,
+        var job: Job? = null,
     )
 
     internal data class DeadClickSession(
