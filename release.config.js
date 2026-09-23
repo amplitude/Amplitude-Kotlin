@@ -5,9 +5,16 @@ module.exports = {
   ],
   "tagFormat": ["v${version}"],
   "plugins": [
-    // `type(unified): ...` commits release com.amplitude:unified-android instead (see unified/release.config.js).
-    ["./tools/semantic-release/scoped-commits.mjs", {
-      "excludeScope": "unified",
+    ["./tools/semantic-release/path-commits.mjs", {
+      "releasePaths": [
+        "analytics-core/",
+        "android/",
+        "build.gradle.kts",
+        "buildSrc/",
+        "gradle/",
+        "gradle.properties",
+        "streaming-analytics-android/"
+      ],
       "preset": "angular",
       "parserOpts": {
         "noteKeywords": ["BREAKING CHANGE", "BREAKING CHANGES", "BREAKING"]

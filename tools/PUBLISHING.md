@@ -20,8 +20,16 @@ The published artifacts will be available at: https://central.sonatype.com/publi
 `com.amplitude:unified-android` releases separately with the "Release Unified" workflow:
 
 - Version lives in `unified/gradle.properties`; tags are `unified-v<version>`.
-- Only `type(unified): ...` commits bump it. The core release ignores them and never publishes `:unified`.
-- Analytics and blade versions are pinned in `gradle/libs.versions.toml`; update them only after compatible releases are available.
+- Dependency versions live in `unified/gradle/libs.versions.toml`.
+- The workflow compares the current `unified/` tree with the latest `unified-v*` tag. No net change means no release, including when a change was reverted before release.
+- Choose `patch`, `minor`, or `major` when starting the workflow. This input controls version bumps after the initial `1.0.0` release; commit types and scopes do not.
+- Release notes include only commits that changed files under `unified/`.
+- `publish-only` republishes the version already in `unified/gradle.properties` and ignores the release type.
+- The core release tracks its own published module and shared build paths, and never publishes `:unified`.
+
+If a change outside `unified/` changes the published Unified artifact, increment the value in `unified/release-trigger` in the same PR. This creates an explicit Unified diff and includes that commit in its release notes. An empty commit does not work because release detection compares trees.
+
+Run a dry run first. It performs the same path comparison and version calculation without updating the repository or publishing to Maven Central.
 
 ## CI PUBLISHING
 
