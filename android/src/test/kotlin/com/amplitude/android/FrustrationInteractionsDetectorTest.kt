@@ -403,6 +403,46 @@ class FrustrationInteractionsDetectorTest {
     }
 
     @Test
+    fun `rage click - keeps a continuous burst open with a sliding 1s window`() {
+        var now = 0L
+        detector.currentTimeMillis = { now }
+        val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
+
+        repeat(7) { index ->
+            now = index * 200L
+            detector.processClick(clickInfo, testTargetInfo, mockViewTarget, testActivityName)
+        }
+        flushPendingRageClicks()
+
+        val capturedProperties = slot<Map<String, Any?>>()
+        verify(exactly = 1) { mockAmplitude.track(RAGE_CLICK, capture(capturedProperties)) }
+        assertEquals(7, capturedProperties.captured[CLICK_COUNT])
+    }
+
+    @Test
+    fun `rage click - emits when click at count minus 3 is older than 1s`() {
+        var now = 0L
+        detector.currentTimeMillis = { now }
+        val clickInfo = FrustrationInteractionsDetector.ClickInfo(100f, 100f)
+
+        listOf(0L, 200L, 400L, 600L).forEach { timestamp ->
+            now = timestamp
+            detector.processClick(clickInfo, testTargetInfo, mockViewTarget, testActivityName)
+        }
+        verify(exactly = 0) { mockAmplitude.track(RAGE_CLICK, any()) }
+
+        now = 1_900L
+        detector.processClick(clickInfo, testTargetInfo, mockViewTarget, testActivityName)
+
+        val capturedProperties = slot<Map<String, Any?>>()
+        verify(exactly = 1) { mockAmplitude.track(RAGE_CLICK, capture(capturedProperties)) }
+        assertEquals(4, capturedProperties.captured[CLICK_COUNT])
+
+        flushPendingRageClicks()
+        verify(exactly = 1) { mockAmplitude.track(RAGE_CLICK, any()) }
+    }
+
+    @Test
     fun `different target classes create separate sessions`() {
         val targetInfo1 = testTargetInfo.copy(className = "Button1")
         val targetInfo2 = testTargetInfo.copy(className = "Button2")

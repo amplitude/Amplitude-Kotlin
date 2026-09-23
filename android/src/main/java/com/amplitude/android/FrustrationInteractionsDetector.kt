@@ -1,6 +1,7 @@
 package com.amplitude.android
 
 import android.graphics.PointF
+import androidx.annotation.VisibleForTesting
 import com.amplitude.android.Constants.EventProperties.BEGIN_TIME
 import com.amplitude.android.Constants.EventProperties.CLICKS
 import com.amplitude.android.Constants.EventProperties.CLICK_COUNT
@@ -80,6 +81,9 @@ public class FrustrationInteractionsDetector(
     // Rage click detection
     private val pendingRageClicks = mutableMapOf<String, RageClickSession>()
 
+    @VisibleForTesting
+    internal var currentTimeMillis: () -> Long = { System.currentTimeMillis() }
+
     // Dead click detection
     private val pendingDeadClicks = mutableMapOf<String, DeadClickSession>()
     private val recentUiChangeTimes = ArrayDeque<Long>(MAX_RECENT_UI_CHANGES)
@@ -147,7 +151,7 @@ public class FrustrationInteractionsDetector(
         target: ViewTarget,
         activityName: String,
     ) {
-        val clickTime = System.currentTimeMillis()
+        val clickTime = currentTimeMillis()
         val clickId = generateClickId(clickInfo, targetInfo)
 
         // Process for rage click detection if enabled
@@ -187,31 +191,35 @@ public class FrustrationInteractionsDetector(
 
         synchronized(stateLock) {
             val existingSession = pendingRageClicks[locationKey]
-            if (existingSession != null &&
-                clickTime - existingSession.firstClickTime <= RAGE_CLICK_TIME_WINDOW &&
-                isWithinDistanceThreshold(
-                    clickInfo.x,
-                    clickInfo.y,
-                    existingSession.firstClickX,
-                    existingSession.firstClickY,
-                )
-            ) {
-                existingSession.clickCount++
-                existingSession.lastClickTime = clickTime
-                existingSession.clicks.add(clickInfo.copy(timestamp = clickTime))
-                jobToCancel = existingSession.job
-                jobToStart = createRageClickTimeoutJob(locationKey, existingSession)
-                existingSession.job = jobToStart
-            } else {
-                if (existingSession != null) {
+            if (existingSession != null) {
+                val lastClick = existingSession.clicks.last()
+                if (!isWithinDistanceThreshold(clickInfo.x, clickInfo.y, lastClick.x, lastClick.y)) {
                     pendingRageClicks.remove(locationKey)
                     jobToCancel = existingSession.job
                     existingSession.job = null
                     if (existingSession.clickCount >= RAGE_CLICK_THRESHOLD) {
                         completedSession = existingSession
                     }
+                } else {
+                    val expiredSession = applySlidingRageClickWindow(locationKey, existingSession, clickTime)
+                    if (expiredSession != null) {
+                        jobToCancel = expiredSession.job
+                        expiredSession.job = null
+                        completedSession = expiredSession
+                    }
                 }
-                val session =
+            }
+
+            val session = pendingRageClicks[locationKey]
+            if (session != null) {
+                session.clickCount++
+                session.lastClickTime = clickTime
+                session.clicks.add(clickInfo.copy(timestamp = clickTime))
+                jobToCancel = session.job
+                jobToStart = createRageClickTimeoutJob(locationKey, session)
+                session.job = jobToStart
+            } else {
+                val newSession =
                     startNewRageClickSession(
                         locationKey,
                         clickInfo,
@@ -220,8 +228,8 @@ public class FrustrationInteractionsDetector(
                         activityName,
                         clickTime,
                     )
-                jobToStart = createRageClickTimeoutJob(locationKey, session)
-                session.job = jobToStart
+                jobToStart = createRageClickTimeoutJob(locationKey, newSession)
+                newSession.job = jobToStart
             }
         }
 
@@ -383,6 +391,36 @@ public class FrustrationInteractionsDetector(
         return session
     }
 
+    /**
+     * iOS-style sliding window: if the click at index `count - 3` is already ≥1s old,
+     * drop the oldest click when the queue is still short, otherwise emit the burst
+     * before starting a new one.
+     */
+    private fun applySlidingRageClickWindow(
+        locationKey: String,
+        session: RageClickSession,
+        clickTime: Long,
+    ): RageClickSession? {
+        val thresholdIndex = session.clicks.size - (RAGE_CLICK_THRESHOLD - 1)
+        if (thresholdIndex < 0) return null
+
+        val thresholdClick = session.clicks[thresholdIndex]
+        if (clickTime - thresholdClick.timestamp < RAGE_CLICK_TIME_WINDOW) return null
+
+        if (thresholdIndex == 0) {
+            session.clicks.removeAt(0)
+            session.clickCount = session.clicks.size
+            val firstClick = session.clicks.first()
+            session.firstClickTime = firstClick.timestamp
+            session.firstClickX = firstClick.x
+            session.firstClickY = firstClick.y
+            return null
+        }
+
+        pendingRageClicks.remove(locationKey)
+        return session.takeIf { it.clickCount >= RAGE_CLICK_THRESHOLD }
+    }
+
     private fun createRageClickTimeoutJob(
         locationKey: String,
         session: RageClickSession,
@@ -480,11 +518,11 @@ public class FrustrationInteractionsDetector(
     )
 
     internal data class RageClickSession(
-        val firstClickTime: Long,
+        var firstClickTime: Long,
         var lastClickTime: Long,
         var clickCount: Int,
-        val firstClickX: Float,
-        val firstClickY: Float,
+        var firstClickX: Float,
+        var firstClickY: Float,
         val targetInfo: TargetInfo,
         val clicks: MutableList<ClickInfo>,
         val target: ViewTarget,
