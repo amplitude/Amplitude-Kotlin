@@ -1,6 +1,7 @@
 package com.amplitude.android
 
 import android.graphics.PointF
+import androidx.annotation.VisibleForTesting
 import com.amplitude.android.Constants.EventProperties.BEGIN_TIME
 import com.amplitude.android.Constants.EventProperties.CLICKS
 import com.amplitude.android.Constants.EventProperties.CLICK_COUNT
@@ -80,6 +81,9 @@ public class FrustrationInteractionsDetector(
     // Rage click detection
     private val pendingRageClicks = mutableMapOf<String, RageClickSession>()
 
+    @VisibleForTesting
+    internal var currentTimeMillis: () -> Long = { System.currentTimeMillis() }
+
     // Dead click detection
     private val pendingDeadClicks = mutableMapOf<String, DeadClickSession>()
     private val recentUiChangeTimes = ArrayDeque<Long>(MAX_RECENT_UI_CHANGES)
@@ -119,6 +123,7 @@ public class FrustrationInteractionsDetector(
             synchronized(stateLock) {
                 val pendingJobs =
                     buildList {
+                        addAll(pendingRageClicks.values.mapNotNull { it.job })
                         addAll(pendingDeadClicks.values.mapNotNull { it.job })
                         uiChangeCollectionJob?.let(::add)
                     }
@@ -146,7 +151,7 @@ public class FrustrationInteractionsDetector(
         target: ViewTarget,
         activityName: String,
     ) {
-        val clickTime = System.currentTimeMillis()
+        val clickTime = currentTimeMillis()
         val clickId = generateClickId(clickInfo, targetInfo)
 
         // Process for rage click detection if enabled
@@ -180,40 +185,57 @@ public class FrustrationInteractionsDetector(
         clickTime: Long,
     ) {
         val locationKey = generateLocationKey(clickInfo, targetInfo)
+        var jobToCancel: Job? = null
+        var jobToStart: Job? = null
+        var completedSession: RageClickSession? = null
 
-        val completedSession =
-            synchronized(stateLock) {
-                val existingSession = pendingRageClicks[locationKey]
-                if (existingSession == null ||
-                    clickTime - existingSession.firstClickTime > RAGE_CLICK_TIME_WINDOW ||
-                    !isWithinDistanceThreshold(
-                        clickInfo.x,
-                        clickInfo.y,
-                        existingSession.firstClickX,
-                        existingSession.firstClickY,
-                    )
-                ) {
-                    startNewRageClickSession(locationKey, clickInfo, targetInfo, clickTime)
-                    null
-                } else {
-                    existingSession.apply {
-                        clickCount++
-                        lastClickTime = clickTime
-                        clicks.add(clickInfo.copy(timestamp = clickTime))
-                    }
-
+        synchronized(stateLock) {
+            val existingSession = pendingRageClicks[locationKey]
+            if (existingSession != null) {
+                val lastClick = existingSession.clicks.last()
+                if (!isWithinDistanceThreshold(clickInfo.x, clickInfo.y, lastClick.x, lastClick.y)) {
+                    pendingRageClicks.remove(locationKey)
+                    jobToCancel = existingSession.job
+                    existingSession.job = null
                     if (existingSession.clickCount >= RAGE_CLICK_THRESHOLD) {
-                        pendingRageClicks.remove(locationKey)
-                        existingSession
-                    } else {
-                        null
+                        completedSession = existingSession
+                    }
+                } else {
+                    val expiredSession = applySlidingRageClickWindow(locationKey, existingSession, clickTime)
+                    if (expiredSession != null) {
+                        jobToCancel = expiredSession.job
+                        expiredSession.job = null
+                        completedSession = expiredSession
                     }
                 }
             }
 
-        if (completedSession != null) {
-            trackRageClick(completedSession, target, activityName)
+            val session = pendingRageClicks[locationKey]
+            if (session != null) {
+                session.clickCount++
+                session.lastClickTime = clickTime
+                session.clicks.add(clickInfo.copy(timestamp = clickTime))
+                jobToCancel = session.job
+                jobToStart = createRageClickTimeoutJob(locationKey, session)
+                session.job = jobToStart
+            } else {
+                val newSession =
+                    startNewRageClickSession(
+                        locationKey,
+                        clickInfo,
+                        targetInfo,
+                        target,
+                        activityName,
+                        clickTime,
+                    )
+                jobToStart = createRageClickTimeoutJob(locationKey, newSession)
+                newSession.job = jobToStart
+            }
         }
+
+        jobToCancel?.cancel()
+        jobToStart?.start()
+        completedSession?.let(::trackRageClick)
     }
 
     private fun processDeadClick(
@@ -349,8 +371,10 @@ public class FrustrationInteractionsDetector(
         locationKey: String,
         clickInfo: ClickInfo,
         targetInfo: TargetInfo,
+        target: ViewTarget,
+        activityName: String,
         clickTime: Long,
-    ) {
+    ): RageClickSession {
         val session =
             RageClickSession(
                 firstClickTime = clickTime,
@@ -360,18 +384,72 @@ public class FrustrationInteractionsDetector(
                 firstClickY = clickInfo.y,
                 targetInfo = targetInfo,
                 clicks = mutableListOf(clickInfo.copy(timestamp = clickTime)),
+                target = target,
+                activityName = activityName,
             )
         pendingRageClicks[locationKey] = session
+        return session
     }
 
-    private fun trackRageClick(
+    /**
+     * iOS-style sliding window: if the click at index `count - 3` is already ≥1s old,
+     * drop the oldest click when the queue is still short, otherwise emit the burst
+     * before starting a new one.
+     */
+    private fun applySlidingRageClickWindow(
+        locationKey: String,
         session: RageClickSession,
-        target: ViewTarget,
-        activityName: String,
-    ) {
+        clickTime: Long,
+    ): RageClickSession? {
+        val thresholdIndex = session.clicks.size - (RAGE_CLICK_THRESHOLD - 1)
+        if (thresholdIndex < 0) return null
+
+        val thresholdClick = session.clicks[thresholdIndex]
+        if (clickTime - thresholdClick.timestamp < RAGE_CLICK_TIME_WINDOW) return null
+
+        if (thresholdIndex == 0) {
+            session.clicks.removeAt(0)
+            session.clickCount = session.clicks.size
+            val firstClick = session.clicks.first()
+            session.firstClickTime = firstClick.timestamp
+            session.firstClickX = firstClick.x
+            session.firstClickY = firstClick.y
+            return null
+        }
+
+        pendingRageClicks.remove(locationKey)
+        return session.takeIf { it.clickCount >= RAGE_CLICK_THRESHOLD }
+    }
+
+    private fun createRageClickTimeoutJob(
+        locationKey: String,
+        session: RageClickSession,
+    ): Job =
+        amplitude.amplitudeScope.launch(
+            amplitude.amplitudeDispatcher,
+            start = CoroutineStart.LAZY,
+        ) {
+            delay(RAGE_CLICK_TIME_WINDOW.milliseconds)
+
+            val toTrack =
+                synchronized(stateLock) {
+                    val current = pendingRageClicks[locationKey]
+                    if (current === session) {
+                        pendingRageClicks.remove(locationKey)
+                        current.takeIf { it.clickCount >= RAGE_CLICK_THRESHOLD }
+                    } else {
+                        null
+                    }
+                }
+            if (toTrack != null) {
+                trackRageClick(toTrack)
+            }
+        }
+
+    private fun trackRageClick(session: RageClickSession) {
         // Build final properties: ELEMENT_INTERACTED + RAGE_CLICK specific
         val properties =
-            buildElementInteractedProperties(target, activityName) +
+            buildElementInteractedProperties(session.target, session.activityName) +
                 buildRageClickProperties(session)
 
         amplitude.track(RAGE_CLICK, properties)
@@ -440,13 +518,16 @@ public class FrustrationInteractionsDetector(
     )
 
     internal data class RageClickSession(
-        val firstClickTime: Long,
+        var firstClickTime: Long,
         var lastClickTime: Long,
         var clickCount: Int,
-        val firstClickX: Float,
-        val firstClickY: Float,
+        var firstClickX: Float,
+        var firstClickY: Float,
         val targetInfo: TargetInfo,
         val clicks: MutableList<ClickInfo>,
+        val target: ViewTarget,
+        val activityName: String,
+        var job: Job? = null,
     )
 
     internal data class DeadClickSession(
