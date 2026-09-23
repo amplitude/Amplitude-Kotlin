@@ -1,13 +1,11 @@
+// Release config for com.amplitude:unified-android, run from this directory by release-unified.yml.
+// Only `type(unified): ...` commits count; core releases ignore them (see ../release.config.js).
 module.exports = {
-  "branches": [
-    {name: 'beta', prerelease: true},
-    "main"
-  ],
-  "tagFormat": ["v${version}"],
+  "branches": ["main"],
+  "tagFormat": "unified-v${version}",
   "plugins": [
-    // `type(unified): ...` commits release com.amplitude:unified-android instead (see unified/release.config.js).
-    ["./tools/semantic-release/scoped-commits.mjs", {
-      "excludeScope": "unified",
+    ["../tools/semantic-release/scoped-commits.mjs", {
+      "scope": "unified",
       "preset": "angular",
       "parserOpts": {
         "noteKeywords": ["BREAKING CHANGE", "BREAKING CHANGES", "BREAKING"]
@@ -40,10 +38,10 @@ module.exports = {
     ],
     ["@semantic-release/git", {
       "assets": ["gradle.properties", "CHANGELOG.md"],
-      "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+      "message": "chore(release): unified ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
     }],
     ["@semantic-release/exec", {
-      "publishCmd": "./gradlew publishAllPublicationsToMavenCentral --no-configuration-cache",
+      "publishCmd": "../gradlew :unified:publishAllPublicationsToMavenCentral -Pamplitude.unified.release=true --no-configuration-cache",
     }],
   ],
 }
