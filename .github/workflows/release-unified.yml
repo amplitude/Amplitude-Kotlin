@@ -1,7 +1,7 @@
 # Releases com.amplitude:unified-android independently of analytics-core/android.
 #
-# Versioned from `type(unified): ...` commits only, tagged `unified-v<version>`,
-# with its version in unified/gradle.properties (see unified/release.config.js).
+# Releases when the unified/ tree differs from the latest unified-v* tag. The
+# selected release type controls the version bump; commit scopes do not.
 #
 # Regular release:
 #   - true — preview what semantic-release would do (dry-run)
@@ -23,6 +23,15 @@ on:
           - publish-only
         required: true
         default: 'true'
+      releaseType:
+        type: choice
+        description: 'Version bump after the initial 1.0.0 release'
+        options:
+          - patch
+          - minor
+          - major
+        required: true
+        default: patch
 
 jobs:
   authorize:
@@ -50,6 +59,7 @@ jobs:
       GIT_AUTHOR_EMAIL: amplitude-sdk-bot@users.noreply.github.com
       GIT_COMMITTER_NAME: amplitude-sdk-bot
       GIT_COMMITTER_EMAIL: amplitude-sdk-bot@users.noreply.github.com
+      UNIFIED_RELEASE_TYPE: ${{ github.event.inputs.releaseType }}
       ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.SONATYPE_USERNAME }}
       ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.SONATYPE_PASSWORD }}
       ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
@@ -68,6 +78,12 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
+      - name: Set up Node 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
       - name: Verify release branch
         if: ${{ github.ref != 'refs/heads/main' }}
         run: |
@@ -76,9 +92,9 @@ jobs:
 
       - name: Verify Analytics dependency is released
         run: |
-          analytics_version="$(sed -n 's/^unifiedAnalyticsAndroid = "\(.*\)"$/\1/p' gradle/libs.versions.toml)"
+          analytics_version="$(sed -n 's/^analyticsAndroid = "\(.*\)"$/\1/p' unified/gradle/libs.versions.toml)"
           if [ -z "$analytics_version" ]; then
-            echo "::error::Could not read unifiedAnalyticsAndroid from gradle/libs.versions.toml."
+            echo "::error::Could not read analyticsAndroid from unified/gradle/libs.versions.toml."
             exit 1
           fi
           pom="https://repo1.maven.org/maven2/com/amplitude/analytics-android/$analytics_version/analytics-android-$analytics_version.pom"

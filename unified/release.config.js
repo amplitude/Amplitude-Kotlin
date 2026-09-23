@@ -1,11 +1,11 @@
 // Release config for com.amplitude:unified-android, run from this directory by release-unified.yml.
-// Only `type(unified): ...` commits count; core releases ignore them (see ../release.config.js).
 module.exports = {
   "branches": ["main"],
   "tagFormat": "unified-v${version}",
   "plugins": [
-    ["../tools/semantic-release/scoped-commits.mjs", {
-      "scope": "unified",
+    ["../tools/semantic-release/path-commits.mjs", {
+      "releasePaths": ["unified/"],
+      "releaseTypeEnv": "UNIFIED_RELEASE_TYPE",
       "preset": "angular",
       "parserOpts": {
         "noteKeywords": ["BREAKING CHANGE", "BREAKING CHANGES", "BREAKING"]

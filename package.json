@@ -1,5 +1,8 @@
 {
   "private": true,
+  "scripts": {
+    "test:release": "node --test tools/semantic-release/*.test.mjs"
+  },
   "dependencies": {
     "@google/semantic-release-replace-plugin": "1.2.7",
     "@semantic-release/changelog": "7.0.0",

@@ -62,9 +62,9 @@ mavenPublishing {
 }
 
 dependencies {
-    api(libs.unified.analytics.android)
-    api(libs.unified.session.replay.android)
-    api(libs.unified.experiment.android.client)
+    api(unifiedLibs.analytics.android)
+    api(unifiedLibs.experiment.android.client)
+    api(unifiedLibs.session.replay.android)
 
     compileOnly(libs.coroutines.core)
 

@@ -97,3 +97,17 @@ updates:
           - "org.robolectric:*"
           - "androidx.test*" # androidx.test, .ext, .espresso
           - "com.squareup.okhttp3:mockwebserver" # not okhttp itself — that ships
+
+  # ---------------------------------------------------------------------------
+  # Unified Gradle — a separate entry lets Dependabot discover the standard
+  # `gradle/libs.versions.toml` path relative to the Unified project.
+  # ---------------------------------------------------------------------------
+  - package-ecosystem: gradle
+    directory: "/unified"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(deps)"
+    labels:
+      - dependencies

@@ -16,6 +16,6 @@ PR titles should follow [conventional commit standards](https://www.conventional
 - `chore(<optional scope>)`: Other changes that don't modify src or test files
 - `revert(<optional scope>)`: Revert commit
 
-#### Unified scope
+#### Unified releases
 
-Use the `unified` scope (e.g. `feat(unified): ...`) for changes to `com.amplitude:unified-android`. These commits bump the unified version only; all other commits bump analytics-core/android.
+Keep changes to `com.amplitude:unified-android` under `unified/`. Release ownership is based on changed paths, so a `unified` commit scope is optional. If an external change affects the published Unified artifact, increment `unified/release-trigger` in the same PR. The release operator selects its version bump when starting the Unified workflow.
