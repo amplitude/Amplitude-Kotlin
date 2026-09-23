@@ -5,8 +5,11 @@ import com.amplitude.core.diagnostics.DiagnosticsClient
 import com.amplitude.core.remoteconfig.RemoteConfigClient
 import io.mockk.mockk
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import java.io.File
 
 @OptIn(RestrictedAmplitudeFeature::class)
 class AmplitudeContextTest {
@@ -42,5 +45,23 @@ class AmplitudeContextTest {
 
         assertEquals(1, remoteConfigInitializations)
         assertEquals(1, diagnosticsInitializations)
+    }
+
+    @Test
+    fun `storage directory constructor creates its own clients`(
+        @TempDir tempDir: File,
+    ) {
+        val context =
+            AmplitudeContext(
+                apiKey = "api-key",
+                instanceName = "standalone",
+                serverZone = ServerZone.US,
+                logger = ConsoleLogger.logger,
+                storageDirectory = tempDir,
+            )
+
+        assertNotNull(context.remoteConfigClient)
+        assertNotNull(context.diagnosticsClient)
+        context.diagnosticsClient.close()
     }
 }

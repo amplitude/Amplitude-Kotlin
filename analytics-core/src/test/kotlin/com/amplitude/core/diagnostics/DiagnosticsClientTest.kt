@@ -10,10 +10,14 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verify
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.json.JSONObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -511,12 +515,35 @@ class DiagnosticsClientTest {
             verify(exactly = 0) { httpClient.request(any()) }
         }
 
+    @Test
+    fun `close does not cancel the parent coroutine scope`() =
+        runBlocking {
+            val parentJob = SupervisorJob()
+            val parentScope = CoroutineScope(parentJob + Dispatchers.Default)
+            val httpClient = mockk<HttpClient>(relaxed = true)
+            val client =
+                createClient(
+                    httpClient = httpClient,
+                    sampleRate = 0.0,
+                    coroutineScope = parentScope,
+                )
+
+            client.close()
+            delay(50)
+
+            assertTrue(parentJob.isActive)
+            val marker = CompletableDeferred<Unit>()
+            parentScope.launch { marker.complete(Unit) }
+            withTimeout(1_000) { marker.await() }
+        }
+
     private fun createClient(
         httpClient: HttpClient,
         sampleRate: Double,
         contextProvider: DiagnosticsContextProvider? = null,
         enabled: Boolean = true,
         serverZone: ServerZone = ServerZone.US,
+        coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.Default),
     ): DiagnosticsClientImpl {
         val logger = mockk<Logger>(relaxed = true)
         val storageDir = File.createTempFile("diagnostics", "test").parentFile
@@ -527,7 +554,7 @@ class DiagnosticsClientTest {
             instanceName = "test-instance",
             storageDirectory = storageDir,
             logger = logger,
-            coroutineScope = CoroutineScope(Dispatchers.Default),
+            coroutineScope = coroutineScope,
             networkIODispatcher = Dispatchers.IO,
             storageIODispatcher = Dispatchers.IO,
             remoteConfigClient = null,

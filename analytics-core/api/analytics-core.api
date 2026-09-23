@@ -119,6 +119,7 @@ public class com/amplitude/core/Amplitude : com/amplitude/core/platform/PluginHo
 
 public class com/amplitude/core/AmplitudeContext {
 	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lcom/amplitude/core/ServerZone;Lcom/amplitude/common/Logger;Lcom/amplitude/core/remoteconfig/RemoteConfigClient;Lcom/amplitude/core/diagnostics/DiagnosticsClient;)V
+	public fun <init> (Ljava/lang/String;Ljava/lang/String;Lcom/amplitude/core/ServerZone;Lcom/amplitude/common/Logger;Ljava/io/File;)V
 	public final fun getApiKey ()Ljava/lang/String;
 	public final fun getDiagnosticsClient ()Lcom/amplitude/core/diagnostics/DiagnosticsClient;
 	public final fun getInstanceName ()Ljava/lang/String;
