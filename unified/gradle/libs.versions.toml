@@ -1,7 +1,7 @@
 [versions]
 analyticsAndroid = "1.33.0"
 experimentAndroidClient = "1.17.0"
-sessionReplayAndroid = "0.30.0"
+sessionReplayAndroid = "0.31.0"
 
 [libraries]
 analytics-android = { module = "com.amplitude:analytics-android", version.ref = "analyticsAndroid" }
