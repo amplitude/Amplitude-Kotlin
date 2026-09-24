@@ -87,7 +87,7 @@ internal class StreamTracker(
                 timestamp = timestamp,
                 eventProperties =
                     adProperties(options = options, ad = ad, streamSessionId = streamSessionId).apply {
-                        put("ad_watch_duration", watchDurationMillis.millisToSeconds())
+                        put("ad_stream_duration", watchDurationMillis.millisToSeconds())
                         put("ad_completion_status", status.value)
                         ad.percentWatched(watchDurationMillis)?.let { percentage ->
                             put("ad_percent_completed", percentage)

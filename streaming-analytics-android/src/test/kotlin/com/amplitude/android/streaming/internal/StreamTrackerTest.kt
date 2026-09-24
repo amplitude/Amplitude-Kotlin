@@ -411,7 +411,7 @@ class StreamTrackerTest {
             val props = event.eventProperties!!
             assertEquals("[Amplitude] Ad Stopped", event.eventType)
             assertEquals(DelayedEvent.Kind.INSTANT, event.kind)
-            assertEquals(30.0, props["ad_watch_duration"])
+            assertEquals(30.0, props["ad_stream_duration"])
             assertEquals("ended", props["ad_completion_status"])
             assertEquals(100.0, props["ad_percent_completed"])
         }
@@ -430,7 +430,7 @@ class StreamTrackerTest {
 
             val props = events.first().eventProperties!!
             assertEquals("abandoned", props["ad_completion_status"])
-            assertEquals(5.0, props["ad_watch_duration"])
+            assertEquals(5.0, props["ad_stream_duration"])
         }
 
         @Test

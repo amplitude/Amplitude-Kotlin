@@ -896,7 +896,7 @@ class PlayerBindingTest {
                     runCurrent()
 
                     val adStopped = tracked.filter { it.eventType == AD_STOPPED }.last()
-                    assertEquals(5.0, adStopped.eventProperties?.get("ad_watch_duration"))
+                    assertEquals(5.0, adStopped.eventProperties?.get("ad_stream_duration"))
                     assertEquals("ended", adStopped.eventProperties?.get("ad_completion_status"))
                 }
             }
@@ -918,7 +918,7 @@ class PlayerBindingTest {
                     runCurrent()
 
                     val adStopped = tracked.filter { it.eventType == AD_STOPPED }.last()
-                    assertEquals(0.0, adStopped.eventProperties?.get("ad_watch_duration"))
+                    assertEquals(0.0, adStopped.eventProperties?.get("ad_stream_duration"))
                 }
             }
 
@@ -1060,7 +1060,7 @@ class PlayerBindingTest {
                     assertEquals(
                         3.0,
                         tracked.filter { it.eventType == AD_STOPPED }.last()
-                            .eventProperties?.get("ad_watch_duration"),
+                            .eventProperties?.get("ad_stream_duration"),
                     )
                 }
             }
