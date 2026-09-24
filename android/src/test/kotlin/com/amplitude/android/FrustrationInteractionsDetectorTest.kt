@@ -205,7 +205,7 @@ class FrustrationInteractionsDetectorTest {
             { assertEquals(200, capturedProperties.captured[COORDINATE_Y]) },
             { assertEquals(4, capturedProperties.captured[CLICK_COUNT]) },
             { assertEquals("TestButton", capturedProperties.captured[TARGET_CLASS]) },
-            { assertEquals("touch", capturedProperties.captured[ACTION]) },
+            { assertEquals("tap", capturedProperties.captured[ACTION]) },
             { assertTrue(timestampPattern.matches(beginTime)) },
             { assertTrue(timestampPattern.matches(endTime)) },
             { assertEquals(beginTime, clickTimestamps.first()) },
