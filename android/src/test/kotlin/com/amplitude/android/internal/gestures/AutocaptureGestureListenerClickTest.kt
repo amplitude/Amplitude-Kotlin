@@ -11,10 +11,12 @@ import android.widget.CheckBox
 import android.widget.RadioButton
 import android.widget.ScrollView
 import android.widget.SeekBar
+import android.widget.Switch
 import com.amplitude.MainDispatcherRule
 import com.amplitude.android.AutocaptureState
 import com.amplitude.android.InteractionType
 import com.amplitude.android.internal.GestureOwner
+import com.amplitude.android.internal.InteractionAction
 import com.amplitude.android.internal.TrackFunction
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.locators.AndroidViewTargetLocator
@@ -183,7 +185,8 @@ class AutocaptureGestureListenerClickTest {
                 "[Amplitude] Element Interacted",
                 match {
                     it["[Amplitude] Target Class"] == "android.widget.RadioButton" &&
-                        it["[Amplitude] Target Resource"] == "radio_button"
+                        it["[Amplitude] Target Resource"] == "radio_button" &&
+                        it["[Amplitude] Action"] == "valueChange"
                 },
             )
         }
@@ -207,7 +210,8 @@ class AutocaptureGestureListenerClickTest {
                 "[Amplitude] Element Interacted",
                 match {
                     it["[Amplitude] Target Class"] == "android.widget.CheckBox" &&
-                        it["[Amplitude] Target Resource"] == "check_box"
+                        it["[Amplitude] Target Resource"] == "check_box" &&
+                        it["[Amplitude] Action"] == "valueChange"
                 },
             )
         }
@@ -512,6 +516,139 @@ class AutocaptureGestureListenerClickTest {
     }
 
     @Test
+    fun `tracks a horizontal drag on a switch as a value change`() {
+        val down = motionEvent(MotionEvent.ACTION_DOWN)
+        val move = motionEvent(MotionEvent.ACTION_MOVE)
+        val up = motionEvent(MotionEvent.ACTION_UP)
+        val sut = fixture.getSut(type = Switch::class, event = move, resourceName = "notifications")
+
+        sut.onDown(down)
+        sut.onScroll(down, move, 20f, 0f)
+        sut.onTouchEventCompleted(up)
+
+        verify(exactly = 1) {
+            fixture.track(
+                "[Amplitude] Element Interacted",
+                match {
+                    it["[Amplitude] Action"] == "valueChange" &&
+                        it["[Amplitude] Target Resource"] == "notifications"
+                },
+            )
+        }
+        down.recycle()
+        move.recycle()
+        up.recycle()
+    }
+
+    @Test
+    fun `does not track a vertical drag that starts on a switch`() {
+        val down = motionEvent(MotionEvent.ACTION_DOWN)
+        val move = motionEvent(MotionEvent.ACTION_MOVE)
+        val up = motionEvent(MotionEvent.ACTION_UP)
+        val sut = fixture.getSut(type = Switch::class, event = move)
+
+        sut.onDown(down)
+        sut.onScroll(down, move, 0f, 20f)
+        sut.onTouchEventCompleted(up)
+
+        verify(exactly = 0) { fixture.track(any(), any()) }
+        down.recycle()
+        move.recycle()
+        up.recycle()
+    }
+
+    @Test
+    fun `does not track a drag that starts on a checkbox`() {
+        val down = motionEvent(MotionEvent.ACTION_DOWN)
+        val move = motionEvent(MotionEvent.ACTION_MOVE)
+        val up = motionEvent(MotionEvent.ACTION_UP)
+        val sut = fixture.getSut(type = CheckBox::class, event = move)
+
+        sut.onDown(down)
+        sut.onScroll(down, move, 20f, 0f)
+        sut.onTouchEventCompleted(up)
+
+        verify(exactly = 0) { fixture.track(any(), any()) }
+        down.recycle()
+        move.recycle()
+        up.recycle()
+    }
+
+    @Test
+    fun `a horizontal drag on a switch wins over an ancestor that pans`() {
+        val down = motionEvent(MotionEvent.ACTION_DOWN)
+        val move = motionEvent(MotionEvent.ACTION_MOVE)
+        val up = motionEvent(MotionEvent.ACTION_UP)
+        val sut =
+            dragListener(
+                listOf(
+                    GestureOwner(setOf(GestureActions.PAN), "scroller", null),
+                    GestureOwner(
+                        setOf(GestureActions.VALUE_CHANGE),
+                        "switch",
+                        null,
+                        InteractionAction.ValueChange,
+                        dragReportsValueChange = true,
+                    ),
+                ),
+            )
+
+        sut.onDown(down)
+        sut.onScroll(down, move, 20f, 0f)
+        sut.onTouchEventCompleted(up)
+
+        verify(exactly = 1) {
+            fixture.track(
+                "[Amplitude] Element Interacted",
+                match {
+                    it["[Amplitude] Action"] == "valueChange" &&
+                        it["[Amplitude] Target Tag"] == "switch"
+                },
+            )
+        }
+        down.recycle()
+        move.recycle()
+        up.recycle()
+    }
+
+    @Test
+    fun `a vertical drag on a switch falls through to an ancestor that pans`() {
+        val down = motionEvent(MotionEvent.ACTION_DOWN)
+        val move = motionEvent(MotionEvent.ACTION_MOVE)
+        val up = motionEvent(MotionEvent.ACTION_UP)
+        val sut =
+            dragListener(
+                listOf(
+                    GestureOwner(setOf(GestureActions.PAN), "scroller", null),
+                    GestureOwner(
+                        setOf(GestureActions.VALUE_CHANGE),
+                        "switch",
+                        null,
+                        InteractionAction.ValueChange,
+                        dragReportsValueChange = true,
+                    ),
+                ),
+            )
+
+        sut.onDown(down)
+        sut.onScroll(down, move, 4f, 20f)
+        sut.onTouchEventCompleted(up)
+
+        verify(exactly = 1) {
+            fixture.track(
+                "[Amplitude] Element Interacted",
+                match {
+                    it["[Amplitude] Action"] == "pan" &&
+                        it["[Amplitude] Target Tag"] == "scroller"
+                },
+            )
+        }
+        down.recycle()
+        move.recycle()
+        up.recycle()
+    }
+
+    @Test
     fun `does not track pan gestures on scroll containers`() {
         val down = motionEvent(MotionEvent.ACTION_DOWN)
         val move = motionEvent(MotionEvent.ACTION_MOVE)
@@ -657,6 +794,41 @@ class AutocaptureGestureListenerClickTest {
                     hierarchy = null,
                 ).apply {
                     gestureOwners = listOf(GestureOwner(GestureActions.TRANSFORM, "map", null))
+                }
+            }
+        return AutocaptureGestureListener(
+            decor,
+            fixture.activityName,
+            fixture.track,
+            fixture.logger,
+            listOf(locator),
+            { AutocaptureState(interactions = listOf(InteractionType.ElementInteraction)) },
+        )
+    }
+
+    private fun dragListener(owners: List<GestureOwner>): AutocaptureGestureListener {
+        val decor =
+            mockView(
+                type = ViewGroup::class,
+                event = motionEvent(MotionEvent.ACTION_DOWN),
+                context = fixture.context,
+            ) {
+                every { it.childCount } returns 0
+            }
+        val locator =
+            ViewTargetLocator { _, _ ->
+                ViewTarget(
+                    _view = null,
+                    className = null,
+                    resourceName = null,
+                    tag = owners.last().tag,
+                    text = null,
+                    accessibilityLabel = null,
+                    source = "jetpack_compose",
+                    hierarchy = null,
+                ).apply {
+                    gestureOwners = owners
+                    interactionAction = owners.last().interactionAction
                 }
             }
         return AutocaptureGestureListener(

@@ -11,6 +11,7 @@ import com.amplitude.android.Constants.EventProperties.END_TIME
 import com.amplitude.android.Constants.EventProperties.TARGET_CLASS
 import com.amplitude.android.Constants.EventTypes.DEAD_CLICK
 import com.amplitude.android.Constants.EventTypes.RAGE_CLICK
+import com.amplitude.android.internal.InteractionAction
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.signals.UiChangeSignal
 import com.amplitude.common.Logger
@@ -87,6 +88,7 @@ class FrustrationInteractionsDetectorTest {
         every { mockViewTarget.hierarchy } returns testTargetInfo.hierarchy
         every { mockViewTarget.ampIgnoreRageClick } returns false
         every { mockViewTarget.ampIgnoreDeadClick } returns false
+        every { mockViewTarget.interactionAction } returns InteractionAction.Touch
 
         every { mockAmplitude.signalFlow } returns uiChangeFlow
         every { mockAmplitude.amplitudeScope } returns CoroutineScope(testDispatcher)
@@ -226,6 +228,21 @@ class FrustrationInteractionsDetectorTest {
                 )
             },
         )
+    }
+
+    @Test
+    fun `rage click - uses the target interaction action`() {
+        every { mockViewTarget.interactionAction } returns InteractionAction.ValueChange
+        val clickInfo = FrustrationInteractionsDetector.ClickInfo(150f, 200f)
+
+        repeat(4) {
+            detector.processClick(clickInfo, testTargetInfo, mockViewTarget, testActivityName)
+        }
+        flushPendingRageClicks()
+
+        val capturedProperties = slot<Map<String, Any?>>()
+        verify { mockAmplitude.track(RAGE_CLICK, capture(capturedProperties)) }
+        assertEquals("valueChange", capturedProperties.captured[ACTION])
     }
 
     @Test

@@ -33,6 +33,12 @@ public data class ViewTarget(
     internal val ampIgnoreDeadClick: Boolean = false,
 ) {
     /**
+     * Action reported for a completed tap. Toggles and value-selection controls use
+     * [InteractionAction.ValueChange]; everything else uses [InteractionAction.Touch].
+     */
+    internal var interactionAction: InteractionAction = InteractionAction.Touch
+
+    /**
      * Elements under the touch that can receive a gesture, outermost first. An Android view
      * consumes the whole touch stream, so only the hit view is listed. Compose passes pointer
      * events a child did not consume up to its ancestors, so every interactive node is listed.
@@ -61,6 +67,12 @@ internal class GestureOwner(
     val actions: Set<String>,
     val tag: String?,
     val accessibilityLabel: String?,
+    val interactionAction: InteractionAction = InteractionAction.Touch,
+    /**
+     * A horizontal drag toggles this element, the way a switch thumb follows the finger.
+     * A vertical drag does not: that is a scroll that happened to start on the control.
+     */
+    val dragReportsValueChange: Boolean = false,
 )
 
 /**
@@ -69,8 +81,27 @@ internal class GestureOwner(
  */
 internal fun ViewTarget.resolvedFor(action: String): ViewTarget? {
     val owner = gestureOwners.lastOrNull { action in it.actions } ?: return null
+    return resolvedAs(owner)
+}
+
+internal fun ViewTarget.resolvedAs(owner: GestureOwner): ViewTarget {
     if (owner === gestureOwners.last()) return this
-    return copy(tag = owner.tag, accessibilityLabel = owner.accessibilityLabel)
+    return copy(tag = owner.tag, accessibilityLabel = owner.accessibilityLabel).apply {
+        gestureOwners = listOf(owner)
+        interactionAction = owner.interactionAction
+    }
+}
+
+/**
+ * The tap-like action declared by the innermost owner, if any.
+ * [GestureActions.VALUE_CHANGE] wins over [GestureActions.TOUCH] on that owner.
+ */
+internal fun ViewTarget.tapAction(): String? {
+    val owner =
+        gestureOwners.lastOrNull {
+            GestureActions.VALUE_CHANGE in it.actions || GestureActions.TOUCH in it.actions
+        } ?: return null
+    return if (GestureActions.VALUE_CHANGE in owner.actions) GestureActions.VALUE_CHANGE else GestureActions.TOUCH
 }
 
 /**
@@ -81,7 +112,7 @@ internal fun ViewTarget.resolvedFor(action: String): ViewTarget? {
 public fun buildElementInteractedProperties(
     target: ViewTarget,
     activityName: String,
-): Map<String, Any?> = buildElementInteractedProperties(target, activityName, GestureActions.TOUCH)
+): Map<String, Any?> = buildElementInteractedProperties(target, activityName, target.interactionAction.eventValue)
 
 internal fun buildElementInteractedProperties(
     target: ViewTarget,
@@ -103,3 +134,10 @@ internal fun buildElementInteractedProperties(
         HIERARCHY to target.hierarchy,
         SCREEN_NAME to activityName,
     )
+
+internal enum class InteractionAction(
+    val eventValue: String,
+) {
+    Touch(GestureActions.TOUCH),
+    ValueChange(GestureActions.VALUE_CHANGE),
+}

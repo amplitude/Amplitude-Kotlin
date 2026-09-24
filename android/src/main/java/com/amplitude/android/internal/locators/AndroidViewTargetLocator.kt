@@ -3,9 +3,11 @@ package com.amplitude.android.internal.locators
 import android.view.View
 import android.widget.AbsSeekBar
 import android.widget.Button
+import android.widget.CompoundButton
 import android.widget.Switch
 import androidx.core.view.isVisible
 import com.amplitude.android.internal.GestureOwner
+import com.amplitude.android.internal.InteractionAction
 import com.amplitude.android.internal.ViewResourceUtils.resourceIdWithFallback
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.ViewTarget.Type
@@ -19,12 +21,18 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
 
         /**
          * Framework and AndroidX views that move a thumb with the finger, so they handle
-         * drag gestures without exposing a flag like [View.isClickable].
+         * drag gestures without exposing a flag like [View.isClickable]. Switches are not
+         * here: dragging one toggles it, which is reported as a value change.
          */
         private val DRAGGABLE_VIEW_TYPES =
             setOf(
-                "androidx.appcompat.widget.SwitchCompat",
                 "com.google.android.material.slider.BaseSlider",
+            )
+
+        /** AppCompat's switch is not on this module's compile classpath. */
+        private val SWITCH_VIEW_TYPES =
+            setOf(
+                "androidx.appcompat.widget.SwitchCompat",
             )
     }
 
@@ -45,16 +53,28 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
      */
     private fun View.declaredGestures(): Set<String> =
         buildSet {
-            if (isClickable) add(GestureActions.TOUCH)
+            if (isClickable) {
+                add(
+                    if (this@declaredGestures is CompoundButton) {
+                        GestureActions.VALUE_CHANGE
+                    } else {
+                        GestureActions.TOUCH
+                    },
+                )
+            }
             if (isLongClickable) add(GestureActions.LONG_PRESS)
             if (isDraggableViewType()) add(GestureActions.PAN)
         }
 
     private fun View.isDraggableViewType(): Boolean =
         this is AbsSeekBar ||
-            this is Switch ||
             generateSequence(javaClass as Class<*>?) { it.superclass }
                 .any { it.name in DRAGGABLE_VIEW_TYPES }
+
+    private fun View.isSwitchView(): Boolean =
+        this is Switch ||
+            generateSequence(javaClass as Class<*>?) { it.superclass }
+                .any { it.name in SWITCH_VIEW_TYPES }
 
     private fun View.createViewTarget(actions: Set<String>): ViewTarget {
         val className = javaClass.canonicalName ?: javaClass.simpleName
@@ -82,7 +102,23 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
             ampIgnoreRageClick = frustrationSettings.ignoreRageClick,
             ampIgnoreDeadClick = frustrationSettings.ignoreDeadClick,
         ).apply {
-            gestureOwners = listOf(GestureOwner(actions, tag, accessibilityLabel))
+            val tapAction =
+                if (this@createViewTarget is CompoundButton) {
+                    InteractionAction.ValueChange
+                } else {
+                    InteractionAction.Touch
+                }
+            gestureOwners =
+                listOf(
+                    GestureOwner(
+                        actions,
+                        tag,
+                        accessibilityLabel,
+                        tapAction,
+                        dragReportsValueChange = this@createViewTarget.isSwitchView(),
+                    ),
+                )
+            interactionAction = tapAction
         }
     }
 

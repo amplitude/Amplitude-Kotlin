@@ -13,8 +13,11 @@ import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.buildElementInteractedProperties
 import com.amplitude.android.internal.locators.ViewTargetLocator
 import com.amplitude.android.internal.resolvedFor
+import com.amplitude.android.internal.tapAction
+import com.amplitude.android.internal.resolvedAs
 import com.amplitude.common.Logger
 import java.lang.ref.WeakReference
+import kotlin.math.abs
 
 @VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)
 @Deprecated("Not intended for public use. Will be internal in a future release.")
@@ -29,6 +32,7 @@ public class AutocaptureGestureListener(
 ) : GestureDetector.OnGestureListener {
     private var panStarted = false
     private var panTarget: ViewTarget? = null
+    private var dragAction: String = GestureActions.PAN
     private var transformHit: ViewTarget? = null
     private var gestureTracked = false
 
@@ -43,6 +47,7 @@ public class AutocaptureGestureListener(
     override fun onDown(e: MotionEvent): Boolean {
         panStarted = false
         panTarget = null
+        dragAction = GestureActions.PAN
         transformHit = null
         gestureTracked = false
         return false
@@ -65,14 +70,15 @@ public class AutocaptureGestureListener(
             ) ?: logger.warn("Unable to find click target. No event captured.").let {
                 return false
             }
-        val target = hit.resolvedFor(GestureActions.TOUCH) ?: return false
+        val action = hit.tapAction() ?: return false
+        val target = hit.resolvedFor(action) ?: return false
 
         // Notify callback with found target (for reuse by frustration interactions)
         onViewTargetFound?.invoke(target)
 
         // Track element interaction events only if ElementInteraction is enabled
         if (ElementInteraction in autocaptureState.interactions) {
-            trackInteraction(target, GestureActions.TOUCH)
+            trackInteraction(target, target.interactionAction.eventValue)
         }
 
         return false
@@ -87,9 +93,26 @@ public class AutocaptureGestureListener(
         if (panStarted || e1 == null) return false
         panStarted = true
 
-        // Resolve before this drag moves any content, so the pan belongs to the element it
-        // started on, like the view an iOS recognizer is attached to.
-        panTarget = findGestureTarget(e1.x, e1.y, GestureActions.PAN)
+        // Resolve before this drag moves any content, so it belongs to the element it started
+        // on. The innermost owner wins: a slider claims pan, and a switch claims a horizontal
+        // drag as a value change. A vertical drag on a switch is a scroll, so it falls through
+        // to an ancestor that pans, or to nobody.
+        val hit = findHit(e1.x, e1.y) ?: return false
+        val horizontal = abs(distanceX) > abs(distanceY)
+        for (owner in hit.gestureOwners.asReversed()) {
+            when {
+                GestureActions.PAN in owner.actions -> {
+                    panTarget = hit.resolvedAs(owner)
+                    dragAction = GestureActions.PAN
+                    return false
+                }
+                owner.dragReportsValueChange && horizontal -> {
+                    panTarget = hit.resolvedAs(owner)
+                    dragAction = GestureActions.VALUE_CHANGE
+                    return false
+                }
+            }
+        }
         return false
     }
 
@@ -106,7 +129,7 @@ public class AutocaptureGestureListener(
 
     internal fun onTouchEventCompleted(event: MotionEvent) {
         if (event.actionMasked == MotionEvent.ACTION_UP) {
-            panTarget?.let { trackGesture(it, GestureActions.PAN) }
+            panTarget?.let { trackGesture(it, dragAction) }
         }
         // The transform detector reports a qualified gesture before this runs, so dropping the
         // captured target here only discards one that never crossed its threshold.
@@ -119,6 +142,7 @@ public class AutocaptureGestureListener(
         if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
             panStarted = false
             panTarget = null
+            dragAction = GestureActions.PAN
         }
     }
 
