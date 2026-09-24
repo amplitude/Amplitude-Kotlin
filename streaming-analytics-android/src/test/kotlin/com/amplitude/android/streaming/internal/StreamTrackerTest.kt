@@ -94,7 +94,7 @@ class StreamTrackerTest {
             assertFalse(props.containsKey("is_in_background"))
             assertEquals("news", props["channel"])
             assertFalse(props.containsKey("start_position"))
-            assertFalse(props.containsKey("stream_duration"))
+            assertFalse(props.containsKey("watch_duration"))
             assertFalse(props.containsKey("stop_reason"))
         }
 
@@ -123,7 +123,7 @@ class StreamTrackerTest {
                 streamSessionId = "stream-1",
                 playId = "play-1",
                 startTimeMillis = 10_000L,
-                streamDurationMillis = 5_000L,
+                watchDurationMillis = 5_000L,
                 timestamp = 6_000L,
                 insertId = "insert-stop-1",
                 stopReason = StopReason.PAUSED,
@@ -142,7 +142,7 @@ class StreamTrackerTest {
             assertEquals("video", props["media_type"])
             assertEquals(15.0, props["position"])
             assertEquals(10.0, props["start_time"])
-            assertEquals(5.0, props["stream_duration"])
+            assertEquals(5.0, props["watch_duration"])
             assertEquals("paused", props["stop_reason"])
             assertEquals(25.0, props["percent_completed"])
             assertFalse(props.containsKey("current_time"))
@@ -157,7 +157,7 @@ class StreamTrackerTest {
                 streamSessionId = "stream-1",
                 playId = "play-1",
                 startTimeMillis = 0L,
-                streamDurationMillis = 5_000L,
+                watchDurationMillis = 5_000L,
                 timestamp = 6_000L,
                 insertId = "timeout-stop",
                 stopReason = StopReason.TIMEOUT,
@@ -184,7 +184,7 @@ class StreamTrackerTest {
                     streamSessionId = "stream-1",
                     playId = "play-1",
                     startTimeMillis = 0L,
-                    streamDurationMillis = 5_000L,
+                    watchDurationMillis = 5_000L,
                     timestamp = 6_000L,
                     insertId = "stop-${reason.value}",
                     stopReason = reason,
@@ -213,7 +213,7 @@ class StreamTrackerTest {
                 streamSessionId = "stream-audio",
                 playId = "play-audio",
                 startTimeMillis = 15_000L,
-                streamDurationMillis = 3_000L,
+                watchDurationMillis = 3_000L,
                 timestamp = 5_000L,
                 insertId = "audio-stop",
             )
@@ -240,7 +240,7 @@ class StreamTrackerTest {
                 streamSessionId = "stream-live",
                 playId = "play-live",
                 startTimeMillis = 15_000L,
-                streamDurationMillis = 10_000L,
+                watchDurationMillis = 10_000L,
                 timestamp = 10_000L,
                 insertId = "stop-live",
             )
@@ -261,7 +261,7 @@ class StreamTrackerTest {
                 streamSessionId = "stream-unknown",
                 playId = "play-unknown",
                 startTimeMillis = 15_000L,
-                streamDurationMillis = 5_000L,
+                watchDurationMillis = 5_000L,
                 timestamp = 5_000L,
                 insertId = "stop-unknown",
             )
@@ -281,7 +281,7 @@ class StreamTrackerTest {
                 streamSessionId = "stream-zero",
                 playId = "play-zero",
                 startTimeMillis = 0L,
-                streamDurationMillis = 0L,
+                watchDurationMillis = 0L,
                 timestamp = 5_000L,
                 insertId = "stop-zero",
                 stopReason = StopReason.ENDED,
@@ -517,7 +517,7 @@ class StreamTrackerTest {
                 streamSessionId = "stream-1",
                 playId = "play-1",
                 startTimeMillis = 10_000L,
-                streamDurationMillis = 5_000L,
+                watchDurationMillis = 5_000L,
                 timestamp = 6_000L,
                 insertId = "insert-stop-1",
                 stopReason = StopReason.UNTRACKED,
@@ -586,7 +586,7 @@ class StreamTrackerTest {
                 streamSessionId = "stream-1",
                 playId = "play-1",
                 startTimeMillis = 10_000L,
-                streamDurationMillis = 5_000L,
+                watchDurationMillis = 5_000L,
                 timestamp = 6_000L,
                 insertId = "insert-stop-1",
                 stopReason = StopReason.UNTRACKED,

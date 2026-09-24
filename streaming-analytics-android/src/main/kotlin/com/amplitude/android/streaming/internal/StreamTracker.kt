@@ -156,7 +156,7 @@ internal class StreamTracker(
         streamSessionId: String,
         playId: String,
         startTimeMillis: Long,
-        streamDurationMillis: Long,
+        watchDurationMillis: Long,
         timestamp: Long,
         insertId: String,
         stopReason: StopReason? = null,
@@ -175,7 +175,7 @@ internal class StreamTracker(
                         streamSessionId = streamSessionId,
                         playId = playId,
                         startTimeMillis = startTimeMillis,
-                        streamDurationMillis = streamDurationMillis,
+                        watchDurationMillis = watchDurationMillis,
                         stopReason = stopReason,
                         errorMessage = errorMessage,
                     ),
@@ -244,7 +244,7 @@ private fun stoppedContentProperties(
     streamSessionId: String,
     playId: String,
     startTimeMillis: Long,
-    streamDurationMillis: Long,
+    watchDurationMillis: Long,
     stopReason: StopReason?,
     errorMessage: String?,
 ): MutableMap<String, Any?> =
@@ -256,7 +256,7 @@ private fun stoppedContentProperties(
         playId = playId,
         startTimeMillis = startTimeMillis,
     ).apply {
-        put("stream_duration", streamDurationMillis.millisToSeconds())
+        put("watch_duration", watchDurationMillis.millisToSeconds())
         stopReason?.let { put("stop_reason", it.value) }
         errorMessage?.let { put("error_message", it) }
         snapshot.percentCompleted()?.let { percentage ->

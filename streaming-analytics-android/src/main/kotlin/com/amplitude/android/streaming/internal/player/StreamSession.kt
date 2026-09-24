@@ -17,6 +17,13 @@ internal class StreamSession(
     val mediaType: MediaType,
     snapshot: PlayerMediaSnapshot,
     private val time: Time,
+    /**
+     * Watch time already accrued by earlier plays of the same stream session.
+     *
+     * Watch duration is cumulative per `stream_session_id`, so a pause or a seek starts a new
+     * play but keeps counting from the total so far.
+     */
+    private val watchedBeforeMillis: Long = 0L,
 ) {
     @Volatile
     var snapshot: PlayerMediaSnapshot = snapshot
@@ -54,7 +61,7 @@ internal class StreamSession(
     @Synchronized
     fun durationMillis(): Long {
         if (frozen) return frozenDurationMillis
-        return watchDurationMillis + currentWatchSegment()
+        return watchedBeforeMillis + watchDurationMillis + currentWatchSegment()
     }
 
     @Synchronized
