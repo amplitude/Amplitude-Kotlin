@@ -337,15 +337,29 @@ class StreamTrackerTest {
         fun `ad methods are no-ops when adsEventsEnabled is false`() {
             StreamTracker.adsEventsEnabled = false
 
-            tracker.trackAdStarted(options = options, ad = ad, streamSessionId = "stream-ad-1")
+            tracker.trackAdStarted(
+                options = options,
+                ad = ad,
+                streamSessionId = "stream-ad-1",
+                timestamp = 1_000L,
+                insertId = "ad-start-1",
+            )
             tracker.trackAdStopped(
                 options = options,
                 ad = ad,
                 streamSessionId = "stream-ad-1",
                 watchDurationMillis = 1_000L,
                 status = AdCompletionStatus.ENDED,
+                timestamp = 1_000L,
+                insertId = "ad-stop-1",
             )
-            tracker.trackAdSkipped(options = options, ad = ad, streamSessionId = "stream-ad-1")
+            tracker.trackAdSkipped(
+                options = options,
+                ad = ad,
+                streamSessionId = "stream-ad-1",
+                timestamp = 1_000L,
+                insertId = "ad-skip-1",
+            )
 
             assertEquals(emptyList<BaseEvent>(), events)
         }
@@ -356,11 +370,14 @@ class StreamTrackerTest {
                 options = options,
                 ad = ad,
                 streamSessionId = "stream-ad-1",
+                timestamp = 1_000L,
+                insertId = "ad-start-1",
             )
 
             assertEquals(1, events.size)
-            val event = events.first()
+            val event = events.first() as DelayedEvent
             assertEquals("[Amplitude] Ad Started", event.eventType)
+            assertEquals(DelayedEvent.Kind.INSTANT, event.kind)
             val props = event.eventProperties!!
             assertEquals("video-789:0:0:1", props["ad_id"])
             assertEquals("video-789", props["content_id"])
@@ -386,10 +403,14 @@ class StreamTrackerTest {
                 streamSessionId = "stream-ad-1",
                 watchDurationMillis = 30_000L,
                 status = AdCompletionStatus.ENDED,
+                timestamp = 2_000L,
+                insertId = "ad-stop-1",
             )
 
-            val props = events.first().eventProperties!!
-            assertEquals("[Amplitude] Ad Stopped", events.first().eventType)
+            val event = events.first() as DelayedEvent
+            val props = event.eventProperties!!
+            assertEquals("[Amplitude] Ad Stopped", event.eventType)
+            assertEquals(DelayedEvent.Kind.INSTANT, event.kind)
             assertEquals(30.0, props["ad_watch_duration"])
             assertEquals("ended", props["ad_completion_status"])
             assertEquals(100.0, props["ad_percent_completed"])
@@ -403,6 +424,8 @@ class StreamTrackerTest {
                 streamSessionId = "stream-ad-1",
                 watchDurationMillis = 5_000L,
                 status = AdCompletionStatus.ABANDONED,
+                timestamp = 2_000L,
+                insertId = "ad-stop-1",
             )
 
             val props = events.first().eventProperties!!
@@ -418,6 +441,8 @@ class StreamTrackerTest {
                 streamSessionId = "stream-ad-1",
                 watchDurationMillis = 8_000L,
                 status = AdCompletionStatus.SKIPPED,
+                timestamp = 2_000L,
+                insertId = "ad-stop-1",
             )
 
             assertEquals("skipped", events.first().eventProperties!!["ad_completion_status"])
@@ -429,12 +454,55 @@ class StreamTrackerTest {
                 options = options,
                 ad = ad,
                 streamSessionId = "stream-ad-1",
+                timestamp = 2_000L,
+                insertId = "ad-skip-1",
             )
 
             assertEquals(1, events.size)
-            assertEquals("[Amplitude] Ad Skipped", events.first().eventType)
-            assertEquals("video-789:0:0:1", events.first().eventProperties?.get("ad_id"))
-            assertEquals(10.0, events.first().eventProperties?.get("skip_position"))
+            val event = events.first() as DelayedEvent
+            assertEquals("[Amplitude] Ad Skipped", event.eventType)
+            assertEquals(DelayedEvent.Kind.INSTANT, event.kind)
+            assertEquals("video-789:0:0:1", event.eventProperties?.get("ad_id"))
+            assertEquals(10.0, event.eventProperties?.get("skip_position"))
+        }
+
+        @Test
+        fun `timeout is the only delayed ad stop`() {
+            tracker.trackAdStopped(
+                options = options,
+                ad = ad,
+                streamSessionId = "stream-ad-1",
+                watchDurationMillis = 5_000L,
+                status = AdCompletionStatus.TIMEOUT,
+                timestamp = 2_000L,
+                insertId = "ad-stop-timeout",
+            )
+            val timeout = events.last() as DelayedEvent
+            assertEquals(DelayedEvent.Kind.DELAYED, timeout.kind)
+            assertEquals("timeout", timeout.eventProperties?.get("ad_completion_status"))
+            assertEquals("ad-stop-timeout", timeout.insertId)
+
+            val instantStatuses =
+                listOf(
+                    AdCompletionStatus.ENDED,
+                    AdCompletionStatus.SKIPPED,
+                    AdCompletionStatus.ABANDONED,
+                )
+            for (status in instantStatuses) {
+                events.clear()
+                tracker.trackAdStopped(
+                    options = options,
+                    ad = ad,
+                    streamSessionId = "stream-ad-1",
+                    watchDurationMillis = 5_000L,
+                    status = status,
+                    timestamp = 2_000L,
+                    insertId = "ad-stop-${status.value}",
+                )
+                val event = events.last() as DelayedEvent
+                assertEquals(DelayedEvent.Kind.INSTANT, event.kind)
+                assertEquals(status.value, event.eventProperties?.get("ad_completion_status"))
+            }
         }
     }
 
@@ -496,7 +564,7 @@ class StreamTrackerTest {
         }
 
         @Test
-        fun `ad events still go through the timeline`() {
+        fun `ad events reach the delayed events sink`() {
             StreamTracker.adsEventsEnabled = true
             try {
                 tracker.trackAdStarted(
@@ -512,10 +580,14 @@ class StreamTrackerTest {
                             mediaItemIndex = 0,
                         ),
                     streamSessionId = "stream-1",
+                    timestamp = 1_000L,
+                    insertId = "ad-start-1",
                 )
 
-                assertEquals(1, events.size)
-                assertEquals(emptyList<DelayedEvent>(), routed)
+                assertEquals(emptyList<BaseEvent>(), events)
+                assertEquals(1, routed.size)
+                assertEquals("[Amplitude] Ad Started", routed.single().eventType)
+                assertEquals(DelayedEvent.Kind.INSTANT, routed.single().kind)
             } finally {
                 StreamTracker.adsEventsEnabled = false
             }

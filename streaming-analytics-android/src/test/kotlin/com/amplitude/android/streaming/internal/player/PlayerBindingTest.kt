@@ -535,7 +535,13 @@ class PlayerBindingTest {
                         parentJob.cancel()
                         runCurrent()
 
-                        assertEquals(1, tracked.count { it.eventType == AD_STOPPED })
+                        assertEquals(
+                            "abandoned",
+                            tracked.filter { it.eventType == AD_STOPPED }
+                                .last()
+                                .eventProperties
+                                ?.get("ad_completion_status"),
+                        )
                     } finally {
                         binding.stop()
                         runCurrent()
@@ -594,6 +600,27 @@ class PlayerBindingTest {
         fun disableAdEvents() {
             StreamTracker.adsEventsEnabled = false
         }
+
+        @Test
+        fun `should enqueue heartbeat Ad Stopped as delayed timeouts`() =
+            runTest {
+                withBinding {
+                    observer.emit(PlayerEvent.AdStarted(testAd()))
+                    runCurrent()
+
+                    val heartbeat = tracked.filter { it.eventType == AD_STOPPED }
+                    assertEquals(1, heartbeat.size)
+                    assertEquals(DelayedEvent.Kind.DELAYED, (heartbeat.single() as DelayedEvent).kind)
+                    assertEquals("timeout", heartbeat.single().eventProperties?.get("ad_completion_status"))
+                    val insertId = heartbeat.single().insertId
+                    advanceTimeBy(1_000)
+                    runCurrent()
+                    val heartbeats = tracked.filter { it.eventType == AD_STOPPED }
+                    assertEquals(2, heartbeats.size)
+                    assertTrue(heartbeats.all { it.insertId == insertId })
+                    assertTrue(heartbeats.all { it.eventProperties?.get("ad_completion_status") == "timeout" })
+                }
+            }
 
         @Test
         fun `should not track Stream Started while an ad is playing`() =
@@ -762,7 +789,10 @@ class PlayerBindingTest {
                     observer.emit(PlayerEvent.Ended)
                     runCurrent()
 
-                    assertEquals(1, tracked.count { it.eventType == AD_STOPPED })
+                    assertEquals(
+                        "abandoned",
+                        tracked.filter { it.eventType == AD_STOPPED }.last().eventProperties?.get("ad_completion_status"),
+                    )
                     val stopped =
                         tracked
                             .filter { it.eventType == STREAM_STOPPED }
@@ -865,7 +895,7 @@ class PlayerBindingTest {
                     observer.emit(PlayerEvent.AdStopped(testAd(), completed = true))
                     runCurrent()
 
-                    val adStopped = tracked.single { it.eventType == AD_STOPPED }
+                    val adStopped = tracked.filter { it.eventType == AD_STOPPED }.last()
                     assertEquals(5.0, adStopped.eventProperties?.get("ad_watch_duration"))
                     assertEquals("ended", adStopped.eventProperties?.get("ad_completion_status"))
                 }
@@ -887,7 +917,7 @@ class PlayerBindingTest {
                     observer.emit(PlayerEvent.AdStopped(testAd(), completed = true))
                     runCurrent()
 
-                    val adStopped = tracked.single { it.eventType == AD_STOPPED }
+                    val adStopped = tracked.filter { it.eventType == AD_STOPPED }.last()
                     assertEquals(0.0, adStopped.eventProperties?.get("ad_watch_duration"))
                 }
             }
@@ -906,7 +936,7 @@ class PlayerBindingTest {
                     assertEquals(0, tracked.count { it.eventType == AD_SKIPPED })
                     assertEquals(
                         "abandoned",
-                        tracked.single { it.eventType == AD_STOPPED }.eventProperties?.get("ad_completion_status"),
+                        tracked.filter { it.eventType == AD_STOPPED }.last().eventProperties?.get("ad_completion_status"),
                     )
                 }
             }
@@ -923,10 +953,9 @@ class PlayerBindingTest {
                     runCurrent()
 
                     assertEquals(1, tracked.count { it.eventType == AD_SKIPPED })
-                    assertEquals(1, tracked.count { it.eventType == AD_STOPPED })
                     assertEquals(
                         "skipped",
-                        tracked.single { it.eventType == AD_STOPPED }.eventProperties?.get("ad_completion_status"),
+                        tracked.filter { it.eventType == AD_STOPPED }.last().eventProperties?.get("ad_completion_status"),
                     )
                     assertEquals(
                         0.0,
@@ -952,7 +981,10 @@ class PlayerBindingTest {
                     observer.emit(PlayerEvent.AdSkipped(testAd()))
                     runCurrent()
 
-                    assertEquals(1, tracked.count { it.eventType == AD_STOPPED })
+                    assertEquals(
+                        "abandoned",
+                        tracked.filter { it.eventType == AD_STOPPED }.last().eventProperties?.get("ad_completion_status"),
+                    )
                     assertEquals(0, tracked.count { it.eventType == AD_SKIPPED })
                 }
             }
@@ -1027,7 +1059,7 @@ class PlayerBindingTest {
 
                     assertEquals(
                         3.0,
-                        tracked.single { it.eventType == AD_STOPPED }
+                        tracked.filter { it.eventType == AD_STOPPED }.last()
                             .eventProperties?.get("ad_watch_duration"),
                     )
                 }
