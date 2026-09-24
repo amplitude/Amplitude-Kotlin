@@ -1,5 +1,6 @@
 package com.amplitude.android.internal
 
+import com.amplitude.android.Constants.EventProperties.ACTION
 import com.amplitude.android.Constants.EventProperties.TARGET_ACCESSIBILITY_LABEL
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -272,6 +273,27 @@ class ViewTargetTest {
         val properties = buildElementInteractedProperties(viewTarget, "MainActivity")
 
         assertNull(properties[TARGET_ACCESSIBILITY_LABEL])
+        assertEquals("touch", properties[ACTION])
+    }
+
+    @Test
+    fun `buildElementInteractedProperties - uses the target interaction action`() {
+        val viewTarget =
+            ViewTarget(
+                _view = null,
+                className = "android.widget.Switch",
+                resourceName = "notifications",
+                tag = null,
+                text = "Notifications",
+                accessibilityLabel = null,
+                source = "android_view",
+                hierarchy = "Activity → Switch",
+            )
+        viewTarget.interactionAction = InteractionAction.ValueChange
+
+        val properties = buildElementInteractedProperties(viewTarget, "MainActivity")
+
+        assertEquals("valueChange", properties[ACTION])
     }
 
     @Test

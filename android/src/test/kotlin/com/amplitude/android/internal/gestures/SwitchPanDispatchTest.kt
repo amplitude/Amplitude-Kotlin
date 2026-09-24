@@ -56,7 +56,7 @@ class SwitchPanDispatchTest {
         dispatch(MotionEvent.ACTION_MOVE, 300f)
         dispatch(MotionEvent.ACTION_UP, 300f)
 
-        verify(exactly = 1) { track(ELEMENT_INTERACTED, match { it[ACTION] == GestureActions.PAN }) }
+        verify(exactly = 1) { track(ELEMENT_INTERACTED, match { it[ACTION] == GestureActions.VALUE_CHANGE }) }
         verify(exactly = 1) { track(any(), any()) }
         verify(exactly = 0) { logger.error(any()) }
     }
@@ -117,7 +117,7 @@ class SwitchPanDispatchTest {
             track(
                 ELEMENT_INTERACTED,
                 match {
-                    it[ACTION] == GestureActions.PAN &&
+                    it[ACTION] == GestureActions.VALUE_CHANGE &&
                         it[TARGET_CLASS] == MaterialSwitch::class.java.canonicalName
                 },
             )
