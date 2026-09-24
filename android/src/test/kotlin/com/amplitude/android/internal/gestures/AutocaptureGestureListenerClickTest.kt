@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import android.view.Window
 import android.widget.CheckBox
 import android.widget.RadioButton
+import android.widget.ScrollView
 import com.amplitude.MainDispatcherRule
 import com.amplitude.android.AutocaptureState
 import com.amplitude.android.InteractionType
@@ -143,7 +144,7 @@ class AutocaptureGestureListenerClickTest {
                 fixture.track(
                     "[Amplitude] Element Interacted",
                     mapOf(
-                        "[Amplitude] Action" to "touch",
+                        "[Amplitude] Action" to "tap",
                         "[Amplitude] Target Class" to "android.view.View",
                         "[Amplitude] Target Resource" to "test_button",
                         "[Amplitude] Target Tag" to null,
@@ -330,4 +331,86 @@ class AutocaptureGestureListenerClickTest {
             )
         }
     }
+
+    @Test
+    fun `tracks a long press with the iOS-compatible action`() {
+        val event = motionEvent(MotionEvent.ACTION_DOWN)
+        val sut = fixture.getSut(type = View::class, event = event)
+
+        sut.onLongPress(event)
+
+        verify {
+            fixture.track(
+                "[Amplitude] Element Interacted",
+                match { it["[Amplitude] Action"] == "longPress" },
+            )
+        }
+        event.recycle()
+    }
+
+    @Test
+    fun `tracks a fling as one swipe`() {
+        val down = motionEvent(MotionEvent.ACTION_DOWN)
+        val up = motionEvent(MotionEvent.ACTION_UP)
+        val sut = fixture.getSut(type = View::class, event = up)
+
+        sut.onDown(down)
+        sut.onFling(down, up, 1_000f, 0f)
+        sut.onTouchEventCompleted(up)
+
+        verify(exactly = 1) {
+            fixture.track(
+                "[Amplitude] Element Interacted",
+                match { it["[Amplitude] Action"] == "swipe" },
+            )
+        }
+        down.recycle()
+        up.recycle()
+    }
+
+    @Test
+    fun `tracks a scroll once as pan when the touch ends`() {
+        val down = motionEvent(MotionEvent.ACTION_DOWN)
+        val move = motionEvent(MotionEvent.ACTION_MOVE)
+        val up = motionEvent(MotionEvent.ACTION_UP)
+        val sut = fixture.getSut(type = View::class, event = move)
+
+        sut.onDown(down)
+        sut.onScroll(down, move, 20f, 0f)
+        sut.onTouchEventCompleted(up)
+
+        verify(exactly = 1) {
+            fixture.track(
+                "[Amplitude] Element Interacted",
+                match { it["[Amplitude] Action"] == "pan" },
+            )
+        }
+        down.recycle()
+        move.recycle()
+        up.recycle()
+    }
+
+    @Test
+    fun `does not track pan gestures on scroll containers`() {
+        val down = motionEvent(MotionEvent.ACTION_DOWN)
+        val move = motionEvent(MotionEvent.ACTION_MOVE)
+        val up = motionEvent(MotionEvent.ACTION_UP)
+        val sut = fixture.getSut(type = ScrollView::class, event = move)
+
+        sut.onDown(down)
+        sut.onScroll(down, move, 0f, 20f)
+        sut.onTouchEventCompleted(up)
+
+        verify(exactly = 0) { fixture.track(any(), any()) }
+        down.recycle()
+        move.recycle()
+        up.recycle()
+    }
+
+    private fun motionEvent(action: Int): MotionEvent =
+        mockk(relaxed = true) {
+            every { actionMasked } returns action
+            every { x } returns 20f
+            every { y } returns 20f
+        }
 }
