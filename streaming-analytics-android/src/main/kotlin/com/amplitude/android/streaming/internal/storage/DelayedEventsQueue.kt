@@ -97,35 +97,46 @@ internal class DelayedEventsQueue(
 private fun DelayedEventsRequestEntity.mergedWith(
     incoming: DelayedEventsRequestEntity,
 ): DelayedEventsRequestEntity {
-    if (incoming.events.isEmpty()) {
-        return incoming.copy(
-            events = events,
-            timeoutMillis = timeoutMillis,
-            instantEvents = mergedInstantEvents(incoming.instantEvents),
-        )
-    }
-    if (events.isNotEmpty() && incoming.eventTime() <= eventTime()) {
-        val currentIds = events.mapNotNull { it.insertId() }.toSet()
-        val promoted =
-            if (currentIds.isEmpty()) {
-                emptyList()
-            } else {
-                incoming.events.filter { it.insertId() !in currentIds }
-            }
-        return copy(
-            instantEvents = mergedInstantEvents(promoted + incoming.instantEvents.orEmpty()),
-        )
-    }
-    val nextIds = incoming.events.mapNotNull { it.insertId() }.toSet()
-    val promoted =
-        if (nextIds.isEmpty()) {
-            emptyList()
+    val mergedDelayed = mergeDelayedEvents(events, incoming.events)
+    val mergedInstant = mergedInstantEvents(incoming.instantEvents)
+    val completedIds = mergedInstant.orEmpty().mapNotNull { it.insertId() }.toSet()
+    val delayed =
+        if (completedIds.isEmpty()) {
+            mergedDelayed
         } else {
-            events.filter { it.insertId() !in nextIds }
+            mergedDelayed.filter { it.insertId() !in completedIds }
         }
-    return incoming.copy(
-        instantEvents = mergedInstantEvents(promoted + incoming.instantEvents.orEmpty()),
+    val delayedChanged = delayed != events
+    return copy(
+        events = delayed,
+        timeoutMillis =
+            if (incoming.events.isEmpty() || !delayedChanged) {
+                timeoutMillis
+            } else {
+                incoming.timeoutMillis
+            },
+        instantEvents = mergedInstant,
     )
+}
+
+private fun mergeDelayedEvents(
+    current: List<DelayedEventEntity>,
+    incoming: List<DelayedEventEntity>,
+): List<DelayedEventEntity> {
+    if (incoming.isEmpty()) return current
+    if (current.isEmpty()) return incoming
+    val currentById = current.groupBy { it.insertId() }
+    val incomingById = incoming.groupBy { it.insertId() }
+    return (currentById.keys + incomingById.keys).flatMap { id ->
+        val existing = currentById[id].orEmpty()
+        val next = incomingById[id].orEmpty()
+        when {
+            next.isEmpty() -> existing
+            existing.isEmpty() -> next
+            (next.maxOf { it.timeMillis() }) >= (existing.maxOf { it.timeMillis() }) -> next
+            else -> existing
+        }
+    }
 }
 
 private fun DelayedEventsRequestEntity.mergedInstantEvents(
@@ -134,9 +145,6 @@ private fun DelayedEventsRequestEntity.mergedInstantEvents(
     (instantEvents.orEmpty() + incoming.orEmpty())
         .distinct()
         .takeIf { it.isNotEmpty() }
-
-private fun DelayedEventsRequestEntity.eventTime(): Long =
-    events.maxOfOrNull { it.timeMillis() } ?: Long.MIN_VALUE
 
 private fun DelayedEventEntity.timeMillis(): Long =
     (ingestJson["time"] as? JsonPrimitive)?.contentOrNull?.toLongOrNull() ?: Long.MIN_VALUE

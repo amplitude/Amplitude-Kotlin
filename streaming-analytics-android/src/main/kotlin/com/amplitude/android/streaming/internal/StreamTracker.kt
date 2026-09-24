@@ -51,16 +51,22 @@ internal class StreamTracker(
         options: PlayerContent,
         ad: AdContext,
         streamSessionId: String,
+        timestamp: Long,
+        insertId: String,
     ) {
         if (!adsEventsEnabled) return
-        amplitude.track(
-            eventType = AD_STARTED,
-            eventProperties =
-                adProperties(
-                    options = options,
-                    ad = ad,
-                    streamSessionId = streamSessionId,
-                ),
+        trackDelayed(
+            DelayedEvent(
+                eventType = AD_STARTED,
+                kind = DelayedEvent.Kind.INSTANT,
+                timestamp = timestamp,
+                eventProperties =
+                    adProperties(
+                        options = options,
+                        ad = ad,
+                        streamSessionId = streamSessionId,
+                    ),
+            ).also { it.insertId = insertId },
         )
     }
 
@@ -70,18 +76,24 @@ internal class StreamTracker(
         streamSessionId: String,
         watchDurationMillis: Long,
         status: AdCompletionStatus,
+        timestamp: Long,
+        insertId: String,
     ) {
         if (!adsEventsEnabled) return
-        amplitude.track(
-            eventType = AD_STOPPED,
-            eventProperties =
-                adProperties(options = options, ad = ad, streamSessionId = streamSessionId).apply {
-                    put("ad_watch_duration", watchDurationMillis.millisToSeconds())
-                    put("ad_completion_status", status.value)
-                    ad.percentWatched(watchDurationMillis)?.let { percentage ->
-                        put("ad_percent_completed", percentage)
-                    }
-                },
+        trackDelayed(
+            DelayedEvent(
+                eventType = AD_STOPPED,
+                kind = status.eventKind(),
+                timestamp = timestamp,
+                eventProperties =
+                    adProperties(options = options, ad = ad, streamSessionId = streamSessionId).apply {
+                        put("ad_watch_duration", watchDurationMillis.millisToSeconds())
+                        put("ad_completion_status", status.value)
+                        ad.percentWatched(watchDurationMillis)?.let { percentage ->
+                            put("ad_percent_completed", percentage)
+                        }
+                    },
+            ).also { it.insertId = insertId },
         )
     }
 
@@ -89,18 +101,24 @@ internal class StreamTracker(
         options: PlayerContent,
         ad: AdContext,
         streamSessionId: String,
+        timestamp: Long,
+        insertId: String,
     ) {
         if (!adsEventsEnabled) return
-        amplitude.track(
-            eventType = AD_SKIPPED,
-            eventProperties =
-                adProperties(
-                    options = options,
-                    ad = ad,
-                    streamSessionId = streamSessionId,
-                ).apply {
-                    put("skip_position", ad.positionMillis.millisToSeconds())
-                },
+        trackDelayed(
+            DelayedEvent(
+                eventType = AD_SKIPPED,
+                kind = DelayedEvent.Kind.INSTANT,
+                timestamp = timestamp,
+                eventProperties =
+                    adProperties(
+                        options = options,
+                        ad = ad,
+                        streamSessionId = streamSessionId,
+                    ).apply {
+                        put("skip_position", ad.positionMillis.millisToSeconds())
+                    },
+            ).also { it.insertId = insertId },
         )
     }
 
@@ -307,6 +325,7 @@ internal fun AdContext.percentWatched(watchDurationMillis: Long): Double? {
 internal enum class AdCompletionStatus(
     val value: String,
 ) {
+    TIMEOUT("timeout"),
     ENDED("ended"),
     SKIPPED("skipped"),
     ABANDONED("abandoned"),
@@ -334,6 +353,13 @@ internal enum class StopReason(
 
 private fun StopReason?.eventKind(): DelayedEvent.Kind =
     if (this == StopReason.TIMEOUT) {
+        DelayedEvent.Kind.DELAYED
+    } else {
+        DelayedEvent.Kind.INSTANT
+    }
+
+private fun AdCompletionStatus.eventKind(): DelayedEvent.Kind =
+    if (this == AdCompletionStatus.TIMEOUT) {
         DelayedEvent.Kind.DELAYED
     } else {
         DelayedEvent.Kind.INSTANT

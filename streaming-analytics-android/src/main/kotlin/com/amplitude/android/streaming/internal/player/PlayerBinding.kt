@@ -147,7 +147,7 @@ internal class PlayerBinding internal constructor(
                 if (playerReference.get()?.isPlaying == true) onPlaying()
             }
             is PlayerEvent.AdStarted -> onAdStarted(event.ad)
-            is PlayerEvent.AdStopped -> finishAd(event.ad, completed = event.completed)
+            is PlayerEvent.AdStopped -> finishAd(completed = event.completed)
             is PlayerEvent.AdSkipped -> skipAd(event.ad)
         }
     }
@@ -315,29 +315,26 @@ internal class PlayerBinding internal constructor(
     private suspend fun onAdStarted(ad: AdContext) {
         val current = playback
         if (current is PlaybackState.Ad) {
-            trackAdFinished(
-                current.pauseWatch(time.elapsedRealtime()),
-                current.ad,
-                AdCompletionStatus.ABANDONED,
-            )
+            finishAdPlayback(current, AdCompletionStatus.ABANDONED)
         }
         val content =
-            when (current) {
+            when (val state = playback) {
                 is PlaybackState.Content -> {
-                    current.segment.pauseWatch()
-                    current.heartbeat.cancel()
+                    state.segment.pauseWatch()
+                    state.heartbeat.cancel()
                     PlaybackState.Suspended(
-                        viewSessionId = current.viewSessionId,
-                        segment = current.segment,
-                        phase = current.phase,
+                        viewSessionId = state.viewSessionId,
+                        segment = state.segment,
+                        phase = state.phase,
                     )
                 }
-                is PlaybackState.Suspended -> current
-                is PlaybackState.Ad -> current.content
+                is PlaybackState.Suspended -> state
+                is PlaybackState.Ad -> state.content
                 is PlaybackState.Idle -> null
             }
-        val id = current.viewSessionId ?: newViewSessionId()
+        val id = playback.viewSessionId ?: newViewSessionId()
         val playing = playerIsPlaying()
+        val heartbeat = createAdHeartbeat()
         playback =
             PlaybackState.Ad(
                 viewSessionId = id,
@@ -345,42 +342,51 @@ internal class PlayerBinding internal constructor(
                 watchStartedAt = if (playing) time.elapsedRealtime() else null,
                 content = content,
                 paused = !playing,
+                heartbeat = heartbeat,
+                stoppedInsertId = UUID.randomUUID().toString(),
             )
-        streamTracker.trackAdStarted(options, ad, id)
+        streamTracker.trackAdStarted(
+            options = options,
+            ad = ad,
+            streamSessionId = id,
+            timestamp = time.nowMillis(),
+            insertId = UUID.randomUUID().toString(),
+        )
+        heartbeat.start()
     }
 
-    private suspend fun finishAd(
-        ad: AdContext,
-        completed: Boolean,
-    ) {
+    private suspend fun finishAd(completed: Boolean) {
         val state = playback as? PlaybackState.Ad ?: return
-        val finished = state.pauseWatch(time.elapsedRealtime())
         val status =
             if (completed) AdCompletionStatus.ENDED else AdCompletionStatus.ABANDONED
-        trackAdFinished(finished, ad, status)
+        val finished = finishAdPlayback(state, status)
         continueAfterAd(finished)
     }
 
     private suspend fun skipAd(ad: AdContext) {
         val state = playback as? PlaybackState.Ad ?: return
-        val finished = state.pauseWatch(time.elapsedRealtime())
-        streamTracker.trackAdSkipped(options, ad, finished.viewSessionId)
-        trackAdFinished(finished, ad, AdCompletionStatus.SKIPPED)
-        continueAfterAd(finished)
-    }
-
-    private fun trackAdFinished(
-        state: PlaybackState.Ad,
-        ad: AdContext,
-        status: AdCompletionStatus,
-    ) {
-        streamTracker.trackAdStopped(
+        streamTracker.trackAdSkipped(
             options = options,
             ad = ad,
             streamSessionId = state.viewSessionId,
-            watchDurationMillis = state.durationMillis(time.elapsedRealtime()),
-            status = status,
+            timestamp = time.nowMillis(),
+            insertId = UUID.randomUUID().toString(),
         )
+        val finished = finishAdPlayback(state, AdCompletionStatus.SKIPPED)
+        continueAfterAd(finished)
+    }
+
+    private suspend fun finishAdPlayback(
+        state: PlaybackState.Ad,
+        status: AdCompletionStatus,
+    ): PlaybackState.Ad {
+        val finished =
+            state.pauseWatch(time.elapsedRealtime()).copy(completionStatus = status)
+        playback = finished
+        runCatchingCancellable {
+            finished.heartbeat.stop()
+        }
+        return finished
     }
 
     private suspend fun continueAfterAd(state: PlaybackState.Ad) {
@@ -426,6 +432,32 @@ internal class PlayerBinding internal constructor(
                 },
             ).also { it.start() }
 
+    private fun createAdHeartbeat(): Heartbeat =
+        heartbeatFactory.create(
+            scope = scope,
+            stoppedEvent = stoppedEvent@{ timestamp, isFinal ->
+                val state = playback as? PlaybackState.Ad ?: return@stoppedEvent
+                sendAdStopped(state = state, timestamp = timestamp, isFinal = isFinal)
+            },
+        )
+
+    private fun sendAdStopped(
+        state: PlaybackState.Ad,
+        timestamp: Long,
+        isFinal: Boolean,
+    ) {
+        val status = if (isFinal) state.completionStatus else AdCompletionStatus.TIMEOUT
+        streamTracker.trackAdStopped(
+            options = options,
+            ad = state.ad,
+            streamSessionId = state.viewSessionId,
+            watchDurationMillis = state.durationMillis(time.elapsedRealtime()),
+            status = status,
+            timestamp = timestamp,
+            insertId = state.stoppedInsertId,
+        )
+    }
+
     private suspend fun finishPlayback(
         reason: StopReason?,
         errorMessage: String? = null,
@@ -444,11 +476,7 @@ internal class PlayerBinding internal constructor(
                 )
             }
             is PlaybackState.Ad -> {
-                trackAdFinished(
-                    state.pauseWatch(time.elapsedRealtime()),
-                    state.ad,
-                    AdCompletionStatus.ABANDONED,
-                )
+                finishAdPlayback(state, AdCompletionStatus.ABANDONED)
                 state.content?.let {
                     finishSegment(
                         segment = it.segment,
@@ -576,6 +604,9 @@ internal class PlayerBinding internal constructor(
             val watchStartedAt: Long? = null,
             val content: Suspended?,
             val paused: Boolean = false,
+            val heartbeat: Heartbeat,
+            val stoppedInsertId: String,
+            val completionStatus: AdCompletionStatus = AdCompletionStatus.TIMEOUT,
         ) : PlaybackState {
             fun pauseWatch(now: Long): Ad {
                 val startedAt = watchStartedAt ?: return this

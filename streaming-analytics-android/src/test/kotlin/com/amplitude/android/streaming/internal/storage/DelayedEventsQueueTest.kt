@@ -100,17 +100,17 @@ class DelayedEventsQueueTest {
             }
 
         @Test
-        fun `delayed update with a new insert id promotes the previous delayed event`() =
+        fun `delayed update with a new insert id keeps both delayed events`() =
             runTest {
-                val pausedStop = eventEntity("stopped", insertId = "pause-1", timestamp = 1L)
-                val resumedStop = eventEntity("stopped", insertId = "resume-1", timestamp = 2L)
+                val contentStop = eventEntity("stopped", insertId = "content-1", timestamp = 1L)
+                val adStop = eventEntity("ad-stopped", insertId = "ad-1", timestamp = 2L)
                 val started = eventEntity("started")
                 coEvery { storage.findKey(any()) } returns "existing-key"
                 coEvery { storage.read("existing-key") } returns
                     DelayedEventsRequestEntity(
                         id = "stream-1",
                         timeoutMillis = 5_000L,
-                        events = listOf(pausedStop),
+                        events = listOf(contentStop),
                         instantEvents = listOf(started),
                     )
                 coEvery { storage.write(any(), any()) } returns Unit
@@ -119,7 +119,7 @@ class DelayedEventsQueueTest {
                     DelayedEventsRequestEntity(
                         id = "stream-1",
                         timeoutMillis = 8_000L,
-                        events = listOf(resumedStop),
+                        events = listOf(adStop),
                     ),
                 )
 
@@ -127,9 +127,9 @@ class DelayedEventsQueueTest {
                     storage.write(
                         "existing-key",
                         match { stored ->
-                            stored.events == listOf(resumedStop) &&
+                            stored.events == listOf(contentStop, adStop) &&
                                 stored.timeoutMillis == 8_000L &&
-                                stored.instantEvents == listOf(started, pausedStop)
+                                stored.instantEvents == listOf(started)
                         },
                     )
                 }
@@ -169,26 +169,25 @@ class DelayedEventsQueueTest {
             }
 
         @Test
-        fun `older delayed update with a new insert id promotes the older delayed event`() =
+        fun `instant update with the same insert id removes the delayed event`() =
             runTest {
-                val pausedStop = eventEntity("stopped", insertId = "pause-1", timestamp = 1L)
-                val resumedStop = eventEntity("stopped", insertId = "resume-1", timestamp = 2L)
-                val started = eventEntity("started")
+                val timeoutStop = eventEntity("stopped", insertId = "stop-1", timestamp = 1L)
+                val pausedStop = eventEntity("stopped-paused", insertId = "stop-1", timestamp = 2L)
                 coEvery { storage.findKey(any()) } returns "existing-key"
                 coEvery { storage.read("existing-key") } returns
                     DelayedEventsRequestEntity(
                         id = "stream-1",
-                        timeoutMillis = 8_000L,
-                        events = listOf(resumedStop),
-                        instantEvents = listOf(started),
+                        timeoutMillis = 5_000L,
+                        events = listOf(timeoutStop),
                     )
                 coEvery { storage.write(any(), any()) } returns Unit
 
                 queue.enqueue(
                     DelayedEventsRequestEntity(
                         id = "stream-1",
-                        timeoutMillis = 5_000L,
-                        events = listOf(pausedStop),
+                        timeoutMillis = 0L,
+                        events = emptyList(),
+                        instantEvents = listOf(pausedStop),
                     ),
                 )
 
@@ -196,9 +195,9 @@ class DelayedEventsQueueTest {
                     storage.write(
                         "existing-key",
                         match { stored ->
-                            stored.events == listOf(resumedStop) &&
-                                stored.timeoutMillis == 8_000L &&
-                                stored.instantEvents == listOf(started, pausedStop)
+                            stored.events.isEmpty() &&
+                                stored.timeoutMillis == 5_000L &&
+                                stored.instantEvents == listOf(pausedStop)
                         },
                     )
                 }
