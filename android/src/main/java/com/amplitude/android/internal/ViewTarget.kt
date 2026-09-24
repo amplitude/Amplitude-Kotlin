@@ -53,9 +53,15 @@ public data class ViewTarget(
 public fun buildElementInteractedProperties(
     target: ViewTarget,
     activityName: String,
+): Map<String, Any?> = buildElementInteractedProperties(target, activityName, "tap")
+
+internal fun buildElementInteractedProperties(
+    target: ViewTarget,
+    activityName: String,
+    action: String,
 ): Map<String, Any?> =
     mapOf(
-        ACTION to "touch",
+        ACTION to action,
         TARGET_CLASS to target.className,
         TARGET_RESOURCE to target.resourceName,
         TARGET_TAG to target.tag,
