@@ -4,7 +4,7 @@ The Unified SDK installs Analytics, Session Replay, and Experiment from one entr
 
 ## Install
 
-Use `compileSdk = 36` or newer. Session Replay 0.30.0 requires it.
+Use `compileSdk = 35` or newer.
 
 ```kotlin
 dependencies {

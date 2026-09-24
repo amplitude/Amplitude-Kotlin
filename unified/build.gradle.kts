@@ -10,8 +10,7 @@ plugins {
 
 android {
     namespace = "com.amplitude.unified"
-    // Session Replay 0.30.0 carries minCompileSdk = 36 AAR metadata.
-    compileSdk = 36
+    compileSdk = AndroidVersions.COMPILE_SDK
 
     defaultConfig {
         minSdk = AndroidVersions.MIN_SDK
@@ -25,7 +24,7 @@ android {
     }
 
     testOptions {
-        targetSdk = 35
+        targetSdk = AndroidVersions.TARGET_SDK
         unitTests.isIncludeAndroidResources = true
         unitTests.isReturnDefaultValues = true
     }
