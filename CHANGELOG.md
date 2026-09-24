@@ -1,3 +1,34 @@
+# [1.33.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.32.0...v1.33.0) (2026-09-24)
+
+
+### Bug Fixes
+
+* **android:** report full rage click burst instead of capping at 4 ([#539](https://github.com/amplitude/Amplitude-Kotlin/issues/539)) ([6644962](https://github.com/amplitude/Amplitude-Kotlin/commit/6644962ed0dfb44cbdf1ebc819edf5271fbbb288))
+* **android:** standardize frustration click timestamps (SDK-293) ([#500](https://github.com/amplitude/Amplitude-Kotlin/issues/500)) ([850c0a2](https://github.com/amplitude/Amplitude-Kotlin/commit/850c0a205e049b436245af189a8e7f866176459c))
+* emit ended instead of completed for stream and ad stops ([#512](https://github.com/amplitude/Amplitude-Kotlin/issues/512)) ([a53ec7e](https://github.com/amplitude/Amplitude-Kotlin/commit/a53ec7e72d3d52f7bc752498a46402037425891a))
+* freeze media snapshots and emit seeking, waiting, and content_changed stop reasons ([#505](https://github.com/amplitude/Amplitude-Kotlin/issues/505)) ([0e035b0](https://github.com/amplitude/Amplitude-Kotlin/commit/0e035b07a042932ffcc79268ed3d2453048ebd93))
+* restore binary API validation for the android module ([#513](https://github.com/amplitude/Amplitude-Kotlin/issues/513)) ([4a541f4](https://github.com/amplitude/Amplitude-Kotlin/commit/4a541f459741b77aed592a858d3d48b00467ac03))
+* restore compileSdk 35 and OkHttp 4.12 for RN consumers ([#516](https://github.com/amplitude/Amplitude-Kotlin/issues/516)) ([ccf2136](https://github.com/amplitude/Amplitude-Kotlin/commit/ccf2136ba9c2b07a3aa1a2376ff3278cf923f110)), closes [#399](https://github.com/amplitude/Amplitude-Kotlin/issues/399) [#451](https://github.com/amplitude/Amplitude-Kotlin/issues/451)
+* Streaming - Weak Player ([#496](https://github.com/amplitude/Amplitude-Kotlin/issues/496)) ([57907d9](https://github.com/amplitude/Amplitude-Kotlin/commit/57907d914d85cae96033f7cb647b7b714791c023))
+
+
+### Features
+
+* add Amplitude.untrackPlayer to stop tracking a Media3 player ([#504](https://github.com/amplitude/Amplitude-Kotlin/issues/504)) ([636fd2c](https://github.com/amplitude/Amplitude-Kotlin/commit/636fd2ccaf4114fd0004cab1cd7f2345411e7110))
+* **core:** add standalone AmplitudeContext constructor (SDKA-125) ([#530](https://github.com/amplitude/Amplitude-Kotlin/issues/530)) ([9ef1714](https://github.com/amplitude/Amplitude-Kotlin/commit/9ef17146b093bac7e33b6de090afc961489720db))
+* Streaming - Ads ([#497](https://github.com/amplitude/Amplitude-Kotlin/issues/497)) ([938325a](https://github.com/amplitude/Amplitude-Kotlin/commit/938325a864494bbf893e7690f4e139e6d62aa563))
+* Streaming - Heartbeat ([#493](https://github.com/amplitude/Amplitude-Kotlin/issues/493)) ([536bd4e](https://github.com/amplitude/Amplitude-Kotlin/commit/536bd4eb6955f15094cc4d4a27ffa250b5e6728a))
+* Streaming - Pipelines ([#490](https://github.com/amplitude/Amplitude-Kotlin/issues/490)) ([8fec9c1](https://github.com/amplitude/Amplitude-Kotlin/commit/8fec9c1f8ed54bdf3904cc53565c396dedc867c3))
+* Streaming - Player Binding ([#492](https://github.com/amplitude/Amplitude-Kotlin/issues/492)) ([e31f12b](https://github.com/amplitude/Amplitude-Kotlin/commit/e31f12ba7c3a0fa6243b5ed6b3159efb0c0f2426))
+* Streaming - Player Observer ([#491](https://github.com/amplitude/Amplitude-Kotlin/issues/491)) ([e6e3c9d](https://github.com/amplitude/Amplitude-Kotlin/commit/e6e3c9d1cec0b2179d59214b0068450a4b4d60f3))
+* Streaming API change - read content identity from MediaItem ([#523](https://github.com/amplitude/Amplitude-Kotlin/issues/523)) ([dd62456](https://github.com/amplitude/Amplitude-Kotlin/commit/dd624560eca8586620d21e6b41db7535f4e847a1))
+* **unified:** add unified Android SDK wrapper ([#509](https://github.com/amplitude/Amplitude-Kotlin/issues/509)) ([50add0b](https://github.com/amplitude/Amplitude-Kotlin/commit/50add0b46c804cbbae0c09110e3b71e2b9332bb8))
+
+
+### Reverts
+
+* Revert "chore(deps): bump coroutines from 1.8.1 to 1.11.0 ([#454](https://github.com/amplitude/Amplitude-Kotlin/issues/454))" ([#510](https://github.com/amplitude/Amplitude-Kotlin/issues/510)) ([675b1eb](https://github.com/amplitude/Amplitude-Kotlin/commit/675b1eb324186729df7e39780bf5161b181d1420))
+
 # [1.32.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.31.0...v1.32.0) (2026-09-16)
 
 
