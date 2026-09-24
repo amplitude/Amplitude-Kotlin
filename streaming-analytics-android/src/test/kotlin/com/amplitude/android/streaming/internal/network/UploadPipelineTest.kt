@@ -288,7 +288,7 @@ class UploadPipelineTest {
     @Nested
     inner class HeartbeatThrottle {
         @Test
-        fun `does not resend an id until a quarter of its timeout has passed`() =
+        fun `does not resend an id until the 60s pulse has passed`() =
             runTest {
                 val pipeline = pipeline()
                 coEvery { endpoint.send(any()) } returns DelayedEventsResult.Success
@@ -298,7 +298,7 @@ class UploadPipelineTest {
 
                 queued = queuedRequest("stream-1")
                 val retry = launch { pipeline.onNewEvent() }
-                advanceTimeBy(1_249L)
+                advanceTimeBy(DELAYED_EVENT_PULSE_INTERVAL_MILLIS - 1)
                 coVerify(exactly = 1) { endpoint.send(any()) }
 
                 advanceTimeBy(1L)
@@ -342,7 +342,7 @@ class UploadPipelineTest {
 
                 coVerify(exactly = 2) { endpoint.send(any()) }
                 coVerify(exactly = 2) { queue.removeIfUnchanged(any()) }
-                assertEquals(1_250L, currentTime)
+                assertEquals(DELAYED_EVENT_PULSE_INTERVAL_MILLIS, currentTime)
             }
     }
 

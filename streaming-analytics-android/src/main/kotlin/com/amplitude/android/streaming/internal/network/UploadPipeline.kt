@@ -23,9 +23,12 @@ internal val StreamingDiGraph.uploadPipeline: UploadPipeline by singleton {
 private val DELAYS_IN_MS = listOf(2_000L, 4_000L, 8_000L, 16_000L, 32_000L, 64_000L)
 private const val RATE_LIMIT_MIN_DELAY_MS = 30_000L
 
+/** How often a delayed payload is re-sent to keep the server row alive. Matches iOS pulseInterval. */
+internal const val DELAYED_EVENT_PULSE_INTERVAL_MILLIS = 60_000L
+
 /**
  * Heartbeats rewrite the queued request locally, so only one of them has to reach the server
- * per interval. The interval stays under the request timeout because the server drops a delayed
+ * per pulse. The pulse stays under the request timeout because the server drops a delayed
  * event once its timeout lapses without another request for the same id.
  */
 private class SentRequest(
@@ -95,7 +98,7 @@ internal class UploadPipeline(
                     sent[request.id] =
                         SentRequest(
                             atMs = currentTimeMs(),
-                            minIntervalMs = request.timeoutMillis / 4,
+                            minIntervalMs = DELAYED_EVENT_PULSE_INTERVAL_MILLIS,
                         )
                     attempt = 0
                     backoffUntilMs = 0L
