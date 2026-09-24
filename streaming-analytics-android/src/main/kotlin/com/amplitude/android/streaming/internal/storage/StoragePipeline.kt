@@ -8,12 +8,12 @@ import com.amplitude.common.Logger
 private const val STREAM_SESSION_ID = "stream_session_id"
 
 /**
- * Five minutes.
+ * One hour.
  *
- * Server TTL for delayed events. Mobile can keep overwriting the queued payload locally,
- * which reduces heartbeat traffic.
+ * Server TTL for delayed events. Matches iOS and web (`ttlMs` / `DEFAULT_HEARTBEAT_DELAY_TIMEOUT`).
+ * Mobile keeps overwriting the queued payload locally between pulses.
  */
-internal const val DELAYED_EVENT_TIMEOUT_MILLIS = 5 * 60 * 1_000L
+internal const val DELAYED_EVENT_TIMEOUT_MILLIS = 60 * 60 * 1_000L
 
 internal val StreamingDiGraph.storagePipeline: StoragePipeline by weak {
     StoragePipeline(

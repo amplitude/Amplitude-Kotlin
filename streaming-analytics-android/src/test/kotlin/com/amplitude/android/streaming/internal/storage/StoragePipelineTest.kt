@@ -6,6 +6,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -23,6 +24,11 @@ class StoragePipelineTest {
 
     @Nested
     inner class OnDelayedEvent {
+        @Test
+        fun `uses a one hour server timeout`() {
+            assertEquals(3_600_000L, DELAYED_EVENT_TIMEOUT_MILLIS)
+        }
+
         @Test
         fun `delayed kind enqueues the event on the request events list`() =
             runTest {

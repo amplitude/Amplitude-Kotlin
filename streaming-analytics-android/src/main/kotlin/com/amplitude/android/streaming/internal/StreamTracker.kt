@@ -3,7 +3,6 @@ package com.amplitude.android.streaming.internal
 import androidx.media3.common.C
 import com.amplitude.android.streaming.PlayerContent
 import com.amplitude.android.streaming.internal.player.PlayerMediaSnapshot
-import com.amplitude.android.streaming.internal.player.PlayerState
 import com.amplitude.android.streaming.internal.util.DiGraph.Companion.weak
 import com.amplitude.android.streaming.internal.util.millisToSeconds
 import com.amplitude.core.Amplitude
@@ -87,7 +86,7 @@ internal class StreamTracker(
                 timestamp = timestamp,
                 eventProperties =
                     adProperties(options = options, ad = ad, streamSessionId = streamSessionId).apply {
-                        put("ad_watch_duration", watchDurationMillis.millisToSeconds())
+                        put("ad_stream_duration", watchDurationMillis.millisToSeconds())
                         put("ad_completion_status", status.value)
                         ad.percentWatched(watchDurationMillis)?.let { percentage ->
                             put("ad_percent_completed", percentage)
@@ -125,7 +124,6 @@ internal class StreamTracker(
     fun trackStreamStarted(
         options: PlayerContent,
         snapshot: PlayerMediaSnapshot,
-        playerState: PlayerState,
         mediaType: MediaType,
         streamSessionId: String,
         playId: String,
@@ -142,7 +140,6 @@ internal class StreamTracker(
                     contentProperties(
                         options = options,
                         snapshot = snapshot,
-                        playerState = playerState,
                         mediaType = mediaType,
                         streamSessionId = streamSessionId,
                         playId = playId,
@@ -155,12 +152,11 @@ internal class StreamTracker(
     fun trackStreamStopped(
         options: PlayerContent,
         snapshot: PlayerMediaSnapshot,
-        playerState: PlayerState,
         mediaType: MediaType,
         streamSessionId: String,
         playId: String,
         startTimeMillis: Long,
-        streamDurationMillis: Long,
+        watchDurationMillis: Long,
         timestamp: Long,
         insertId: String,
         stopReason: StopReason? = null,
@@ -175,12 +171,11 @@ internal class StreamTracker(
                     stoppedContentProperties(
                         options = options,
                         snapshot = snapshot,
-                        playerState = playerState,
                         mediaType = mediaType,
                         streamSessionId = streamSessionId,
                         playId = playId,
                         startTimeMillis = startTimeMillis,
-                        streamDurationMillis = streamDurationMillis,
+                        watchDurationMillis = watchDurationMillis,
                         stopReason = stopReason,
                         errorMessage = errorMessage,
                     ),
@@ -222,7 +217,6 @@ private fun adProperties(
 private fun contentProperties(
     options: PlayerContent,
     snapshot: PlayerMediaSnapshot,
-    playerState: PlayerState,
     mediaType: MediaType,
     streamSessionId: String,
     playId: String,
@@ -235,8 +229,6 @@ private fun contentProperties(
         (options.contentId ?: snapshot.mediaId)?.takeIf { it.isNotBlank() }?.let { put("content_id", it) }
         (options.title ?: snapshot.title)?.let { put("title", it) }
         put("delivery_mode", snapshot.deliveryMode())
-        put("is_in_picture_in_picture", playerState.isInPictureInPicture)
-        put("is_in_background", playerState.isInBackground)
         if (snapshot.hasKnownDuration()) {
             put("duration", snapshot.durationMillis.millisToSeconds())
         }
@@ -248,25 +240,23 @@ private fun contentProperties(
 private fun stoppedContentProperties(
     options: PlayerContent,
     snapshot: PlayerMediaSnapshot,
-    playerState: PlayerState,
     mediaType: MediaType,
     streamSessionId: String,
     playId: String,
     startTimeMillis: Long,
-    streamDurationMillis: Long,
+    watchDurationMillis: Long,
     stopReason: StopReason?,
     errorMessage: String?,
 ): MutableMap<String, Any?> =
     contentProperties(
         options = options,
         snapshot = snapshot,
-        playerState = playerState,
         mediaType = mediaType,
         streamSessionId = streamSessionId,
         playId = playId,
         startTimeMillis = startTimeMillis,
     ).apply {
-        put("stream_duration", streamDurationMillis.millisToSeconds())
+        put("watch_duration", watchDurationMillis.millisToSeconds())
         stopReason?.let { put("stop_reason", it.value) }
         errorMessage?.let { put("error_message", it) }
         snapshot.percentCompleted()?.let { percentage ->

@@ -62,9 +62,6 @@ internal class PlayerBinding internal constructor(
     private val stopped = AtomicBoolean(false)
     private val stoppedCompletion: CompletableJob = Job()
 
-    // TODO: wire picture-in-picture and background from the host app.
-    private val playerState = PlayerState()
-
     private var options: PlayerContent = PlayerContent()
 
     fun start() {
@@ -169,12 +166,19 @@ internal class PlayerBinding internal constructor(
                 playback = state.copy(phase = ContentPhase.PLAYING)
             }
             is PlaybackState.Suspended -> resumeContent(state)
-            is PlaybackState.Idle -> startContent(state.viewSessionId)
+            is PlaybackState.Idle -> startContent(state.viewSessionId, state.lastSegment)
             is PlaybackState.Ad -> Unit
         }
     }
 
-    private suspend fun startContent(viewSessionId: String?) {
+    /**
+     * Opens a play. [previousSegment] is the last play of the same stream session, whose watch
+     * time this one continues from.
+     */
+    private suspend fun startContent(
+        viewSessionId: String?,
+        previousSegment: StreamSession? = null,
+    ) {
         val id = viewSessionId ?: newViewSessionId()
         val snapshot = snapshot() ?: return
         val playId = UUID.randomUUID().toString()
@@ -189,11 +193,15 @@ internal class PlayerBinding internal constructor(
                 mediaType = snapshot.mediaType,
                 snapshot = snapshot,
                 time = time,
+                watchedBeforeMillis =
+                    previousSegment
+                        ?.takeIf { it.streamSessionId == id }
+                        ?.durationMillis()
+                        ?: 0L,
             ).also { it.resumeWatch() }
         streamTracker.trackStreamStarted(
             options = segment.options,
             snapshot = snapshot,
-            playerState = playerState,
             mediaType = segment.mediaType,
             streamSessionId = id,
             playId = segment.playId,
@@ -238,7 +246,7 @@ internal class PlayerBinding internal constructor(
         interruptContent(StopReason.SEEKING)
         val state = playback
         if (state is PlaybackState.Idle && playerIsPlaying() && !playerIsPlayingAd()) {
-            startContent(state.viewSessionId)
+            startContent(state.viewSessionId, state.lastSegment)
         }
     }
 
@@ -290,7 +298,7 @@ internal class PlayerBinding internal constructor(
             }
             is PlaybackState.Idle -> {
                 if (!playerIsPlaying() || playerIsPlayingAd()) return
-                startContent(state.viewSessionId)
+                startContent(state.viewSessionId, state.lastSegment)
             }
         }
     }
@@ -317,21 +325,33 @@ internal class PlayerBinding internal constructor(
         if (current is PlaybackState.Ad) {
             finishAdPlayback(current, AdCompletionStatus.ABANDONED)
         }
-        val content =
-            when (val state = playback) {
-                is PlaybackState.Content -> {
-                    state.segment.pauseWatch()
-                    state.heartbeat.cancel()
+        val content: PlaybackState.Suspended?
+        val lastSegment: StreamSession?
+        when (val state = playback) {
+            is PlaybackState.Content -> {
+                state.segment.pauseWatch()
+                state.heartbeat.cancel()
+                content =
                     PlaybackState.Suspended(
                         viewSessionId = state.viewSessionId,
                         segment = state.segment,
                         phase = state.phase,
                     )
-                }
-                is PlaybackState.Suspended -> state
-                is PlaybackState.Ad -> state.content
-                is PlaybackState.Idle -> null
+                lastSegment = null
             }
+            is PlaybackState.Suspended -> {
+                content = state
+                lastSegment = null
+            }
+            is PlaybackState.Ad -> {
+                content = state.content
+                lastSegment = state.lastSegment
+            }
+            is PlaybackState.Idle -> {
+                content = null
+                lastSegment = state.lastSegment
+            }
+        }
         val id = playback.viewSessionId ?: newViewSessionId()
         val playing = playerIsPlaying()
         val heartbeat = createAdHeartbeat()
@@ -341,6 +361,7 @@ internal class PlayerBinding internal constructor(
                 ad = ad,
                 watchStartedAt = if (playing) time.elapsedRealtime() else null,
                 content = content,
+                lastSegment = lastSegment,
                 paused = !playing,
                 heartbeat = heartbeat,
                 stoppedInsertId = UUID.randomUUID().toString(),
@@ -393,8 +414,8 @@ internal class PlayerBinding internal constructor(
         val content = state.content
         val playingContent = playerIsPlaying() && !playerIsPlayingAd()
         if (content == null) {
-            playback = PlaybackState.Idle(state.viewSessionId)
-            if (playingContent) startContent(state.viewSessionId)
+            playback = PlaybackState.Idle(state.viewSessionId, state.lastSegment)
+            if (playingContent) startContent(state.viewSessionId, state.lastSegment)
             return
         }
         if (state.paused) {
@@ -542,12 +563,11 @@ internal class PlayerBinding internal constructor(
         streamTracker.trackStreamStopped(
             options = segment.options,
             snapshot = snapshot,
-            playerState = playerState,
             mediaType = segment.mediaType,
             streamSessionId = segment.streamSessionId,
             playId = segment.playId,
             startTimeMillis = segment.startTimeMillis,
-            streamDurationMillis = segment.durationMillis(),
+            watchDurationMillis = segment.durationMillis(),
             timestamp = timestamp,
             insertId = segment.stoppedInsertId,
             stopReason = stopReason,
@@ -603,6 +623,7 @@ internal class PlayerBinding internal constructor(
             val watchDurationMillis: Long = 0L,
             val watchStartedAt: Long? = null,
             val content: Suspended?,
+            val lastSegment: StreamSession? = null,
             val paused: Boolean = false,
             val heartbeat: Heartbeat,
             val stoppedInsertId: String,
