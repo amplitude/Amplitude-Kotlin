@@ -100,4 +100,4 @@ All event names are prefixed with `[Amplitude]`. Durations and positions are **s
 | `timeout` | Heartbeat while still playing (delayed event) |
 | `untracked` | `untrackPlayer`, Amplitude teardown, or the player was collected |
 
-Shared content properties: `stream_session_id`, `play_id`, `content_id`, `title`, `media_type` (`video` or `audio`), `delivery_mode`, `duration`, `start_time`, `position`, `stream_duration`, `percent_completed` (stopped), `is_in_picture_in_picture`, `is_in_background`.
+Shared content properties: `stream_session_id`, `play_id`, `content_id`, `title`, `media_type` (`video` or `audio`), `delivery_mode`, `duration`, `start_time`, `position`, `stream_duration`, `percent_completed` (stopped).

@@ -62,9 +62,6 @@ internal class PlayerBinding internal constructor(
     private val stopped = AtomicBoolean(false)
     private val stoppedCompletion: CompletableJob = Job()
 
-    // TODO: wire picture-in-picture and background from the host app.
-    private val playerState = PlayerState()
-
     private var options: PlayerContent = PlayerContent()
 
     fun start() {
@@ -193,7 +190,6 @@ internal class PlayerBinding internal constructor(
         streamTracker.trackStreamStarted(
             options = segment.options,
             snapshot = snapshot,
-            playerState = playerState,
             mediaType = segment.mediaType,
             streamSessionId = id,
             playId = segment.playId,
@@ -542,7 +538,6 @@ internal class PlayerBinding internal constructor(
         streamTracker.trackStreamStopped(
             options = segment.options,
             snapshot = snapshot,
-            playerState = playerState,
             mediaType = segment.mediaType,
             streamSessionId = segment.streamSessionId,
             playId = segment.playId,
