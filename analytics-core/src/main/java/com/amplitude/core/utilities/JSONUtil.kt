@@ -268,6 +268,7 @@ internal fun JSONObject.addValue(
     }
 }
 
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public fun JSONObject.optionalJSONObject(
     key: String,
     defaultValue: JSONObject?,
@@ -278,6 +279,7 @@ public fun JSONObject.optionalJSONObject(
     return defaultValue
 }
 
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public fun JSONObject.optionalString(
     key: String,
     defaultValue: String?,

@@ -26,6 +26,7 @@ import org.json.JSONArray
 import java.io.File
 
 @OptIn(RestrictedAmplitudeFeature::class)
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public class AndroidStorageV2
     internal constructor(
         /**
@@ -149,6 +150,7 @@ public class AndroidStorageV2
     }
 
 @OptIn(RestrictedAmplitudeFeature::class)
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public class AndroidEventsStorageProviderV2 : StorageProvider {
     override fun getStorage(
         amplitude: Amplitude,
@@ -170,6 +172,7 @@ public class AndroidEventsStorageProviderV2 : StorageProvider {
 }
 
 @OptIn(RestrictedAmplitudeFeature::class)
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public class AndroidIdentifyInterceptStorageProviderV2 : StorageProvider {
     override fun getStorage(
         amplitude: Amplitude,

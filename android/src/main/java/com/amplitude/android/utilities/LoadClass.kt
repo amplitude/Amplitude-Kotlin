@@ -3,6 +3,7 @@ package com.amplitude.android.utilities
 import com.amplitude.common.Logger
 
 /** An Adapter for making Class.forName testable  */
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public object LoadClass {
     /**
      * Try to load a class via reflection

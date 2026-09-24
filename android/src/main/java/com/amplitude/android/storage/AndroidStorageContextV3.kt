@@ -22,6 +22,7 @@ import java.io.File
  * /shared_prefs
  *   /amplitude-android-{instance_name}.xml
  */
+@Suppress("DEPRECATION")
 internal object AndroidStorageContextV3 {
     /**
      * Stores all event data in storage

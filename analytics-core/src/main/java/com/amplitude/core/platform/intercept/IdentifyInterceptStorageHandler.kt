@@ -8,6 +8,8 @@ import com.amplitude.core.events.IdentifyOperation
 import com.amplitude.core.utilities.EventsFileStorage
 import com.amplitude.core.utilities.InMemoryStorage
 
+@Deprecated("Not intended for public use. Will be internal in a future release.")
+@Suppress("DEPRECATION")
 public interface IdentifyInterceptStorageHandler {
     public suspend fun getTransferIdentifyEvent(): BaseEvent?
 
@@ -35,6 +37,7 @@ public interface IdentifyInterceptStorageHandler {
     }
 }
 
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public object IdentifyInterceptorUtil {
     public fun mergeIdentifyList(events: List<BaseEvent>): MutableMap<String, Any?> {
         val userProperties = mutableMapOf<String, Any?>()

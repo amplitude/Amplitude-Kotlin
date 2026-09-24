@@ -13,6 +13,7 @@ import com.amplitude.common.Logger
 /**
  * [ACCESS_NETWORK_STATE] permission should be added manually by users to enable this feature.
  */
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public class AndroidNetworkListener(
     private val context: Context,
     private val logger: Logger,

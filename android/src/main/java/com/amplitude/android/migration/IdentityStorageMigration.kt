@@ -3,6 +3,7 @@ package com.amplitude.android.migration
 import com.amplitude.common.Logger
 import com.amplitude.id.IdentityStorage
 
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public class IdentityStorageMigration(
     private val source: IdentityStorage,
     private val destination: IdentityStorage,

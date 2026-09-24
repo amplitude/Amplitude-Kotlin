@@ -15,6 +15,7 @@ import org.json.JSONObject
  *      3. saves the device/user id, converted events and identifies to current storage
  *      4. deletes data from sqlite table
  */
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public class RemnantDataMigration(public val amplitude: Amplitude, private val databaseStorage: DatabaseStorage) {
     public companion object {
         public const val DEVICE_ID_KEY: String = "device_id"

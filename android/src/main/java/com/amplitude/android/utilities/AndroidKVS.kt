@@ -3,6 +3,7 @@ package com.amplitude.android.utilities
 import android.content.SharedPreferences
 import com.amplitude.id.utilities.KeyValueStore
 
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public class AndroidKVS(private val sharedPreferences: SharedPreferences) : KeyValueStore {
     override fun getLong(
         key: String,

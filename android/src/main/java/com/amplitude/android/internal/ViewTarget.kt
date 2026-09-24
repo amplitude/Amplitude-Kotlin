@@ -18,6 +18,7 @@ import java.lang.ref.WeakReference
  * @property resourceName the resource name of the view.
  * @property tag the tag of the view.
  */
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public data class ViewTarget(
     private val _view: Any?,
     val className: String?,
@@ -48,6 +49,7 @@ public data class ViewTarget(
  * Builds the base properties for ELEMENT_INTERACTED events.
  * This is the foundation used by both standard element tracking and frustration analytics.
  */
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public fun buildElementInteractedProperties(
     target: ViewTarget,
     activityName: String,

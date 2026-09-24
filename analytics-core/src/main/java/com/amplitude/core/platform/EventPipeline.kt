@@ -223,11 +223,13 @@ public class EventPipeline(
     }
 }
 
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public enum class WriteQueueMessageType {
     EVENT,
     FLUSH,
 }
 
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public data class WriteQueueMessage(
     val type: WriteQueueMessageType,
     val event: BaseEvent?,

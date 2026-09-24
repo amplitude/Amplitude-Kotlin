@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.AtomicLong
 private const val DEFAULT_SESSION_ID = -1L
 private const val DEFAULT_EVENT_ID_OR_TIME = 0L
 
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public class Timeline(
     private val initialSessionId: Long? = null,
 ) : Timeline() {
@@ -250,6 +251,7 @@ public class Timeline(
     }
 }
 
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public sealed class EventQueueMessage {
     public data class Event(val event: BaseEvent) : EventQueueMessage()
 

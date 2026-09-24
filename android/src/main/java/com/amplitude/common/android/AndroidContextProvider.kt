@@ -1,3 +1,5 @@
+@file:Suppress("DEPRECATION")
+
 package com.amplitude.common.android
 
 import android.Manifest
@@ -18,6 +20,7 @@ import java.io.IOException
 import java.lang.reflect.InvocationTargetException
 import java.util.Locale
 
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public class AndroidContextProvider(
     private val context: Context,
     private val locationListening: Boolean,
@@ -29,6 +32,7 @@ public class AndroidContextProvider(
     /**
      * Internal class serves as a cache
      */
+    @Deprecated("Not intended for public use. Will be internal in a future release.")
     public inner class CachedInfo {
         public val advertisingId: String?
         public val country: String?

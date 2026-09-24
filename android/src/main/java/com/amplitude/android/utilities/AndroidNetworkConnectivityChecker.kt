@@ -14,6 +14,7 @@ import com.amplitude.common.Logger
 /**
  * Checks whether the Android device has [TRANSPORT_WIFI] or [TRANSPORT_CELLULAR] capability.
  */
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public class AndroidNetworkConnectivityChecker(private val context: Context, private val logger: Logger) {
     public companion object {
         internal fun hasNetworkPermission(context: Context): Boolean {

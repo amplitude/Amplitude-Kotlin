@@ -14,6 +14,7 @@ import com.amplitude.android.AutocaptureOption.SESSIONS
  *
  * @suppress This is an internal implementation detail and should not be used directly.
  */
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public data class AutocaptureState(
     val sessions: Boolean = false,
     val appLifecycles: Boolean = false,
@@ -71,6 +72,7 @@ public data class AutocaptureState(
 /**
  * Types of user interaction tracking.
  */
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public sealed class InteractionType {
     /**
      * Standard element interaction events (ELEMENT_INTERACTED).

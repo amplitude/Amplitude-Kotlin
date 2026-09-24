@@ -41,6 +41,7 @@ import kotlin.time.Duration.Companion.milliseconds
  * must expose current availability through [InterfaceSignalProvider].
  */
 @OptIn(RestrictedAmplitudeFeature::class)
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public class FrustrationInteractionsDetector(
     private val amplitude: Amplitude,
     private val logger: Logger,

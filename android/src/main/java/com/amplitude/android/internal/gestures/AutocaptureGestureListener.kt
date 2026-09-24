@@ -16,6 +16,7 @@ import com.amplitude.common.Logger
 import java.lang.ref.WeakReference
 
 @VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public class AutocaptureGestureListener(
     decorView: View,
     private val activityName: String,

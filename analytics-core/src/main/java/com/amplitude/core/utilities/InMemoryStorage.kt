@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 import java.util.concurrent.ConcurrentHashMap
 
 @OptIn(RestrictedAmplitudeFeature::class)
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public class InMemoryStorage
     internal constructor(
         private val diagnosticsClientProvider: DiagnosticsClientProvider? = null,
@@ -86,6 +87,7 @@ public class InMemoryStorage
     }
 
 @OptIn(RestrictedAmplitudeFeature::class)
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public class InMemoryStorageProvider : StorageProvider {
     override fun getStorage(
         amplitude: Amplitude,

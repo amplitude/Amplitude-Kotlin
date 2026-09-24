@@ -2,6 +2,7 @@ package com.amplitude.android.internal.locators
 
 import com.amplitude.android.internal.ViewTarget
 
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public fun interface ViewTargetLocator {
     /**
      * Locates a [ViewTarget] at the given position based on the view type.

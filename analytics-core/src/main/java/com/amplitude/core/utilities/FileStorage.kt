@@ -145,6 +145,7 @@ public class FileStorage
     }
 
 @OptIn(RestrictedAmplitudeFeature::class)
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public class FileStorageProvider : StorageProvider {
     override fun getStorage(
         amplitude: Amplitude,

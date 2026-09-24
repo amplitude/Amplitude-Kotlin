@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  * IdentifyInterceptor
  * This is the internal class for handling identify events intercept and  optimize identify volumes.
  */
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public class IdentifyInterceptor(
     private val storage: Storage,
     private val amplitude: Amplitude,

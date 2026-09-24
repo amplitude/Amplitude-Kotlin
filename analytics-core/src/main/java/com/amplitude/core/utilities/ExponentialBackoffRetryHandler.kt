@@ -1,6 +1,5 @@
 package com.amplitude.core.utilities
 
-import com.amplitude.core.RestrictedAmplitudeFeature
 import kotlinx.coroutines.delay
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.random.Random
@@ -18,13 +17,12 @@ import kotlin.time.Duration.Companion.milliseconds
  * - call [attemptRetry] to attempt retry with a backoff delay
  * - call [reset] on success, so the next failure starts the schedule over.
  */
-@RestrictedAmplitudeFeature
+@Deprecated("Not intended for public use. Will be internal in a future release.")
 public class ExponentialBackoffRetryHandler() {
     @Deprecated(
         "The backoff schedule is fixed now, baseDelayInMs and factor are ignored.",
         ReplaceWith("ExponentialBackoffRetryHandler()"),
     )
-    @RestrictedAmplitudeFeature
     public constructor(
         maxRetryAttempt: Int = 5,
         baseDelayInMs: Int,
