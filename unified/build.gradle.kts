@@ -106,8 +106,8 @@ val bcvRuntimeClasspath =
     }
 
 dependencies {
-    add(bcvRuntimeClasspath.name, "org.ow2.asm:asm:9.6")
-    add(bcvRuntimeClasspath.name, "org.ow2.asm:asm-tree:9.6")
+    add(bcvRuntimeClasspath.name, "org.ow2.asm:asm:9.10.1")
+    add(bcvRuntimeClasspath.name, "org.ow2.asm:asm-tree:9.10.1")
     add(bcvRuntimeClasspath.name, "org.jetbrains.kotlin:kotlin-metadata-jvm:${libs.versions.kotlin.get()}")
 }
 
