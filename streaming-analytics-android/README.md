@@ -93,11 +93,11 @@ All event names are prefixed with `[Amplitude]`. Durations and positions are **s
 | --- | --- |
 | `paused` | User or app pause |
 | `ended` | Playback reached the end, or Media3 auto/repeat item transition |
-| `seeking` | Seek in progress |
-| `waiting` | Buffering |
 | `error` | Player error (`error_message` when available) |
 | `content_changed` | Media item changed without completing |
 | `timeout` | Heartbeat while still playing (delayed event) |
 | `untracked` | `untrackPlayer`, Amplitude teardown, or the player was collected |
 
-Shared content properties: `stream_session_id`, `play_id`, `content_id`, `title`, `media_type` (`video` or `audio`), `delivery_mode`, `duration`, `start_time`, `position`, `watch_duration`, `percent_completed` (stopped).
+Shared content properties: `stream_session_id`, `play_id`, `content_id`, `title`, `media_type` (`video` or `audio`), `delivery_mode`, `duration`, `start_time`, `position`, `play_time`, `percent_completed` (stopped).
+
+`play_time` is seconds of playhead movement while playing (pauses, seeks, and buffering do not count). It is cumulative per `stream_session_id`; the latest Stream Stopped holds the session total. Seeking and buffering do not emit Stream Stopped.

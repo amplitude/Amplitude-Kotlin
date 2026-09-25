@@ -210,7 +210,7 @@ class PlayerBindingTest {
     @Nested
     inner class Heartbeat {
         @Test
-        fun `should keep accumulated watch duration on the terminal Stream Stopped`() =
+        fun `should keep accumulated play time on the terminal Stream Stopped`() =
             runTest {
                 var elapsed = 0L
                 val time = mockk<Time>()
@@ -220,12 +220,12 @@ class PlayerBindingTest {
                 withBinding(time = time) {
                     observer.emit(PlayerEvent.Playing)
                     runCurrent()
-                    elapsed = 5_000L
+                    observer.positionMillis = 6_000L
                     observer.emit(PlayerEvent.Ended)
                     runCurrent()
 
                     val stopped = tracked.filter { it.eventType == STREAM_STOPPED }
-                    assertEquals(5.0, stopped.last().eventProperties?.get("watch_duration"))
+                    assertEquals(5.0, stopped.last().eventProperties?.get("play_time"))
                     assertEquals("ended", stopped.last().eventProperties?.get("stop_reason"))
                 }
             }
@@ -262,13 +262,11 @@ class PlayerBindingTest {
                     runCurrent()
 
                     assertEquals(1, startedEvents().size)
-                    assertEquals(
-                        "waiting",
-                        tracked
-                            .filter { it.eventType == STREAM_STOPPED }
-                            .last()
-                            .eventProperties
-                            ?.get("stop_reason"),
+                    assertTrue(
+                        tracked.none {
+                            it.eventType == STREAM_STOPPED &&
+                                it.eventProperties?.get("stop_reason") in listOf("waiting", "seeking")
+                        },
                     )
                 }
             }
@@ -329,78 +327,77 @@ class PlayerBindingTest {
                 withBinding(time = time) {
                     observer.emit(PlayerEvent.Playing)
                     runCurrent()
-                    elapsed = 5_000L
+                    observer.positionMillis = 6_000L
                     observer.emit(PlayerEvent.Paused)
                     observer.emit(PlayerEvent.Playing)
                     runCurrent()
-                    elapsed = 15_000L
+                    observer.positionMillis = 16_000L
                     advanceTimeBy(1_000)
                     runCurrent()
 
                     val stopped = tracked.filter { it.eventType == STREAM_STOPPED }
                     val firstInsertId = stopped.first().insertId
                     val firstPlayStops = stopped.filter { it.insertId == firstInsertId }
-                    assertEquals(5.0, firstPlayStops.last().eventProperties?.get("watch_duration"))
+                    assertEquals(5.0, firstPlayStops.last().eventProperties?.get("play_time"))
                     assertEquals("paused", firstPlayStops.last().eventProperties?.get("stop_reason"))
                     assertTrue(
                         stopped.any {
                             it.insertId != firstInsertId &&
-                                (it.eventProperties?.get("watch_duration") as Double) > 5.0
+                                (it.eventProperties?.get("play_time") as Double) > 5.0
                         },
                     )
                 }
             }
 
         @Test
-        fun `should keep accruing watch duration across a seek`() =
+        fun `should keep accruing play time across a seek`() =
             runTest {
-                var elapsed = 0L
-                val time = mockk<Time>()
-                every { time.elapsedRealtime() } answers { elapsed }
-                every { time.nowMillis() } answers { elapsed }
                 val player = mockk<Player>(relaxed = true)
                 every { player.isPlaying } returns true
 
-                withBinding(player, time) {
+                withBinding(player) {
                     observer.emit(PlayerEvent.Playing)
                     runCurrent()
-                    elapsed = 5_000L
-                    observer.emit(PlayerEvent.Seeking(previousSnapshot()))
+                    observer.positionMillis = 6_000L
+                    val preSeek = previousSnapshot().copy(positionMillis = 6_000L)
+                    observer.positionMillis = 2_000L
+                    observer.emit(PlayerEvent.Seeking(preSeek))
                     runCurrent()
-                    elapsed = 8_000L
+                    observer.positionMillis = 5_000L
                     observer.emit(PlayerEvent.Paused)
                     runCurrent()
 
                     val stopped = tracked.filter { it.eventType == STREAM_STOPPED }
-                    assertEquals(8.0, stopped.last().eventProperties?.get("watch_duration"))
+                    assertEquals(8.0, stopped.last().eventProperties?.get("play_time"))
                     assertEquals("paused", stopped.last().eventProperties?.get("stop_reason"))
+                    assertEquals(1, startedEvents().size)
                 }
             }
 
         @Test
-        fun `should restart watch duration when the media item changes`() =
+        fun `should restart play time when the media item changes`() =
             runTest {
-                var elapsed = 0L
-                val time = mockk<Time>()
-                every { time.elapsedRealtime() } answers { elapsed }
-                every { time.nowMillis() } answers { elapsed }
                 val player = mockk<Player>(relaxed = true)
                 every { player.isPlaying } returns true
 
-                withBinding(player, time) {
+                withBinding(player) {
                     observer.emit(PlayerEvent.Playing)
                     runCurrent()
-                    elapsed = 5_000L
+                    observer.positionMillis = 6_000L
                     observer.emit(
-                        PlayerEvent.MediaChanged(null, previousSnapshot(), StopReason.CONTENT_CHANGED),
+                        PlayerEvent.MediaChanged(
+                            null,
+                            previousSnapshot().copy(positionMillis = 6_000L),
+                            StopReason.CONTENT_CHANGED,
+                        ),
                     )
                     runCurrent()
-                    elapsed = 7_000L
+                    observer.positionMillis = 8_000L
                     observer.emit(PlayerEvent.Paused)
                     runCurrent()
 
                     val stopped = tracked.filter { it.eventType == STREAM_STOPPED }
-                    assertEquals(2.0, stopped.last().eventProperties?.get("watch_duration"))
+                    assertEquals(2.0, stopped.last().eventProperties?.get("play_time"))
                 }
             }
 
@@ -449,7 +446,7 @@ class PlayerBindingTest {
             }
 
         @Test
-        fun `should emit seeking then clear it after playback resumes`() =
+        fun `should not emit seeking after playback resumes`() =
             runTest {
                 val player = mockk<Player>(relaxed = true)
                 every { player.isPlaying } returns true
@@ -465,20 +462,78 @@ class PlayerBindingTest {
 
                     val stopped = tracked.filter { it.eventType == STREAM_STOPPED }
                     assertTrue(
-                        stopped.any {
+                        stopped.none {
                             it.eventProperties?.get("stop_reason") == "seeking"
                         },
                     )
                     val afterReady = stopped.last()
                     assertEquals("timeout", afterReady.eventProperties?.get("stop_reason"))
-                    assertEquals(2, startedEvents().size)
+                    assertEquals(1, startedEvents().size)
                 }
             }
 
         @Test
-        fun `should freeze the pre-seek position on Stream Stopped`() =
+        fun `should let play time exceed duration after a seek back`() =
+            runTest {
+                val player = mockk<Player>(relaxed = true)
+                every { player.isPlaying } returns true
+                withBinding(player) {
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+                    observer.positionMillis = 9_000L
+                    val preSeek = previousSnapshot().copy(positionMillis = 9_000L)
+                    observer.positionMillis = 1_000L
+                    observer.emit(PlayerEvent.Seeking(preSeek))
+                    runCurrent()
+                    observer.positionMillis = 9_000L
+                    observer.emit(PlayerEvent.Paused)
+                    runCurrent()
+
+                    val stopped = tracked.filter { it.eventType == STREAM_STOPPED }
+                    assertEquals(16.0, stopped.last().eventProperties?.get("play_time"))
+                    assertEquals(10.0, stopped.last().eventProperties?.get("duration"))
+                }
+            }
+
+        @Test
+        fun `should keep play time when Playing is emitted again`() =
             runTest {
                 withBinding {
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+                    observer.positionMillis = 4_000L
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+                    observer.positionMillis = 6_000L
+                    observer.emit(PlayerEvent.Paused)
+                    runCurrent()
+
+                    val stopped = tracked.filter { it.eventType == STREAM_STOPPED }
+                    assertEquals(5.0, stopped.last().eventProperties?.get("play_time"))
+                }
+            }
+
+        @Test
+        fun `should count playhead movement faster than wall clock as play time`() =
+            runTest {
+                withBinding {
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+                    observer.positionMillis = 3_000L
+                    observer.emit(PlayerEvent.Paused)
+                    runCurrent()
+
+                    val stopped = tracked.filter { it.eventType == STREAM_STOPPED }
+                    assertEquals(2.0, stopped.last().eventProperties?.get("play_time"))
+                }
+            }
+
+        @Test
+        fun `should not freeze the stream on seek`() =
+            runTest {
+                val player = mockk<Player>(relaxed = true)
+                every { player.isPlaying } returns true
+                withBinding(player) {
                     observer.emit(PlayerEvent.Playing)
                     runCurrent()
                     observer.positionMillis = 9_000L
@@ -489,12 +544,13 @@ class PlayerBindingTest {
                     )
                     runCurrent()
 
-                    val seekingStop =
-                        tracked.single {
+                    assertEquals(1, startedEvents().size)
+                    assertTrue(
+                        tracked.none {
                             it.eventType == STREAM_STOPPED &&
                                 it.eventProperties?.get("stop_reason") == "seeking"
-                        }
-                    assertEquals(5.0, seekingStop.eventProperties?.get("position"))
+                        },
+                    )
                 }
             }
 
@@ -511,7 +567,7 @@ class PlayerBindingTest {
                     observer.emit(PlayerEvent.Paused)
                     runCurrent()
 
-                    assertEquals(2, startedEvents().size)
+                    assertEquals(1, startedEvents().size)
                     assertTrue(
                         tracked.any {
                             it.eventType == STREAM_STOPPED &&
@@ -893,41 +949,36 @@ class PlayerBindingTest {
                     observer.emit(PlayerEvent.AdStopped(testAd(), completed = true))
                     runCurrent()
 
-                    assertEquals(2, startedEvents().size)
+                    assertEquals(1, startedEvents().size)
                 }
             }
 
         @Test
-        fun `should keep accruing watch duration across an ad after pause`() =
+        fun `should keep accruing play time across an ad after pause`() =
             runTest {
-                var elapsed = 0L
-                val time = mockk<Time>()
-                every { time.elapsedRealtime() } answers { elapsed }
-                every { time.nowMillis() } answers { elapsed }
                 val player = mockk<Player>(relaxed = true)
                 every { player.isPlaying } returns true
 
-                withBinding(player, time = time) {
+                withBinding(player) {
                     observer.emit(PlayerEvent.Playing)
                     runCurrent()
-                    elapsed = 5_000L
+                    observer.positionMillis = 6_000L
                     every { player.isPlaying } returns false
                     observer.emit(PlayerEvent.Paused)
                     runCurrent()
                     observer.emit(PlayerEvent.AdStarted(testAd()))
                     runCurrent()
-                    elapsed = 8_000L
                     observer.emit(PlayerEvent.AdStopped(testAd(), completed = true))
                     runCurrent()
                     every { player.isPlaying } returns true
                     observer.emit(PlayerEvent.Playing)
                     runCurrent()
-                    elapsed = 10_000L
+                    observer.positionMillis = 8_000L
                     observer.emit(PlayerEvent.Paused)
                     runCurrent()
 
                     val stopped = tracked.filter { it.eventType == STREAM_STOPPED }
-                    assertEquals(7.0, stopped.last().eventProperties?.get("watch_duration"))
+                    assertEquals(7.0, stopped.last().eventProperties?.get("play_time"))
                     assertEquals("paused", stopped.last().eventProperties?.get("stop_reason"))
                 }
             }
@@ -935,56 +986,49 @@ class PlayerBindingTest {
         @Test
         fun `should not count ad time toward content stream duration`() =
             runTest {
-                var elapsed = 0L
-                val time = mockk<Time>()
-                every { time.elapsedRealtime() } answers { elapsed }
-                every { time.nowMillis() } answers { elapsed }
                 val player = mockk<Player>(relaxed = true)
                 every { player.isPlaying } returns true
-                withBinding(player, time = time) {
+                withBinding(player) {
                     observer.emit(PlayerEvent.Playing)
                     runCurrent()
-                    elapsed = 5_000L
+                    observer.positionMillis = 6_000L
                     observer.emit(PlayerEvent.AdStarted(testAd()))
                     runCurrent()
-                    elapsed = 15_000L
                     observer.emit(PlayerEvent.AdStopped(testAd(), completed = true))
                     runCurrent()
                     observer.emit(PlayerEvent.Ended)
                     runCurrent()
 
                     val stopped = tracked.filter { it.eventType == STREAM_STOPPED }
-                    assertEquals(5.0, stopped.last().eventProperties?.get("watch_duration"))
+                    assertEquals(5.0, stopped.last().eventProperties?.get("play_time"))
                 }
             }
 
         @Test
-        fun `should not count paused ad time toward ad watch duration`() =
+        fun `should not count paused ad time toward ad play time`() =
             runTest {
-                var elapsed = 0L
-                val time = mockk<Time>()
-                every { time.elapsedRealtime() } answers { elapsed }
-                every { time.nowMillis() } answers { elapsed }
                 val player = mockk<Player>(relaxed = true)
                 every { player.isPlaying } returns true
-                withBinding(player, time = time) {
+                every { player.isPlayingAd } returns true
+                var adPosition = 0L
+                every { player.currentPosition } answers { adPosition }
+                withBinding(player) {
                     observer.emit(PlayerEvent.Playing)
                     runCurrent()
-                    elapsed = 5_000L
+                    observer.positionMillis = 6_000L
                     observer.emit(PlayerEvent.AdStarted(testAd()))
                     runCurrent()
-                    elapsed = 8_000L
+                    adPosition = 3_000L
                     observer.emit(PlayerEvent.Paused)
                     runCurrent()
-                    elapsed = 20_000L
                     observer.emit(PlayerEvent.Playing)
                     runCurrent()
-                    elapsed = 22_000L
-                    observer.emit(PlayerEvent.AdStopped(testAd(), completed = true))
+                    adPosition = 60_000L
+                    observer.emit(PlayerEvent.AdStopped(testAd().copy(positionMillis = 5_000L), completed = true))
                     runCurrent()
 
                     val adStopped = tracked.filter { it.eventType == AD_STOPPED }.last()
-                    assertEquals(5.0, adStopped.eventProperties?.get("ad_stream_duration"))
+                    assertEquals(5.0, adStopped.eventProperties?.get("ad_play_time"))
                     assertEquals("ended", adStopped.eventProperties?.get("ad_completion_status"))
                 }
             }
@@ -1006,7 +1050,7 @@ class PlayerBindingTest {
                     runCurrent()
 
                     val adStopped = tracked.filter { it.eventType == AD_STOPPED }.last()
-                    assertEquals(0.0, adStopped.eventProperties?.get("ad_stream_duration"))
+                    assertEquals(0.0, adStopped.eventProperties?.get("ad_play_time"))
                 }
             }
 
@@ -1122,33 +1166,121 @@ class PlayerBindingTest {
             }
 
         @Test
-        fun `should exclude paused time from ad stream duration`() =
+        fun `should exclude paused time from ad play time`() =
             runTest {
                 val player = mockk<Player>(relaxed = true)
                 every { player.isPlayingAd } returns true
                 every { player.isPlaying } returns true
-                var elapsed = 1_000L
-                val time = mockk<Time>()
-                every { time.elapsedRealtime() } answers { elapsed }
-                every { time.nowMillis() } answers { elapsed }
-                withBinding(player, time = time) {
+                var adPosition = 0L
+                every { player.currentPosition } answers { adPosition }
+                withBinding(player) {
                     observer.emit(PlayerEvent.AdStarted(testAd()))
                     runCurrent()
-                    elapsed += 2_000L
+                    adPosition = 2_000L
                     observer.emit(PlayerEvent.Paused)
                     runCurrent()
-                    elapsed += 5_000L
                     every { player.isPlaying } returns true
                     observer.emit(PlayerEvent.Playing)
                     runCurrent()
-                    elapsed += 1_000L
-                    observer.emit(PlayerEvent.AdStopped(testAd(), completed = true))
+                    adPosition = 60_000L
+                    observer.emit(PlayerEvent.AdStopped(testAd().copy(positionMillis = 3_000L), completed = true))
                     runCurrent()
 
                     assertEquals(
                         3.0,
                         tracked.filter { it.eventType == AD_STOPPED }.last()
-                            .eventProperties?.get("ad_stream_duration"),
+                            .eventProperties?.get("ad_play_time"),
+                    )
+                }
+            }
+
+        @Test
+        fun `should use the ad stop position when currentPosition has returned to content`() =
+            runTest {
+                val player = mockk<Player>(relaxed = true)
+                every { player.isPlaying } returns true
+                var adPosition = 0L
+                every { player.currentPosition } answers { adPosition }
+                withBinding(player) {
+                    observer.emit(PlayerEvent.Playing)
+                    runCurrent()
+                    observer.positionMillis = 6_000L
+                    observer.emit(PlayerEvent.AdStarted(testAd()))
+                    runCurrent()
+                    adPosition = 6_000L
+                    observer.emit(PlayerEvent.AdStopped(testAd().copy(positionMillis = 15_000L), completed = true))
+                    runCurrent()
+                    observer.emit(PlayerEvent.Ended)
+                    runCurrent()
+
+                    assertEquals(
+                        15.0,
+                        tracked.filter { it.eventType == AD_STOPPED }.last()
+                            .eventProperties?.get("ad_play_time"),
+                    )
+                    assertEquals(
+                        5.0,
+                        tracked.filter { it.eventType == STREAM_STOPPED }
+                            .last()
+                            .eventProperties
+                            ?.get("play_time"),
+                    )
+                }
+            }
+
+        @Test
+        fun `should accrue ad play time up to a seek then ignore the jump`() =
+            runTest {
+                val player = mockk<Player>(relaxed = true)
+                every { player.isPlaying } returns true
+                every { player.isPlayingAd } returns true
+                var adPosition = 0L
+                every { player.currentPosition } answers { adPosition }
+                withBinding(player) {
+                    observer.emit(PlayerEvent.AdStarted(testAd()))
+                    runCurrent()
+                    adPosition = 12_000L
+                    observer.emit(
+                        PlayerEvent.Seeking(
+                            previousSnapshot = previousSnapshot(),
+                            previousAdPositionMillis = 4_000L,
+                        ),
+                    )
+                    runCurrent()
+                    observer.emit(PlayerEvent.AdStopped(testAd().copy(positionMillis = 12_000L), completed = true))
+                    runCurrent()
+
+                    assertEquals(
+                        4.0,
+                        tracked.filter { it.eventType == AD_STOPPED }.last()
+                            .eventProperties?.get("ad_play_time"),
+                    )
+                }
+            }
+
+        @Test
+        fun `should keep heartbeat ad play time when the stop position is stale`() =
+            runTest {
+                val player = mockk<Player>(relaxed = true)
+                every { player.isPlaying } returns true
+                every { player.isPlayingAd } returns true
+                var adPosition = 0L
+                every { player.currentPosition } answers { adPosition }
+                withBinding(player) {
+                    observer.emit(PlayerEvent.AdStarted(testAd()))
+                    runCurrent()
+                    adPosition = 8_000L
+                    advanceTimeBy(1_000)
+                    runCurrent()
+                    every { player.isPlayingAd } returns false
+                    adPosition = 60_000L
+                    observer.emit(PlayerEvent.AdStopped(testAd(), completed = true))
+                    runCurrent()
+
+                    assertEquals(
+                        8.0,
+                        tracked.filter { it.eventType == AD_STOPPED }.last()
+                            .eventProperties?.get("ad_play_time"),
                     )
                 }
             }

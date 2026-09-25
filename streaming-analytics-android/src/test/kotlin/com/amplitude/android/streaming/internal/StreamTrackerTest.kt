@@ -94,7 +94,7 @@ class StreamTrackerTest {
             assertFalse(props.containsKey("is_in_background"))
             assertEquals("news", props["channel"])
             assertFalse(props.containsKey("start_position"))
-            assertFalse(props.containsKey("watch_duration"))
+            assertFalse(props.containsKey("play_time"))
             assertFalse(props.containsKey("stop_reason"))
         }
 
@@ -123,7 +123,7 @@ class StreamTrackerTest {
                 streamSessionId = "stream-1",
                 playId = "play-1",
                 startTimeMillis = 10_000L,
-                watchDurationMillis = 5_000L,
+                playTimeMillis = 5_000L,
                 timestamp = 6_000L,
                 insertId = "insert-stop-1",
                 stopReason = StopReason.PAUSED,
@@ -142,7 +142,7 @@ class StreamTrackerTest {
             assertEquals("video", props["media_type"])
             assertEquals(15.0, props["position"])
             assertEquals(10.0, props["start_time"])
-            assertEquals(5.0, props["watch_duration"])
+            assertEquals(5.0, props["play_time"])
             assertEquals("paused", props["stop_reason"])
             assertEquals(25.0, props["percent_completed"])
             assertFalse(props.containsKey("current_time"))
@@ -157,7 +157,7 @@ class StreamTrackerTest {
                 streamSessionId = "stream-1",
                 playId = "play-1",
                 startTimeMillis = 0L,
-                watchDurationMillis = 5_000L,
+                playTimeMillis = 5_000L,
                 timestamp = 6_000L,
                 insertId = "timeout-stop",
                 stopReason = StopReason.TIMEOUT,
@@ -169,8 +169,6 @@ class StreamTrackerTest {
                 listOf(
                     StopReason.PAUSED,
                     StopReason.ENDED,
-                    StopReason.SEEKING,
-                    StopReason.WAITING,
                     StopReason.ERROR,
                     StopReason.UNTRACKED,
                     StopReason.CONTENT_CHANGED,
@@ -184,7 +182,7 @@ class StreamTrackerTest {
                     streamSessionId = "stream-1",
                     playId = "play-1",
                     startTimeMillis = 0L,
-                    watchDurationMillis = 5_000L,
+                    playTimeMillis = 5_000L,
                     timestamp = 6_000L,
                     insertId = "stop-${reason.value}",
                     stopReason = reason,
@@ -213,7 +211,7 @@ class StreamTrackerTest {
                 streamSessionId = "stream-audio",
                 playId = "play-audio",
                 startTimeMillis = 15_000L,
-                watchDurationMillis = 3_000L,
+                playTimeMillis = 3_000L,
                 timestamp = 5_000L,
                 insertId = "audio-stop",
             )
@@ -240,7 +238,7 @@ class StreamTrackerTest {
                 streamSessionId = "stream-live",
                 playId = "play-live",
                 startTimeMillis = 15_000L,
-                watchDurationMillis = 10_000L,
+                playTimeMillis = 10_000L,
                 timestamp = 10_000L,
                 insertId = "stop-live",
             )
@@ -261,7 +259,7 @@ class StreamTrackerTest {
                 streamSessionId = "stream-unknown",
                 playId = "play-unknown",
                 startTimeMillis = 15_000L,
-                watchDurationMillis = 5_000L,
+                playTimeMillis = 5_000L,
                 timestamp = 5_000L,
                 insertId = "stop-unknown",
             )
@@ -281,7 +279,7 @@ class StreamTrackerTest {
                 streamSessionId = "stream-zero",
                 playId = "play-zero",
                 startTimeMillis = 0L,
-                watchDurationMillis = 0L,
+                playTimeMillis = 0L,
                 timestamp = 5_000L,
                 insertId = "stop-zero",
                 stopReason = StopReason.ENDED,
@@ -332,7 +330,7 @@ class StreamTrackerTest {
                 options = options,
                 ad = ad,
                 streamSessionId = "stream-ad-1",
-                watchDurationMillis = 1_000L,
+                playTimeMillis = 1_000L,
                 status = AdCompletionStatus.ENDED,
                 timestamp = 1_000L,
                 insertId = "ad-stop-1",
@@ -385,7 +383,7 @@ class StreamTrackerTest {
                 options = options,
                 ad = ad,
                 streamSessionId = "stream-ad-1",
-                watchDurationMillis = 30_000L,
+                playTimeMillis = 30_000L,
                 status = AdCompletionStatus.ENDED,
                 timestamp = 2_000L,
                 insertId = "ad-stop-1",
@@ -395,7 +393,7 @@ class StreamTrackerTest {
             val props = event.eventProperties!!
             assertEquals("[Amplitude] Ad Stopped", event.eventType)
             assertEquals(DelayedEvent.Kind.INSTANT, event.kind)
-            assertEquals(30.0, props["ad_stream_duration"])
+            assertEquals(30.0, props["ad_play_time"])
             assertEquals("ended", props["ad_completion_status"])
             assertEquals(100.0, props["ad_percent_completed"])
         }
@@ -406,7 +404,7 @@ class StreamTrackerTest {
                 options = options,
                 ad = ad,
                 streamSessionId = "stream-ad-1",
-                watchDurationMillis = 5_000L,
+                playTimeMillis = 5_000L,
                 status = AdCompletionStatus.ABANDONED,
                 timestamp = 2_000L,
                 insertId = "ad-stop-1",
@@ -414,7 +412,7 @@ class StreamTrackerTest {
 
             val props = events.first().eventProperties!!
             assertEquals("abandoned", props["ad_completion_status"])
-            assertEquals(5.0, props["ad_stream_duration"])
+            assertEquals(5.0, props["ad_play_time"])
         }
 
         @Test
@@ -423,7 +421,7 @@ class StreamTrackerTest {
                 options = options,
                 ad = ad,
                 streamSessionId = "stream-ad-1",
-                watchDurationMillis = 8_000L,
+                playTimeMillis = 8_000L,
                 status = AdCompletionStatus.SKIPPED,
                 timestamp = 2_000L,
                 insertId = "ad-stop-1",
@@ -456,7 +454,7 @@ class StreamTrackerTest {
                 options = options,
                 ad = ad,
                 streamSessionId = "stream-ad-1",
-                watchDurationMillis = 5_000L,
+                playTimeMillis = 5_000L,
                 status = AdCompletionStatus.TIMEOUT,
                 timestamp = 2_000L,
                 insertId = "ad-stop-timeout",
@@ -478,7 +476,7 @@ class StreamTrackerTest {
                     options = options,
                     ad = ad,
                     streamSessionId = "stream-ad-1",
-                    watchDurationMillis = 5_000L,
+                    playTimeMillis = 5_000L,
                     status = status,
                     timestamp = 2_000L,
                     insertId = "ad-stop-${status.value}",
@@ -517,7 +515,7 @@ class StreamTrackerTest {
                 streamSessionId = "stream-1",
                 playId = "play-1",
                 startTimeMillis = 10_000L,
-                watchDurationMillis = 5_000L,
+                playTimeMillis = 5_000L,
                 timestamp = 6_000L,
                 insertId = "insert-stop-1",
                 stopReason = StopReason.UNTRACKED,
@@ -586,7 +584,7 @@ class StreamTrackerTest {
                 streamSessionId = "stream-1",
                 playId = "play-1",
                 startTimeMillis = 10_000L,
-                watchDurationMillis = 5_000L,
+                playTimeMillis = 5_000L,
                 timestamp = 6_000L,
                 insertId = "insert-stop-1",
                 stopReason = StopReason.UNTRACKED,
