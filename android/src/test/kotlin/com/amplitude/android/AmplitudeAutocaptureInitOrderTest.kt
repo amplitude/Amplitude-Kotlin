@@ -4,14 +4,9 @@ import android.app.Application
 import android.content.Context
 import android.net.ConnectivityManager
 import com.amplitude.MainDispatcherRule
-import com.amplitude.android.plugins.AndroidContextPlugin
-import com.amplitude.android.plugins.AndroidLifecyclePlugin
-import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.android.utilities.setupMockAndroidContext
 import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.State
-import com.amplitude.core.platform.plugins.AmplitudeDestination
-import com.amplitude.core.platform.plugins.GetAmpliExtrasPlugin
 import com.amplitude.core.utilities.ConsoleLoggerProvider
 import com.amplitude.core.utilities.InMemoryStorageProvider
 import com.amplitude.id.IMIdentityStorageProvider
@@ -57,7 +52,7 @@ class AmplitudeAutocaptureInitOrderTest {
         val amplitudeDispatcher = pool.asCoroutineDispatcher()
 
         val releasePropertyInit = CountDownLatch(1)
-        val buildInternalEntered = CountDownLatch(1)
+        val autocaptureRead = CountDownLatch(1)
         val accessError = AtomicReference<Throwable?>(null)
 
         val constructThread =
@@ -66,13 +61,15 @@ class AmplitudeAutocaptureInitOrderTest {
                     configuration = configuration,
                     amplitudeDispatcher = amplitudeDispatcher,
                     releasePropertyInit = releasePropertyInit,
-                    buildInternalEntered = buildInternalEntered,
+                    autocaptureRead = autocaptureRead,
                     accessError = accessError,
                 )
             }
 
         constructThread.start()
-        assertTrue(buildInternalEntered.await(5, TimeUnit.SECONDS))
+        // Release the constructor only once buildInternal has read the delegate field. Releasing
+        // any earlier lets property init win the race and install the delegate before the read.
+        assertTrue(autocaptureRead.await(5, TimeUnit.SECONDS))
         releasePropertyInit.countDown()
         constructThread.join(30_000)
 
@@ -149,7 +146,7 @@ class AmplitudeAutocaptureInitOrderTest {
         configuration: Configuration,
         amplitudeDispatcher: CoroutineDispatcher,
         private val releasePropertyInit: CountDownLatch,
-        private val buildInternalEntered: CountDownLatch,
+        private val autocaptureRead: CountDownLatch,
         private val accessError: AtomicReference<Throwable?>,
     ) : CoreAmplitude(
             configuration = configuration,
@@ -159,8 +156,6 @@ class AmplitudeAutocaptureInitOrderTest {
             networkIODispatcher = amplitudeDispatcher,
             storageIODispatcher = amplitudeDispatcher,
         ) {
-        private val activityLifecycleCallbacks = ActivityLifecycleObserver()
-
         // Runs before the lazy delegate below is installed; holds the constructor open while
         // buildInternal may already be executing on the amplitude dispatcher thread.
         @Suppress("unused")
@@ -171,10 +166,9 @@ class AmplitudeAutocaptureInitOrderTest {
             }
 
         internal val autocaptureManager: AutocaptureManager by lazy {
-            val androidConfig = configuration as Configuration
             AutocaptureManager(
-                initialAutocapture = androidConfig.autocapture,
-                initialInteractionsOptions = androidConfig.interactionsOptions,
+                initialAutocapture = configuration.autocapture,
+                initialInteractionsOptions = configuration.interactionsOptions,
                 remoteConfigClient = null,
                 logger = logger,
                 diagnosticsClient = null,
@@ -186,24 +180,20 @@ class AmplitudeAutocaptureInitOrderTest {
         }
 
         override suspend fun buildInternal(identityConfiguration: IdentityConfiguration) {
-            buildInternalEntered.countDown()
             try {
                 // Same access path as AndroidLifecyclePlugin.setup.
                 autocaptureManager.state.value
             } catch (error: Throwable) {
                 accessError.compareAndSet(null, error)
+            } finally {
+                autocaptureRead.countDown()
             }
-            createIdentityContainer(identityConfiguration)
-            add(AndroidContextPlugin())
-            add(GetAmpliExtrasPlugin())
-            add(AndroidLifecyclePlugin(activityLifecycleCallbacks))
-            add(AmplitudeDestination())
         }
     }
 
     /**
      * Production [Amplitude] subclass that probes [autocaptureManager] at the very start of
-     * [buildInternal], before [AndroidLifecyclePlugin] setup can run.
+     * [buildInternal], before the lifecycle plugin setup can run.
      */
     private class ProductionInitOrderProbe(
         configuration: Configuration,
