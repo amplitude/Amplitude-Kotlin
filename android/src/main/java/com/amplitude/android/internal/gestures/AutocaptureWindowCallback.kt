@@ -24,7 +24,10 @@ internal open class AutocaptureWindowCallback(
         AutocaptureGestureListener(decorView, activityName, track, logger, viewTargetLocators, autocaptureStateProvider),
     private val gestureDetector: GestureDetector = GestureDetector(decorView.context, gestureListener),
     private val multiTouchGestureDetector: AutocaptureMultiTouchGestureDetector =
-        AutocaptureMultiTouchGestureDetector(gestureListener::onMultiTouchGesture),
+        AutocaptureMultiTouchGestureDetector(
+            onTrackingStarted = gestureListener::onTransformStarted,
+            onGesture = gestureListener::onTransformRecognized,
+        ),
 ) : WindowCallbackAdapter(delegate) {
     protected val decorViewRef: WeakReference<View> = WeakReference(decorView)
 

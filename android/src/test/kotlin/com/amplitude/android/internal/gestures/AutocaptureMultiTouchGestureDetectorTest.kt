@@ -10,7 +10,11 @@ class AutocaptureMultiTouchGestureDetectorTest {
     @Test
     fun `tracks a pinch after scale passes the threshold`() {
         val gestures = mutableListOf<String>()
-        val detector = AutocaptureMultiTouchGestureDetector { action, _, _ -> gestures += action }
+        val detector =
+            AutocaptureMultiTouchGestureDetector(
+                onTrackingStarted = { _, _ -> },
+                onGesture = { gestures += it },
+            )
 
         detector.onTouchEvent(event(MotionEvent.ACTION_POINTER_DOWN, 0f, 0f, 100f, 0f))
         detector.onTouchEvent(event(MotionEvent.ACTION_MOVE, 0f, 0f, 130f, 0f))
@@ -22,7 +26,11 @@ class AutocaptureMultiTouchGestureDetectorTest {
     @Test
     fun `tracks a rotation after angle passes the threshold`() {
         val gestures = mutableListOf<String>()
-        val detector = AutocaptureMultiTouchGestureDetector { action, _, _ -> gestures += action }
+        val detector =
+            AutocaptureMultiTouchGestureDetector(
+                onTrackingStarted = { _, _ -> },
+                onGesture = { gestures += it },
+            )
 
         detector.onTouchEvent(event(MotionEvent.ACTION_POINTER_DOWN, 0f, 0f, 100f, 0f))
         detector.onTouchEvent(event(MotionEvent.ACTION_MOVE, 0f, 0f, 86.6f, 50f))
@@ -34,13 +42,32 @@ class AutocaptureMultiTouchGestureDetectorTest {
     @Test
     fun `does not track incidental two-finger movement`() {
         val gestures = mutableListOf<String>()
-        val detector = AutocaptureMultiTouchGestureDetector { action, _, _ -> gestures += action }
+        val detector =
+            AutocaptureMultiTouchGestureDetector(
+                onTrackingStarted = { _, _ -> },
+                onGesture = { gestures += it },
+            )
 
         detector.onTouchEvent(event(MotionEvent.ACTION_POINTER_DOWN, 0f, 0f, 100f, 0f))
         detector.onTouchEvent(event(MotionEvent.ACTION_MOVE, 0f, 0f, 105f, 0f))
         detector.onTouchEvent(event(MotionEvent.ACTION_POINTER_UP, 0f, 0f, 105f, 0f))
 
         assertEquals(emptyList<String>(), gestures)
+    }
+
+    @Test
+    fun `reports the focus where the second finger went down`() {
+        val starts = mutableListOf<Pair<Float, Float>>()
+        val detector =
+            AutocaptureMultiTouchGestureDetector(
+                onTrackingStarted = { x, y -> starts += x to y },
+                onGesture = {},
+            )
+
+        detector.onTouchEvent(event(MotionEvent.ACTION_POINTER_DOWN, 0f, 0f, 100f, 0f))
+        detector.onTouchEvent(event(MotionEvent.ACTION_MOVE, 40f, 10f, 140f, 10f))
+
+        assertEquals(listOf(50f to 0f), starts)
     }
 
     private fun event(

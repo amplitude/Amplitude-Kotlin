@@ -9,6 +9,7 @@ import com.amplitude.android.Constants.EventProperties.TARGET_RESOURCE
 import com.amplitude.android.Constants.EventProperties.TARGET_SOURCE
 import com.amplitude.android.Constants.EventProperties.TARGET_TAG
 import com.amplitude.android.Constants.EventProperties.TARGET_TEXT
+import com.amplitude.android.internal.gestures.GestureActions
 import java.lang.ref.WeakReference
 
 /**
@@ -32,6 +33,14 @@ public data class ViewTarget(
     internal val ampIgnoreDeadClick: Boolean = false,
 ) {
     /**
+     * Elements under the touch that can receive a gesture, outermost first. An Android view
+     * consumes the whole touch stream, so only the hit view is listed. Compose passes pointer
+     * events a child did not consume up to its ancestors, so every interactive node is listed.
+     */
+    internal var gestureOwners: List<GestureOwner> =
+        listOf(GestureOwner(setOf(GestureActions.TOUCH), tag, accessibilityLabel))
+
+    /**
      * Convenience property to check if ignored for all frustration analytics
      */
     val isIgnoredForFrustration: Boolean
@@ -46,6 +55,25 @@ public data class ViewTarget(
 }
 
 /**
+ * An element that declared handlers for [actions], with the identity to report for it.
+ */
+internal class GestureOwner(
+    val actions: Set<String>,
+    val tag: String?,
+    val accessibilityLabel: String?,
+)
+
+/**
+ * The target to report for [action]: the innermost owner that handles it, mirroring the iOS SDK
+ * reporting the view a recognizer is attached to. Null when no owner handles [action].
+ */
+internal fun ViewTarget.resolvedFor(action: String): ViewTarget? {
+    val owner = gestureOwners.lastOrNull { action in it.actions } ?: return null
+    if (owner === gestureOwners.last()) return this
+    return copy(tag = owner.tag, accessibilityLabel = owner.accessibilityLabel)
+}
+
+/**
  * Builds the base properties for ELEMENT_INTERACTED events.
  * This is the foundation used by both standard element tracking and frustration analytics.
  */
@@ -53,7 +81,7 @@ public data class ViewTarget(
 public fun buildElementInteractedProperties(
     target: ViewTarget,
     activityName: String,
-): Map<String, Any?> = buildElementInteractedProperties(target, activityName, "tap")
+): Map<String, Any?> = buildElementInteractedProperties(target, activityName, GestureActions.TOUCH)
 
 internal fun buildElementInteractedProperties(
     target: ViewTarget,
