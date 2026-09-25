@@ -3,10 +3,6 @@ package com.amplitude.android.internal.gestures
 import android.view.GestureDetector
 import android.view.MotionEvent
 import android.view.View
-import android.webkit.WebView
-import android.widget.AbsListView
-import android.widget.HorizontalScrollView
-import android.widget.ScrollView
 import androidx.annotation.VisibleForTesting
 import com.amplitude.android.AutocaptureState
 import com.amplitude.android.Constants.EventTypes.ELEMENT_INTERACTED
@@ -16,6 +12,7 @@ import com.amplitude.android.internal.ViewHierarchyScanner.findTarget
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.buildElementInteractedProperties
 import com.amplitude.android.internal.locators.ViewTargetLocator
+import com.amplitude.android.internal.resolvedFor
 import com.amplitude.common.Logger
 import java.lang.ref.WeakReference
 
@@ -30,7 +27,9 @@ public class AutocaptureGestureListener(
     private val autocaptureStateProvider: () -> AutocaptureState,
     private var onViewTargetFound: ((ViewTarget) -> Unit)? = null,
 ) : GestureDetector.OnGestureListener {
-    private var panCandidate: Pair<Float, Float>? = null
+    private var panStarted = false
+    private var panTarget: ViewTarget? = null
+    private var transformHit: ViewTarget? = null
     private var gestureTracked = false
 
     private val autocaptureState: AutocaptureState
@@ -42,7 +41,9 @@ public class AutocaptureGestureListener(
     }
 
     override fun onDown(e: MotionEvent): Boolean {
-        panCandidate = null
+        panStarted = false
+        panTarget = null
+        transformHit = null
         gestureTracked = false
         return false
     }
@@ -55,7 +56,7 @@ public class AutocaptureGestureListener(
 
         val decorView = decorViewRef.get() ?: logger.error("DecorView is null in onSingleTapUp()").let { return false }
 
-        val target: ViewTarget =
+        val hit =
             decorView.findTarget(
                 Pair(e.x, e.y),
                 viewTargetLocators,
@@ -64,13 +65,14 @@ public class AutocaptureGestureListener(
             ) ?: logger.warn("Unable to find click target. No event captured.").let {
                 return false
             }
+        val target = hit.resolvedFor(GestureActions.TOUCH) ?: return false
 
         // Notify callback with found target (for reuse by frustration interactions)
         onViewTargetFound?.invoke(target)
 
         // Track element interaction events only if ElementInteraction is enabled
         if (ElementInteraction in autocaptureState.interactions) {
-            trackInteraction(target, TAP)
+            trackInteraction(target, GestureActions.TOUCH)
         }
 
         return false
@@ -82,14 +84,17 @@ public class AutocaptureGestureListener(
         distanceX: Float,
         distanceY: Float,
     ): Boolean {
-        if (ElementInteraction !in autocaptureState.interactions || gestureTracked) return false
+        if (panStarted || e1 == null) return false
+        panStarted = true
 
-        panCandidate = Pair(e2.x, e2.y)
+        // Resolve before this drag moves any content, so the pan belongs to the element it
+        // started on, like the view an iOS recognizer is attached to.
+        panTarget = findGestureTarget(e1.x, e1.y, GestureActions.PAN)
         return false
     }
 
     override fun onLongPress(e: MotionEvent) {
-        trackGesture(e, LONG_PRESS)
+        trackGesture(e.x, e.y, GestureActions.LONG_PRESS)
     }
 
     override fun onFling(
@@ -97,32 +102,41 @@ public class AutocaptureGestureListener(
         e2: MotionEvent,
         velocityX: Float,
         velocityY: Float,
-    ): Boolean {
-        if (e1 != null) {
-            trackGesture(e2, SWIPE)
-        }
-        return false
-    }
+    ): Boolean = false
 
     internal fun onTouchEventCompleted(event: MotionEvent) {
-        if (event.actionMasked == MotionEvent.ACTION_UP && !gestureTracked) {
-            panCandidate?.let { (x, y) -> trackGesture(x, y, PAN) }
+        if (event.actionMasked == MotionEvent.ACTION_UP) {
+            panTarget?.let { trackGesture(it, GestureActions.PAN) }
+        }
+        // The transform detector reports a qualified gesture before this runs, so dropping the
+        // captured target here only discards one that never crossed its threshold.
+        if (event.actionMasked == MotionEvent.ACTION_POINTER_UP ||
+            event.actionMasked == MotionEvent.ACTION_UP ||
+            event.actionMasked == MotionEvent.ACTION_CANCEL
+        ) {
+            transformHit = null
         }
         if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
-            panCandidate = null
+            panStarted = false
+            panTarget = null
         }
     }
 
-    internal fun onMultiTouchGesture(action: String, x: Float, y: Float) {
-        if (gestureTracked) return
-        trackGesture(x, y, action)
+    /**
+     * Called when a second finger lands, before the gesture has moved anything.
+     */
+    internal fun onTransformStarted(x: Float, y: Float) {
+        transformHit = findHit(x, y)
     }
 
-    private fun trackGesture(
-        event: MotionEvent,
-        action: String,
-    ) {
-        trackGesture(event.x, event.y, action)
+    /**
+     * Called when a pinch or rotation crosses its threshold. The target is the one captured in
+     * [onTransformStarted], not whatever is under the fingers now.
+     */
+    internal fun onTransformRecognized(action: String) {
+        val hit = transformHit
+        transformHit = null
+        hit?.resolvedFor(action)?.let { trackGesture(it, action) }
     }
 
     private fun trackGesture(
@@ -130,26 +144,43 @@ public class AutocaptureGestureListener(
         y: Float,
         action: String,
     ) {
-        if (ElementInteraction !in autocaptureState.interactions || gestureTracked) return
+        findGestureTarget(x, y, action)?.let { trackGesture(it, action) }
+    }
+
+    private fun trackGesture(
+        target: ViewTarget,
+        action: String,
+    ) {
+        if (gestureTracked) return
+        trackInteraction(target, action)
+        gestureTracked = true
+    }
+
+    private fun findGestureTarget(
+        x: Float,
+        y: Float,
+        action: String,
+    ): ViewTarget? = findHit(x, y)?.resolvedFor(action)
+
+    /**
+     * The element under [x], [y]. A miss is normal: most pans and pinches start on content that
+     * handles neither, so this stays quiet where a tap logs that it found nothing.
+     */
+    private fun findHit(
+        x: Float,
+        y: Float,
+    ): ViewTarget? {
+        if (ElementInteraction !in autocaptureState.interactions || gestureTracked) return null
 
         val decorView =
             decorViewRef.get()
-                ?: logger.error("DecorView is null while tracking $action.").let { return }
-        val target =
-            decorView.findTarget(
-                Pair(x, y),
-                viewTargetLocators,
-                ViewTarget.Type.Clickable,
-                logger,
-            ) ?: logger.warn("Unable to find $action target. No event captured.").let {
-                return
-            }
-
-        if (action in SCROLL_GESTURES && target.isInScrollContainer()) return
-
-        trackInteraction(target, action)
-        gestureTracked = true
-        panCandidate = null
+                ?: logger.error("DecorView is null while resolving a gesture target.").let { return null }
+        return decorView.findTarget(
+            Pair(x, y),
+            viewTargetLocators,
+            ViewTarget.Type.Clickable,
+            logger,
+        )
     }
 
     private fun trackInteraction(
@@ -158,42 +189,5 @@ public class AutocaptureGestureListener(
     ) {
         val properties = buildElementInteractedProperties(target, activityName, action)
         track(ELEMENT_INTERACTED, properties)
-    }
-
-    private fun ViewTarget.isInScrollContainer(): Boolean {
-        var current: Any? = view
-        while (current is View) {
-            if (current.isScrollContainerType()) return true
-            current = current.parent
-        }
-        return false
-    }
-
-    private fun View.isScrollContainerType(): Boolean {
-        return this is ScrollView ||
-            this is HorizontalScrollView ||
-            this is AbsListView ||
-            this is WebView ||
-            generateSequence(javaClass as Class<*>?) { it.superclass }
-                .map { it.name }
-                .any { it in ANDROIDX_SCROLL_CONTAINER_TYPES }
-    }
-
-    internal companion object {
-        val TAP = "tap"
-        val SWIPE = "swipe"
-        val PAN = "pan"
-        val LONG_PRESS = "longPress"
-        val PINCH = "pinch"
-        val ROTATION = "rotation"
-
-        private val SCROLL_GESTURES = setOf(SWIPE, PAN, PINCH)
-        private val ANDROIDX_SCROLL_CONTAINER_TYPES =
-            setOf(
-                "androidx.core.widget.NestedScrollView",
-                "androidx.recyclerview.widget.RecyclerView",
-                "androidx.viewpager.widget.ViewPager",
-                "androidx.viewpager2.widget.ViewPager2",
-            )
     }
 }

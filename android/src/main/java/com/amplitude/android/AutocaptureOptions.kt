@@ -25,9 +25,7 @@ public enum class AutocaptureOption {
     SCREEN_VIEWS,
 
     /**
-     * Enable element interaction tracking for taps, swipes, pans, long presses, pinches, and rotations.
-     *
-     * Scroll and zoom gestures performed by scroll containers are excluded.
+     * Enable element interaction tracking.
      */
     ELEMENT_INTERACTIONS,
 

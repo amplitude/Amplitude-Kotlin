@@ -6,7 +6,8 @@ import kotlin.math.atan2
 import kotlin.math.hypot
 
 internal class AutocaptureMultiTouchGestureDetector(
-    private val onGesture: (action: String, x: Float, y: Float) -> Unit,
+    private val onTrackingStarted: (x: Float, y: Float) -> Unit,
+    private val onGesture: (action: String) -> Unit,
 ) {
     private var initialSpan = 0f
     private var initialAngle = 0f
@@ -25,6 +26,8 @@ internal class AutocaptureMultiTouchGestureDetector(
                     initialAngle = event.angle()
                     updateFocus(event)
                     tracking = true
+                    // Report the focus now, before the gesture moves any content.
+                    onTrackingStarted(focusX, focusY)
                 }
             }
             MotionEvent.ACTION_MOVE -> {
@@ -40,13 +43,13 @@ internal class AutocaptureMultiTouchGestureDetector(
                         when {
                             rotationDelta >= ROTATION_THRESHOLD &&
                                 rotationDelta / ROTATION_THRESHOLD > scaleDelta / SCALE_THRESHOLD -> {
-                                AutocaptureGestureListener.ROTATION
+                                GestureActions.ROTATION
                             }
-                            scaleDelta >= SCALE_THRESHOLD -> AutocaptureGestureListener.PINCH
-                            rotationDelta >= ROTATION_THRESHOLD -> AutocaptureGestureListener.ROTATION
+                            scaleDelta >= SCALE_THRESHOLD -> GestureActions.PINCH
+                            rotationDelta >= ROTATION_THRESHOLD -> GestureActions.ROTATION
                             else -> null
                         }
-                    action?.let { onGesture(it, focusX, focusY) }
+                    action?.let { onGesture(it) }
                     reset()
                 }
             }

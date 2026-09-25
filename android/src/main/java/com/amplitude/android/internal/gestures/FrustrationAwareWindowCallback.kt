@@ -8,8 +8,6 @@ import com.amplitude.android.FrustrationInteractionsDetector
 import com.amplitude.android.InteractionType.DeadClick
 import com.amplitude.android.InteractionType.RageClick
 import com.amplitude.android.internal.TrackFunction
-import com.amplitude.android.internal.ViewHierarchyScanner.findTarget
-import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.locators.ViewTargetLocator
 import com.amplitude.common.Logger
 
@@ -50,27 +48,14 @@ internal class FrustrationAwareWindowCallback(
             return
         }
 
-        val decorView = decorViewRef.get()
-        if (decorView == null) {
-            logger.error("DecorView is null in handleFrustrationInteraction()")
-            return
-        }
-
-        // Reuse the ViewTarget found by element interactions to avoid redundant view hierarchy traversal
-        val target: ViewTarget =
-            lastFoundViewTarget
-                ?.also {
-                    // Clear the cache after use to avoid stale references
-                    lastFoundViewTarget = null
-                } ?: decorView.findTarget(
-                Pair(event.x, event.y),
-                viewTargetLocators,
-                ViewTarget.Type.Clickable,
-                logger,
-            ) ?: run {
-                logger.debug("Unable to find click target for frustration interaction")
+        // Only a completed tap caches a target, so drag and long-press releases are not clicks
+        val target =
+            lastFoundViewTarget ?: run {
+                logger.debug("No tap target for frustration interaction")
                 return
             }
+        // Clear the cache after use to avoid stale references
+        lastFoundViewTarget = null
 
         // Check if this target should be ignored for all frustration analytics
         if (target.isIgnoredForFrustration) {
