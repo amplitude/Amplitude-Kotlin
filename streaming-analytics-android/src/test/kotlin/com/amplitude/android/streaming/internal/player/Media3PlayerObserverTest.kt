@@ -693,6 +693,25 @@ class Media3PlayerObserverTest {
             assertTrue(events.none { it is PlayerEvent.AdSkipped })
         }
 
+        @Test
+        fun `should report the latest ad playhead when playback leaves the ad`() =
+            runTest {
+                val player = playingAdPlayer(adGroupIndex = 0, adIndexInAdGroup = 0)
+                val (observer, events) = observerCollectingEvents(player)
+
+                observer.detectAdTransition()
+                every { player.currentPosition } returns 8_000L
+                observer.detectAdTransition()
+                every { player.isPlayingAd } returns false
+                every { player.currentPosition } returns 30_000L
+                observer.detectAdTransition()
+                runCurrent()
+
+                val stopped = events.filterIsInstance<PlayerEvent.AdStopped>().single()
+                assertEquals(8_000L, stopped.ad.positionMillis)
+                assertEquals(false, stopped.completed)
+            }
+
     @Test
     fun `should treat ads with the same indices on different media item indexes as distinct`() =
         runTest {

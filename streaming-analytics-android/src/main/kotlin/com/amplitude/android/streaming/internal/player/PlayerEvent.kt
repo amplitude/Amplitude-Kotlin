@@ -17,6 +17,7 @@ internal sealed interface PlayerEvent {
 
     data class Seeking(
         val previousSnapshot: PlayerMediaSnapshot,
+        val previousAdPositionMillis: Long? = null,
     ) : PlayerEvent
 
     data class Error(

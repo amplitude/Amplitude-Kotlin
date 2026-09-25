@@ -14,7 +14,7 @@ Android sample for `com.amplitude:streaming-analytics-android`.
 * **Big Buck Bunny · skippable preroll** — skippable VAST preroll. Skip the IMA overlay to emit `[Amplitude] Ad Skipped` plus `[Amplitude] Ad Stopped` (`ad_completion_status=skipped`). Let it finish for `ended`.
 * **Frame counter · VMAP pre/mid/post** — preroll, mid-roll, and post-roll. Mid-roll completion should be `ended`, not a skip.
 
-Ad minutes are `ad_stream_duration` on `[Amplitude] Ad Stopped`. Pause during an ad should not accrue watch time.
+Ad minutes are `ad_play_time` on `[Amplitude] Ad Stopped`. Pause during an ad should not accrue play time.
 
 ## Run
 

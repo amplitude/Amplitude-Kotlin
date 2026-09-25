@@ -73,7 +73,7 @@ internal class StreamTracker(
         options: PlayerContent,
         ad: AdContext,
         streamSessionId: String,
-        watchDurationMillis: Long,
+        playTimeMillis: Long,
         status: AdCompletionStatus,
         timestamp: Long,
         insertId: String,
@@ -86,9 +86,9 @@ internal class StreamTracker(
                 timestamp = timestamp,
                 eventProperties =
                     adProperties(options = options, ad = ad, streamSessionId = streamSessionId).apply {
-                        put("ad_stream_duration", watchDurationMillis.millisToSeconds())
+                        put("ad_play_time", playTimeMillis.millisToSeconds())
                         put("ad_completion_status", status.value)
-                        ad.percentWatched(watchDurationMillis)?.let { percentage ->
+                        ad.percentWatched(playTimeMillis)?.let { percentage ->
                             put("ad_percent_completed", percentage)
                         }
                     },
@@ -156,7 +156,7 @@ internal class StreamTracker(
         streamSessionId: String,
         playId: String,
         startTimeMillis: Long,
-        watchDurationMillis: Long,
+        playTimeMillis: Long,
         timestamp: Long,
         insertId: String,
         stopReason: StopReason? = null,
@@ -175,7 +175,7 @@ internal class StreamTracker(
                         streamSessionId = streamSessionId,
                         playId = playId,
                         startTimeMillis = startTimeMillis,
-                        watchDurationMillis = watchDurationMillis,
+                        playTimeMillis = playTimeMillis,
                         stopReason = stopReason,
                         errorMessage = errorMessage,
                     ),
@@ -244,7 +244,7 @@ private fun stoppedContentProperties(
     streamSessionId: String,
     playId: String,
     startTimeMillis: Long,
-    watchDurationMillis: Long,
+    playTimeMillis: Long,
     stopReason: StopReason?,
     errorMessage: String?,
 ): MutableMap<String, Any?> =
@@ -256,7 +256,7 @@ private fun stoppedContentProperties(
         playId = playId,
         startTimeMillis = startTimeMillis,
     ).apply {
-        put("watch_duration", watchDurationMillis.millisToSeconds())
+        put("play_time", playTimeMillis.millisToSeconds())
         stopReason?.let { put("stop_reason", it.value) }
         errorMessage?.let { put("error_message", it) }
         snapshot.percentCompleted()?.let { percentage ->
@@ -301,14 +301,14 @@ internal data class AdContext(
         get() = "${contentId.orEmpty()}:$mediaItemIndex:$adGroupIndex:$adIndexInAdGroup"
 }
 
-internal fun AdContext.percentWatched(watchDurationMillis: Long): Double? {
+internal fun AdContext.percentWatched(playTimeMillis: Long): Double? {
     if (!durationMillis.isKnownDuration()) {
         return null
     }
     if (durationMillis == 0L) {
         return 0.0
     }
-    return (100.0 * watchDurationMillis.toDouble() / durationMillis)
+    return (100.0 * playTimeMillis.toDouble() / durationMillis)
         .coerceIn(0.0, 100.0)
 }
 
@@ -334,8 +334,6 @@ internal enum class StopReason(
     TIMEOUT("timeout"),
     PAUSED("paused"),
     ENDED("ended"),
-    SEEKING("seeking"),
-    WAITING("waiting"),
     ERROR("error"),
     UNTRACKED("untracked"),
     CONTENT_CHANGED("content_changed"),

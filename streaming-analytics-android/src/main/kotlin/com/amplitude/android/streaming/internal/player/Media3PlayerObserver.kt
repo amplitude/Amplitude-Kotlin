@@ -184,7 +184,18 @@ internal class Media3PlayerObserver(
                 outgoingSnapshot = snapshotAtDiscontinuity(oldPosition)
             }
             if (reason == Player.DISCONTINUITY_REASON_SEEK && !mediaChanged) {
-                emit(PlayerEvent.Seeking(snapshotAtDiscontinuity(oldPosition)))
+                val previousAdPositionMillis =
+                    if (oldPosition.adGroupIndex != C.INDEX_UNSET) {
+                        oldPosition.positionMs.coerceAtLeast(0L)
+                    } else {
+                        null
+                    }
+                emit(
+                    PlayerEvent.Seeking(
+                        previousSnapshot = snapshotAtDiscontinuity(oldPosition),
+                        previousAdPositionMillis = previousAdPositionMillis,
+                    ),
+                )
             }
             if (oldPosition.adGroupIndex != C.INDEX_UNSET &&
                 (
@@ -223,11 +234,15 @@ internal class Media3PlayerObserver(
         player: Player,
         events: Player.Events,
     ) {
-        runCatchingCancellable { detectAdTransition() }
+        runCatchingCancellable {
+            refreshActiveAdPlayhead(player)
+            detectAdTransition()
+        }
     }
 
     internal fun detectAdTransition() {
         val player = playerReference.get() ?: return
+        refreshActiveAdPlayhead(player)
         if (player.playbackState == Player.STATE_ENDED) {
             if (activeAd != null) {
                 finishAdForTransition(
@@ -342,6 +357,21 @@ internal class Media3PlayerObserver(
         )
     }
 
+    /**
+     * Samples the ad playhead while this ad is still current. Paths that finish the ad after
+     * [Player.isPlayingAd] flips false cannot read [Player.getCurrentPosition]; it is already the
+     * content resume point.
+     */
+    private fun refreshActiveAdPlayhead(player: Player) {
+        val ad = activeAd ?: return
+        if (!player.isPlayingAd || !player.isSameAdAs(ad)) return
+        activeAd =
+            ad.copy(
+                positionMillis = player.currentPosition.coerceAtLeast(0),
+                durationMillis = player.duration,
+            )
+    }
+
     private fun adContextFromPlayer(player: Player): AdContext =
         AdContext(
             adGroupIndex = player.currentAdGroupIndex,
@@ -367,6 +397,13 @@ private fun AdContext.isSameAdAs(other: AdContext): Boolean =
         adIndexInAdGroup == other.adIndexInAdGroup &&
         contentId == other.contentId &&
         mediaItemIndex == other.mediaItemIndex
+
+@OptIn(UnstableApi::class)
+private fun Player.isSameAdAs(ad: AdContext): Boolean =
+    currentAdGroupIndex == ad.adGroupIndex &&
+        currentAdIndexInAdGroup == ad.adIndexInAdGroup &&
+        currentMediaItemIndex == ad.mediaItemIndex &&
+        currentMediaItem?.mediaId.nonBlank() == ad.contentId
 
 private fun Player.contentIsLive(): Boolean {
     val timeline = currentTimeline
