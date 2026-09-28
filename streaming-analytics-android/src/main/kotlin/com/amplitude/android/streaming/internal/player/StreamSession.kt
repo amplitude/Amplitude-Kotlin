@@ -18,7 +18,7 @@ internal class StreamSession(
     /**
      * Play time already accrued by earlier plays of the same stream session.
      *
-     * `play_time` is cumulative per `stream_session_id`. A pause starts a new play but keeps
+     * `[Streaming] Play Time Sec` is cumulative per `[Streaming] Stream Session ID`. A pause starts a new play but keeps
      * counting from the total so far. Seeks and buffering stay on the same play.
      */
     private val playTimeBeforeMillis: Long = 0L,

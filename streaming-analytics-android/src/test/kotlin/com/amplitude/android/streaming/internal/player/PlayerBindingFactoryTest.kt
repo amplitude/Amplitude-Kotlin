@@ -113,8 +113,8 @@ class PlayerBindingFactoryTest {
 
                 assertTrue(
                     events.any {
-                        it.eventType == "[Amplitude] Stream Stopped" &&
-                            it.eventProperties?.get("stop_reason") == "untracked"
+                        it.eventType == "[Streaming] Stream Stopped" &&
+                            it.eventProperties?.get("[Streaming] Stop Reason") == "untracked"
                     },
                 )
                 assertNotSame(binding, factory.getOrCreate(player))
@@ -169,11 +169,11 @@ class PlayerBindingFactoryTest {
                 observers.last().emit(PlayerEvent.Playing)
                 runCurrent()
 
-                val started = events.filter { it.eventType == "[Amplitude] Stream Started" }
+                val started = events.filter { it.eventType == "[Streaming] Stream Started" }
                 val untrackedStops =
                     events.filter {
-                        it.eventType == "[Amplitude] Stream Stopped" &&
-                            it.eventProperties?.get("stop_reason") == "untracked"
+                        it.eventType == "[Streaming] Stream Stopped" &&
+                            it.eventProperties?.get("[Streaming] Stop Reason") == "untracked"
                     }
                 assertEquals(2, started.size)
                 assertEquals(1, untrackedStops.size)
@@ -213,8 +213,8 @@ class PlayerBindingFactoryTest {
 
             assertTrue(
                 events.any {
-                    it.eventType == "[Amplitude] Stream Stopped" &&
-                        it.eventProperties?.get("stop_reason") == "untracked"
+                    it.eventType == "[Streaming] Stream Stopped" &&
+                        it.eventProperties?.get("[Streaming] Stop Reason") == "untracked"
                 },
             )
         }
@@ -253,8 +253,8 @@ class PlayerBindingFactoryTest {
 
             assertTrue(
                 events.any {
-                    it.eventType == "[Amplitude] Stream Stopped" &&
-                        it.eventProperties?.get("stop_reason") == "untracked"
+                    it.eventType == "[Streaming] Stream Stopped" &&
+                        it.eventProperties?.get("[Streaming] Stop Reason") == "untracked"
                 },
             )
         }
@@ -286,11 +286,11 @@ class PlayerBindingFactoryTest {
             runCurrent()
 
             factory.detachAll()
-            val started = events.count { it.eventType == "[Amplitude] Stream Started" }
+            val started = events.count { it.eventType == "[Streaming] Stream Started" }
 
             assertNull(factory.getOrCreate(player))
             runCurrent()
-            assertEquals(started, events.count { it.eventType == "[Amplitude] Stream Started" })
+            assertEquals(started, events.count { it.eventType == "[Streaming] Stream Started" })
             assertEquals(1, observers.size)
         }
 
@@ -333,7 +333,7 @@ class PlayerBindingFactoryTest {
                 observers.single().emit(PlayerEvent.Playing)
                 runCurrent()
 
-                assertEquals(1, events.count { it.eventType == "[Amplitude] Stream Started" })
+                assertEquals(1, events.count { it.eventType == "[Streaming] Stream Started" })
             } finally {
                 factory.detachAll()
                 runCurrent()
@@ -405,11 +405,11 @@ class PlayerBindingFactoryTest {
             advanceTimeBy(1_000)
             runCurrent()
 
-            assertTrue(events.any { it.eventType == "[Amplitude] Stream Started" })
+            assertTrue(events.any { it.eventType == "[Streaming] Stream Started" })
             assertTrue(
                 events.any {
-                    it.eventType == "[Amplitude] Stream Stopped" &&
-                        it.eventProperties?.get("stop_reason") == "untracked"
+                    it.eventType == "[Streaming] Stream Stopped" &&
+                        it.eventProperties?.get("[Streaming] Stop Reason") == "untracked"
                 },
             )
             assertEquals(0, factory.trackedCount())
@@ -452,8 +452,8 @@ class PlayerBindingFactoryTest {
             runCurrent()
 
             val paused =
-                events.filter { it.eventType == "[Amplitude] Stream Stopped" }
-            assertEquals("paused", paused.last().eventProperties?.get("stop_reason"))
+                events.filter { it.eventType == "[Streaming] Stream Stopped" }
+            assertEquals("paused", paused.last().eventProperties?.get("[Streaming] Stop Reason"))
             val insertId = paused.last().insertId
 
             awaitCollected(playerReference)
@@ -462,9 +462,9 @@ class PlayerBindingFactoryTest {
 
             val samePlay =
                 events.filter {
-                    it.eventType == "[Amplitude] Stream Stopped" && it.insertId == insertId
+                    it.eventType == "[Streaming] Stream Stopped" && it.insertId == insertId
                 }
-            assertEquals("paused", samePlay.last().eventProperties?.get("stop_reason"))
+            assertEquals("paused", samePlay.last().eventProperties?.get("[Streaming] Stop Reason"))
         }
 
     private lateinit var dispatcherFactory: PlayerDispatcherFactory
