@@ -174,8 +174,9 @@ internal class PlayerBinding internal constructor(
     }
 
     /**
-     * Opens a play. [previousSegment] is the last play of the same stream session, whose play
-     * time this one continues from.
+     * Opens a play. `[Streaming] Play Time Sec` counts only this play ID. A pause starts a new
+     * play at zero and keeps the session total in `[Streaming] Play Time Total Sec`. Seeks and
+     * buffering stay on the same play.
      */
     private suspend fun startContent(
         viewSessionId: String?,
@@ -197,7 +198,7 @@ internal class PlayerBinding internal constructor(
                 playTimeBeforeMillis =
                     previousSegment
                         ?.takeIf { it.streamSessionId == id }
-                        ?.durationMillis()
+                        ?.totalDurationMillis()
                         ?: 0L,
             ).also { it.resumeWatch(snapshot.positionMillis) }
         streamTracker.trackStreamStarted(
@@ -605,6 +606,7 @@ internal class PlayerBinding internal constructor(
             playId = segment.playId,
             startTimeMillis = segment.startTimeMillis,
             playTimeMillis = segment.durationMillis(),
+            playTimeTotalMillis = segment.totalDurationMillis(),
             timestamp = timestamp,
             insertId = segment.stoppedInsertId,
             stopReason = stopReason,

@@ -32,12 +32,12 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 
-private const val STREAM_STARTED = "[Amplitude] Stream Started"
-private const val STREAM_STOPPED = "[Amplitude] Stream Stopped"
-private const val AD_STARTED = "[Amplitude] Ad Started"
-private const val AD_SKIPPED = "[Amplitude] Ad Skipped"
-private const val AD_STOPPED = "[Amplitude] Ad Stopped"
-private const val STREAM_SESSION_ID = "stream_session_id"
+private const val STREAM_STARTED = "[Streaming] Stream Started"
+private const val STREAM_STOPPED = "[Streaming] Stream Stopped"
+private const val AD_STARTED = "[Streaming] Ad Started"
+private const val AD_SKIPPED = "[Streaming] Ad Skipped"
+private const val AD_STOPPED = "[Streaming] Ad Stopped"
+private const val STREAM_SESSION_ID = "[Streaming] Stream Session ID"
 
 @OptIn(AmplitudePreview::class, ExperimentalCoroutinesApi::class)
 class PlayerBindingTest {
@@ -85,7 +85,7 @@ class PlayerBindingTest {
                     val heartbeat = tracked.filter { it.eventType == STREAM_STOPPED }
                     assertEquals(1, heartbeat.size)
                     assertEquals(DelayedEvent.Kind.DELAYED, (heartbeat.single() as DelayedEvent).kind)
-                    assertEquals("timeout", heartbeat.single().eventProperties?.get("stop_reason"))
+                    assertEquals("timeout", heartbeat.single().eventProperties?.get("[Streaming] Stop Reason"))
                 }
             }
 
@@ -110,11 +110,11 @@ class PlayerBindingTest {
 
                     assertEquals(
                         "ep-1",
-                        startedEvents().single().eventProperties?.get("content_id"),
+                        startedEvents().single().eventProperties?.get("[Streaming] Content ID"),
                     )
                     assertEquals(
                         "Episode 1",
-                        startedEvents().single().eventProperties?.get("title"),
+                        startedEvents().single().eventProperties?.get("[Streaming] Title"),
                     )
                 }
             }
@@ -172,11 +172,11 @@ class PlayerBindingTest {
                     val stopped =
                         tracked.single {
                             it.eventType == STREAM_STOPPED &&
-                                it.eventProperties?.get("stop_reason") == "ended"
+                                it.eventProperties?.get("[Streaming] Stop Reason") == "ended"
                         }
-                    assertEquals(9.9, stopped.eventProperties?.get("position"))
-                    assertEquals(10.0, stopped.eventProperties?.get("duration"))
-                    assertEquals(99.0, stopped.eventProperties?.get("percent_completed"))
+                    assertEquals(9.9, stopped.eventProperties?.get("[Streaming] Position Sec"))
+                    assertEquals(10.0, stopped.eventProperties?.get("[Streaming] Duration Sec"))
+                    assertEquals(99.0, stopped.eventProperties?.get("[Streaming] Percent Completed"))
                 }
             }
 
@@ -200,9 +200,9 @@ class PlayerBindingTest {
                     val stopped =
                         tracked.single {
                             it.eventType == STREAM_STOPPED &&
-                                it.eventProperties?.get("stop_reason") != "timeout"
+                                it.eventProperties?.get("[Streaming] Stop Reason") != "timeout"
                         }
-                    assertEquals("content_changed", stopped.eventProperties?.get("stop_reason"))
+                    assertEquals("content_changed", stopped.eventProperties?.get("[Streaming] Stop Reason"))
                 }
             }
     }
@@ -225,8 +225,8 @@ class PlayerBindingTest {
                     runCurrent()
 
                     val stopped = tracked.filter { it.eventType == STREAM_STOPPED }
-                    assertEquals(5.0, stopped.last().eventProperties?.get("play_time"))
-                    assertEquals("ended", stopped.last().eventProperties?.get("stop_reason"))
+                    assertEquals(5.0, stopped.last().eventProperties?.get("[Streaming] Play Time Sec"))
+                    assertEquals("ended", stopped.last().eventProperties?.get("[Streaming] Stop Reason"))
                 }
             }
 
@@ -265,7 +265,7 @@ class PlayerBindingTest {
                     assertTrue(
                         tracked.none {
                             it.eventType == STREAM_STOPPED &&
-                                it.eventProperties?.get("stop_reason") in listOf("waiting", "seeking")
+                                it.eventProperties?.get("[Streaming] Stop Reason") in listOf("waiting", "seeking")
                         },
                     )
                 }
@@ -338,14 +338,12 @@ class PlayerBindingTest {
                     val stopped = tracked.filter { it.eventType == STREAM_STOPPED }
                     val firstInsertId = stopped.first().insertId
                     val firstPlayStops = stopped.filter { it.insertId == firstInsertId }
-                    assertEquals(5.0, firstPlayStops.last().eventProperties?.get("play_time"))
-                    assertEquals("paused", firstPlayStops.last().eventProperties?.get("stop_reason"))
-                    assertTrue(
-                        stopped.any {
-                            it.insertId != firstInsertId &&
-                                (it.eventProperties?.get("play_time") as Double) > 5.0
-                        },
-                    )
+                    assertEquals(5.0, firstPlayStops.last().eventProperties?.get("[Streaming] Play Time Sec"))
+                    assertEquals(5.0, firstPlayStops.last().eventProperties?.get("[Streaming] Play Time Total Sec"))
+                    assertEquals("paused", firstPlayStops.last().eventProperties?.get("[Streaming] Stop Reason"))
+                    val resumed = stopped.last { it.insertId != firstInsertId }
+                    assertEquals(10.0, resumed.eventProperties?.get("[Streaming] Play Time Sec"))
+                    assertEquals(15.0, resumed.eventProperties?.get("[Streaming] Play Time Total Sec"))
                 }
             }
 
@@ -368,8 +366,8 @@ class PlayerBindingTest {
                     runCurrent()
 
                     val stopped = tracked.filter { it.eventType == STREAM_STOPPED }
-                    assertEquals(8.0, stopped.last().eventProperties?.get("play_time"))
-                    assertEquals("paused", stopped.last().eventProperties?.get("stop_reason"))
+                    assertEquals(8.0, stopped.last().eventProperties?.get("[Streaming] Play Time Sec"))
+                    assertEquals("paused", stopped.last().eventProperties?.get("[Streaming] Stop Reason"))
                     assertEquals(1, startedEvents().size)
                 }
             }
@@ -397,7 +395,7 @@ class PlayerBindingTest {
                     runCurrent()
 
                     val stopped = tracked.filter { it.eventType == STREAM_STOPPED }
-                    assertEquals(2.0, stopped.last().eventProperties?.get("play_time"))
+                    assertEquals(2.0, stopped.last().eventProperties?.get("[Streaming] Play Time Sec"))
                 }
             }
 
@@ -441,7 +439,7 @@ class PlayerBindingTest {
                     runCurrent()
 
                     val stopped = tracked.filter { it.eventType == STREAM_STOPPED }
-                    assertEquals(5.0, stopped.last().eventProperties?.get("position"))
+                    assertEquals(5.0, stopped.last().eventProperties?.get("[Streaming] Position Sec"))
                 }
             }
 
@@ -463,11 +461,11 @@ class PlayerBindingTest {
                     val stopped = tracked.filter { it.eventType == STREAM_STOPPED }
                     assertTrue(
                         stopped.none {
-                            it.eventProperties?.get("stop_reason") == "seeking"
+                            it.eventProperties?.get("[Streaming] Stop Reason") == "seeking"
                         },
                     )
                     val afterReady = stopped.last()
-                    assertEquals("timeout", afterReady.eventProperties?.get("stop_reason"))
+                    assertEquals("timeout", afterReady.eventProperties?.get("[Streaming] Stop Reason"))
                     assertEquals(1, startedEvents().size)
                 }
             }
@@ -490,8 +488,8 @@ class PlayerBindingTest {
                     runCurrent()
 
                     val stopped = tracked.filter { it.eventType == STREAM_STOPPED }
-                    assertEquals(16.0, stopped.last().eventProperties?.get("play_time"))
-                    assertEquals(10.0, stopped.last().eventProperties?.get("duration"))
+                    assertEquals(16.0, stopped.last().eventProperties?.get("[Streaming] Play Time Sec"))
+                    assertEquals(10.0, stopped.last().eventProperties?.get("[Streaming] Duration Sec"))
                 }
             }
 
@@ -509,7 +507,7 @@ class PlayerBindingTest {
                     runCurrent()
 
                     val stopped = tracked.filter { it.eventType == STREAM_STOPPED }
-                    assertEquals(5.0, stopped.last().eventProperties?.get("play_time"))
+                    assertEquals(5.0, stopped.last().eventProperties?.get("[Streaming] Play Time Sec"))
                 }
             }
 
@@ -524,7 +522,7 @@ class PlayerBindingTest {
                     runCurrent()
 
                     val stopped = tracked.filter { it.eventType == STREAM_STOPPED }
-                    assertEquals(2.0, stopped.last().eventProperties?.get("play_time"))
+                    assertEquals(2.0, stopped.last().eventProperties?.get("[Streaming] Play Time Sec"))
                 }
             }
 
@@ -548,7 +546,7 @@ class PlayerBindingTest {
                     assertTrue(
                         tracked.none {
                             it.eventType == STREAM_STOPPED &&
-                                it.eventProperties?.get("stop_reason") == "seeking"
+                                it.eventProperties?.get("[Streaming] Stop Reason") == "seeking"
                         },
                     )
                 }
@@ -571,7 +569,7 @@ class PlayerBindingTest {
                     assertTrue(
                         tracked.any {
                             it.eventType == STREAM_STOPPED &&
-                                it.eventProperties?.get("stop_reason") == "paused"
+                                it.eventProperties?.get("[Streaming] Stop Reason") == "paused"
                         },
                     )
                 }
@@ -649,7 +647,7 @@ class PlayerBindingTest {
                             tracked.filter { it.eventType == AD_STOPPED }
                                 .last()
                                 .eventProperties
-                                ?.get("ad_completion_status"),
+                                ?.get("[Streaming] Ad Completion Status"),
                         )
                     } finally {
                         binding.stop()
@@ -683,14 +681,14 @@ class PlayerBindingTest {
 
                     val paused = tracked.filter { it.eventType == STREAM_STOPPED }
                     assertTrue(paused.isNotEmpty())
-                    assertEquals("paused", paused.last().eventProperties?.get("stop_reason"))
+                    assertEquals("paused", paused.last().eventProperties?.get("[Streaming] Stop Reason"))
                     val insertId = paused.last().insertId
 
                     binding.stop()
                     runCurrent()
 
                     val samePlay = tracked.filter { it.eventType == STREAM_STOPPED && it.insertId == insertId }
-                    assertEquals("untracked", samePlay.last().eventProperties?.get("stop_reason"))
+                    assertEquals("untracked", samePlay.last().eventProperties?.get("[Streaming] Stop Reason"))
                 } finally {
                     binding.stop()
                     runCurrent()
@@ -720,14 +718,14 @@ class PlayerBindingTest {
                     val heartbeat = tracked.filter { it.eventType == AD_STOPPED }
                     assertEquals(1, heartbeat.size)
                     assertEquals(DelayedEvent.Kind.DELAYED, (heartbeat.single() as DelayedEvent).kind)
-                    assertEquals("timeout", heartbeat.single().eventProperties?.get("ad_completion_status"))
+                    assertEquals("timeout", heartbeat.single().eventProperties?.get("[Streaming] Ad Completion Status"))
                     val insertId = heartbeat.single().insertId
                     advanceTimeBy(1_000)
                     runCurrent()
                     val heartbeats = tracked.filter { it.eventType == AD_STOPPED }
                     assertEquals(2, heartbeats.size)
                     assertTrue(heartbeats.all { it.insertId == insertId })
-                    assertTrue(heartbeats.all { it.eventProperties?.get("ad_completion_status") == "timeout" })
+                    assertTrue(heartbeats.all { it.eventProperties?.get("[Streaming] Ad Completion Status") == "timeout" })
                 }
             }
 
@@ -788,7 +786,7 @@ class PlayerBindingTest {
                     assertTrue(
                         tracked.none {
                             it.eventType == STREAM_STOPPED &&
-                                it.eventProperties?.get("stop_reason") == "paused"
+                                it.eventProperties?.get("[Streaming] Stop Reason") == "paused"
                         },
                     )
                 }
@@ -814,7 +812,7 @@ class PlayerBindingTest {
                     assertTrue(
                         tracked.none {
                             it.eventType == STREAM_STOPPED &&
-                                it.eventProperties?.get("stop_reason") == "waiting"
+                                it.eventProperties?.get("[Streaming] Stop Reason") == "waiting"
                         },
                     )
                     assertEquals(1, startedEvents().size)
@@ -841,7 +839,7 @@ class PlayerBindingTest {
                     assertTrue(
                         tracked.none {
                             it.eventType == STREAM_STOPPED &&
-                                it.eventProperties?.get("stop_reason") == "seeking"
+                                it.eventProperties?.get("[Streaming] Stop Reason") == "seeking"
                         },
                     )
                     assertEquals(1, startedEvents().size)
@@ -869,7 +867,7 @@ class PlayerBindingTest {
                         tracked
                             .filter { it.eventType == STREAM_STOPPED }
                             .last()
-                    assertEquals("paused", pausedStop.eventProperties?.get("stop_reason"))
+                    assertEquals("paused", pausedStop.eventProperties?.get("[Streaming] Stop Reason"))
 
                     every { player.isPlaying } returns true
                     observer.emit(PlayerEvent.Playing)
@@ -900,13 +898,13 @@ class PlayerBindingTest {
 
                     assertEquals(
                         "abandoned",
-                        tracked.filter { it.eventType == AD_STOPPED }.last().eventProperties?.get("ad_completion_status"),
+                        tracked.filter { it.eventType == AD_STOPPED }.last().eventProperties?.get("[Streaming] Ad Completion Status"),
                     )
                     val stopped =
                         tracked
                             .filter { it.eventType == STREAM_STOPPED }
                             .last()
-                    assertEquals("ended", stopped.eventProperties?.get("stop_reason"))
+                    assertEquals("ended", stopped.eventProperties?.get("[Streaming] Stop Reason"))
                 }
             }
 
@@ -954,7 +952,7 @@ class PlayerBindingTest {
             }
 
         @Test
-        fun `should keep accruing play time across an ad after pause`() =
+        fun `should count only the current play after a pause and an ad`() =
             runTest {
                 val player = mockk<Player>(relaxed = true)
                 every { player.isPlaying } returns true
@@ -978,8 +976,9 @@ class PlayerBindingTest {
                     runCurrent()
 
                     val stopped = tracked.filter { it.eventType == STREAM_STOPPED }
-                    assertEquals(7.0, stopped.last().eventProperties?.get("play_time"))
-                    assertEquals("paused", stopped.last().eventProperties?.get("stop_reason"))
+                    assertEquals(2.0, stopped.last().eventProperties?.get("[Streaming] Play Time Sec"))
+                    assertEquals(7.0, stopped.last().eventProperties?.get("[Streaming] Play Time Total Sec"))
+                    assertEquals("paused", stopped.last().eventProperties?.get("[Streaming] Stop Reason"))
                 }
             }
 
@@ -1000,7 +999,7 @@ class PlayerBindingTest {
                     runCurrent()
 
                     val stopped = tracked.filter { it.eventType == STREAM_STOPPED }
-                    assertEquals(5.0, stopped.last().eventProperties?.get("play_time"))
+                    assertEquals(5.0, stopped.last().eventProperties?.get("[Streaming] Play Time Sec"))
                 }
             }
 
@@ -1028,8 +1027,8 @@ class PlayerBindingTest {
                     runCurrent()
 
                     val adStopped = tracked.filter { it.eventType == AD_STOPPED }.last()
-                    assertEquals(5.0, adStopped.eventProperties?.get("ad_play_time"))
-                    assertEquals("ended", adStopped.eventProperties?.get("ad_completion_status"))
+                    assertEquals(5.0, adStopped.eventProperties?.get("[Streaming] Ad Play Time Sec"))
+                    assertEquals("ended", adStopped.eventProperties?.get("[Streaming] Ad Completion Status"))
                 }
             }
 
@@ -1050,7 +1049,7 @@ class PlayerBindingTest {
                     runCurrent()
 
                     val adStopped = tracked.filter { it.eventType == AD_STOPPED }.last()
-                    assertEquals(0.0, adStopped.eventProperties?.get("ad_play_time"))
+                    assertEquals(0.0, adStopped.eventProperties?.get("[Streaming] Ad Play Time Sec"))
                 }
             }
 
@@ -1068,7 +1067,7 @@ class PlayerBindingTest {
                     assertEquals(0, tracked.count { it.eventType == AD_SKIPPED })
                     assertEquals(
                         "abandoned",
-                        tracked.filter { it.eventType == AD_STOPPED }.last().eventProperties?.get("ad_completion_status"),
+                        tracked.filter { it.eventType == AD_STOPPED }.last().eventProperties?.get("[Streaming] Ad Completion Status"),
                     )
                 }
             }
@@ -1087,11 +1086,11 @@ class PlayerBindingTest {
                     assertEquals(1, tracked.count { it.eventType == AD_SKIPPED })
                     assertEquals(
                         "skipped",
-                        tracked.filter { it.eventType == AD_STOPPED }.last().eventProperties?.get("ad_completion_status"),
+                        tracked.filter { it.eventType == AD_STOPPED }.last().eventProperties?.get("[Streaming] Ad Completion Status"),
                     )
                     assertEquals(
                         0.0,
-                        tracked.single { it.eventType == AD_SKIPPED }.eventProperties?.get("skip_position"),
+                        tracked.single { it.eventType == AD_SKIPPED }.eventProperties?.get("[Streaming] Skip Position Sec"),
                     )
                     assertEquals(
                         startedEvents().single().eventProperties?.get(STREAM_SESSION_ID),
@@ -1115,7 +1114,7 @@ class PlayerBindingTest {
 
                     assertEquals(
                         "abandoned",
-                        tracked.filter { it.eventType == AD_STOPPED }.last().eventProperties?.get("ad_completion_status"),
+                        tracked.filter { it.eventType == AD_STOPPED }.last().eventProperties?.get("[Streaming] Ad Completion Status"),
                     )
                     assertEquals(0, tracked.count { it.eventType == AD_SKIPPED })
                 }
@@ -1189,7 +1188,7 @@ class PlayerBindingTest {
                     assertEquals(
                         3.0,
                         tracked.filter { it.eventType == AD_STOPPED }.last()
-                            .eventProperties?.get("ad_play_time"),
+                            .eventProperties?.get("[Streaming] Ad Play Time Sec"),
                     )
                 }
             }
@@ -1216,14 +1215,14 @@ class PlayerBindingTest {
                     assertEquals(
                         15.0,
                         tracked.filter { it.eventType == AD_STOPPED }.last()
-                            .eventProperties?.get("ad_play_time"),
+                            .eventProperties?.get("[Streaming] Ad Play Time Sec"),
                     )
                     assertEquals(
                         5.0,
                         tracked.filter { it.eventType == STREAM_STOPPED }
                             .last()
                             .eventProperties
-                            ?.get("play_time"),
+                            ?.get("[Streaming] Play Time Sec"),
                     )
                 }
             }
@@ -1253,7 +1252,7 @@ class PlayerBindingTest {
                     assertEquals(
                         4.0,
                         tracked.filter { it.eventType == AD_STOPPED }.last()
-                            .eventProperties?.get("ad_play_time"),
+                            .eventProperties?.get("[Streaming] Ad Play Time Sec"),
                     )
                 }
             }
@@ -1280,7 +1279,7 @@ class PlayerBindingTest {
                     assertEquals(
                         8.0,
                         tracked.filter { it.eventType == AD_STOPPED }.last()
-                            .eventProperties?.get("ad_play_time"),
+                            .eventProperties?.get("[Streaming] Ad Play Time Sec"),
                     )
                 }
             }
