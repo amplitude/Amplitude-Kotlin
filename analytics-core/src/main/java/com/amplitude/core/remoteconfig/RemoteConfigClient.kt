@@ -26,6 +26,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import java.lang.ref.WeakReference
+import java.net.URLEncoder
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 
@@ -675,7 +676,8 @@ internal class RemoteConfigClientImpl(
                 ServerZone.EU -> EU_REMOTE_CONFIG_URL
                 else -> US_REMOTE_CONFIG_URL
             }
-        return "$baseUrl/config?api_key=$apiKey&config_group=$CONFIG_GROUP"
+        val encodedApiKey = URLEncoder.encode(apiKey, Charsets.UTF_8.name()).replace("+", "%20")
+        return "$baseUrl/config/$encodedApiKey?config_group=$CONFIG_GROUP"
     }
 
     private fun buildRequestHeaders(apiVersion: Int = 2): Map<String, String> {
