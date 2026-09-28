@@ -11,10 +11,10 @@ Android sample for `com.amplitude:streaming-analytics-android`.
 
 ### Ads to exercise
 
-* **Big Buck Bunny · skippable preroll** — skippable VAST preroll. Skip the IMA overlay to emit `[Amplitude] Ad Skipped` plus `[Amplitude] Ad Stopped` (`ad_completion_status=skipped`). Let it finish for `ended`.
+* **Big Buck Bunny · skippable preroll** — skippable VAST preroll. Skip the IMA overlay to emit `[Streaming] Ad Skipped` plus `[Streaming] Ad Stopped` (`[Streaming] Ad Completion Status` = `skipped`). Let it finish for `ended`.
 * **Frame counter · VMAP pre/mid/post** — preroll, mid-roll, and post-roll. Mid-roll completion should be `ended`, not a skip.
 
-Ad minutes are `ad_play_time` on `[Amplitude] Ad Stopped`. Pause during an ad should not accrue play time.
+Ad play time is `[Streaming] Ad Play Time Sec` on `[Streaming] Ad Stopped`. Pause during an ad should not accrue play time.
 
 ## Run
 
@@ -83,6 +83,6 @@ adb logcat -s Amplitude
 ```
 
 In Amplitude, look up user `streaming-analytics-sample-user` and confirm the expected streaming and
-ad events arrive. In particular, skipping the preroll should emit `[Amplitude] Ad Skipped` followed
-by `[Amplitude] Ad Stopped` with `ad_completion_status=skipped`; completed ads should report
-`ad_completion_status=completed`.
+ad events arrive. In particular, skipping the preroll should emit `[Streaming] Ad Skipped` followed
+by `[Streaming] Ad Stopped` with `[Streaming] Ad Completion Status` = `skipped`; completed ads should report
+`[Streaming] Ad Completion Status` = `completed`.

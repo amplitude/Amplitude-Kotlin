@@ -67,11 +67,11 @@ class StoragePipelineTest {
             }
 
         @Test
-        fun `drops events that are missing stream_session_id`() =
+        fun `drops events that are missing the stream session id`() =
             runTest {
                 pipeline.onDelayedEvent(
                     DelayedEvent(
-                        eventType = "[Amplitude] Stream Stopped",
+                        eventType = "[Streaming] Stream Stopped",
                         kind = DelayedEvent.Kind.DELAYED,
                         timestamp = 1L,
                         eventProperties = mutableMapOf(),
@@ -84,9 +84,9 @@ class StoragePipelineTest {
 
     private fun delayedEvent(kind: DelayedEvent.Kind): DelayedEvent =
         DelayedEvent(
-            eventType = "[Amplitude] Stream Stopped",
+            eventType = "[Streaming] Stream Stopped",
             kind = kind,
             timestamp = 1L,
-            eventProperties = mutableMapOf("stream_session_id" to "stream-1"),
+            eventProperties = mutableMapOf("[Streaming] Stream Session ID" to "stream-1"),
         )
 }

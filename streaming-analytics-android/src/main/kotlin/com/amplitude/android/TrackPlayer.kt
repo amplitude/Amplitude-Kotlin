@@ -26,8 +26,8 @@ private val playerCommands = Mutex()
  * order they are called.
  *
  * Content identity is read from the current [androidx.media3.common.MediaItem]:
- * [androidx.media3.common.MediaItem.mediaId] is `content_id`,
- * [androidx.media3.common.MediaMetadata.title] (or `displayTitle`) is `title`, and
+ * [androidx.media3.common.MediaItem.mediaId] is `[Streaming] Content ID`,
+ * [androidx.media3.common.MediaMetadata.title] (or `displayTitle`) is `[Streaming] Title`, and
  * JSON-safe primitives in [androidx.media3.common.MediaMetadata.extras] are merged onto
  * the event. Blank media IDs and playback URIs are not captured.
  *

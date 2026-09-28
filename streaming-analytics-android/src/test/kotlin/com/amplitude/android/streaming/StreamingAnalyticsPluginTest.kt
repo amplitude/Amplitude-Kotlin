@@ -91,10 +91,10 @@ class StreamingAnalyticsPluginTest {
 
             val delayed =
                 DelayedEvent(
-                    eventType = "[Amplitude] Stream Stopped",
+                    eventType = "[Streaming] Stream Stopped",
                     kind = DelayedEvent.Kind.INSTANT,
                     timestamp = 1L,
-                    eventProperties = mutableMapOf("stream_session_id" to "s-1"),
+                    eventProperties = mutableMapOf("[Streaming] Stream Session ID" to "s-1"),
                 )
             assertNull(plugin.execute(delayed))
         }
