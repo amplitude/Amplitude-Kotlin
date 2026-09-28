@@ -6,6 +6,7 @@ import com.amplitude.core.Amplitude
 import com.amplitude.core.utilities.ConsoleLoggerProvider
 import com.amplitude.core.utilities.InMemoryStorageProvider
 import com.amplitude.id.IMIdentityStorageProvider
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.spyk
 import io.mockk.verify
@@ -18,7 +19,10 @@ class AndroidNetworkConnectivityCheckerPluginTest {
     private lateinit var amplitude: Amplitude
     private lateinit var plugin: AndroidNetworkConnectivityCheckerPlugin
 
-    private val context = mockk<Application>(relaxed = true)
+    private val context =
+        mockk<Application>(relaxed = true) {
+            every { applicationContext } returns this
+        }
 
     @Before
     fun setup() {
