@@ -943,7 +943,7 @@ class RemoteConfigClientTest {
                 "https://sr-client-cfg.eu.amplitude.com/config/test-key-eu?config_group=android",
                 url,
             )
-            assertEquals("Bearer test-key-eu", capturedRequest.headers["Authorization"])
+            assertFalse(capturedRequest.headers.containsKey("Authorization"))
             assertEquals(
                 HttpClient.Request.Method.GET,
                 capturedRequest.method,
@@ -988,7 +988,7 @@ class RemoteConfigClientTest {
                 "https://sr-client-cfg.amplitude.com/config/test-key-us?config_group=android",
                 url,
             )
-            assertEquals("Bearer test-key-us", capturedRequest.headers["Authorization"])
+            assertFalse(capturedRequest.headers.containsKey("Authorization"))
             assertEquals(
                 HttpClient.Request.Method.GET,
                 capturedRequest.method,
@@ -1032,7 +1032,7 @@ class RemoteConfigClientTest {
                 "https://sr-client-cfg.amplitude.com/config/test%2Fkey%20%3F%23%25%2B?config_group=android",
                 url,
             )
-            assertEquals("Bearer test/key ?#%+", capturedRequest.headers["Authorization"])
+            assertFalse(capturedRequest.headers.containsKey("Authorization"))
             assertEquals(
                 HttpClient.Request.Method.GET,
                 capturedRequest.method,

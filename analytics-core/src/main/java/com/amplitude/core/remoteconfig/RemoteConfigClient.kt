@@ -682,7 +682,6 @@ internal class RemoteConfigClientImpl(
 
     private fun buildRequestHeaders(apiVersion: Int = 2): Map<String, String> {
         return mapOf(
-            "Authorization" to "Bearer $apiKey",
             "X-Client-Platform" to "Android",
             "X-Client-Version" to "$apiVersion",
             "X-Client-Library" to "${SDK_LIBRARY}/${SDK_VERSION}",
