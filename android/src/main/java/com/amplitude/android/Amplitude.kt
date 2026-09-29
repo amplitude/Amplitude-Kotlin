@@ -2,6 +2,9 @@ package com.amplitude.android
 
 import android.app.Application
 import android.content.Context
+import com.amplitude.android.anr.AnrCatcher
+import com.amplitude.android.anr.createAnrCatcher
+import com.amplitude.android.anr.recordAnr
 import com.amplitude.android.crash.CrashCatcher
 import com.amplitude.android.crash.CrashTrackingEnabledStore
 import com.amplitude.android.crash.CrashTrackingRemoteConfig
@@ -71,6 +74,7 @@ public open class Amplitude internal constructor(
     // The process handler is installed only when a previous run persisted crash tracking as enabled.
     private lateinit var crashTrackingRemoteConfig: CrashTrackingRemoteConfig
     private lateinit var crashCatcher: CrashCatcher
+    private lateinit var anrCatcher: AnrCatcher
 
     // Assigned in [build], not by a field initializer: initializers run after the core constructor,
     // where they would clobber a retirement from a same-name instance racing this one.
@@ -109,6 +113,12 @@ public open class Amplitude internal constructor(
                 CrashCatcher(
                     context = androidConfig.context,
                     instanceName = androidConfig.instanceName,
+                    crashTrackingRemoteConfig = crashTrackingRemoteConfig,
+                )
+            anrCatcher =
+                createAnrCatcher(
+                    context = androidConfig.context,
+                    ioDispatcher = storageIODispatcher,
                     crashTrackingRemoteConfig = crashTrackingRemoteConfig,
                 )
             autocaptureManager =
@@ -161,6 +171,9 @@ public open class Amplitude internal constructor(
                     diagnosticsClient.recordCrash(previousCrash)
                 }
             }
+        }
+        anrCatcher.consumePreviousAnrs().forEach { previousAnr ->
+            diagnosticsClient.recordAnr(previousAnr)
         }
 
         if (!isActive) return
@@ -247,6 +260,10 @@ public open class Amplitude internal constructor(
         }
         if (::crashTrackingRemoteConfig.isInitialized) {
             crashTrackingRemoteConfig.detach()
+        }
+        if (::anrCatcher.isInitialized) {
+            runCatching { anrCatcher.detach() }
+                .onFailure { logger.warn("Failed to detach the ANR catcher: $it") }
         }
     }
 
