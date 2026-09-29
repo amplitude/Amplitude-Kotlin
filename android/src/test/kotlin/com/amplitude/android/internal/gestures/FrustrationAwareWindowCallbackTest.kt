@@ -23,7 +23,7 @@ import org.robolectric.annotation.Config
 class FrustrationAwareWindowCallbackTest {
     private val delegate = mockk<Window.Callback>(relaxed = true)
     private val decorView = View(ApplicationProvider.getApplicationContext())
-    private val track = mockk<TrackFunction>(relaxed = true)
+    private val track: TrackFunction = { _, _ -> }
     private val logger = mockk<Logger>(relaxed = true)
     private val frustrationDetector = mockk<FrustrationInteractionsDetector>(relaxed = true)
 
