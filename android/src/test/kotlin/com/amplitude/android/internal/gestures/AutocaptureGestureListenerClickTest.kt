@@ -5,14 +5,20 @@ import android.content.res.Resources
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewParent
 import android.view.Window
 import android.widget.CheckBox
 import android.widget.RadioButton
+import android.widget.ScrollView
+import android.widget.SeekBar
 import com.amplitude.MainDispatcherRule
 import com.amplitude.android.AutocaptureState
 import com.amplitude.android.InteractionType
+import com.amplitude.android.internal.GestureOwner
 import com.amplitude.android.internal.TrackFunction
+import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.locators.AndroidViewTargetLocator
+import com.amplitude.android.internal.locators.ViewTargetLocator
 import com.amplitude.common.Logger
 import io.mockk.every
 import io.mockk.mockk
@@ -47,6 +53,7 @@ class AutocaptureGestureListenerClickTest {
             isInvalidTargetClickable: Boolean = true,
             attachViewsToRoot: Boolean = true,
             targetOverride: View? = null,
+            isTargetLongClickable: Boolean = false,
         ): AutocaptureGestureListener {
             invalidTarget =
                 mockView(
@@ -64,6 +71,7 @@ class AutocaptureGestureListenerClickTest {
                         event = event,
                         clickable = true,
                         context = context,
+                        longClickable = isTargetLongClickable,
                     )
             } else {
                 this.target = targetOverride
@@ -224,6 +232,9 @@ class AutocaptureGestureListenerClickTest {
         verify(exactly = 0) {
             fixture.track(any(), any())
         }
+        verify(exactly = 1) {
+            fixture.logger.warn(match { it.contains("click target") })
+        }
     }
 
     @Test
@@ -330,4 +341,342 @@ class AutocaptureGestureListenerClickTest {
             )
         }
     }
+
+    @Test
+    fun `tracks a long press with the iOS-compatible action`() {
+        val event = motionEvent(MotionEvent.ACTION_DOWN)
+        val sut = fixture.getSut(type = View::class, event = event, isTargetLongClickable = true)
+
+        sut.onLongPress(event)
+
+        verify {
+            fixture.track(
+                "[Amplitude] Element Interacted",
+                match { it["[Amplitude] Action"] == "longPress" },
+            )
+        }
+        event.recycle()
+    }
+
+    @Test
+    fun `does not track a long press when the target is not long clickable`() {
+        val event = motionEvent(MotionEvent.ACTION_DOWN)
+        val sut = fixture.getSut(type = View::class, event = event)
+
+        sut.onLongPress(event)
+
+        verify(exactly = 0) { fixture.track(any(), any()) }
+        event.recycle()
+    }
+
+    @Test
+    fun `does not track a pan on a view that only handles clicks`() {
+        val down = motionEvent(MotionEvent.ACTION_DOWN)
+        val move = motionEvent(MotionEvent.ACTION_MOVE)
+        val up = motionEvent(MotionEvent.ACTION_UP)
+        val sut = fixture.getSut(type = View::class, event = move)
+
+        sut.onDown(down)
+        sut.onScroll(down, move, 20f, 0f)
+        sut.onFling(down, up, 1_000f, 0f)
+        sut.onTouchEventCompleted(up)
+
+        verify(exactly = 0) { fixture.track(any(), any()) }
+        down.recycle()
+        move.recycle()
+        up.recycle()
+    }
+
+    @Test
+    fun `tracks a fast drag ending in a fling once as pan`() {
+        val down = motionEvent(MotionEvent.ACTION_DOWN)
+        val move = motionEvent(MotionEvent.ACTION_MOVE)
+        val up = motionEvent(MotionEvent.ACTION_UP)
+        val sut = fixture.getSut(type = SeekBar::class, event = move)
+
+        sut.onDown(down)
+        sut.onScroll(down, move, 20f, 0f)
+        sut.onFling(down, up, 1_000f, 0f)
+        sut.onTouchEventCompleted(up)
+
+        verify(exactly = 1) {
+            fixture.track(
+                "[Amplitude] Element Interacted",
+                match { it["[Amplitude] Action"] == "pan" },
+            )
+        }
+        down.recycle()
+        move.recycle()
+        up.recycle()
+    }
+
+    @Test
+    fun `tracks a scroll once as pan when the touch ends`() {
+        val down = motionEvent(MotionEvent.ACTION_DOWN)
+        val move = motionEvent(MotionEvent.ACTION_MOVE)
+        val up = motionEvent(MotionEvent.ACTION_UP)
+        val sut = fixture.getSut(type = SeekBar::class, event = move)
+
+        sut.onDown(down)
+        sut.onScroll(down, move, 20f, 0f)
+        sut.onTouchEventCompleted(up)
+
+        verify(exactly = 1) {
+            fixture.track(
+                "[Amplitude] Element Interacted",
+                match { it["[Amplitude] Action"] == "pan" },
+            )
+        }
+        down.recycle()
+        move.recycle()
+        up.recycle()
+    }
+
+    @Test
+    fun `tracks a pan on a slider inside a scroll container`() {
+        val down = motionEvent(MotionEvent.ACTION_DOWN)
+        val move = motionEvent(MotionEvent.ACTION_MOVE)
+        val up = motionEvent(MotionEvent.ACTION_UP)
+        val sut = fixture.getSut(type = SeekBar::class, event = move, resourceName = "slider")
+        val scrollParent =
+            mockView(
+                type = ScrollView::class,
+                event = move,
+                clickable = false,
+                context = fixture.context,
+            )
+        every { fixture.target.parent } returns (scrollParent as ViewParent)
+
+        sut.onDown(down)
+        sut.onScroll(down, move, 20f, 0f)
+        sut.onTouchEventCompleted(up)
+
+        verify(exactly = 1) {
+            fixture.track(
+                "[Amplitude] Element Interacted",
+                match {
+                    it["[Amplitude] Action"] == "pan" &&
+                        it["[Amplitude] Target Resource"] == "slider"
+                },
+            )
+        }
+        down.recycle()
+        move.recycle()
+        up.recycle()
+    }
+
+    @Test
+    fun `attributes a tap to the clickable ancestor when the child declares nothing`() {
+        val event = motionEvent(MotionEvent.ACTION_UP)
+        val child =
+            mockView(
+                type = View::class,
+                event = event,
+                clickable = false,
+                context = fixture.context,
+            )
+        val parent =
+            mockView(
+                type = ViewGroup::class,
+                event = event,
+                clickable = true,
+                context = fixture.context,
+            ) {
+                every { it.childCount } returns 1
+                every { it.getChildAt(0) } returns child
+            }
+        val sut =
+            fixture.getSut(
+                type = View::class,
+                event = event,
+                attachViewsToRoot = false,
+                targetOverride = child,
+            )
+        every { (fixture.decorView as ViewGroup).childCount } returns 1
+        every { (fixture.decorView as ViewGroup).getChildAt(0) } returns parent
+        fixture.resources.mockForTarget(parent, "parent_button")
+        every { parent.context } returns fixture.context
+
+        sut.onSingleTapUp(event)
+
+        verify(exactly = 1) {
+            fixture.track(
+                "[Amplitude] Element Interacted",
+                match {
+                    it["[Amplitude] Action"] == "touch" &&
+                        it["[Amplitude] Target Resource"] == "parent_button"
+                },
+            )
+        }
+        event.recycle()
+    }
+
+    @Test
+    fun `does not track pan gestures on scroll containers`() {
+        val down = motionEvent(MotionEvent.ACTION_DOWN)
+        val move = motionEvent(MotionEvent.ACTION_MOVE)
+        val up = motionEvent(MotionEvent.ACTION_UP)
+        val sut = fixture.getSut(type = ScrollView::class, event = move)
+
+        sut.onDown(down)
+        sut.onScroll(down, move, 0f, 20f)
+        sut.onTouchEventCompleted(up)
+
+        verify(exactly = 0) { fixture.track(any(), any()) }
+        down.recycle()
+        move.recycle()
+        up.recycle()
+    }
+
+    @Test
+    fun `does not track a pan on a slider the scroll only ended over`() {
+        val down = motionEvent(MotionEvent.ACTION_DOWN, x = 500f, y = 500f)
+        val move = motionEvent(MotionEvent.ACTION_MOVE)
+        val up = motionEvent(MotionEvent.ACTION_UP)
+        val sut = fixture.getSut(type = SeekBar::class, event = move)
+
+        sut.onDown(down)
+        sut.onScroll(down, move, 0f, 20f)
+        sut.onTouchEventCompleted(up)
+
+        verify(exactly = 0) { fixture.track(any(), any()) }
+        down.recycle()
+        move.recycle()
+        up.recycle()
+    }
+
+    @Test
+    fun `does not track a pan on a slider that scrolled under the start point`() {
+        val down = motionEvent(MotionEvent.ACTION_DOWN, x = 500f, y = 500f)
+        val move = motionEvent(MotionEvent.ACTION_MOVE)
+        val up = motionEvent(MotionEvent.ACTION_UP)
+        val sut = fixture.getSut(type = SeekBar::class, event = move)
+
+        sut.onDown(down)
+        sut.onScroll(down, move, 0f, 20f)
+        every { fixture.target.getLocationOnScreen(any()) } answers {
+            val location = invocation.args[0] as IntArray
+            location[0] = 490
+            location[1] = 490
+        }
+        sut.onTouchEventCompleted(up)
+
+        verify(exactly = 0) { fixture.track(any(), any()) }
+        down.recycle()
+        move.recycle()
+        up.recycle()
+    }
+
+    @Test
+    fun `does not warn when a pan starts on a view that handles nothing`() {
+        val down = motionEvent(MotionEvent.ACTION_DOWN)
+        val move = motionEvent(MotionEvent.ACTION_MOVE)
+        val up = motionEvent(MotionEvent.ACTION_UP)
+        val plain =
+            mockView(
+                type = View::class,
+                event = move,
+                clickable = false,
+                context = fixture.context,
+            )
+        val sut =
+            fixture.getSut(
+                type = View::class,
+                event = move,
+                attachViewsToRoot = false,
+                targetOverride = plain,
+            )
+        every { (fixture.decorView as ViewGroup).childCount } returns 1
+        every { (fixture.decorView as ViewGroup).getChildAt(0) } returns plain
+
+        sut.onDown(down)
+        sut.onScroll(down, move, 20f, 0f)
+        sut.onTouchEventCompleted(up)
+
+        verify(exactly = 0) {
+            fixture.track(any(), any())
+            fixture.logger.warn(any())
+        }
+        down.recycle()
+        move.recycle()
+        up.recycle()
+    }
+
+    @Test
+    fun `attributes a pinch to the element the gesture started on`() {
+        var underStart = true
+        val sut = transformListener { underStart }
+
+        sut.onTransformStarted(20f, 20f)
+        underStart = false
+        sut.onTransformRecognized(GestureActions.PINCH)
+
+        verify(exactly = 1) {
+            fixture.track(
+                "[Amplitude] Element Interacted",
+                match {
+                    it["[Amplitude] Action"] == "pinch" &&
+                        it["[Amplitude] Target Tag"] == "map"
+                },
+            )
+        }
+    }
+
+    @Test
+    fun `does not attribute a pinch to an element that moved under the start point`() {
+        var underStart = false
+        val sut = transformListener { underStart }
+
+        sut.onTransformStarted(20f, 20f)
+        underStart = true
+        sut.onTransformRecognized(GestureActions.PINCH)
+
+        verify(exactly = 0) { fixture.track(any(), any()) }
+    }
+
+    private fun transformListener(underStart: () -> Boolean): AutocaptureGestureListener {
+        val decor =
+            mockView(
+                type = ViewGroup::class,
+                event = motionEvent(MotionEvent.ACTION_DOWN),
+                context = fixture.context,
+            ) {
+                every { it.childCount } returns 0
+            }
+        val locator =
+            ViewTargetLocator { _, _ ->
+                if (!underStart()) return@ViewTargetLocator null
+                ViewTarget(
+                    _view = null,
+                    className = null,
+                    resourceName = null,
+                    tag = "map",
+                    text = null,
+                    accessibilityLabel = null,
+                    source = "jetpack_compose",
+                    hierarchy = null,
+                ).apply {
+                    gestureOwners = listOf(GestureOwner(GestureActions.TRANSFORM, "map", null))
+                }
+            }
+        return AutocaptureGestureListener(
+            decor,
+            fixture.activityName,
+            fixture.track,
+            fixture.logger,
+            listOf(locator),
+            { AutocaptureState(interactions = listOf(InteractionType.ElementInteraction)) },
+        )
+    }
+
+    private fun motionEvent(
+        action: Int,
+        x: Float = 20f,
+        y: Float = 20f,
+    ): MotionEvent =
+        mockk(relaxed = true) {
+            every { actionMasked } returns action
+            every { this@mockk.x } returns x
+            every { this@mockk.y } returns y
+        }
 }
