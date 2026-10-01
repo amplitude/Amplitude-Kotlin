@@ -48,10 +48,11 @@ public class FileResponseHandler
             val eventFilePath = events as String
             logger?.debug("Handle response, status: ${successResponse.status}")
             val eventsList = parseEvents(eventsString, eventFilePath).toEvents()
-            triggerEventsCallback(eventsList, HttpStatus.SUCCESS.statusCode, "Event sent success.")
-            scope.launch(storageDispatcher) {
-                storage.removeFile(eventFilePath)
+            // Remove acknowledged events before callbacks or another upload can run.
+            if (!storage.removeFile(eventFilePath)) {
+                logger?.warn("Failed to remove uploaded event file: $eventFilePath")
             }
+            triggerEventsCallback(eventsList, HttpStatus.SUCCESS.statusCode, "Event sent success.")
         }
 
         override fun handleBadRequestResponse(

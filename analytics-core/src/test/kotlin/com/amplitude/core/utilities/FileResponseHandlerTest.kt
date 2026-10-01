@@ -18,12 +18,15 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runTest
 import org.json.JSONObject
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FileResponseHandlerTest {
@@ -58,6 +61,65 @@ class FileResponseHandlerTest {
             storage.releaseFile("file_path")
         } returns Unit
     }
+
+    @Test
+    fun `should remove uploaded file before callback without dispatching storage work`() =
+        runTest {
+            var callbackInvoked = false
+            val handler =
+                FileResponseHandler(
+                    storage = storage,
+                    eventPipeline = pipeline,
+                    configuration =
+                        Configuration(
+                            apiKey = "test",
+                            callback = { _, _, _ ->
+                                verify(exactly = 1) { storage.removeFile("file_path") }
+                                callbackInvoked = true
+                            },
+                        ),
+                    scope = this,
+                    storageDispatcher = StandardTestDispatcher(testScheduler),
+                    logger = null,
+                )
+
+            handler.handleSuccessResponse(
+                SuccessResponse(),
+                "file_path",
+                JSONUtil.eventsToString(listOf(generateBaseEvent("test"))),
+            )
+
+            assertTrue(callbackInvoked)
+            verify(exactly = 1) { storage.removeFile("file_path") }
+        }
+
+    @Test
+    fun `should remove uploaded file even when success callback throws`() =
+        runTest {
+            val handler =
+                FileResponseHandler(
+                    storage = storage,
+                    eventPipeline = pipeline,
+                    configuration =
+                        Configuration(
+                            apiKey = "test",
+                            callback = { _, _, _ -> throw IllegalStateException("Callback failed") },
+                        ),
+                    scope = this,
+                    storageDispatcher = StandardTestDispatcher(testScheduler),
+                    logger = null,
+                )
+
+            assertThrows<IllegalStateException> {
+                handler.handleSuccessResponse(
+                    SuccessResponse(),
+                    "file_path",
+                    JSONUtil.eventsToString(listOf(generateBaseEvent("test"))),
+                )
+            }
+
+            verify(exactly = 1) { storage.removeFile("file_path") }
+        }
 
     @Test
     fun `success single event`() {
