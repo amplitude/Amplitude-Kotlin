@@ -1,5 +1,6 @@
 package com.amplitude.android.internal
 
+import com.amplitude.android.Constants.EventProperties.ACTION
 import com.amplitude.android.Constants.EventProperties.TARGET_ACCESSIBILITY_LABEL
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -313,5 +314,48 @@ class ViewTargetTest {
 
         assertEquals("Submit form", properties[TARGET_ACCESSIBILITY_LABEL])
         assertEquals("Jetpack Compose", properties["[Amplitude] Target Source"])
+    }
+
+    @Test
+    fun `buildElementInteractedProperties - defaults Action to touch`() {
+        val viewTarget =
+            ViewTarget(
+                _view = null,
+                className = "android.widget.Button",
+                resourceName = "submit_button",
+                tag = null,
+                text = "Submit",
+                accessibilityLabel = null,
+                source = "android_view",
+                hierarchy = "Activity → Button",
+            )
+
+        val properties = buildElementInteractedProperties(viewTarget, "MainActivity")
+
+        assertEquals("touch", properties[ACTION])
+    }
+
+    @Test
+    fun `buildElementInteractedProperties - uses provided Action`() {
+        val viewTarget =
+            ViewTarget(
+                _view = null,
+                className = "android.widget.Button",
+                resourceName = "submit_button",
+                tag = null,
+                text = "Submit",
+                accessibilityLabel = null,
+                source = "android_view",
+                hierarchy = "Activity → Button",
+            )
+
+        val properties =
+            buildElementInteractedProperties(
+                viewTarget,
+                "MainActivity",
+                ELEMENT_INTERACTED_ACTION_LONG_PRESS,
+            )
+
+        assertEquals("long press", properties[ACTION])
     }
 }
