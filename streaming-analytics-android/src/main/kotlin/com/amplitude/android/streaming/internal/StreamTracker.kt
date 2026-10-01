@@ -10,11 +10,11 @@ import com.amplitude.core.AmplitudePreview
 import com.amplitude.core.platform.Plugin
 import java.util.concurrent.atomic.AtomicReference
 
-private const val AD_STARTED = "[Amplitude] Ad Started"
-private const val AD_STOPPED = "[Amplitude] Ad Stopped"
-private const val AD_SKIPPED = "[Amplitude] Ad Skipped"
-private const val STREAM_STARTED = "[Amplitude] Stream Started"
-private const val STREAM_STOPPED = "[Amplitude] Stream Stopped"
+private const val AD_STARTED = "[Streaming] Ad Started"
+private const val AD_STOPPED = "[Streaming] Ad Stopped"
+private const val AD_SKIPPED = "[Streaming] Ad Skipped"
+private const val STREAM_STARTED = "[Streaming] Stream Started"
+private const val STREAM_STOPPED = "[Streaming] Stream Stopped"
 
 internal val StreamingDiGraph.streamTracker: StreamTracker by weak {
     StreamTracker(
@@ -86,10 +86,10 @@ internal class StreamTracker(
                 timestamp = timestamp,
                 eventProperties =
                     adProperties(options = options, ad = ad, streamSessionId = streamSessionId).apply {
-                        put("ad_play_time", playTimeMillis.millisToSeconds())
-                        put("ad_completion_status", status.value)
+                        put("[Streaming] Ad Play Time Sec", playTimeMillis.millisToSeconds())
+                        put("[Streaming] Ad Completion Status", status.value)
                         ad.percentWatched(playTimeMillis)?.let { percentage ->
-                            put("ad_percent_completed", percentage)
+                            put("[Streaming] Ad Percent Completed", percentage)
                         }
                     },
             ).also { it.insertId = insertId },
@@ -115,7 +115,7 @@ internal class StreamTracker(
                         ad = ad,
                         streamSessionId = streamSessionId,
                     ).apply {
-                        put("skip_position", ad.positionMillis.millisToSeconds())
+                        put("[Streaming] Skip Position Sec", ad.positionMillis.millisToSeconds())
                     },
             ).also { it.insertId = insertId },
         )
@@ -204,12 +204,12 @@ private fun adProperties(
     streamSessionId: String,
 ): MutableMap<String, Any?> =
     options.extraProperties.orEmpty().toMutableMap().apply {
-        put("ad_id", ad.adId)
-        put("content_id", options.contentId ?: ad.contentId)
-        put("stream_session_id", streamSessionId)
-        put("ad_position", ad.contentPositionMillis.millisToSeconds())
+        put("[Streaming] Ad ID", ad.adId)
+        put("[Streaming] Content ID", options.contentId ?: ad.contentId)
+        put("[Streaming] Stream Session ID", streamSessionId)
+        put("[Streaming] Ad Position Sec", ad.contentPositionMillis.millisToSeconds())
         if (ad.durationMillis.isKnownDuration()) {
-            put("ad_duration", ad.durationMillis.millisToSeconds())
+            put("[Streaming] Ad Duration Sec", ad.durationMillis.millisToSeconds())
         }
     }
 
@@ -223,17 +223,17 @@ private fun contentProperties(
     startTimeMillis: Long,
 ): MutableMap<String, Any?> =
     options.extraProperties.orEmpty().toMutableMap().apply {
-        put("stream_session_id", streamSessionId)
-        put("play_id", playId)
-        put("media_type", mediaType.value)
-        (options.contentId ?: snapshot.mediaId)?.takeIf { it.isNotBlank() }?.let { put("content_id", it) }
-        (options.title ?: snapshot.title)?.let { put("title", it) }
-        put("delivery_mode", snapshot.deliveryMode())
+        put("[Streaming] Stream Session ID", streamSessionId)
+        put("[Streaming] Play ID", playId)
+        put("[Streaming] Media Type", mediaType.value)
+        (options.contentId ?: snapshot.mediaId)?.takeIf { it.isNotBlank() }?.let { put("[Streaming] Content ID", it) }
+        (options.title ?: snapshot.title)?.let { put("[Streaming] Title", it) }
+        put("[Streaming] Delivery Mode", snapshot.deliveryMode())
         if (snapshot.hasKnownDuration()) {
-            put("duration", snapshot.durationMillis.millisToSeconds())
+            put("[Streaming] Duration Sec", snapshot.durationMillis.millisToSeconds())
         }
-        put("start_time", startTimeMillis.millisToSeconds())
-        put("position", snapshot.positionMillis.millisToSeconds())
+        put("[Streaming] Start Position Sec", startTimeMillis.millisToSeconds())
+        put("[Streaming] Position Sec", snapshot.positionMillis.millisToSeconds())
     }
 
 @OptIn(AmplitudePreview::class)
@@ -256,11 +256,11 @@ private fun stoppedContentProperties(
         playId = playId,
         startTimeMillis = startTimeMillis,
     ).apply {
-        put("play_time", playTimeMillis.millisToSeconds())
-        stopReason?.let { put("stop_reason", it.value) }
-        errorMessage?.let { put("error_message", it) }
+        put("[Streaming] Play Time Sec", playTimeMillis.millisToSeconds())
+        stopReason?.let { put("[Streaming] Stop Reason", it.value) }
+        errorMessage?.let { put("[Streaming] Error Message", it) }
         snapshot.percentCompleted()?.let { percentage ->
-            put("percent_completed", percentage)
+            put("[Streaming] Percent Completed", percentage)
         }
     }
 
