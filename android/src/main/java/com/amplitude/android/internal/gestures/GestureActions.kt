@@ -5,6 +5,7 @@ package com.amplitude.android.internal.gestures
  */
 internal object GestureActions {
     const val TOUCH = "touch"
+    const val VALUE_CHANGE = "valueChange"
     const val PAN = "pan"
     const val LONG_PRESS = "longPress"
     const val PINCH = "pinch"
