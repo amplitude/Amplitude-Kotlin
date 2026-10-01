@@ -11,16 +11,27 @@ import kotlin.reflect.KProperty
  * property on the subclass, ideally in the file that defines its type. The subclass is the
  * initializer's receiver, so its inputs and the other dependencies are in scope.
  *
- * [singleton] is retained until this graph is.
+ * [singleton] is retained until its owning graph is.
  * [weak] is retained only while something else holds it, and is created again if needed later.
- * Currently, no support for scopes, but could be added in the future.
+ *
+ * A scope subclasses its parent graph's type and passes the parent instance to this constructor.
+ * A dependency belongs to the furthest ancestor assignable to its declared receiver type.
+ * Parent bindings are therefore shared, while bindings declared on the scope belong to that
+ * scope instance. Initializers run on the owning graph, even when first accessed through a child.
+ * Bindings are additive, not overrides. Nesting another instance of the same graph type shares
+ * that type's bindings with the outer instance; use a distinct subtype for a new binding scope.
  *
  * ```kotlin
  * internal val MyGraph.myThing: MyThing by singleton { MyThing(appContext) }
  * internal val MyGraph.myClient: MyClient by weak { MyClient() }
+ *
+ * internal class MyScope(parent: MyGraph) : MyGraph(parent)
+ * internal val MyScope.scopedThing: ScopedThing by singleton { ScopedThing(myThing) }
  * ```
  */
-internal abstract class DiGraph {
+internal abstract class DiGraph(
+    private val parent: DiGraph? = null,
+) {
     private val singletons: SingletonCache = SingletonCache()
     private val weaks: WeakCache = WeakCache()
 
@@ -30,13 +41,23 @@ internal abstract class DiGraph {
      */
     protected open fun <T> lazyOf(initializer: () -> T): Lazy<T> = lazy(initializer)
 
+    private fun <G : DiGraph> ownerOf(graphType: Class<G>): G {
+        var owner: DiGraph = this
+        while (true) {
+            val parent = owner.parent ?: break
+            if (!graphType.isInstance(parent)) break
+            owner = parent
+        }
+        return checkNotNull(graphType.cast(owner))
+    }
+
     /**
      * Declaring the caches private and the factories here keeps the delegates the only way in.
      * Nothing outside this class can reach a cache or key it with a property of its choosing.
      */
     companion object {
         /**
-         * Declares a dependency built once per graph instance, on first read. The graph the
+         * Declares a dependency built once per owning graph, on first read. The graph the
          * property is declared on is the initializer's receiver, so its inputs and the rest of
          * the graph are in scope.
          *
@@ -49,12 +70,11 @@ internal abstract class DiGraph {
          * }
          * ```
          *
-         * Reads are thread safe and the initializer runs at most once per graph.
+         * Reads through a child scope use the owning ancestor's cache and initializer receiver.
+         * Reads are thread safe and successful initialization happens once per owning graph.
          */
-        fun <G : DiGraph, T> singleton(initializer: G.() -> T): ReadOnlyProperty<G, T> =
-            ReadOnlyProperty { thisRef, property ->
-                thisRef.singletons.valueOf(property) { thisRef.initializer() }
-            }
+        inline fun <reified G : DiGraph, T> singleton(noinline initializer: G.() -> T): ReadOnlyProperty<G, T> =
+            singleton(G::class.java, initializer)
 
         /**
          * Declares a dependency created on first read. The graph the property is declared on is
@@ -67,12 +87,31 @@ internal abstract class DiGraph {
          * internal val MyGraph.myClient: MyClient by weak { MyClient() }
          * ```
          *
+         * Reads through a child scope use the owning ancestor's cache and initializer receiver.
          * Reads are thread safe.
          */
-        fun <G : DiGraph, T : Any> weak(initializer: G.() -> T): ReadOnlyProperty<G, T> =
+        inline fun <reified G : DiGraph, T : Any> weak(noinline initializer: G.() -> T): ReadOnlyProperty<G, T> =
+            weak(G::class.java, initializer)
+
+        // Keep cache access outside the inline functions: Kotlin does not allow non-private
+        // inline functions to call members of private cache classes.
+        private fun <G : DiGraph, T> singleton(
+            graphType: Class<G>,
+            initializer: G.() -> T,
+        ): ReadOnlyProperty<G, T> =
             ReadOnlyProperty { thisRef, property ->
-                thisRef.weaks.valueOf(property) {
-                    thisRef.lazyOf { thisRef.initializer() }.value
+                val owner = thisRef.ownerOf(graphType)
+                owner.singletons.valueOf(property) { owner.initializer() }
+            }
+
+        private fun <G : DiGraph, T : Any> weak(
+            graphType: Class<G>,
+            initializer: G.() -> T,
+        ): ReadOnlyProperty<G, T> =
+            ReadOnlyProperty { thisRef, property ->
+                val owner = thisRef.ownerOf(graphType)
+                owner.weaks.valueOf(property) {
+                    owner.lazyOf { owner.initializer() }.value
                 }
             }
     }
@@ -115,7 +154,7 @@ internal abstract class DiGraph {
         ): T {
             val entry =
                 synchronized(entries) {
-                    entries.getOrPut(property) { WeakEntry<T>() as WeakEntry<*> }
+                    entries.getOrPut(property) { WeakEntry<T>() }
                 } as WeakEntry<T>
             return entry.getOrCreate(initializer)
         }
