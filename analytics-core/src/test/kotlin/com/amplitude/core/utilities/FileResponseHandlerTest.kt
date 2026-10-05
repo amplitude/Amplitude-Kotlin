@@ -18,6 +18,7 @@ import com.amplitude.core.utilities.http.TooManyRequestsResponse
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -31,6 +32,8 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FileResponseHandlerTest {
@@ -118,10 +121,15 @@ class FileResponseHandlerTest {
             verify(exactly = 1) { storage.removeFile("file_path") }
         }
 
-    @Test
-    fun `should continue callbacks and remove registrations when callbacks throw`() =
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `should continue callbacks and remove registrations when callbacks throw`(throwsCancellation: Boolean) =
         runTest {
             val logger = mockk<Logger>(relaxed = true)
+
+            fun callbackFailure(message: String): Exception =
+                if (throwsCancellation) CancellationException(message) else IllegalStateException(message)
+
             val globalCallbacks = mutableListOf<String>()
             val eventCallbacks = mutableListOf<String>()
             val events = listOf(generateBaseEvent("first"), generateBaseEvent("second"))
@@ -129,7 +137,7 @@ class FileResponseHandlerTest {
                 event.insertId = event.eventType
                 every { storage.getEventCallback(event.eventType) } returns { received, _, _ ->
                     eventCallbacks.add(received.eventType)
-                    if (received.eventType == "first") throw IllegalStateException("Event callback failed")
+                    if (received.eventType == "first") throw callbackFailure("Event callback failed")
                 }
                 every { storage.removeEventCallback(event.eventType) } returns Unit
             }
@@ -142,7 +150,7 @@ class FileResponseHandlerTest {
                             apiKey = "test",
                             callback = { event, _, _ ->
                                 globalCallbacks.add(event.eventType)
-                                if (event.eventType == "first") throw IllegalStateException("Global callback failed")
+                                if (event.eventType == "first") throw callbackFailure("Global callback failed")
                             },
                         ),
                     scope = this,

@@ -15,7 +15,6 @@ import com.amplitude.core.utilities.http.ResponseHandler
 import com.amplitude.core.utilities.http.SuccessResponse
 import com.amplitude.core.utilities.http.TimeoutResponse
 import com.amplitude.core.utilities.http.TooManyRequestsResponse
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -229,8 +228,6 @@ public class FileResponseHandler
         ) {
             try {
                 callback(event, status, message)
-            } catch (e: CancellationException) {
-                throw e
             } catch (e: Exception) {
                 logger?.let { e.logWithStackTrace(it, "Event callback failed") }
             }

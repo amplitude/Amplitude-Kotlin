@@ -4,9 +4,12 @@ import com.amplitude.core.Amplitude
 import com.amplitude.core.Configuration
 import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.State
+import com.amplitude.core.Storage
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.ConsoleLoggerProvider
+import com.amplitude.core.utilities.EventsFileStorage
 import com.amplitude.core.utilities.ExponentialBackoffRetryHandler
+import com.amplitude.core.utilities.FileResponseHandler
 import com.amplitude.core.utilities.InMemoryStorageProvider
 import com.amplitude.core.utilities.http.AnalyticsResponse
 import com.amplitude.core.utilities.http.BadRequestResponse
@@ -25,16 +28,19 @@ import com.amplitude.core.utilities.http.TooManyRequestsResponse
 import com.amplitude.core.utils.FakeAmplitude
 import com.amplitude.core.utils.StubPlugin
 import com.amplitude.id.IMIdentityStorageProvider
+import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.spyk
 import io.mockk.verify
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.currentTime
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.json.JSONObject
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -138,6 +144,57 @@ class EventPipelineTest {
             advanceUntilIdle()
 
             verify(exactly = 1) { eventPipeline.flush() }
+        }
+
+    @Test
+    fun `should upload a later batch after a callback throws cancellation`() =
+        runTest(testDispatcher) {
+            amplitude.isBuilt.await()
+            val pendingFiles = mutableListOf("first")
+            val pipelineStorage = mockk<Storage>(relaxed = true)
+            val fileStorage = mockk<EventsFileStorage>(relaxed = true)
+            val httpClient = mockk<HttpClientInterface>()
+            every { pipelineStorage.readEventsContent() } answers { pendingFiles.toList() }
+            coEvery { pipelineStorage.getEventsString(any()) } answers {
+                """[{"event_type":"${firstArg<String>()}"}]"""
+            }
+            every { fileStorage.removeFile(any()) } answers { pendingFiles.remove(firstArg<String>()) }
+            every { httpClient.upload(any(), any()) } returns SuccessResponse()
+            val callbacks = mutableListOf<String>()
+            val responseHandler =
+                FileResponseHandler(
+                    fileStorage,
+                    mockk<EventPipeline>(relaxed = true),
+                    Configuration(
+                        apiKey = "test",
+                        callback = { event, _, _ ->
+                            callbacks.add(event.eventType)
+                            if (event.eventType == "first") throw CancellationException("Callback failed")
+                        },
+                    ),
+                    backgroundScope,
+                    testDispatcher,
+                    null,
+                )
+            val pipeline =
+                EventPipeline(
+                    amplitude,
+                    httpClient = httpClient,
+                    storage = pipelineStorage,
+                    scope = backgroundScope,
+                    overrideResponseHandler = responseHandler,
+                )
+            pipeline.start()
+            pipeline.flush()
+            runCurrent()
+
+            pendingFiles.add("second")
+            pipeline.flush()
+            runCurrent()
+
+            assertEquals(listOf("first", "second"), callbacks)
+            assertEquals(emptyList<String>(), pendingFiles)
+            verify(exactly = 2) { httpClient.upload(any(), any()) }
         }
 
     @Test
