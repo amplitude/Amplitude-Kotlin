@@ -2,6 +2,7 @@
 
 package com.amplitude.core.utilities
 
+import com.amplitude.common.Logger
 import com.amplitude.core.Configuration
 import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.diagnostics.DiagnosticsClient
@@ -21,8 +22,11 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import org.json.JSONException
 import org.json.JSONObject
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -94,8 +98,41 @@ class FileResponseHandlerTest {
         }
 
     @Test
-    fun `should remove uploaded file even when success callback throws`() =
+    fun `should remove uploaded file before callback parsing fails`() =
         runTest {
+            val handler =
+                FileResponseHandler(
+                    storage,
+                    pipeline,
+                    Configuration(apiKey = "test"),
+                    this,
+                    StandardTestDispatcher(testScheduler),
+                    null,
+                )
+
+            assertThrows<JSONException> {
+                handler.handleSuccessResponse(SuccessResponse(), "file_path", "not json")
+            }
+
+            // The parser's asynchronous cleanup has not run yet.
+            verify(exactly = 1) { storage.removeFile("file_path") }
+        }
+
+    @Test
+    fun `should continue callbacks and remove registrations when callbacks throw`() =
+        runTest {
+            val logger = mockk<Logger>(relaxed = true)
+            val globalCallbacks = mutableListOf<String>()
+            val eventCallbacks = mutableListOf<String>()
+            val events = listOf(generateBaseEvent("first"), generateBaseEvent("second"))
+            events.forEach { event ->
+                event.insertId = event.eventType
+                every { storage.getEventCallback(event.eventType) } returns { received, _, _ ->
+                    eventCallbacks.add(received.eventType)
+                    if (received.eventType == "first") throw IllegalStateException("Event callback failed")
+                }
+                every { storage.removeEventCallback(event.eventType) } returns Unit
+            }
             val handler =
                 FileResponseHandler(
                     storage = storage,
@@ -103,22 +140,26 @@ class FileResponseHandlerTest {
                     configuration =
                         Configuration(
                             apiKey = "test",
-                            callback = { _, _, _ -> throw IllegalStateException("Callback failed") },
+                            callback = { event, _, _ ->
+                                globalCallbacks.add(event.eventType)
+                                if (event.eventType == "first") throw IllegalStateException("Global callback failed")
+                            },
                         ),
                     scope = this,
                     storageDispatcher = StandardTestDispatcher(testScheduler),
-                    logger = null,
+                    logger = logger,
                 )
 
-            assertThrows<IllegalStateException> {
-                handler.handleSuccessResponse(
-                    SuccessResponse(),
-                    "file_path",
-                    JSONUtil.eventsToString(listOf(generateBaseEvent("test"))),
-                )
-            }
+            handler.handleSuccessResponse(SuccessResponse(), "file_path", JSONUtil.eventsToString(events))
+            runCurrent()
 
+            assertEquals(listOf("first", "second"), globalCallbacks)
+            assertEquals(listOf("first", "second"), eventCallbacks)
             verify(exactly = 1) { storage.removeFile("file_path") }
+            verify(exactly = 1) { storage.removeEventCallback("first") }
+            verify(exactly = 1) { storage.removeEventCallback("second") }
+            verify { logger.error(match { it.contains("Global callback failed") }) }
+            verify { logger.error(match { it.contains("Event callback failed") }) }
         }
 
     @Test
