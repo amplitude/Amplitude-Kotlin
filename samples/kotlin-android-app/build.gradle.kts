@@ -81,3 +81,9 @@ dependencies {
     debugImplementation(libs.ui.tooling)
     debugImplementation(libs.ui.test.manifest)
 }
+
+// Experiment's dex transform reads the local core JAR without scheduling its producer.
+// Explicitly build it first, including when dependency transforms are already cached.
+tasks.matching { it.name.startsWith("mergeExtDex") }.configureEach {
+    dependsOn(":analytics-core:jar")
+}
