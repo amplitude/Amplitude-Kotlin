@@ -35,24 +35,24 @@ class AndroidUploadDiagnosticsTest {
 
     private fun storage(enabled: Boolean = true) =
         AndroidStorageV2(
-            name,
-            mockk<Logger>(relaxed = true),
-            preferences,
-            File(context.cacheDir, name),
-            Diagnostics(),
-            DiagnosticsClientProvider { client },
+            storageKey = name,
+            logger = mockk<Logger>(relaxed = true),
+            sharedPreferences = preferences,
+            storageDirectory = File(context.cacheDir, name),
+            diagnostics = Diagnostics(),
+            diagnosticsClientProvider = DiagnosticsClientProvider { client },
             sampleUploadAttempts = enabled,
         )
 
     @Test
     fun `counts and clears leftover phases once`() {
         preferences.edit()
-            .putString("upload_attempt_sample.first", "network_callback")
-            .putString("upload_attempt_sample.second", "cleanup")
+            .putStringSet("upload_attempt_sample.network_callback", setOf("first", "second"))
+            .putStringSet("upload_attempt_sample.cleanup", setOf("third"))
             .commit()
         storage().readEventsContent()
         storage().readEventsContent()
-        verify(exactly = 1) { client.increment("analytics.upload.missed_network_callback", 1) }
+        verify(exactly = 1) { client.increment("analytics.upload.missed_network_callback", 2) }
         verify(exactly = 1) { client.increment("analytics.upload.missed_cleanup", 1) }
     }
 
@@ -63,8 +63,8 @@ class AndroidUploadDiagnosticsTest {
         storage.rollover()
         val path = storage.readEventsContent().single() as String
         val events = storage.getEventsString(path)
-        val key = "upload_attempt_sample." + File(path).name
-        assertTrue(preferences.getString(key, "") == "network_callback")
+        val key = "upload_attempt_sample.network_callback"
+        assertTrue(preferences.getStringSet(key, emptySet()) == setOf(File(path).name))
         storage.readEventsContent()
         verify(exactly = 0) { client.increment(any(), any()) }
         storage.getResponseHandler(mockk<EventPipeline>(), Configuration(apiKey = "test"), this, StandardTestDispatcher(testScheduler))
@@ -72,6 +72,7 @@ class AndroidUploadDiagnosticsTest {
         runCurrent()
         assertFalse(File(path).exists())
         assertFalse(preferences.contains(key))
+        assertFalse(preferences.contains("upload_attempt_sample.cleanup"))
     }
 
     @Test
@@ -83,8 +84,30 @@ class AndroidUploadDiagnosticsTest {
         val events = storage.getEventsString(path)
         storage.getResponseHandler(mockk<EventPipeline>(), Configuration(apiKey = "test"), this, StandardTestDispatcher(testScheduler))
             .handle(TimeoutResponse(), path, events)
-        assertFalse(preferences.contains("upload_attempt_sample." + File(path).name))
+        assertFalse(preferences.contains("upload_attempt_sample.network_callback"))
         assertTrue(File(path).exists())
+    }
+
+    @Test
+    fun `cleanup of an earlier batch preserves a later pending upload`() = runTest {
+        val storage = storage()
+        storage.writeEvent(BaseEvent().apply { eventType = "first" })
+        storage.rollover()
+        val first = storage.readEventsContent().single() as String
+        val events = storage.getEventsString(first)
+        storage.getResponseHandler(mockk<EventPipeline>(), Configuration(apiKey = "test"), this, StandardTestDispatcher(testScheduler))
+            .handle(SuccessResponse(), first, events)
+        assertTrue(preferences.getStringSet("upload_attempt_sample.cleanup", emptySet()) == setOf(File(first).name))
+
+        storage.writeEvent(BaseEvent().apply { eventType = "second" })
+        storage.rollover()
+        val second = storage.readEventsContent().single { it != first } as String
+        storage.getEventsString(second)
+        runCurrent()
+
+        assertFalse(File(first).exists())
+        assertFalse(preferences.contains("upload_attempt_sample.cleanup"))
+        assertTrue(preferences.getStringSet("upload_attempt_sample.network_callback", emptySet()) == setOf(File(second).name))
     }
 
     @Test

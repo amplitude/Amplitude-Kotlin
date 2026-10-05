@@ -27,6 +27,8 @@ import kotlinx.coroutines.CoroutineScope
 import org.json.JSONArray
 import java.io.File
 
+private const val UPLOAD_MARKER_PREFIX = "upload_attempt_sample."
+
 @OptIn(RestrictedAmplitudeFeature::class)
 @Deprecated("Not intended for public use. Will be internal in a future release.")
 public class AndroidStorageV2
@@ -57,10 +59,6 @@ public class AndroidStorageV2
             diagnostics: Diagnostics,
         ) : this(storageKey, logger, sharedPreferences, storageDirectory, diagnostics, null)
 
-        private companion object {
-            private const val UPLOAD_MARKER_PREFIX = "upload_attempt_sample."
-        }
-
         private val eventsFile =
             EventsFileManager(
                 storageDirectory,
@@ -71,39 +69,52 @@ public class AndroidStorageV2
             )
         private val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
 
+        private var uploadCountersRecovered = false
+
         // Recover once, on the first queue scan after initialization (off the UI thread).
         // This sample assumes one initialization per instance name per process.
-        private val recoverUploadCounters by lazy {
-            if (sampleUploadAttempts) {
-                try {
-                    sharedPreferences.all.filterKeys { it.startsWith(UPLOAD_MARKER_PREFIX) }.forEach { (key, value) ->
-                        if (value == "network_callback" || value == "cleanup") {
-                            diagnosticsClientProvider?.get()?.increment("analytics.upload.missed_$value")
-                        }
-                        saveUploadMarker(key, null)
+        @Synchronized
+        private fun recoverUploadCountersIfNeeded() {
+            if (uploadCountersRecovered) return
+            uploadCountersRecovered = true
+            if (!sampleUploadAttempts) return
+
+            try {
+                for (phase in listOf("network_callback", "cleanup")) {
+                    val key = UPLOAD_MARKER_PREFIX + phase
+                    val count = sharedPreferences.getStringSet(key, emptySet())?.size ?: 0
+                    if (count > 0) {
+                        diagnosticsClientProvider?.get()?.increment("analytics.upload.missed_$phase", count.toLong())
                     }
-                } catch (e: Exception) {
-                    logger.warn("Could not recover upload diagnostic counters: ${e.javaClass.simpleName}")
+                    persistUploadMarkers(sharedPreferences.edit().remove(key))
                 }
+            } catch (e: Exception) {
+                logger.warn("Could not recover upload diagnostic counters: ${e.javaClass.simpleName}")
             }
         }
 
+        @Synchronized
         private fun markUpload(filePath: String, phase: String?) {
             if (!sampleUploadAttempts) return
-            saveUploadMarker(
-                UPLOAD_MARKER_PREFIX + File(filePath).name,
-                phase,
-            )
-        }
-
-        private fun saveUploadMarker(key: String, value: String?) {
             try {
-                // Synchronous persistence is intentional for this local crash-diagnostic sample.
-                if (!sharedPreferences.edit().putString(key, value).commit()) {
-                    logger.warn("Could not persist upload diagnostic marker")
+                val batch = File(filePath).name
+                val editor = sharedPreferences.edit()
+                for (pendingPhase in listOf("network_callback", "cleanup")) {
+                    val key = UPLOAD_MARKER_PREFIX + pendingPhase
+                    val batches = sharedPreferences.getStringSet(key, emptySet()).orEmpty().toMutableSet()
+                    if (phase == pendingPhase) batches.add(batch) else batches.remove(batch)
+                    if (batches.isEmpty()) editor.remove(key) else editor.putStringSet(key, batches)
                 }
+                persistUploadMarkers(editor)
             } catch (e: Exception) {
                 logger.warn("Could not persist upload diagnostic marker: ${e.javaClass.simpleName}")
+            }
+        }
+
+        private fun persistUploadMarkers(editor: SharedPreferences.Editor) {
+            // Synchronous persistence is intentional for this local crash-diagnostic sample.
+            if (!editor.commit()) {
+                logger.warn("Could not persist upload diagnostic marker")
             }
         }
 
@@ -140,7 +151,7 @@ public class AndroidStorageV2
         }
 
         override fun readEventsContent(): List<Any> {
-            recoverUploadCounters
+            recoverUploadCountersIfNeeded()
             return eventsFile.read()
         }
 
@@ -221,12 +232,12 @@ public class AndroidEventsStorageProviderV2 : StorageProvider {
         val sharedPreferences =
             configuration.context.getSharedPreferences(sharedPreferencesName, Context.MODE_PRIVATE)
         return AndroidStorageV2(
-            configuration.instanceName,
-            configuration.loggerProvider.getLogger(amplitude),
-            sharedPreferences,
-            AndroidStorageContextV3.getEventsStorageDirectory(configuration),
-            amplitude.diagnostics,
-            DiagnosticsClientProvider { amplitude.diagnosticsClient },
+            storageKey = configuration.instanceName,
+            logger = configuration.loggerProvider.getLogger(amplitude),
+            sharedPreferences = sharedPreferences,
+            storageDirectory = AndroidStorageContextV3.getEventsStorageDirectory(configuration),
+            diagnostics = amplitude.diagnostics,
+            diagnosticsClientProvider = DiagnosticsClientProvider { amplitude.diagnosticsClient },
             sampleUploadAttempts = configuration.enableDiagnostics,
         )
     }
