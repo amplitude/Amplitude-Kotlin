@@ -19,7 +19,9 @@ import com.amplitude.core.utilities.EventsFileManager
 import com.amplitude.core.utilities.EventsFileStorage
 import com.amplitude.core.utilities.FileResponseHandler
 import com.amplitude.core.utilities.JSONUtil
+import com.amplitude.core.utilities.http.AnalyticsResponse
 import com.amplitude.core.utilities.http.ResponseHandler
+import com.amplitude.core.utilities.http.SuccessResponse
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import org.json.JSONArray
@@ -45,6 +47,7 @@ public class AndroidStorageV2
         storageDirectory: File,
         diagnostics: Diagnostics,
         private val diagnosticsClientProvider: DiagnosticsClientProvider? = null,
+        private val sampleUploadAttempts: Boolean = false,
     ) : Storage, EventsFileStorage {
         public constructor(
             storageKey: String,
@@ -53,6 +56,10 @@ public class AndroidStorageV2
             storageDirectory: File,
             diagnostics: Diagnostics,
         ) : this(storageKey, logger, sharedPreferences, storageDirectory, diagnostics, null)
+
+        private companion object {
+            private const val UPLOAD_MARKER_PREFIX = "upload_attempt_sample."
+        }
 
         private val eventsFile =
             EventsFileManager(
@@ -63,6 +70,42 @@ public class AndroidStorageV2
                 diagnostics,
             )
         private val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
+
+        // Recover once, on the first queue scan after initialization (off the UI thread).
+        // This sample assumes one initialization per instance name per process.
+        private val recoverUploadCounters by lazy {
+            if (sampleUploadAttempts) {
+                try {
+                    sharedPreferences.all.filterKeys { it.startsWith(UPLOAD_MARKER_PREFIX) }.forEach { (key, value) ->
+                        if (value == "network_callback" || value == "cleanup") {
+                            diagnosticsClientProvider?.get()?.increment("analytics.upload.missed_$value")
+                        }
+                        saveUploadMarker(key, null)
+                    }
+                } catch (e: Exception) {
+                    logger.warn("Could not recover upload diagnostic counters: ${e.javaClass.simpleName}")
+                }
+            }
+        }
+
+        private fun markUpload(filePath: String, phase: String?) {
+            if (!sampleUploadAttempts) return
+            saveUploadMarker(
+                UPLOAD_MARKER_PREFIX + File(filePath).name,
+                phase,
+            )
+        }
+
+        private fun saveUploadMarker(key: String, value: String?) {
+            try {
+                // Synchronous persistence is intentional for this local crash-diagnostic sample.
+                if (!sharedPreferences.edit().putString(key, value).commit()) {
+                    logger.warn("Could not persist upload diagnostic marker")
+                }
+            } catch (e: Exception) {
+                logger.warn("Could not persist upload diagnostic marker: ${e.javaClass.simpleName}")
+            }
+        }
 
         override suspend fun writeEvent(event: BaseEvent) {
             eventsFile.storeEvent(JSONUtil.eventToString(event))
@@ -97,6 +140,7 @@ public class AndroidStorageV2
         }
 
         override fun readEventsContent(): List<Any> {
+            recoverUploadCounters
             return eventsFile.read()
         }
 
@@ -105,7 +149,9 @@ public class AndroidStorageV2
         }
 
         override suspend fun getEventsString(filePath: Any): String {
-            return eventsFile.getEventString(filePath as String)
+            return eventsFile.getEventString(filePath as String).also {
+                if (it.isNotEmpty()) markUpload(filePath, "network_callback")
+            }
         }
 
         override fun getResponseHandler(
@@ -114,19 +160,33 @@ public class AndroidStorageV2
             scope: CoroutineScope,
             storageDispatcher: CoroutineDispatcher,
         ): ResponseHandler {
-            return FileResponseHandler(
-                this,
-                eventPipeline,
-                configuration,
-                scope,
-                storageDispatcher,
-                logger,
-                diagnosticsClientProvider?.get(),
-            )
+            val delegate =
+                FileResponseHandler(
+                    this,
+                    eventPipeline,
+                    configuration,
+                    scope,
+                    storageDispatcher,
+                    logger,
+                    diagnosticsClientProvider?.get(),
+                )
+            return object : ResponseHandler by delegate {
+                override fun handle(
+                    response: AnalyticsResponse,
+                    events: Any,
+                    eventsString: String,
+                ): Boolean? {
+                    val path = events as String
+                    markUpload(path, if (response is SuccessResponse) "cleanup" else null)
+                    return delegate.handle(response, events, eventsString)
+                }
+            }
         }
 
         override fun removeFile(filePath: String): Boolean {
-            return eventsFile.remove(filePath)
+            return eventsFile.remove(filePath).also { removed ->
+                if (removed) markUpload(filePath, null)
+            }
         }
 
         override fun getEventCallback(insertId: String): EventCallBack? {
@@ -167,6 +227,7 @@ public class AndroidEventsStorageProviderV2 : StorageProvider {
             AndroidStorageContextV3.getEventsStorageDirectory(configuration),
             amplitude.diagnostics,
             DiagnosticsClientProvider { amplitude.diagnosticsClient },
+            sampleUploadAttempts = configuration.enableDiagnostics,
         )
     }
 }
