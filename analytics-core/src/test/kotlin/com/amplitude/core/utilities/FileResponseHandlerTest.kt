@@ -2,6 +2,7 @@
 
 package com.amplitude.core.utilities
 
+import com.amplitude.common.Logger
 import com.amplitude.core.Configuration
 import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.diagnostics.DiagnosticsClient
@@ -17,13 +18,22 @@ import com.amplitude.core.utilities.http.TooManyRequestsResponse
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import org.json.JSONException
 import org.json.JSONObject
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FileResponseHandlerTest {
@@ -58,6 +68,107 @@ class FileResponseHandlerTest {
             storage.releaseFile("file_path")
         } returns Unit
     }
+
+    @Test
+    fun `should remove uploaded file before callback without dispatching storage work`() =
+        runTest {
+            var callbackInvoked = false
+            val handler =
+                FileResponseHandler(
+                    storage = storage,
+                    eventPipeline = pipeline,
+                    configuration =
+                        Configuration(
+                            apiKey = "test",
+                            callback = { _, _, _ ->
+                                verify(exactly = 1) { storage.removeFile("file_path") }
+                                callbackInvoked = true
+                            },
+                        ),
+                    scope = this,
+                    storageDispatcher = StandardTestDispatcher(testScheduler),
+                    logger = null,
+                )
+
+            handler.handleSuccessResponse(
+                SuccessResponse(),
+                "file_path",
+                JSONUtil.eventsToString(listOf(generateBaseEvent("test"))),
+            )
+
+            assertTrue(callbackInvoked)
+            verify(exactly = 1) { storage.removeFile("file_path") }
+        }
+
+    @Test
+    fun `should remove uploaded file before callback parsing fails`() =
+        runTest {
+            val handler =
+                FileResponseHandler(
+                    storage,
+                    pipeline,
+                    Configuration(apiKey = "test"),
+                    this,
+                    StandardTestDispatcher(testScheduler),
+                    null,
+                )
+
+            assertThrows<JSONException> {
+                handler.handleSuccessResponse(SuccessResponse(), "file_path", "not json")
+            }
+
+            // The parser's asynchronous cleanup has not run yet.
+            verify(exactly = 1) { storage.removeFile("file_path") }
+        }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `should continue callbacks and remove registrations when callbacks throw`(throwsCancellation: Boolean) =
+        runTest {
+            val logger = mockk<Logger>(relaxed = true)
+
+            fun callbackFailure(message: String): Exception =
+                if (throwsCancellation) CancellationException(message) else IllegalStateException(message)
+
+            val globalCallbacks = mutableListOf<String>()
+            val eventCallbacks = mutableListOf<String>()
+            val events = listOf(generateBaseEvent("first"), generateBaseEvent("second"))
+            events.forEach { event ->
+                event.insertId = event.eventType
+                every { storage.getEventCallback(event.eventType) } returns { received, _, _ ->
+                    eventCallbacks.add(received.eventType)
+                    if (received.eventType == "first") throw callbackFailure("Event callback failed")
+                }
+                every { storage.removeEventCallback(event.eventType) } returns Unit
+            }
+            val handler =
+                FileResponseHandler(
+                    storage = storage,
+                    eventPipeline = pipeline,
+                    configuration =
+                        Configuration(
+                            apiKey = "test",
+                            callback = { event, _, _ ->
+                                globalCallbacks.add(event.eventType)
+                                if (event.eventType == "first") throw callbackFailure("Global callback failed")
+                            },
+                        ),
+                    scope = this,
+                    storageDispatcher = StandardTestDispatcher(testScheduler),
+                    logger = logger,
+                )
+
+            handler.handleSuccessResponse(SuccessResponse(), "file_path", JSONUtil.eventsToString(events))
+            runCurrent()
+
+            assertEquals(listOf("first", "second"), globalCallbacks)
+            assertEquals(listOf("first", "second"), eventCallbacks)
+            verify(exactly = 1) { storage.removeFile("file_path") }
+            verify(exactly = 1) { storage.removeEventCallback("first") }
+            verify(exactly = 1) { storage.removeEventCallback("second") }
+            verify { logger.error(match { it.contains("Global callback failed") }) }
+            verify { logger.error(match { it.contains("Event callback failed") }) }
+        }
 
     @Test
     fun `success single event`() {

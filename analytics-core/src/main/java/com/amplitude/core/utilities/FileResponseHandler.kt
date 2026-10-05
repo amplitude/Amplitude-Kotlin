@@ -2,6 +2,7 @@ package com.amplitude.core.utilities
 
 import com.amplitude.common.Logger
 import com.amplitude.core.Configuration
+import com.amplitude.core.EventCallBack
 import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.diagnostics.DiagnosticsClient
 import com.amplitude.core.events.BaseEvent
@@ -47,11 +48,12 @@ public class FileResponseHandler
         ) {
             val eventFilePath = events as String
             logger?.debug("Handle response, status: ${successResponse.status}")
+            // Remove acknowledged events before callback parsing or another upload can run.
+            if (!storage.removeFile(eventFilePath)) {
+                logger?.warn("Failed to remove uploaded event file: $eventFilePath")
+            }
             val eventsList = parseEvents(eventsString, eventFilePath).toEvents()
             triggerEventsCallback(eventsList, HttpStatus.SUCCESS.statusCode, "Event sent success.")
-            scope.launch(storageDispatcher) {
-                storage.removeFile(eventFilePath)
-            }
         }
 
         override fun handleBadRequestResponse(
@@ -202,16 +204,32 @@ public class FileResponseHandler
             }
             events.forEach { event ->
                 configuration.callback?.let {
-                    it(event, status, message)
+                    invokeCallback(it, event, status, message)
                 }
                 event.insertId?.let { insertId ->
                     scope.launch(storageDispatcher) {
                         storage.getEventCallback(insertId)?.let {
-                            it(event, status, message)
-                            storage.removeEventCallback(insertId)
+                            try {
+                                invokeCallback(it, event, status, message)
+                            } finally {
+                                storage.removeEventCallback(insertId)
+                            }
                         }
                     }
                 }
+            }
+        }
+
+        private fun invokeCallback(
+            callback: EventCallBack,
+            event: BaseEvent,
+            status: Int,
+            message: String,
+        ) {
+            try {
+                callback(event, status, message)
+            } catch (e: Exception) {
+                logger?.let { e.logWithStackTrace(it, "Event callback failed") }
             }
         }
 
