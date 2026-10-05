@@ -82,8 +82,9 @@ dependencies {
     debugImplementation(libs.ui.test.manifest)
 }
 
-// Experiment's dex transform reads the local core JAR without scheduling its producer.
-// Explicitly build it first, including when dependency transforms are already cached.
-tasks.matching { it.name.startsWith("mergeExtDex") }.configureEach {
-    dependsOn(":analytics-core:jar")
+// Resolve Experiment's core dependency to the local project while constructing the task graph.
+configurations.configureEach {
+    resolutionStrategy.dependencySubstitution {
+        substitute(module("com.amplitude:analytics-core")).using(project(":analytics-core"))
+    }
 }
