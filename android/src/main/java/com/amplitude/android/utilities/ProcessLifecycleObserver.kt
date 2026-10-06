@@ -11,9 +11,10 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.withContext
+import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.AtomicBoolean
 
-/** Publishes process visibility changes. */
+/** Observes process visibility without retaining its consumers in AndroidX. */
 internal class ProcessLifecycleObserver(
     private val lifecycle: Lifecycle = ProcessLifecycleOwner.get().lifecycle,
     private val time: Time = Time(),
@@ -23,12 +24,7 @@ internal class ProcessLifecycleObserver(
     private val started = AtomicBoolean(false)
     private var foreground = false
 
-    private val observer =
-        object : DefaultLifecycleObserver {
-            override fun onStart(owner: LifecycleOwner) = transition(true)
-
-            override fun onStop(owner: LifecycleOwner) = transition(false)
-        }
+    private val observer = LifecycleObserver(this)
 
     // The plugin subscribes before start(), so replay is unnecessary. Buffer transitions
     // while its collector is busy without blocking lifecycle callbacks or dropping events.
@@ -57,5 +53,27 @@ internal class ProcessLifecycleObserver(
         if (foreground == isForeground) return
         foreground = isForeground
         _events.tryEmit(Transition(time.nowMillis(), isForeground))
+    }
+
+    private class LifecycleObserver(
+        source: ProcessLifecycleObserver,
+    ) : DefaultLifecycleObserver {
+        private val source = WeakReference(source)
+
+        override fun onStart(owner: LifecycleOwner) = transition(owner, true)
+
+        override fun onStop(owner: LifecycleOwner) = transition(owner, false)
+
+        private fun transition(
+            owner: LifecycleOwner,
+            foreground: Boolean,
+        ) {
+            val source = source.get()
+            if (source == null) {
+                owner.lifecycle.removeObserver(this)
+            } else {
+                source.transition(foreground)
+            }
+        }
     }
 }

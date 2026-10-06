@@ -59,6 +59,7 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.LooperMode
+import java.lang.ref.WeakReference
 import java.time.Duration
 
 @RunWith(RobolectricTestRunner::class)
@@ -490,6 +491,32 @@ class ProcessLifecycleTest {
             assertEquals(2_000L, amplitude.sessionId)
             val opened = events.events.single { it.eventType == EventTypes.APPLICATION_OPENED }
             assertEquals(false, opened.eventProperties!![EventProperties.FROM_BACKGROUND])
+        }
+
+    @Test
+    fun `abandoned observer unregisters on the next lifecycle callback`() =
+        runTest {
+            val observer = ProcessLifecycleObserver(owner.lifecycle, time)
+            observers.add(observer)
+            observer.start()
+            runCurrent()
+            assertEquals(1, owner.lifecycle.observerCount)
+
+            val callback =
+                ProcessLifecycleObserver::class.java.getDeclaredField("observer").apply { isAccessible = true }
+                    .get(observer)
+            val source =
+                callback.javaClass.getDeclaredField("source").apply { isAccessible = true }
+                    .get(callback) as WeakReference<*>
+            // Simulate collection deterministically instead of depending on JVM GC timing.
+            source.clear()
+
+            start(1_000)
+            runCurrent()
+            assertEquals(0, owner.lifecycle.observerCount)
+            stop(1_050)
+            runCurrent()
+            assertEquals(0, owner.lifecycle.observerCount)
         }
 
     @Test
