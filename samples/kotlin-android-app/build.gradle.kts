@@ -81,3 +81,10 @@ dependencies {
     debugImplementation(libs.ui.tooling)
     debugImplementation(libs.ui.test.manifest)
 }
+
+// Resolve Experiment's core dependency to the local project while constructing the task graph.
+configurations.configureEach {
+    resolutionStrategy.dependencySubstitution {
+        substitute(module("com.amplitude:analytics-core")).using(project(":analytics-core"))
+    }
+}
