@@ -15,10 +15,11 @@ import com.amplitude.android.internal.gestures.WindowCallbackManager
 import com.amplitude.android.utilities.ActivityCallbackType
 import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.android.utilities.DefaultEventUtils
+import com.amplitude.android.utilities.ProcessLifecycleObserver
 import com.amplitude.android.utilities.getVersionCode
+import com.amplitude.android.utilities.onChanged
 import com.amplitude.android.utilities.runCatchingCancellable
 import com.amplitude.core.Amplitude
-import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.Storage
 import com.amplitude.core.platform.Plugin
 import kotlinx.coroutines.CoroutineScope
@@ -26,16 +27,24 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.launch
 import java.lang.ref.WeakReference
 import com.amplitude.android.Amplitude as AndroidAmplitude
 
-@OptIn(GuardedAmplitudeFeature::class, RestrictedAmplitudeFeature::class)
+@OptIn(GuardedAmplitudeFeature::class)
 @Deprecated("Not intended for public use. Will be internal in a future release.")
-public class AndroidLifecyclePlugin(
+public class AndroidLifecyclePlugin internal constructor(
     private val activityLifecycleObserver: ActivityLifecycleObserver,
+    private val processLifecycleObserver: ProcessLifecycleObserver,
 ) : Application.ActivityLifecycleCallbacks,
     Plugin {
+    public constructor(activityLifecycleObserver: ActivityLifecycleObserver) : this(
+        activityLifecycleObserver = activityLifecycleObserver,
+        processLifecycleObserver = ProcessLifecycleObserver(),
+    )
+
     override val type: Plugin.Type = Plugin.Type.Utility
     override lateinit var amplitude: Amplitude
     private lateinit var packageInfo: PackageInfo
@@ -49,7 +58,6 @@ public class AndroidLifecyclePlugin(
 
     private val created: MutableMap<Int, WeakReference<Activity>> = mutableMapOf()
     private val fragmentTrackingActivities: MutableSet<Int> = mutableSetOf()
-    private val started: MutableSet<Int> = mutableSetOf()
     private val processedDeepLinkIntents: MutableMap<Int, Int> = mutableMapOf()
 
     private var appInBackground = false
@@ -101,6 +109,25 @@ public class AndroidLifecyclePlugin(
         val eventChannel = activityLifecycleObserver.eventChannel
         val observer = activityLifecycleObserver
         val weakPlugin = WeakReference(this)
+        val processObserver = processLifecycleObserver
+        pluginScope.launch(Dispatchers.Main.immediate) {
+            processObserver.events
+                .onSubscription { processObserver.start() }
+                .onCompletion { processObserver.stop() }
+                .onChanged { it.foreground }
+                .collect { transition ->
+                    val plugin = weakPlugin.get()
+                    if (plugin == null) {
+                        processObserver.stop()
+                        return@collect
+                    }
+                    if (transition.foreground) {
+                        plugin.onAppForeground(transition.timestamp)
+                    } else {
+                        plugin.onAppBackground(transition.timestamp)
+                    }
+                }
+        }
         pluginScope.launch(Dispatchers.Main) {
             for ((activity, eventType) in eventChannel) {
                 val plugin = weakPlugin.get()
@@ -129,6 +156,30 @@ public class AndroidLifecyclePlugin(
         }
     }
 
+    private fun onAppForeground(timestamp: Long) {
+        if (!androidAmplitude.isActive) return
+        androidAmplitude.onEnterForeground(timestamp)
+        if (autocaptureState.appLifecycles) {
+            defaultEventUtils.trackAppOpenedEvent(
+                isFromBackground = appInBackground,
+            )
+        }
+        appInBackground = false
+    }
+
+    private fun onAppBackground(timestamp: Long) {
+        if (!androidAmplitude.isActive) return
+        // Enqueue Backgrounded before exiting so it belongs to the departing session.
+        if (autocaptureState.appLifecycles) {
+            defaultEventUtils.trackAppBackgroundedEvent()
+        }
+        androidAmplitude.onExitForeground(timestamp)
+        appInBackground = true
+        if ((amplitude.configuration as Configuration).flushEventsOnClose) {
+            androidAmplitude.flush()
+        }
+    }
+
     override fun onActivityCreated(
         activity: Activity,
         bundle: Bundle?,
@@ -144,21 +195,6 @@ public class AndroidLifecyclePlugin(
         if (!created.containsKey(activity.hashCode())) {
             // We check for On Create in case if sdk was initialised in Main Activity
             onActivityCreated(activity, activity.intent?.extras)
-        }
-
-        if (started.isEmpty()) {
-            androidAmplitude.onEnterForeground(System.currentTimeMillis())
-        }
-
-        started.add(activity.hashCode())
-
-        if (autocaptureState.appLifecycles && started.size == 1) {
-            defaultEventUtils.trackAppOpenedEvent(
-                isFromBackground = appInBackground,
-            )
-        }
-        if (started.size == 1) {
-            appInBackground = false
         }
 
         if (autocaptureState.deepLinks) {
@@ -180,23 +216,7 @@ public class AndroidLifecyclePlugin(
 
     override fun onActivityPaused(activity: Activity): Unit = Unit
 
-    override fun onActivityStopped(activity: Activity) {
-        started.remove(activity.hashCode())
-
-        if (autocaptureState.appLifecycles && started.isEmpty()) {
-            defaultEventUtils.trackAppBackgroundedEvent()
-        }
-
-        if (started.isEmpty()) {
-            appInBackground = true
-            with(androidAmplitude) {
-                onExitForeground(System.currentTimeMillis())
-                if ((configuration as Configuration).flushEventsOnClose) {
-                    flush()
-                }
-            }
-        }
-    }
+    override fun onActivityStopped(activity: Activity): Unit = Unit
 
     override fun onActivitySaveInstanceState(
         activity: Activity,

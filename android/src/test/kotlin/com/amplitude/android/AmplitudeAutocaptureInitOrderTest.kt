@@ -19,8 +19,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.StandardTestDispatcher
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -43,7 +44,7 @@ import com.amplitude.core.Amplitude as CoreAmplitude
 @RunWith(RobolectricTestRunner::class)
 class AmplitudeAutocaptureInitOrderTest {
     @get:Rule
-    val mainDispatcherRule = MainDispatcherRule(UnconfinedTestDispatcher())
+    val mainDispatcherRule = MainDispatcherRule(StandardTestDispatcher())
 
     @Test
     fun `by lazy autocaptureManager NPEs when buildInternal runs before property init`() {
@@ -99,6 +100,7 @@ class AmplitudeAutocaptureInitOrderTest {
                         accessError = accessError,
                     )
                 amplitude.isBuilt.await()
+                amplitude.amplitudeScope.cancel()
             } finally {
                 pool.shutdown()
                 pool.awaitTermination(5, TimeUnit.SECONDS)

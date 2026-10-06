@@ -28,4 +28,14 @@ class FlowUtilsTest {
             assertEquals(listOf(false), values.toList())
             assertEquals(listOf(false), values.toList())
         }
+
+    @Test
+    fun `key comparison preserves the original transition timestamp`() =
+        runTest {
+            val first = ProcessLifecycleObserver.Transition(100, true)
+            val duplicate = ProcessLifecycleObserver.Transition(200, true)
+            val background = ProcessLifecycleObserver.Transition(300, false)
+            val values = flowOf(first, duplicate, background).onChanged { it.foreground }.toList()
+            assertEquals(listOf(first, background), values)
+        }
 }

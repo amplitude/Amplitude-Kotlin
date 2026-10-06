@@ -206,7 +206,7 @@ public open class Amplitude internal constructor(
             .onFailure { logger.warn("Failed to close the event queue: $it") }
         // Autocapture holds process-wide resources (window callbacks, a Curtains listener) and
         // takes no part in draining, so it goes now rather than behind the drain below.
-        runCatching { findPlugin<AndroidLifecyclePlugin>()?.let { remove(it) } }
+        runCatching { findPlugin<AndroidLifecyclePlugin>()?.teardown() }
             .onFailure { logger.warn("Failed to stop Android autocapture: $it") }
 
         // The rest go last: they must outlive an in-flight build that is still adding them and the
