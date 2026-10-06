@@ -125,7 +125,14 @@ public class EventsFileManager(
 
     public fun remove(filePath: String): Boolean {
         filePathSet.remove(filePath)
-        return File(filePath).delete()
+        return try {
+            File(filePath).delete().also { removed ->
+                if (!removed) diagnostics.addErrorLog("Failed to delete event file")
+            }
+        } catch (e: Exception) {
+            diagnostics.addErrorLog("Failed to delete event file: ${e.javaClass.simpleName}: ${e.message}")
+            throw e
+        }
     }
 
     /**

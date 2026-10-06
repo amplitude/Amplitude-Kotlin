@@ -40,6 +40,22 @@ class EventsFileManagerTest {
     }
 
     @Test
+    fun `failed deletion is included in diagnostic error logs`() {
+        val batch = File(tempDir, "nonempty-batch").apply { mkdir() }
+        File(batch, "child").writeText("data")
+        assertFalse(eventsFileManager.remove(batch.path))
+        val errors = org.json.JSONObject(testDiagnostics.extractDiagnostics()).getJSONArray("error_logs")
+        assertEquals("Failed to delete event file", errors.getString(0))
+    }
+
+    @Test
+    fun `successful deletion does not report an error`() {
+        val batch = File(tempDir, "batch").apply { writeText("data") }
+        assertTrue(eventsFileManager.remove(batch.path))
+        assertFalse(testDiagnostics.hasDiagnostics())
+    }
+
+    @Test
     fun `store event and read`() =
         runBlocking {
             eventsFileManager.storeEvent(createEvent("test1"))

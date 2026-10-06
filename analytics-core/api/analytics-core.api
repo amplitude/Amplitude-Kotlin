@@ -378,6 +378,11 @@ public abstract interface class com/amplitude/core/StorageProvider {
 	public static synthetic fun getStorage$default (Lcom/amplitude/core/StorageProvider;Lcom/amplitude/core/Amplitude;Ljava/lang/String;ILjava/lang/Object;)Lcom/amplitude/core/Storage;
 }
 
+public abstract interface class com/amplitude/core/UploadRequestStateStorage {
+	public abstract fun getUploadRequestPending ()Z
+	public abstract fun setUploadRequestPending (Z)V
+}
+
 public abstract interface class com/amplitude/core/diagnostics/DiagnosticsClient {
 	public abstract fun close ()V
 	public abstract fun flush ()V

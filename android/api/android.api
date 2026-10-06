@@ -884,13 +884,14 @@ public final class com/amplitude/android/storage/AndroidIdentifyInterceptStorage
 	public fun getStorage (Lcom/amplitude/core/Amplitude;Ljava/lang/String;)Lcom/amplitude/core/Storage;
 }
 
-public final class com/amplitude/android/storage/AndroidStorageV2 : com/amplitude/core/Storage, com/amplitude/core/utilities/EventsFileStorage {
+public final class com/amplitude/android/storage/AndroidStorageV2 : com/amplitude/core/Storage, com/amplitude/core/UploadRequestStateStorage, com/amplitude/core/utilities/EventsFileStorage {
 	public fun <init> (Ljava/lang/String;Lcom/amplitude/common/Logger;Landroid/content/SharedPreferences;Ljava/io/File;Lcom/amplitude/core/utilities/Diagnostics;)V
 	public final fun cleanupMetadata ()V
 	public fun getEventCallback (Ljava/lang/String;)Lkotlin/jvm/functions/Function3;
 	public fun getEventsString (Ljava/lang/Object;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public fun getResponseHandler (Lcom/amplitude/core/platform/EventPipeline;Lcom/amplitude/core/Configuration;Lkotlinx/coroutines/CoroutineScope;Lkotlinx/coroutines/CoroutineDispatcher;)Lcom/amplitude/core/utilities/http/ResponseHandler;
 	public final fun getSharedPreferences ()Landroid/content/SharedPreferences;
+	public fun getUploadRequestPending ()Z
 	public fun read (Lcom/amplitude/core/Storage$Constants;)Ljava/lang/String;
 	public fun readEventsContent ()Ljava/util/List;
 	public fun releaseFile (Ljava/lang/String;)V
@@ -898,6 +899,7 @@ public final class com/amplitude/android/storage/AndroidStorageV2 : com/amplitud
 	public fun removeEventCallback (Ljava/lang/String;)V
 	public fun removeFile (Ljava/lang/String;)Z
 	public fun rollover (Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
+	public fun setUploadRequestPending (Z)V
 	public fun splitEventFile (Ljava/lang/String;Lorg/json/JSONArray;)V
 	public fun write (Lcom/amplitude/core/Storage$Constants;Ljava/lang/String;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
 	public fun writeEvent (Lcom/amplitude/core/events/BaseEvent;Lkotlin/coroutines/Continuation;)Ljava/lang/Object;
