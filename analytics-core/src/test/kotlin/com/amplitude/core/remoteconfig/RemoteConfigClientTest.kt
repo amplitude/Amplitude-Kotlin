@@ -939,9 +939,11 @@ class RemoteConfigClientTest {
             val capturedRequest = requestSlot.captured
             val url = capturedRequest.url
 
-            assertTrue(url.contains("sr-client-cfg.eu.amplitude.com"), "Should use EU endpoint")
-            assertTrue(url.contains("api_key=test-key-eu"), "Should include correct API key")
-            assertTrue(url.contains("config_group=android"), "Should include config_group=android")
+            assertEquals(
+                "https://sr-client-cfg.eu.amplitude.com/config/test-key-eu?config_group=android",
+                url,
+            )
+            assertFalse(capturedRequest.headers.containsKey("Authorization"))
             assertEquals(
                 HttpClient.Request.Method.GET,
                 capturedRequest.method,
@@ -982,9 +984,55 @@ class RemoteConfigClientTest {
             val capturedRequest = requestSlot.captured
             val url = capturedRequest.url
 
-            assertTrue(url.contains("sr-client-cfg.amplitude.com"), "Should use US endpoint")
-            assertTrue(url.contains("api_key=test-key-us"), "Should include correct API key")
-            assertTrue(url.contains("config_group=android"), "Should include config_group=android")
+            assertEquals(
+                "https://sr-client-cfg.amplitude.com/config/test-key-us?config_group=android",
+                url,
+            )
+            assertFalse(capturedRequest.headers.containsKey("Authorization"))
+            assertEquals(
+                HttpClient.Request.Method.GET,
+                capturedRequest.method,
+                "Should use GET method",
+            )
+        }
+
+    @Test
+    fun `API key is encoded as a single URL path segment`() =
+        runTest {
+            val requestSlot = slot<HttpClient.Request>()
+            val mockHttpClient = mockk<HttpClient>()
+            every { mockHttpClient.request(capture(requestSlot)) } returns
+                HttpClient.Response(
+                    statusCode = 200,
+                    body = """{"configs": {}}""",
+                    headers = emptyMap(),
+                    statusMessage = "OK",
+                )
+
+            val client =
+                RemoteConfigClientImpl(
+                    apiKey = "test/key ?#%+",
+                    serverZone = ServerZone.US,
+                    coroutineScope = testScope,
+                    networkIODispatcher = testDispatcher,
+                    storageIODispatcher = testDispatcher,
+                    storage = storage,
+                    httpClient = mockHttpClient,
+                    logger = logger,
+                )
+
+            client.updateConfigs()
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            assertTrue(requestSlot.isCaptured, "Should have captured HTTP request")
+            val capturedRequest = requestSlot.captured
+            val url = capturedRequest.url
+
+            assertEquals(
+                "https://sr-client-cfg.amplitude.com/config/test%2Fkey%20%3F%23%25%2B?config_group=android",
+                url,
+            )
+            assertFalse(capturedRequest.headers.containsKey("Authorization"))
             assertEquals(
                 HttpClient.Request.Method.GET,
                 capturedRequest.method,
