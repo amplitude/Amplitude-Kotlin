@@ -23,6 +23,10 @@ internal class CrashTrackingRemoteConfig(
 ) {
     private val previousRunEnabled = crashTrackingEnabledStore.isEnabled()
 
+    // Serialize retirement with persistence so callbacks cannot write after detach returns.
+    private val updateLock = Any()
+    private var detached = false
+
     @Volatile
     private var remoteEnabled: Boolean? = null
 
@@ -40,16 +44,25 @@ internal class CrashTrackingRemoteConfig(
         remoteConfigClient.subscribe(RemoteConfigClient.Key.Diagnostics, callback = remoteConfigCallback)
     }
 
-    private fun handleRemoteConfig(config: ConfigMap?) {
-        val diagnosticsEnabled = config?.get(ENABLED) as? Boolean ?: true
-        val sampleRate = (config?.get(SAMPLE_RATE) as? Number)?.toDouble() ?: 0.0
-        val availabilities = config?.get(AVAILABILITIES) as? Map<*, *>
-        val availableFrom = availabilities?.get(CRASH_TRACKING) as? String
-        val required = availableFrom?.let { SemVer.create(it) }
-        val current = SemVer.create(sdkVersion)
-        val available = required != null && current != null && current >= required
-        val enabled = available && diagnosticsEnabled && sampleRate > 0.0
-        remoteEnabled = enabled
-        crashTrackingEnabledStore.setEnabled(enabled)
+    /** Stops updates from callbacks still subscribed after the owning instance is retired. */
+    fun detach() {
+        synchronized(updateLock) {
+            detached = true
+        }
     }
+
+    private fun handleRemoteConfig(config: ConfigMap?) =
+        synchronized(updateLock) {
+            if (detached) return
+            val diagnosticsEnabled = config?.get(ENABLED) as? Boolean ?: true
+            val sampleRate = (config?.get(SAMPLE_RATE) as? Number)?.toDouble() ?: 0.0
+            val availabilities = config?.get(AVAILABILITIES) as? Map<*, *>
+            val availableFrom = availabilities?.get(CRASH_TRACKING) as? String
+            val required = availableFrom?.let { SemVer.create(it) }
+            val current = SemVer.create(sdkVersion)
+            val available = required != null && current != null && current >= required
+            val enabled = available && diagnosticsEnabled && sampleRate > 0.0
+            remoteEnabled = enabled
+            crashTrackingEnabledStore.setEnabled(enabled)
+        }
 }

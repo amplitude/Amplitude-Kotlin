@@ -58,6 +58,7 @@ internal class CrashCatcher(
      */
     fun detach() {
         detached = true
+        crashTrackingRemoteConfig.detach()
     }
 
     suspend fun consumePreviousCrash(): String? {

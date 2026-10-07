@@ -17,7 +17,6 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -105,6 +104,32 @@ class AmplitudeStartupTest {
         }
 
     @Test
+    fun `crash handler startup uses the decision for its instance name`() =
+        runTest {
+            val originalHandler = Thread.getDefaultUncaughtExceptionHandler()
+            val application = mockApplication(crashTrackingEnabled = false)
+            CrashTrackingEnabledStore(application, "crash-enabled").setEnabled(true)
+            CrashTrackingEnabledStore(application, "crash-disabled").setEnabled(false)
+            try {
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = configuration("crash-enabled", application),
+                )
+                val enabledHandler = Thread.getDefaultUncaughtExceptionHandler()
+                assertNotSame(originalHandler, enabledHandler)
+
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = configuration("crash-disabled", application),
+                )
+                assertSame(enabledHandler, Thread.getDefaultUncaughtExceptionHandler())
+                advanceUntilIdle()
+            } finally {
+                Thread.setDefaultUncaughtExceptionHandler(originalHandler)
+            }
+        }
+
+    @Test
     fun `crash tracking turning on after construction does not register the handler`() =
         runTest {
             val originalHandler = Thread.getDefaultUncaughtExceptionHandler()
@@ -116,7 +141,7 @@ class AmplitudeStartupTest {
                 )
                 assertSame(originalHandler, Thread.getDefaultUncaughtExceptionHandler())
 
-                CrashTrackingEnabledStore(application).setEnabled(true)
+                CrashTrackingEnabledStore(application, "crash-registration-later").setEnabled(true)
 
                 assertSame(originalHandler, Thread.getDefaultUncaughtExceptionHandler())
                 advanceUntilIdle()
@@ -234,14 +259,14 @@ class AmplitudeStartupTest {
         every { context.getDir(capture(dirNameSlot), any()) } answers {
             File("/tmp/amplitude-kotlin/${dirNameSlot.captured}")
         }
-        val enabled = booleanArrayOf(crashTrackingEnabled)
+        val enabled = mutableMapOf<String, Boolean>()
         val editor = mockk<SharedPreferences.Editor>(relaxed = true)
         every { editor.putBoolean(any(), any()) } answers {
-            enabled[0] = secondArg<Boolean>()
+            enabled[firstArg<String>()] = secondArg<Boolean>()
             editor
         }
         val prefs = mockk<SharedPreferences>(relaxed = true)
-        every { prefs.getBoolean(any(), any()) } answers { enabled[0] }
+        every { prefs.getBoolean(any(), any()) } answers { enabled[firstArg<String>()] ?: crashTrackingEnabled }
         every { prefs.edit() } returns editor
         every { context.getSharedPreferences(any(), any()) } returns prefs
         return context
