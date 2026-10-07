@@ -10,6 +10,7 @@ import io.mockk.mockk
 import io.mockk.verify
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 
 class CrashTrackingRemoteConfigTest {
@@ -156,6 +157,39 @@ class CrashTrackingRemoteConfigTest {
 
         assertTrue(remoteConfig.isCrashTrackingEnabled)
         verify(exactly = 0) { store.setEnabled(any()) }
+    }
+
+    @Nested
+    inner class Detached {
+        @Test
+        fun `ignores a late callback that disables crash tracking`() {
+            val client = TestRemoteConfigClient()
+            val store = store()
+            val remoteConfig = remoteConfig(client, sdkVersion = "1.8.0", store = store)
+            client.emit(crashTrackingConfig(availableFrom = "1.7.0"))
+
+            remoteConfig.detach()
+            client.emit(mapOf("enabled" to true, "sampleRate" to 1.0))
+            client.emit(config = null)
+
+            assertTrue(remoteConfig.isCrashTrackingEnabled)
+            verify(exactly = 1) { store.setEnabled(true) }
+            verify(exactly = 0) { store.setEnabled(false) }
+        }
+
+        @Test
+        fun `ignores the first callback when detached before config arrives`() {
+            val client = TestRemoteConfigClient()
+            val store = store()
+            val remoteConfig = remoteConfig(client, sdkVersion = "1.8.0", store = store)
+
+            remoteConfig.detach()
+            remoteConfig.detach()
+            client.emit(crashTrackingConfig(availableFrom = "1.7.0"))
+
+            assertFalse(remoteConfig.isCrashTrackingEnabled)
+            verify(exactly = 0) { store.setEnabled(any()) }
+        }
     }
 
     private fun crashTrackingConfig(

@@ -2,9 +2,9 @@ package com.amplitude.android.crash
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import org.junit.Before
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
-import org.junit.Before
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -23,20 +23,30 @@ class CrashTrackingEnabledStoreTest {
 
     @Test
     fun `defaults to disabled`() {
-        assertFalse(CrashTrackingEnabledStore(context).isEnabled())
+        assertFalse(CrashTrackingEnabledStore(context, "test-instance").isEnabled())
     }
 
     @Test
     fun `persists enabled across store instances`() {
-        CrashTrackingEnabledStore(context).setEnabled(true)
-        assertTrue(CrashTrackingEnabledStore(context).isEnabled())
+        CrashTrackingEnabledStore(context, "test-instance").setEnabled(true)
+        assertTrue(CrashTrackingEnabledStore(context, "test-instance").isEnabled())
     }
 
     @Test
     fun `can disable after enabling`() {
-        val store = CrashTrackingEnabledStore(context)
+        val store = CrashTrackingEnabledStore(context, "test-instance")
         store.setEnabled(true)
         store.setEnabled(false)
-        assertFalse(CrashTrackingEnabledStore(context).isEnabled())
+        assertFalse(CrashTrackingEnabledStore(context, "test-instance").isEnabled())
+    }
+
+    @Test
+    fun `disabled named instance does not overwrite another instance's enabled decision`() {
+        CrashTrackingEnabledStore(context, "enabled-instance").setEnabled(true)
+        CrashTrackingEnabledStore(context, "disabled-instance").setEnabled(false)
+
+        assertTrue(CrashTrackingEnabledStore(context, "enabled-instance").isEnabled())
+        assertFalse(CrashTrackingEnabledStore(context, "disabled-instance").isEnabled())
+        assertFalse(CrashTrackingEnabledStore(context, "new-instance").isEnabled())
     }
 }

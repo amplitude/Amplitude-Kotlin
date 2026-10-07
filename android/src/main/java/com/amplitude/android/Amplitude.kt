@@ -102,7 +102,7 @@ public open class Amplitude internal constructor(
                 CrashTrackingRemoteConfig(
                     remoteConfigClient = remoteConfigClient,
                     sdkVersion = BuildConfig.AMPLITUDE_VERSION,
-                    crashTrackingEnabledStore = CrashTrackingEnabledStore(androidConfig.context),
+                    crashTrackingEnabledStore = CrashTrackingEnabledStore(androidConfig.context, androidConfig.instanceName),
                 )
             crashCatcher =
                 CrashCatcher(
@@ -236,6 +236,9 @@ public open class Amplitude internal constructor(
         if (::crashCatcher.isInitialized) {
             runCatching { crashCatcher.detach() }
                 .onFailure { logger.warn("Failed to detach the crash handler: $it") }
+        }
+        if (::crashTrackingRemoteConfig.isInitialized) {
+            crashTrackingRemoteConfig.detach()
         }
     }
 

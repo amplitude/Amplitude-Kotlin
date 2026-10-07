@@ -7,6 +7,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkConstructor
 import io.mockk.unmockkConstructor
+import io.mockk.verify
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -41,7 +42,7 @@ class CrashCatcherTest {
         runTest {
             unmockkConstructor(CrashStorage::class)
             Thread.setDefaultUncaughtExceptionHandler(originalHandler)
-            CrashTrackingEnabledStore(context).setEnabled(false)
+            CrashTrackingEnabledStore(context, "test-instance").setEnabled(false)
             CrashStorage(
                 appContext = context,
                 ioDispatcher = StandardTestDispatcher(testScheduler),
@@ -73,7 +74,7 @@ class CrashCatcherTest {
         runTest {
             val testDispatcher = StandardTestDispatcher(testScheduler)
             Thread.setDefaultUncaughtExceptionHandler { _, _ -> }
-            val store = CrashTrackingEnabledStore(context)
+            val store = CrashTrackingEnabledStore(context, "test-instance")
             store.setEnabled(true)
             val remoteConfig =
                 CrashTrackingRemoteConfig(
@@ -218,7 +219,9 @@ class CrashCatcherTest {
         runTest {
             val testDispatcher = StandardTestDispatcher(testScheduler)
             Thread.setDefaultUncaughtExceptionHandler { _, _ -> }
-            createCrashCatcher(testDispatcher).detach()
+            val remoteConfig = crashTrackingRemoteConfig(true)
+            createCrashCatcher(testDispatcher, remoteConfig).detach()
+            verify(exactly = 1) { remoteConfig.detach() }
             Thread.getDefaultUncaughtExceptionHandler()!!
                 .uncaughtException(Thread.currentThread(), RuntimeException("boom"))
 
@@ -231,7 +234,7 @@ class CrashCatcherTest {
         }
 
     private fun crashTrackingRemoteConfig(vararg enabled: Boolean): CrashTrackingRemoteConfig =
-        mockk<CrashTrackingRemoteConfig>().also {
+        mockk<CrashTrackingRemoteConfig>(relaxUnitFun = true).also {
             every { it.isCrashTrackingEnabled } returnsMany enabled.toList()
         }
 
