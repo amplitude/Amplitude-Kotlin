@@ -84,18 +84,19 @@ class AndroidLifecyclePluginTest {
     }
 
     @Test
-    fun `test eventJob is created even if APP_LIFECYCLES is not enabled`() =
+    fun `activity callbacks are collected when application lifecycle autocapture is disabled`() =
         runTest {
-            mockAutocapture(emptySet())
+            mockAutocapture(setOf(AutocaptureOption.SCREEN_VIEWS))
             every { mockedAmplitude.amplitudeScope } returns this
 
             plugin.setup(mockedAmplitude)
+            val activity = mockk<Activity>(relaxed = true)
+            observer.onActivityCreated(activity, null)
+            observer.onActivityStarted(activity)
 
             advanceUntilIdle()
 
-            assert(
-                plugin.eventJob != null,
-            ) { "eventJob should be created even if APP_LIFECYCLES is not enabled" }
+            verify(exactly = 1) { mockedAmplitude.track(EventTypes.SCREEN_VIEWED, any()) }
 
             close()
         }
@@ -831,10 +832,10 @@ class AndroidLifecyclePluginTest {
     }
 
     // TODO Replace with Turbine
-    private suspend fun close() {
+    private fun close() {
         plugin.teardown()
         observer.eventChannel.close()
-        plugin.eventJob?.join()
+        testDispatcher.scheduler.runCurrent()
     }
 
     @After

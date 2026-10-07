@@ -21,7 +21,9 @@ import com.amplitude.id.IMIdentityStorageProvider
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -37,6 +39,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import java.io.File
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
 
@@ -48,8 +51,8 @@ class AmplitudeReplacementTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val application = mockApplication()
-    private val registered = mutableListOf<Application.ActivityLifecycleCallbacks>()
-    private val unregistered = mutableListOf<Application.ActivityLifecycleCallbacks>()
+    private val registered = CopyOnWriteArrayList<Application.ActivityLifecycleCallbacks>()
+    private val unregistered = CopyOnWriteArrayList<Application.ActivityLifecycleCallbacks>()
 
     init {
         every { application.registerActivityLifecycleCallbacks(capture(registered)) } answers {}
@@ -327,12 +330,15 @@ class AmplitudeReplacementTest {
             shadowOf(Looper.getMainLooper()).idle()
             val lifecyclePlugin = first.findPlugin<AndroidLifecyclePlugin>()
             assertTrue(lifecyclePlugin != null)
+            val pluginScope =
+                AndroidLifecyclePlugin::class.java.getDeclaredField("pluginScope").apply { isAccessible = true }
+                    .get(lifecyclePlugin) as CoroutineScope
 
             createAmplitude("autocapture-stop")
 
             // Both happen synchronously: autocapture must not wait on the event queue draining.
             assertSame(registered.first(), unregistered.single())
-            assertTrue(lifecyclePlugin!!.eventJob!!.isCancelled)
+            assertFalse(pluginScope.isActive)
 
             advanceUntilIdle()
             shadowOf(Looper.getMainLooper()).idle()
