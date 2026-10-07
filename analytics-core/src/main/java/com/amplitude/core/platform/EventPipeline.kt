@@ -3,6 +3,7 @@ package com.amplitude.core.platform
 import com.amplitude.core.Amplitude
 import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.Storage
+import com.amplitude.core.UploadRequestStateStorage
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.utilities.ExponentialBackoffRetryHandler
 import com.amplitude.core.utilities.http.BadRequestResponse
@@ -12,6 +13,7 @@ import com.amplitude.core.utilities.http.ResponseHandler
 import com.amplitude.core.utilities.http.TooManyRequestsResponse
 import com.amplitude.core.utilities.logWithStackTrace
 import com.amplitude.core.utilities.runCatchingCancellable
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.Channel.Factory.UNLIMITED
@@ -41,6 +43,9 @@ public class EventPipeline(
 ) {
     private var running: Boolean
     private var scheduled: Boolean
+    private var didRecoverPendingUpload = false
+    private val uploadStateStorage: UploadRequestStateStorage?
+        get() = if (amplitude.configuration.enableDiagnostics) storage as? UploadRequestStateStorage else null
     public var flushSizeDivider: AtomicInteger = AtomicInteger(1)
 
     private val responseHandler by lazy {
@@ -137,6 +142,16 @@ public class EventPipeline(
                     }
                 }
 
+                // One SDK initialization per instance name per process is assumed.
+                if (!didRecoverPendingUpload) {
+                    didRecoverPendingUpload = true
+                    uploadStateStorage?.let {
+                        if (it.uploadRequestPending) {
+                            amplitude.diagnosticsClient.increment("analytics.upload.missed_network_callback")
+                        }
+                        it.uploadRequestPending = false
+                    }
+                }
                 val eventFiles = storage.readEventsContent()
                 for (eventFile in eventFiles) {
                     val shouldStop =
@@ -145,7 +160,19 @@ public class EventPipeline(
                             if (eventsString.isEmpty()) return@runCatchingCancellable false
 
                             val diagnostics = amplitude.diagnostics.extractDiagnostics()
-                            val response = httpClient.upload(eventsString, diagnostics)
+                            val uploadState = uploadStateStorage
+                            uploadState?.uploadRequestPending = true
+                            val response =
+                                try {
+                                    httpClient.upload(eventsString, diagnostics)
+                                } catch (e: CancellationException) {
+                                    // Cancellation before completion leaves evidence for the next initialization.
+                                    throw e
+                                } catch (e: Exception) {
+                                    uploadState?.uploadRequestPending = false
+                                    throw e
+                                }
+                            uploadState?.uploadRequestPending = false
                             val shouldRetryUploadOnFailure =
                                 responseHandler.handle(response, eventFile, eventsString)
 

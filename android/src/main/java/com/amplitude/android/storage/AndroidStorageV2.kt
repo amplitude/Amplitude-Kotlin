@@ -11,6 +11,7 @@ import com.amplitude.core.EventCallBack
 import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.Storage
 import com.amplitude.core.StorageProvider
+import com.amplitude.core.UploadRequestStateStorage
 import com.amplitude.core.diagnostics.DiagnosticsClientProvider
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.EventPipeline
@@ -24,6 +25,8 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import org.json.JSONArray
 import java.io.File
+
+private const val UPLOAD_PENDING_KEY = "upload_request_pending"
 
 @OptIn(RestrictedAmplitudeFeature::class)
 @Deprecated("Not intended for public use. Will be internal in a future release.")
@@ -45,7 +48,7 @@ public class AndroidStorageV2
         storageDirectory: File,
         diagnostics: Diagnostics,
         private val diagnosticsClientProvider: DiagnosticsClientProvider? = null,
-    ) : Storage, EventsFileStorage {
+    ) : Storage, EventsFileStorage, UploadRequestStateStorage {
         public constructor(
             storageKey: String,
             logger: Logger,
@@ -63,6 +66,24 @@ public class AndroidStorageV2
                 diagnostics,
             )
         private val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
+
+        override var uploadRequestPending: Boolean
+            get() = try {
+                sharedPreferences.getBoolean(UPLOAD_PENDING_KEY, false)
+            } catch (e: Exception) {
+                logger.warn("Could not read upload diagnostic marker: ${e.javaClass.simpleName}")
+                false
+            }
+            set(value) {
+                try {
+                    val editor = sharedPreferences.edit()
+                    if (value) editor.putBoolean(UPLOAD_PENDING_KEY, true) else editor.remove(UPLOAD_PENDING_KEY)
+                    // Persist before sending so a terminated process can leave evidence of the attempt.
+                    if (!editor.commit()) logger.warn("Could not persist upload diagnostic marker")
+                } catch (e: Exception) {
+                    logger.warn("Could not persist upload diagnostic marker: ${e.javaClass.simpleName}")
+                }
+            }
 
         override suspend fun writeEvent(event: BaseEvent) {
             eventsFile.storeEvent(JSONUtil.eventToString(event))
@@ -161,12 +182,12 @@ public class AndroidEventsStorageProviderV2 : StorageProvider {
         val sharedPreferences =
             configuration.context.getSharedPreferences(sharedPreferencesName, Context.MODE_PRIVATE)
         return AndroidStorageV2(
-            configuration.instanceName,
-            configuration.loggerProvider.getLogger(amplitude),
-            sharedPreferences,
-            AndroidStorageContextV3.getEventsStorageDirectory(configuration),
-            amplitude.diagnostics,
-            DiagnosticsClientProvider { amplitude.diagnosticsClient },
+            storageKey = configuration.instanceName,
+            logger = configuration.loggerProvider.getLogger(amplitude),
+            sharedPreferences = sharedPreferences,
+            storageDirectory = AndroidStorageContextV3.getEventsStorageDirectory(configuration),
+            diagnostics = amplitude.diagnostics,
+            diagnosticsClientProvider = DiagnosticsClientProvider { amplitude.diagnosticsClient },
         )
     }
 }
