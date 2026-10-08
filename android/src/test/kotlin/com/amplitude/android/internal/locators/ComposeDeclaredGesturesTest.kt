@@ -41,6 +41,18 @@ class ComposeDeclaredGesturesTest {
             setOf(GestureActions.PAN),
             composeDeclaredGestures("anchoredDraggable", "unknown", hasLongClick = false),
         )
+        assertEquals(
+            setOf(GestureActions.PAN),
+            composeDeclaredGestures(
+                null,
+                "androidx.compose.foundation.gestures.AnchoredDraggableElement",
+                hasLongClick = false,
+            ),
+        )
+        assertEquals(
+            setOf(GestureActions.PAN),
+            composeDeclaredGestures("swipeable", "unknown", hasLongClick = false),
+        )
     }
 
     @Test

@@ -180,8 +180,10 @@ internal fun composeDeclaredGestures(
         nameFallback == "draggable" ||
             nameFallback == "draggable2D" ||
             nameFallback == "anchoredDraggable" ||
+            nameFallback == "swipeable" ||
             className == "androidx.compose.foundation.gestures.DraggableElement" ||
-            className == "androidx.compose.foundation.gestures.Draggable2DElement" -> {
+            className == "androidx.compose.foundation.gestures.Draggable2DElement" ||
+            className == "androidx.compose.foundation.gestures.AnchoredDraggableElement" -> {
             setOf(GestureActions.PAN)
         }
         nameFallback == "transformable" ||
