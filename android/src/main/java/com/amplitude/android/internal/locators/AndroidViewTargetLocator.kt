@@ -3,6 +3,7 @@ package com.amplitude.android.internal.locators
 import android.view.View
 import android.widget.AbsSeekBar
 import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.Switch
 import androidx.core.view.isVisible
 import com.amplitude.android.internal.GestureOwner
@@ -23,8 +24,8 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
          */
         private val DRAGGABLE_VIEW_TYPES =
             setOf(
-                "androidx.appcompat.widget.SwitchCompat",
-                "com.google.android.material.slider.BaseSlider",
+                SWITCH_COMPAT_CLASS,
+                BASE_SLIDER_CLASS,
             )
     }
 
@@ -141,3 +142,41 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
             return hierarchy.joinToString(separator = HIERARCHY_DELIMITER)
         }
 }
+
+/**
+ * Whether this view handles a drag in [horizontal]'s direction.
+ *
+ * A framework slider or switch only moves sideways, and a vertical drag that starts on one is a
+ * scroll. A Material slider can be vertical, and that one claims a vertical drag instead.
+ */
+internal fun View.claimsPan(horizontal: Boolean): Boolean {
+    if (isVerticalSlider()) return !horizontal
+    if (isHorizontalOnlyDragView()) return horizontal
+    return true
+}
+
+private const val SWITCH_COMPAT_CLASS = "androidx.appcompat.widget.SwitchCompat"
+private const val BASE_SLIDER_CLASS = "com.google.android.material.slider.BaseSlider"
+
+private fun View.isHorizontalOnlyDragView(): Boolean =
+    this is AbsSeekBar ||
+        this is Switch ||
+        isNamedType(SWITCH_COMPAT_CLASS) ||
+        isNamedType(BASE_SLIDER_CLASS)
+
+private fun View.isVerticalSlider(): Boolean =
+    isNamedType(BASE_SLIDER_CLASS) && sliderOrientation() == LinearLayout.VERTICAL
+
+private fun View.sliderOrientation(): Int {
+    val sliderClass =
+        generateSequence(javaClass as Class<*>?) { it.superclass }
+            .firstOrNull { it.name == BASE_SLIDER_CLASS }
+            ?: return LinearLayout.HORIZONTAL
+    val method =
+        sliderClass.methods.firstOrNull { it.name == "getOrientation" && it.parameterTypes.isEmpty() }
+            ?: return LinearLayout.HORIZONTAL
+    return (runCatching { method.invoke(this) }.getOrNull() as? Int) ?: LinearLayout.HORIZONTAL
+}
+
+private fun View.isNamedType(className: String): Boolean =
+    generateSequence(javaClass as Class<*>?) { it.superclass }.any { it.name == className }

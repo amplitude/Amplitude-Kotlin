@@ -433,6 +433,23 @@ class AutocaptureGestureListenerClickTest {
     }
 
     @Test
+    fun `does not track a vertical drag that starts on a horizontal slider`() {
+        val down = motionEvent(MotionEvent.ACTION_DOWN)
+        val move = motionEvent(MotionEvent.ACTION_MOVE)
+        val up = motionEvent(MotionEvent.ACTION_UP)
+        val sut = fixture.getSut(type = SeekBar::class, event = move)
+
+        sut.onDown(down)
+        sut.onScroll(down, move, 0f, 20f)
+        sut.onTouchEventCompleted(up)
+
+        verify(exactly = 0) { fixture.track(any(), any()) }
+        down.recycle()
+        move.recycle()
+        up.recycle()
+    }
+
+    @Test
     fun `tracks a pan on a slider inside a scroll container`() {
         val down = motionEvent(MotionEvent.ACTION_DOWN)
         val move = motionEvent(MotionEvent.ACTION_MOVE)

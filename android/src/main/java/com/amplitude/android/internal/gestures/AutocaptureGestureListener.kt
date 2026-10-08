@@ -12,9 +12,11 @@ import com.amplitude.android.internal.ViewHierarchyScanner.findTarget
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.buildElementInteractedProperties
 import com.amplitude.android.internal.locators.ViewTargetLocator
+import com.amplitude.android.internal.locators.claimsPan
 import com.amplitude.android.internal.resolvedFor
 import com.amplitude.common.Logger
 import java.lang.ref.WeakReference
+import kotlin.math.abs
 
 @VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)
 @Deprecated("Not intended for public use. Will be internal in a future release.")
@@ -88,8 +90,15 @@ public class AutocaptureGestureListener(
         panStarted = true
 
         // Resolve before this drag moves any content, so the pan belongs to the element it
-        // started on, like the view an iOS recognizer is attached to.
-        panTarget = findGestureTarget(e1.x, e1.y, GestureActions.PAN)
+        // started on, like the view an iOS recognizer is attached to. A horizontal slider or
+        // switch does not claim a vertical drag; that drag is a scroll. Compose drag targets
+        // have no view, and their axis is unknown, so any direction still counts.
+        val horizontal = abs(distanceX) > abs(distanceY)
+        panTarget =
+            findGestureTarget(e1.x, e1.y, GestureActions.PAN)?.takeIf { target ->
+                val dragView = target.view as? View
+                dragView == null || dragView.claimsPan(horizontal)
+            }
         return false
     }
 
