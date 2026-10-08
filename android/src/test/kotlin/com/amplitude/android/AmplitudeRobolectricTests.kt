@@ -41,6 +41,7 @@ class AmplitudeRobolectricTests {
     @Before
     fun setup() {
         context = mockk<Application>(relaxed = true)
+        every { context.applicationContext } returns context
         connectivityManager = mockk<ConnectivityManager>(relaxed = true)
         every { context.getDir(any(), any()) } returns temporaryFolder.newFolder("data")
         every { context.getSystemService(Context.CONNECTIVITY_SERVICE) } returns connectivityManager
