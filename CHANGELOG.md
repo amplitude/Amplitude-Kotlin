@@ -1,3 +1,20 @@
+# [1.34.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.33.0...v1.34.0) (2026-10-08)
+
+
+### Bug Fixes
+
+* delete acknowledged event files inline ([#556](https://github.com/amplitude/Amplitude-Kotlin/issues/556)) ([bba6b58](https://github.com/amplitude/Amplitude-Kotlin/commit/bba6b58b11ef6139609cba3de286fa1f6a8d5264))
+* use API key in remote config URL path ([#548](https://github.com/amplitude/Amplitude-Kotlin/issues/548)) ([fb9505c](https://github.com/amplitude/Amplitude-Kotlin/commit/fb9505c5377d8f8e06aa4d538174c847e00e80e6))
+* use process lifecycle for Android foreground tracking ([#566](https://github.com/amplitude/Amplitude-Kotlin/issues/566)) ([2a187d8](https://github.com/amplitude/Amplitude-Kotlin/commit/2a187d82e9e779ab7e2668541cbc2506470cf9a5))
+
+
+### Features
+
+* align delayed-event pulse, TTL, and ad duration with iOS ([#542](https://github.com/amplitude/Amplitude-Kotlin/issues/542)) ([66dffc2](https://github.com/amplitude/Amplitude-Kotlin/commit/66dffc2e89a59026e465837d9e58970b0f82b424))
+* diagnose unfinished upload requests ([#563](https://github.com/amplitude/Amplitude-Kotlin/issues/563)) ([b6f911b](https://github.com/amplitude/Amplitude-Kotlin/commit/b6f911bc43fdaeb373ad3335e6559b6106d38ff8))
+* measure play_time from playhead progress and drop seek/wait stops ([#545](https://github.com/amplitude/Amplitude-Kotlin/issues/545)) ([47c8090](https://github.com/amplitude/Amplitude-Kotlin/commit/47c809021a4fbfc111d7677fe0d4c4593baadc86))
+* send streaming ad events through the delayed heartbeat pipeline ([#543](https://github.com/amplitude/Amplitude-Kotlin/issues/543)) ([5fff733](https://github.com/amplitude/Amplitude-Kotlin/commit/5fff73380b9b82fa1b509ef0c383c28217bf50b4))
+
 # [1.33.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.32.0...v1.33.0) (2026-09-24)
 
 
