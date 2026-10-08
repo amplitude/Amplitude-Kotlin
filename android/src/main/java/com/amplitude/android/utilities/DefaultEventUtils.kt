@@ -1,6 +1,7 @@
 package com.amplitude.android.utilities
 
 import android.app.Activity
+import android.app.Application
 import android.content.Intent
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
@@ -8,6 +9,7 @@ import android.net.ParseException
 import android.net.Uri
 import android.os.Build
 import com.amplitude.android.Amplitude
+import com.amplitude.android.Configuration
 import com.amplitude.android.Constants
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.registerFragmentLifecycleCallbacks
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.unregisterFragmentLifecycleCallbacks
@@ -16,7 +18,21 @@ import com.amplitude.android.Constants.EventProperties as ConstantsEventProperti
 import com.amplitude.android.Constants.EventTypes as ConstantsEventTypes
 
 @Deprecated("This class is deprecated and will be removed in future releases.")
-public class DefaultEventUtils(private val amplitude: Amplitude) {
+public class DefaultEventUtils(
+    private val amplitude: Amplitude,
+) {
+    private val packageInfo by lazy {
+        val androidConfiguration = amplitude.configuration as Configuration
+        val application = androidConfiguration.context as Application
+        try {
+            application.packageManager.getPackageInfo(application.packageName, 0)
+        } catch (_: PackageManager.NameNotFoundException) {
+            // This shouldn't happen, but in case it happens, fallback to empty package info.
+            amplitude.logger.error("Cannot find package with application.packageName: " + application.packageName)
+            PackageInfo()
+        }
+    }
+
     /** Superseded by [com.amplitude.android.plugins.AndroidLifecyclePlugin]; no-op after SDK init. */
     public fun trackAppUpdatedInstalledEvent(packageInfo: PackageInfo) {
         val storage = amplitude.storage
@@ -55,6 +71,13 @@ public class DefaultEventUtils(private val amplitude: Amplitude) {
         }
     }
 
+    internal fun trackAppOpenedEvent(isFromBackground: Boolean) {
+        trackAppOpenedEvent(packageInfo, isFromBackground)
+    }
+
+    @Deprecated(
+        "This is deprecated and will be removed in future releases.",
+    )
     public fun trackAppOpenedEvent(
         packageInfo: PackageInfo,
         isFromBackground: Boolean,
@@ -155,7 +178,7 @@ public class DefaultEventUtils(private val amplitude: Amplitude) {
 
                     // 4. Fall back to activity class name
                     return localClassName
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     // 3. Fall back to application name
                     return applicationInfo.loadLabel(packageManager).toString()
                 }
@@ -174,7 +197,7 @@ public class DefaultEventUtils(private val amplitude: Amplitude) {
                     intent.getStringExtra("android.intent.extra.REFERRER_NAME")?.let {
                         try {
                             Uri.parse(it)
-                        } catch (e: ParseException) {
+                        } catch (_: ParseException) {
                             amplitude.logger.error("Failed to parse the referrer uri: $it")
                             null
                         }

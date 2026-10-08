@@ -8,16 +8,21 @@ import android.content.Intent
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.net.Uri
+import androidx.lifecycle.LifecycleRegistry
+import androidx.lifecycle.ProcessLifecycleOwner
 import com.amplitude.android.Amplitude
 import com.amplitude.android.AutocaptureManager
 import com.amplitude.android.AutocaptureOption
+import com.amplitude.android.AutocaptureState
 import com.amplitude.android.Configuration
 import com.amplitude.android.Constants.EventTypes
+import com.amplitude.android.GuardedAmplitudeFeature
 import com.amplitude.android.InteractionsOptions
 import com.amplitude.android.internal.fragments.FragmentActivityHandler
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.registerFragmentLifecycleCallbacks
 import com.amplitude.android.internal.fragments.FragmentActivityHandler.unregisterFragmentLifecycleCallbacks
 import com.amplitude.android.utilities.ActivityLifecycleObserver
+import com.amplitude.android.utilities.ProcessLifecycleObserver
 import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.Storage
 import com.amplitude.core.utilities.InMemoryStorage
@@ -28,14 +33,23 @@ import io.mockk.mockkObject
 import io.mockk.spyk
 import io.mockk.unmockkObject
 import io.mockk.verify
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -77,25 +91,148 @@ class AndroidLifecyclePluginTest {
         // Default autocapture: empty (matching relaxed mock default)
         mockAutocapture(emptySet())
 
+        val processObserver = mockk<ProcessLifecycleObserver>(relaxed = true)
+        every { processObserver.events } returns MutableSharedFlow()
+        every { mockedAmplitude.isActive } returns true
         observer = ActivityLifecycleObserver()
-        plugin = AndroidLifecyclePlugin(observer)
+        plugin = AndroidLifecyclePlugin(observer, processObserver)
 
         mockkObject(FragmentActivityHandler)
     }
 
+    @OptIn(GuardedAmplitudeFeature::class)
     @Test
-    fun `test eventJob is created even if APP_LIFECYCLES is not enabled`() =
+    fun `collectors stop on plugin teardown and SDK scope cancellation`() =
         runTest {
-            mockAutocapture(emptySet())
+            for (cancelSdk in listOf(false, true)) {
+                val sdkScope = CoroutineScope(coroutineContext + Job(coroutineContext[Job]))
+                every { mockedAmplitude.amplitudeScope } returns sdkScope
+                val transitions = MutableSharedFlow<ProcessLifecycleObserver.Transition>()
+                val processObserver = mockk<ProcessLifecycleObserver>(relaxed = true)
+                every { processObserver.events } returns transitions
+                val states = MutableStateFlow(AutocaptureState.from(emptySet(), InteractionsOptions()))
+                val manager = mockk<AutocaptureManager>()
+                every { manager.state } returns states
+                every { mockedAmplitude.autocaptureManager } returns manager
+                observer = ActivityLifecycleObserver()
+                plugin = AndroidLifecyclePlugin(observer, processObserver)
+                plugin.setup(mockedAmplitude)
+                advanceUntilIdle()
+                assertEquals(1, transitions.subscriptionCount.value)
+                assertEquals(1, states.subscriptionCount.value)
+
+                if (cancelSdk) {
+                    sdkScope.cancel()
+                } else {
+                    plugin.teardown()
+                    assertTrue(sdkScope.isActive)
+                }
+                advanceUntilIdle()
+                assertEquals(0, transitions.subscriptionCount.value)
+                assertEquals(0, states.subscriptionCount.value)
+
+                // Late events and remote config must not reactivate a removed plugin.
+                transitions.tryEmit(ProcessLifecycleObserver.Transition(1_000, true))
+                states.value = states.value.copy(appLifecycles = true)
+                observer.onActivityStarted(mockk<Activity>(relaxed = true))
+                advanceUntilIdle()
+                verify(exactly = 0) { mockedAmplitude.onEnterForeground(any()) }
+                verify(exactly = 0) { mockedAmplitude.track(EventTypes.APPLICATION_INSTALLED, any(), any()) }
+                close()
+                sdkScope.cancel()
+            }
+        }
+
+    @OptIn(GuardedAmplitudeFeature::class)
+    @Test
+    fun `one process subscription handles only visibility changes with their timestamps`() =
+        runTest {
+            every { mockedAmplitude.amplitudeScope } returns this
+            val transitions = MutableSharedFlow<ProcessLifecycleObserver.Transition>()
+            val processObserver = mockk<ProcessLifecycleObserver>(relaxed = true)
+            every { processObserver.events } returns transitions
+            plugin = AndroidLifecyclePlugin(observer, processObserver)
+            plugin.setup(mockedAmplitude)
+            advanceUntilIdle()
+            assertEquals(1, transitions.subscriptionCount.value)
+
+            for (transition in listOf(
+                ProcessLifecycleObserver.Transition(100, false),
+                ProcessLifecycleObserver.Transition(200, false),
+                ProcessLifecycleObserver.Transition(300, true),
+                ProcessLifecycleObserver.Transition(400, true),
+                ProcessLifecycleObserver.Transition(500, false),
+            )) {
+                transitions.emit(transition)
+                runCurrent()
+            }
+
+            verify(exactly = 1) { mockedAmplitude.onEnterForeground(300) }
+            verify(exactly = 1) { mockedAmplitude.onEnterForeground(any()) }
+            verify(exactly = 1) { mockedAmplitude.onExitForeground(100) }
+            verify(exactly = 1) { mockedAmplitude.onExitForeground(500) }
+            verify(exactly = 2) { mockedAmplitude.onExitForeground(any()) }
+            close()
+        }
+
+    @Test
+    fun `plugin starts and stops the injected process observer`() =
+        runTest {
+            every { mockedAmplitude.amplitudeScope } returns this
+            val processObserver = mockk<ProcessLifecycleObserver>(relaxed = true)
+            every { processObserver.events } returns MutableSharedFlow()
+            plugin = AndroidLifecyclePlugin(observer, processObserver)
+            coVerify(exactly = 0) { processObserver.start() }
+
+            plugin.setup(mockedAmplitude)
+            advanceUntilIdle()
+            close()
+
+            coVerify(exactly = 1) { processObserver.stop() }
+            coVerify(exactly = 1) { processObserver.start() }
+        }
+
+    @Test
+    fun `teardown before setup leaves the injected observer unstarted`() {
+        val processObserver = mockk<ProcessLifecycleObserver>(relaxed = true)
+        plugin = AndroidLifecyclePlugin(observer, processObserver)
+        plugin.teardown()
+        coVerify(exactly = 0) { processObserver.start() }
+        coVerify(exactly = 0) { processObserver.stop() }
+    }
+
+    @Test
+    fun `public constructor owns process observation through teardown`() =
+        runTest {
+            every { mockedAmplitude.amplitudeScope } returns this
+            val lifecycle = ProcessLifecycleOwner.get().lifecycle as LifecycleRegistry
+            val baseline = lifecycle.observerCount
+            plugin = AndroidLifecyclePlugin(observer)
+            runCurrent()
+            assertEquals(baseline, lifecycle.observerCount)
+
+            plugin.setup(mockedAmplitude)
+            advanceUntilIdle()
+            assertEquals(baseline + 1, lifecycle.observerCount)
+            close()
+            runCurrent()
+            assertEquals(baseline, lifecycle.observerCount)
+        }
+
+    @Test
+    fun `activity callbacks are collected when application lifecycle autocapture is disabled`() =
+        runTest {
+            mockAutocapture(setOf(AutocaptureOption.SCREEN_VIEWS))
             every { mockedAmplitude.amplitudeScope } returns this
 
             plugin.setup(mockedAmplitude)
+            val activity = mockk<Activity>(relaxed = true)
+            observer.onActivityCreated(activity, null)
+            observer.onActivityStarted(activity)
 
             advanceUntilIdle()
 
-            assert(
-                plugin.eventJob != null,
-            ) { "eventJob should be created even if APP_LIFECYCLES is not enabled" }
+            verify(exactly = 1) { mockedAmplitude.track(EventTypes.SCREEN_VIEWED, any()) }
 
             close()
         }
@@ -357,70 +494,19 @@ class AndroidLifecyclePluginTest {
         }
 
     @Test
-    fun `test application opened event is tracked not from background`() =
+    fun `activity callbacks alone do not track application lifecycle events`() =
         runTest {
             mockAutocapture(setOf(AutocaptureOption.APP_LIFECYCLES))
             every { mockedAmplitude.amplitudeScope } returns this
-
             val activity = mockk<Activity>(relaxed = true)
             plugin.setup(mockedAmplitude)
-
-            every { activity.registerFragmentLifecycleCallbacks(any(), any(), any()) } returns Unit
-            observer.onActivityCreated(activity, mockk())
+            observer.onActivityCreated(activity, null)
             observer.onActivityStarted(activity)
-
-            advanceUntilIdle()
-
-            verify(exactly = 1) {
-                mockedAmplitude.track(
-                    eq(EventTypes.APPLICATION_OPENED),
-                    match { param -> param.values.first() == false },
-                )
-            }
-
-            close()
-        }
-
-    @Test
-    fun `test application opened event is tracked from background`() =
-        runTest {
-            mockAutocapture(setOf(AutocaptureOption.APP_LIFECYCLES))
-            every { mockedAmplitude.amplitudeScope } returns this
-
-            val activity = mockk<Activity>(relaxed = true)
-            plugin.setup(mockedAmplitude)
-
-            observer.onActivityCreated(activity, mockk())
-
-            observer.onActivityStarted(activity)
-            advanceUntilIdle()
-            verify(exactly = 1) {
-                mockedAmplitude.track(
-                    eq(EventTypes.APPLICATION_OPENED),
-                    match { param -> param.values.first() == false },
-                    null,
-                )
-            }
-
             observer.onActivityStopped(activity)
+            observer.onActivityDestroyed(activity)
             advanceUntilIdle()
-            verify(exactly = 1) {
-                mockedAmplitude.track(
-                    eq(EventTypes.APPLICATION_BACKGROUNDED),
-                    any(),
-                    null,
-                )
-            }
-
-            observer.onActivityStarted(activity)
-            advanceUntilIdle()
-            verify(exactly = 1) {
-                mockedAmplitude.track(
-                    eq(EventTypes.APPLICATION_OPENED),
-                    match { param -> param.values.first() == false },
-                    null,
-                )
-            }
+            verify(exactly = 0) { mockedAmplitude.track(EventTypes.APPLICATION_OPENED, any(), any()) }
+            verify(exactly = 0) { mockedAmplitude.track(EventTypes.APPLICATION_BACKGROUNDED, any(), any()) }
             close()
         }
 
@@ -831,10 +917,10 @@ class AndroidLifecyclePluginTest {
     }
 
     // TODO Replace with Turbine
-    private suspend fun close() {
+    private fun close() {
         plugin.teardown()
         observer.eventChannel.close()
-        plugin.eventJob?.join()
+        testDispatcher.scheduler.runCurrent()
     }
 
     @After

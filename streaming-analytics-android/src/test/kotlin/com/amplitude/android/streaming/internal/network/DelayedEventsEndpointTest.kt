@@ -129,7 +129,7 @@ class DelayedEventsEndpointTest {
                 val configuration =
                     Configuration(
                         apiKey = "test-api-key",
-                        serverUrl = "file:///tmp",
+                        serverUrl = "file://localhost/tmp",
                     )
                 val result =
                     DelayedEventsEndpoint(

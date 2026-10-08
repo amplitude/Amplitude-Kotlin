@@ -5,7 +5,6 @@ import android.app.Application
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Bundle
-import androidx.annotation.VisibleForTesting
 import com.amplitude.android.AutocaptureState
 import com.amplitude.android.Configuration
 import com.amplitude.android.FrustrationInteractionsDetector
@@ -16,27 +15,40 @@ import com.amplitude.android.internal.gestures.WindowCallbackManager
 import com.amplitude.android.utilities.ActivityCallbackType
 import com.amplitude.android.utilities.ActivityLifecycleObserver
 import com.amplitude.android.utilities.DefaultEventUtils
+import com.amplitude.android.utilities.ProcessLifecycleObserver
 import com.amplitude.android.utilities.getVersionCode
+import com.amplitude.android.utilities.onChanged
 import com.amplitude.android.utilities.runCatchingCancellable
 import com.amplitude.core.Amplitude
-import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.Storage
 import com.amplitude.core.platform.Plugin
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.launch
 import java.lang.ref.WeakReference
 import com.amplitude.android.Amplitude as AndroidAmplitude
 
-@OptIn(GuardedAmplitudeFeature::class, RestrictedAmplitudeFeature::class)
+@OptIn(GuardedAmplitudeFeature::class)
 @Deprecated("Not intended for public use. Will be internal in a future release.")
-public class AndroidLifecyclePlugin(
+public class AndroidLifecyclePlugin internal constructor(
     private val activityLifecycleObserver: ActivityLifecycleObserver,
+    private val processLifecycleObserver: ProcessLifecycleObserver,
 ) : Application.ActivityLifecycleCallbacks,
     Plugin {
+    public constructor(activityLifecycleObserver: ActivityLifecycleObserver) : this(
+        activityLifecycleObserver = activityLifecycleObserver,
+        processLifecycleObserver = ProcessLifecycleObserver(),
+    )
+
     override val type: Plugin.Type = Plugin.Type.Utility
     override lateinit var amplitude: Amplitude
     private lateinit var packageInfo: PackageInfo
+    private lateinit var defaultEventUtils: DefaultEventUtils
     private lateinit var androidAmplitude: AndroidAmplitude
     private val autocaptureState: AutocaptureState
         get() = androidAmplitude.autocaptureManager.state.value
@@ -46,10 +58,10 @@ public class AndroidLifecyclePlugin(
 
     private val created: MutableMap<Int, WeakReference<Activity>> = mutableMapOf()
     private val fragmentTrackingActivities: MutableSet<Int> = mutableSetOf()
-    private val started: MutableSet<Int> = mutableSetOf()
     private val processedDeepLinkIntents: MutableMap<Int, Int> = mutableMapOf()
 
     private var appInBackground = false
+    private lateinit var pluginScope: CoroutineScope
     private var trackedAppLifecycleEvent = false
 
     // Snapshot read synchronously at setup so the state observer doesn't race the async storage write.
@@ -57,14 +69,11 @@ public class AndroidLifecyclePlugin(
 
     @Volatile private var previousAppBuild: String? = null
 
-    private var stateObserverJob: Job? = null
-
-    @VisibleForTesting
-    internal var eventJob: Job? = null
-
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
         androidAmplitude = amplitude as AndroidAmplitude
+        val parentContext = amplitude.amplitudeScope.coroutineContext
+        pluginScope = CoroutineScope(parentContext + SupervisorJob(parentContext[Job]))
         val androidConfiguration = amplitude.configuration as Configuration
 
         val application = androidConfiguration.context as Application
@@ -73,26 +82,26 @@ public class AndroidLifecyclePlugin(
         packageInfo =
             try {
                 application.packageManager.getPackageInfo(application.packageName, 0)
-            } catch (e: PackageManager.NameNotFoundException) {
+            } catch (_: PackageManager.NameNotFoundException) {
                 // This shouldn't happen, but in case it happens, fallback to empty package info.
                 amplitude.logger.error("Cannot find package with application.packageName: " + application.packageName)
                 PackageInfo()
             }
 
+        defaultEventUtils = DefaultEventUtils(androidAmplitude)
         // Run regardless of appLifecycles so a later flip doesn't fire a spurious Installed.
         snapshotAndPersistAppVersionInfo()
 
         // Observe autocapture state changes (including the initial value) to
         // enable features at runtime via remote config. Collected on main thread
         // because fragment registration and created-map iteration require it.
-        stateObserverJob =
-            amplitude.amplitudeScope.launch(Dispatchers.Main) {
-                androidAmplitude.autocaptureManager.state.collect {
-                    trackAppLifecycleEventIfNeeded()
-                    startInteractionTrackingIfNeeded(application)
-                    startFragmentTrackingIfNeeded()
-                }
+        pluginScope.launch(Dispatchers.Main) {
+            androidAmplitude.autocaptureManager.state.collect {
+                trackAppLifecycleEventIfNeeded()
+                startInteractionTrackingIfNeeded(application)
+                startFragmentTrackingIfNeeded()
             }
+        }
 
         // The observer is registered on the Application (process-lifetime) and its channel
         // roots this consumer coroutine. Hold the plugin weakly so that chain can't pin the
@@ -100,33 +109,75 @@ public class AndroidLifecyclePlugin(
         val eventChannel = activityLifecycleObserver.eventChannel
         val observer = activityLifecycleObserver
         val weakPlugin = WeakReference(this)
-        eventJob =
-            amplitude.amplitudeScope.launch(Dispatchers.Main) {
-                for (event in eventChannel) {
+        val processObserver = processLifecycleObserver
+        pluginScope.launch(Dispatchers.Main.immediate) {
+            processObserver.events
+                .onSubscription { processObserver.start() }
+                .onCompletion { processObserver.stop() }
+                .onChanged { it.foreground }
+                .collect { transition ->
                     val plugin = weakPlugin.get()
                     if (plugin == null) {
-                        // The plugin has been collected; unregister the observer and cancel
-                        // its channel so the abandoned instance leaves nothing behind.
-                        application.unregisterActivityLifecycleCallbacks(observer)
-                        eventChannel.cancel()
-                        break
+                        processObserver.stop()
+                        return@collect
                     }
-                    event.activity.get()?.let { activity ->
-                        when (event.type) {
-                            ActivityCallbackType.Created ->
-                                plugin.onActivityCreated(
-                                    activity,
-                                    activity.intent?.extras,
-                                )
-                            ActivityCallbackType.Started -> plugin.onActivityStarted(activity)
-                            ActivityCallbackType.Resumed -> plugin.onActivityResumed(activity)
-                            ActivityCallbackType.Paused -> plugin.onActivityPaused(activity)
-                            ActivityCallbackType.Stopped -> plugin.onActivityStopped(activity)
-                            ActivityCallbackType.Destroyed -> plugin.onActivityDestroyed(activity)
-                        }
+                    if (transition.foreground) {
+                        plugin.onAppForeground(transition.timestamp)
+                    } else {
+                        plugin.onAppBackground(transition.timestamp)
+                    }
+                }
+        }
+        pluginScope.launch(Dispatchers.Main) {
+            for ((activity, eventType) in eventChannel) {
+                val plugin = weakPlugin.get()
+                if (plugin == null) {
+                    // The plugin has been collected; unregister the observer and cancel
+                    // its channel so the abandoned instance leaves nothing behind.
+                    application.unregisterActivityLifecycleCallbacks(observer)
+                    eventChannel.cancel()
+                    break
+                }
+                activity.get()?.let { activity ->
+                    when (eventType) {
+                        ActivityCallbackType.Created ->
+                            plugin.onActivityCreated(
+                                activity,
+                                activity.intent?.extras,
+                            )
+                        ActivityCallbackType.Started -> plugin.onActivityStarted(activity)
+                        ActivityCallbackType.Resumed -> plugin.onActivityResumed(activity)
+                        ActivityCallbackType.Paused -> plugin.onActivityPaused(activity)
+                        ActivityCallbackType.Stopped -> plugin.onActivityStopped(activity)
+                        ActivityCallbackType.Destroyed -> plugin.onActivityDestroyed(activity)
                     }
                 }
             }
+        }
+    }
+
+    private fun onAppForeground(timestamp: Long) {
+        if (!androidAmplitude.isActive) return
+        androidAmplitude.onEnterForeground(timestamp)
+        if (autocaptureState.appLifecycles) {
+            defaultEventUtils.trackAppOpenedEvent(
+                isFromBackground = appInBackground,
+            )
+        }
+        appInBackground = false
+    }
+
+    private fun onAppBackground(timestamp: Long) {
+        if (!androidAmplitude.isActive) return
+        // Enqueue Backgrounded before exiting so it belongs to the departing session.
+        if (autocaptureState.appLifecycles) {
+            defaultEventUtils.trackAppBackgroundedEvent()
+        }
+        androidAmplitude.onExitForeground(timestamp)
+        appInBackground = true
+        if ((amplitude.configuration as Configuration).flushEventsOnClose) {
+            androidAmplitude.flush()
+        }
     }
 
     override fun onActivityCreated(
@@ -146,28 +197,12 @@ public class AndroidLifecyclePlugin(
             onActivityCreated(activity, activity.intent?.extras)
         }
 
-        if (started.isEmpty()) {
-            androidAmplitude.onEnterForeground(System.currentTimeMillis())
-        }
-
-        started.add(activity.hashCode())
-
-        if (autocaptureState.appLifecycles && started.size == 1) {
-            DefaultEventUtils(androidAmplitude).trackAppOpenedEvent(
-                packageInfo = packageInfo,
-                isFromBackground = appInBackground,
-            )
-        }
-        if (started.size == 1) {
-            appInBackground = false
-        }
-
         if (autocaptureState.deepLinks) {
             trackDeepLinkIfNew(activity)
         }
 
         if (autocaptureState.screenViews) {
-            DefaultEventUtils(androidAmplitude).trackScreenViewedEvent(activity)
+            defaultEventUtils.trackScreenViewedEvent(activity)
         }
     }
 
@@ -181,23 +216,7 @@ public class AndroidLifecyclePlugin(
 
     override fun onActivityPaused(activity: Activity): Unit = Unit
 
-    override fun onActivityStopped(activity: Activity) {
-        started.remove(activity.hashCode())
-
-        if (autocaptureState.appLifecycles && started.isEmpty()) {
-            DefaultEventUtils(androidAmplitude).trackAppBackgroundedEvent()
-        }
-
-        if (started.isEmpty()) {
-            appInBackground = true
-            with(androidAmplitude) {
-                onExitForeground(System.currentTimeMillis())
-                if ((configuration as Configuration).flushEventsOnClose) {
-                    flush()
-                }
-            }
-        }
-    }
+    override fun onActivityStopped(activity: Activity): Unit = Unit
 
     override fun onActivitySaveInstanceState(
         activity: Activity,
@@ -213,7 +232,7 @@ public class AndroidLifecyclePlugin(
 
         // Always unregister — screenViews may have been disabled by remote config since
         // callbacks were registered, so we cannot gate this on current state.
-        DefaultEventUtils(androidAmplitude).stopFragmentViewedEventTracking(activity)
+        defaultEventUtils.stopFragmentViewedEventTracking(activity)
     }
 
     /**
@@ -231,7 +250,7 @@ public class AndroidLifecyclePlugin(
         }
 
         processedDeepLinkIntents[activityHash] = intentIdentity
-        DefaultEventUtils(androidAmplitude).trackDeepLinkOpenedEvent(activity)
+        defaultEventUtils.trackDeepLinkOpenedEvent(activity)
     }
 
     /**
@@ -242,7 +261,7 @@ public class AndroidLifecyclePlugin(
         val hash = activity.hashCode()
         if (hash in fragmentTrackingActivities) return
         fragmentTrackingActivities.add(hash)
-        DefaultEventUtils(androidAmplitude).startFragmentViewedEventTracking(
+        defaultEventUtils.startFragmentViewedEventTracking(
             activity,
             screenViewsEnabled = { autocaptureState.screenViews },
         )
@@ -270,7 +289,7 @@ public class AndroidLifecyclePlugin(
     private fun trackAppLifecycleEventIfNeeded() {
         if (trackedAppLifecycleEvent || !autocaptureState.appLifecycles) return
         trackedAppLifecycleEvent = true
-        DefaultEventUtils(androidAmplitude).trackAppUpdatedInstalledEvent(
+        defaultEventUtils.trackAppUpdatedInstalledEvent(
             currentVersion = packageInfo.versionName ?: "Unknown",
             currentBuild = packageInfo.getVersionCode().toString(),
             previousVersion = previousAppVersion,
@@ -338,8 +357,7 @@ public class AndroidLifecyclePlugin(
 
     override fun teardown() {
         super.teardown()
-        stateObserverJob?.cancel()
-        eventJob?.cancel()
+        if (::pluginScope.isInitialized) pluginScope.cancel()
         windowCallbackManager?.stop()
         frustrationInteractionsDetector?.stop()
     }
