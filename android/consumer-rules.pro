@@ -16,6 +16,11 @@
 # Keep the plugin names readable so the log is usable in a minified build.
 -keepnames class com.amplitude.** implements com.amplitude.core.platform.UniversalPlugin
 
+# Gesture classification compares these class names at runtime. They are optional
+# dependencies, so the SDK cannot reference the types directly.
+-keepnames class androidx.appcompat.widget.SwitchCompat
+-keepnames class com.google.android.material.slider.BaseSlider
+
 #################### START: Compose Proguard Rules ####################
 
 # The Android SDK checks at runtime if these classes are available via Class.forName
