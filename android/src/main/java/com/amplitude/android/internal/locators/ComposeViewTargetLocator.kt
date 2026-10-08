@@ -6,7 +6,9 @@ import ComposeLayoutNodeBoundsHelper
 import androidx.compose.ui.node.LayoutNode
 import androidx.compose.ui.node.Owner
 import androidx.compose.ui.platform.InspectableValue
+import androidx.compose.ui.semantics.Role
 import com.amplitude.android.internal.GestureOwner
+import com.amplitude.android.internal.InteractionAction
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.compose.AmpFrustrationIgnoreElement
 import com.amplitude.android.internal.gestures.GestureActions
@@ -19,7 +21,7 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
         ComposeLayoutNodeBoundsHelper(logger)
     }
 
-    companion object {
+    internal companion object {
         private const val SOURCE = "jetpack_compose"
     }
 
@@ -62,6 +64,9 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
                 composeLayoutNodeBoundsHelper.layoutNodeBoundsContain(node, targetPosition)
             ) {
                 val nodeGestures = mutableSetOf<String>()
+                var hasSelectableModifier = false
+                var hasValueChangeRole = false
+                var interactionAction = InteractionAction.Touch
                 val modifiers = node.getModifierInfo()
 
                 for (modifierInfo in modifiers) {
@@ -90,7 +95,7 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
                                         val elementValue = element.value
                                         if (elementValue is LinkedHashMap<*, *>) {
                                             for ((key, value) in elementValue.entries) {
-                                                when (key) {
+                                                when (key.toString()) {
                                                     "TestTag" -> {
                                                         lastKnownTag = value as? String
                                                     }
@@ -101,13 +106,15 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
                                                                 ?.filterIsInstance<String>()
                                                                 ?.joinToString(", ")
                                                     }
+                                                    "Role" -> {
+                                                        hasValueChangeRole = value.isValueChangeRole()
+                                                    }
                                                 }
                                             }
                                         }
                                     }
                                 }
                             }
-
                         }
 
                         nodeGestures.addAll(
@@ -118,6 +125,27 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
                             ),
                         )
                     }
+
+                    when (composeModifierInteractionKind(modifier)) {
+                        ComposeModifierInteractionKind.Toggle -> {
+                            nodeGestures += GestureActions.VALUE_CHANGE
+                            interactionAction = InteractionAction.ValueChange
+                        }
+                        ComposeModifierInteractionKind.Select -> {
+                            hasSelectableModifier = true
+                            nodeGestures += GestureActions.TOUCH
+                            hasValueChangeRole = hasValueChangeRole || modifier.inspectableRole().isValueChangeRole()
+                        }
+                        ComposeModifierInteractionKind.Click,
+                        ComposeModifierInteractionKind.None,
+                        -> Unit
+                    }
+                }
+
+                if (hasSelectableModifier && hasValueChangeRole) {
+                    nodeGestures -= GestureActions.TOUCH
+                    nodeGestures += GestureActions.VALUE_CHANGE
+                    interactionAction = InteractionAction.ValueChange
                 }
 
                 if (nodeGestures.isNotEmpty() && targetType == ViewTarget.Type.Clickable) {
@@ -129,6 +157,7 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
                             actions = nodeGestures.toSet(),
                             tag = lastKnownTag,
                             accessibilityLabel = lastKnownAccessibilityLabel,
+                            interactionAction = interactionAction,
                         )
                 }
             }
@@ -151,6 +180,7 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
                 ampIgnoreDeadClick = ignoreDeadClick,
             ).apply {
                 this.gestureOwners = gestureOwners
+                interactionAction = gestureOwners.last().interactionAction
             }
         }
     }
@@ -190,3 +220,69 @@ internal fun composeDeclaredGestures(
         }
         else -> emptySet()
     }
+
+internal fun isInteractiveComposeModifier(modifier: Any): Boolean =
+    composeModifierInteractionKind(modifier) != ComposeModifierInteractionKind.None
+
+internal fun composeModifierInteractionKind(modifier: Any): ComposeModifierInteractionKind =
+    composeModifierInteractionKind(
+        nameFallback = (modifier as? InspectableValue)?.nameFallback,
+        className = modifier.javaClass.name,
+    )
+
+internal fun isInteractiveComposeModifier(
+    nameFallback: String?,
+    className: String,
+): Boolean = composeModifierInteractionKind(nameFallback, className) != ComposeModifierInteractionKind.None
+
+internal fun composeModifierInteractionKind(
+    nameFallback: String?,
+    className: String,
+): ComposeModifierInteractionKind =
+    when {
+        nameFallback == "toggleable" ||
+            nameFallback == "triStateToggleable" ||
+            className == "androidx.compose.foundation.selection.ToggleableElement" ||
+            className == "androidx.compose.foundation.selection.TriStateToggleableElement" -> {
+            ComposeModifierInteractionKind.Toggle
+        }
+        nameFallback == "selectable" ||
+            className == "androidx.compose.foundation.selection.SelectableElement" -> {
+            ComposeModifierInteractionKind.Select
+        }
+        nameFallback == "clickable" ||
+            nameFallback == "combinedClickable" ||
+            className == "androidx.compose.foundation.ClickableElement" ||
+            className == "androidx.compose.foundation.CombinedClickableElement" -> {
+            ComposeModifierInteractionKind.Click
+        }
+        else -> ComposeModifierInteractionKind.None
+    }
+
+internal fun composeInteractionAction(
+    interactionKind: ComposeModifierInteractionKind,
+    hasValueChangeRole: Boolean,
+): InteractionAction =
+    when {
+        interactionKind == ComposeModifierInteractionKind.Toggle -> InteractionAction.ValueChange
+        interactionKind == ComposeModifierInteractionKind.Select && hasValueChangeRole -> InteractionAction.ValueChange
+        else -> InteractionAction.Touch
+    }
+
+private fun Any.inspectableRole(): Any? =
+    (this as? InspectableValue)
+        ?.inspectableElements
+        ?.firstOrNull { it.name == "role" }
+        ?.value
+
+private fun Any?.isValueChangeRole(): Boolean =
+    this == Role.Checkbox ||
+        this == Role.Switch ||
+        this == Role.RadioButton
+
+internal enum class ComposeModifierInteractionKind {
+    None,
+    Click,
+    Select,
+    Toggle,
+}

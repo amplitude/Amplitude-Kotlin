@@ -3,9 +3,11 @@ package com.amplitude.android.internal.locators
 import android.content.Context
 import android.view.View
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.FrameLayout
 import android.widget.ScrollView
 import android.widget.SeekBar
+import android.widget.Switch
 import androidx.test.core.app.ApplicationProvider
 import com.amplitude.android.internal.ViewHierarchyScanner.findTarget
 import com.amplitude.android.internal.ViewTarget
@@ -13,8 +15,10 @@ import com.amplitude.android.internal.gestures.GestureActions
 import com.amplitude.android.internal.resolvedFor
 import com.amplitude.common.Logger
 import io.mockk.mockk
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -50,6 +54,34 @@ class DeclaredGestureTargetTest {
 
         assertSame(slider, hit?.view)
         assertNull(hit?.resolvedFor(GestureActions.TOUCH))
+    }
+
+    @Test
+    fun `a switch drag changes its value instead of panning`() {
+        val switch = Switch(context)
+        switch.isClickable = true
+        val parent = FrameLayout(context)
+        parent.addView(switch)
+
+        val hit = parent.layoutAndFindTarget(switch)
+
+        assertSame(switch, hit?.resolvedFor(GestureActions.VALUE_CHANGE)?.view)
+        assertNull(hit?.resolvedFor(GestureActions.PAN))
+        assertTrue(hit?.gestureOwners?.single()?.dragReportsValueChange == true)
+    }
+
+    @Test
+    fun `a checkbox declares value change without treating a drag as the toggle`() {
+        val checkBox = CheckBox(context)
+        checkBox.isClickable = true
+        val parent = FrameLayout(context)
+        parent.addView(checkBox)
+
+        val hit = parent.layoutAndFindTarget(checkBox)
+
+        assertSame(checkBox, hit?.resolvedFor(GestureActions.VALUE_CHANGE)?.view)
+        assertNull(hit?.resolvedFor(GestureActions.PAN))
+        assertFalse(hit?.gestureOwners?.single()?.dragReportsValueChange == true)
     }
 
     @Test
