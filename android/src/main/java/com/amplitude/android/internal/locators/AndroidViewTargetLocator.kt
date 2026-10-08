@@ -1,17 +1,32 @@
 package com.amplitude.android.internal.locators
 
 import android.view.View
+import android.widget.AbsSeekBar
 import android.widget.Button
+import android.widget.LinearLayout
+import android.widget.Switch
 import androidx.core.view.isVisible
+import com.amplitude.android.internal.GestureOwner
 import com.amplitude.android.internal.ViewResourceUtils.resourceIdWithFallback
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.ViewTarget.Type
+import com.amplitude.android.internal.gestures.GestureActions
 
 internal class AndroidViewTargetLocator : ViewTargetLocator {
     companion object {
         private const val HIERARCHY_DELIMITER = " → "
 
         private const val SOURCE = "android_view"
+
+        /**
+         * Framework and AndroidX views that move a thumb with the finger, so they handle
+         * drag gestures without exposing a flag like [View.isClickable].
+         */
+        private val DRAGGABLE_VIEW_TYPES =
+            setOf(
+                SWITCH_COMPAT_CLASS,
+                BASE_SLIDER_CLASS,
+            )
     }
 
     override fun Any.locate(
@@ -19,10 +34,30 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
         targetType: Type,
     ): ViewTarget? =
         (this as? View)
-            ?.takeIf { touchWithinBounds(targetPosition) && targetType === Type.Clickable && isViewTappable() }
-            ?.let { createViewTarget() }
+            ?.takeIf { touchWithinBounds(targetPosition) && targetType === Type.Clickable && isVisible }
+            ?.let { view ->
+                val actions = view.declaredGestures()
+                view.takeIf { actions.isNotEmpty() }?.createViewTarget(actions)
+            }
 
-    private fun View.createViewTarget(): ViewTarget {
+    /**
+     * Gestures this view declared. A view that declares any of them consumes the touch stream,
+     * so its ancestors never receive the gesture.
+     */
+    private fun View.declaredGestures(): Set<String> =
+        buildSet {
+            if (isClickable) add(GestureActions.TOUCH)
+            if (isLongClickable) add(GestureActions.LONG_PRESS)
+            if (isDraggableViewType()) add(GestureActions.PAN)
+        }
+
+    private fun View.isDraggableViewType(): Boolean =
+        this is AbsSeekBar ||
+            this is Switch ||
+            generateSequence(javaClass as Class<*>?) { it.superclass }
+                .any { it.name in DRAGGABLE_VIEW_TYPES }
+
+    private fun View.createViewTarget(actions: Set<String>): ViewTarget {
         val className = javaClass.canonicalName ?: javaClass.simpleName
         val resourceName = resourceIdWithFallback
         val hierarchy = hierarchy
@@ -47,7 +82,9 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
             hierarchy,
             ampIgnoreRageClick = frustrationSettings.ignoreRageClick,
             ampIgnoreDeadClick = frustrationSettings.ignoreDeadClick,
-        )
+        ).apply {
+            gestureOwners = listOf(GestureOwner(actions, tag, accessibilityLabel))
+        }
     }
 
     /**
@@ -94,8 +131,6 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
         return x >= viewX && x <= viewX + width && y >= viewY && y <= viewY + height
     }
 
-    private fun View.isViewTappable(): Boolean = isClickable && isVisible
-
     private val View.hierarchy: String
         get() {
             val hierarchy = mutableListOf<String>()
@@ -107,3 +142,41 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
             return hierarchy.joinToString(separator = HIERARCHY_DELIMITER)
         }
 }
+
+/**
+ * Whether this view handles a drag in [horizontal]'s direction.
+ *
+ * A framework slider or switch only moves sideways, and a vertical drag that starts on one is a
+ * scroll. A Material slider can be vertical, and that one claims a vertical drag instead.
+ */
+internal fun View.claimsPan(horizontal: Boolean): Boolean {
+    if (isVerticalSlider()) return !horizontal
+    if (isHorizontalOnlyDragView()) return horizontal
+    return true
+}
+
+private const val SWITCH_COMPAT_CLASS = "androidx.appcompat.widget.SwitchCompat"
+private const val BASE_SLIDER_CLASS = "com.google.android.material.slider.BaseSlider"
+
+private fun View.isHorizontalOnlyDragView(): Boolean =
+    this is AbsSeekBar ||
+        this is Switch ||
+        isNamedType(SWITCH_COMPAT_CLASS) ||
+        isNamedType(BASE_SLIDER_CLASS)
+
+private fun View.isVerticalSlider(): Boolean =
+    isNamedType(BASE_SLIDER_CLASS) && sliderOrientation() == LinearLayout.VERTICAL
+
+private fun View.sliderOrientation(): Int {
+    val sliderClass =
+        generateSequence(javaClass as Class<*>?) { it.superclass }
+            .firstOrNull { it.name == BASE_SLIDER_CLASS }
+            ?: return LinearLayout.HORIZONTAL
+    val method =
+        sliderClass.methods.firstOrNull { it.name == "getOrientation" && it.parameterTypes.isEmpty() }
+            ?: return LinearLayout.HORIZONTAL
+    return (runCatching { method.invoke(this) }.getOrNull() as? Int) ?: LinearLayout.HORIZONTAL
+}
+
+private fun View.isNamedType(className: String): Boolean =
+    generateSequence(javaClass as Class<*>?) { it.superclass }.any { it.name == className }

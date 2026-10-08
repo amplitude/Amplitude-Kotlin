@@ -6,8 +6,10 @@ import ComposeLayoutNodeBoundsHelper
 import androidx.compose.ui.node.LayoutNode
 import androidx.compose.ui.node.Owner
 import androidx.compose.ui.platform.InspectableValue
+import com.amplitude.android.internal.GestureOwner
 import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.compose.AmpFrustrationIgnoreElement
+import com.amplitude.android.internal.gestures.GestureActions
 import com.amplitude.common.Logger
 import java.util.ArrayDeque
 import java.util.Queue
@@ -36,8 +38,12 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
         // the final accessibility label to return
         var targetAccessibilityLabel: String? = null
 
-        // track if we found a clickable element
+        // track if we found an element that declared any gesture handler
         var foundClickableElement = false
+
+        // every interactive node under the touch, since a gesture a child does not consume is
+        // still delivered to its ancestors
+        val gestureOwners = mutableListOf<GestureOwner>()
 
         // the last known tag when iterating the node tree
         var lastKnownTag: String? = null
@@ -55,7 +61,7 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
             if (node.isPlaced &&
                 composeLayoutNodeBoundsHelper.layoutNodeBoundsContain(node, targetPosition)
             ) {
-                var isClickable = false
+                val nodeGestures = mutableSetOf<String>()
                 val modifiers = node.getModifierInfo()
 
                 for (modifierInfo in modifiers) {
@@ -102,24 +108,28 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
                                 }
                             }
 
-                            "clickable" -> {
-                                isClickable = true
-                            }
                         }
 
-                        val type = modifier.javaClass.name
-                        if (type == "androidx.compose.foundation.ClickableElement" ||
-                            type == "androidx.compose.foundation.CombinedClickableElement"
-                        ) {
-                            isClickable = true
-                        }
+                        nodeGestures.addAll(
+                            composeDeclaredGestures(
+                                nameFallback = modifier.nameFallback,
+                                className = modifier.javaClass.name,
+                                hasLongClick = modifier.hasLongClickHandler(),
+                            ),
+                        )
                     }
                 }
 
-                if (isClickable && targetType == ViewTarget.Type.Clickable) {
+                if (nodeGestures.isNotEmpty() && targetType == ViewTarget.Type.Clickable) {
                     foundClickableElement = true
                     targetTag = lastKnownTag // can be null if no test tag is found
                     targetAccessibilityLabel = lastKnownAccessibilityLabel // can be null
+                    gestureOwners +=
+                        GestureOwner(
+                            actions = nodeGestures.toSet(),
+                            tag = lastKnownTag,
+                            accessibilityLabel = lastKnownAccessibilityLabel,
+                        )
                 }
             }
             queue.addAll(node.zSortedChildren.asMutableList())
@@ -139,7 +149,46 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
                 hierarchy = null,
                 ampIgnoreRageClick = ignoreRageClick,
                 ampIgnoreDeadClick = ignoreDeadClick,
-            )
+            ).apply {
+                this.gestureOwners = gestureOwners
+            }
         }
     }
+
+    private fun InspectableValue.hasLongClickHandler(): Boolean =
+        inspectableElements.any { it.name == "onLongClick" && it.value != null }
 }
+
+/**
+ * Maps a Compose modifier to the gesture actions it handles. Only modifiers that install a
+ * gesture handler count; a `pointerInput` block is opaque and cannot be classified.
+ */
+internal fun composeDeclaredGestures(
+    nameFallback: String?,
+    className: String,
+    hasLongClick: Boolean,
+): Set<String> =
+    when {
+        nameFallback == "clickable" ||
+            className == "androidx.compose.foundation.ClickableElement" -> {
+            setOf(GestureActions.TOUCH)
+        }
+        nameFallback == "combinedClickable" ||
+            className == "androidx.compose.foundation.CombinedClickableElement" -> {
+            if (hasLongClick) setOf(GestureActions.TOUCH, GestureActions.LONG_PRESS) else setOf(GestureActions.TOUCH)
+        }
+        nameFallback == "draggable" ||
+            nameFallback == "draggable2D" ||
+            nameFallback == "anchoredDraggable" ||
+            nameFallback == "swipeable" ||
+            className == "androidx.compose.foundation.gestures.DraggableElement" ||
+            className == "androidx.compose.foundation.gestures.Draggable2DElement" ||
+            className == "androidx.compose.foundation.gestures.AnchoredDraggableElement" -> {
+            setOf(GestureActions.PAN)
+        }
+        nameFallback == "transformable" ||
+            className == "androidx.compose.foundation.gestures.TransformableElement" -> {
+            GestureActions.TRANSFORM
+        }
+        else -> emptySet()
+    }
