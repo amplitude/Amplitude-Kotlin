@@ -234,7 +234,10 @@ public class FileResponseHandler
         }
 
         private fun removeCallbackByInsertId(eventsString: String) {
-            val regex = """"insert_id":"(.{36})",""".toRegex()
+            // Recover complete 36-character insert IDs from malformed JSON for callback cleanup.
+            // Allow whitespace around ':' and no trailing comma: the ID may be the last property
+            // or the payload may end after its value. Exclude quotes and backslashes from the ID.
+            val regex = """"insert_id"\s*:\s*"([^"\\]{36})"""".toRegex()
             regex.findAll(eventsString).forEach {
                 scope.launch(storageDispatcher) {
                     storage.removeEventCallback(it.groupValues[1])
