@@ -415,33 +415,51 @@ public class EventsFileManager(
                 return@withLock
             }
             val unFinishedFiles = listStorageFiles { !it.endsWith(".properties") }
-            unFinishedFiles
-                .filter { it.exists() }
-                .forEach {
-                    val content = it.readText()
-                    if (!content.endsWith(DELIMITER)) {
-                        // handle earlier versions
-                        val normalizedContent = "[${content.trimStart('[', ',').trimEnd(']', ',')}]"
-                        runCatchingCancellable {
-                            val jsonArray = JSONArray(normalizedContent)
-                            val list = jsonArray.toJSONObjectList()
-                            writeEventsToSplitFile(list, it, false)
-                            if (it.extension == "tmp") {
-                                finish(it)
-                            }
-                        }.onFailure { e ->
-                            if (e is JSONException) {
-                                logger.error(
-                                    "Failed to parse events: $normalizedContent, dropping file: ${it.path}, error: $e",
-                                )
-                                this.remove(it.path)
-                            } else {
-                                throw e
-                            }
+            var migrationComplete = true
+            unFinishedFiles.forEach {
+                val content =
+                    try {
+                        it.readText()
+                    } catch (e: FileNotFoundException) {
+                        // A missing file needs no migration; an existing but unreadable one
+                        // must remain eligible for retry on the next initialization.
+                        if (it.exists()) {
+                            migrationComplete = false
+                            logger.warn("Failed to read event file during migration: ${it.name}: ${e.message}")
+                        }
+                        return@forEach
+                    } catch (e: IOException) {
+                        migrationComplete = false
+                        logger.warn("Failed to read event file during migration: ${it.name}: ${e.message}")
+                        return@forEach
+                    } catch (e: SecurityException) {
+                        migrationComplete = false
+                        logger.warn("Failed to read event file during migration: ${it.name}: ${e.message}")
+                        return@forEach
+                    }
+                if (!content.endsWith(DELIMITER)) {
+                    // handle earlier versions
+                    val normalizedContent = "[${content.trimStart('[', ',').trimEnd(']', ',')}]"
+                    runCatchingCancellable {
+                        val jsonArray = JSONArray(normalizedContent)
+                        val list = jsonArray.toJSONObjectList()
+                        writeEventsToSplitFile(list, it, false)
+                        if (it.extension == "tmp") {
+                            finish(it)
+                        }
+                    }.onFailure { e ->
+                        if (e is JSONException) {
+                            logger.error(
+                                "Failed to parse events: $normalizedContent, dropping file: ${it.path}, error: $e",
+                            )
+                            this.remove(it.path)
+                        } else {
+                            throw e
                         }
                     }
                 }
-            kvs.putLong(storageVersionKey, 2)
+            }
+            if (migrationComplete) kvs.putLong(storageVersionKey, 2)
         }
 
     private fun guardDirectory(): Boolean {

@@ -46,7 +46,7 @@ public class FileStorage
                 storageDirectory,
                 "${getPrefix()}-$storageKey",
                 null,
-            )
+            ).apply { load() }
         private val eventsFile =
             EventsFileManager(
                 storageDirectoryEvents,
@@ -56,10 +56,6 @@ public class FileStorage
                 diagnostics,
             )
         private val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
-
-        init {
-            propertiesFile.load()
-        }
 
         override suspend fun writeEvent(event: BaseEvent) {
             eventsFile.storeEvent(JSONUtil.eventToString(event))
