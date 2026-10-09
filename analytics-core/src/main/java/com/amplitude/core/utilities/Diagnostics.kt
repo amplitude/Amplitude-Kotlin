@@ -1,51 +1,48 @@
 package com.amplitude.core.utilities
 
-import java.util.Collections
-
 public class Diagnostics() {
-    private var malformedEvents: MutableList<String>? = null
-    private var errorLogs: MutableSet<String> = Collections.synchronizedSet(mutableSetOf())
+    private val lock = Any()
+    private val malformedEvents = mutableListOf<String>()
+    private val errorLogs = mutableSetOf<String>()
 
     public companion object {
         private const val MAX_ERROR_LOGS = 10
+        private const val MAX_MALFORMED_EVENTS = 10
+        private const val MAX_MALFORMED_EVENT_LENGTH = 1_000
     }
 
     public fun addMalformedEvent(event: String) {
-        if (malformedEvents == null) {
-            malformedEvents = Collections.synchronizedList(mutableListOf())
+        synchronized(lock) {
+            if (malformedEvents.size == MAX_MALFORMED_EVENTS) malformedEvents.removeAt(0)
+            malformedEvents.add(event.take(MAX_MALFORMED_EVENT_LENGTH))
         }
-        malformedEvents?.add(event)
     }
 
     public fun addErrorLog(log: String) {
-        errorLogs.add(log)
-        while (errorLogs.size > MAX_ERROR_LOGS) {
-            errorLogs.remove(errorLogs.first())
+        synchronized(lock) {
+            errorLogs.add(log)
+            if (errorLogs.size > MAX_ERROR_LOGS) errorLogs.remove(errorLogs.first())
         }
     }
 
-    public fun hasDiagnostics(): Boolean {
-        return (malformedEvents != null && malformedEvents!!.isNotEmpty()) || errorLogs.isNotEmpty()
-    }
+    public fun hasDiagnostics(): Boolean =
+        synchronized(lock) {
+            malformedEvents.isNotEmpty() || errorLogs.isNotEmpty()
+        }
 
     /**
      * Extracts the diagnostics as a JSON string.
      * @return JSON string of diagnostics or empty if no diagnostics are present.
      */
-    public fun extractDiagnostics(): String? {
-        if (!hasDiagnostics()) {
-            return null
+    public fun extractDiagnostics(): String? =
+        synchronized(lock) {
+            val diagnostics = mutableMapOf<String, List<String>>()
+            if (malformedEvents.isNotEmpty()) diagnostics["malformed_events"] = malformedEvents.toList()
+            if (errorLogs.isNotEmpty()) diagnostics["error_logs"] = errorLogs.toList()
+            if (diagnostics.isEmpty()) return@synchronized null
+            val result = diagnostics.toJSONObject().toString()
+            malformedEvents.clear()
+            errorLogs.clear()
+            result
         }
-        val diagnostics = mutableMapOf<String, List<String>>()
-        if (malformedEvents != null && malformedEvents!!.isNotEmpty()) {
-            diagnostics["malformed_events"] = malformedEvents!!
-        }
-        if (errorLogs.isNotEmpty()) {
-            diagnostics["error_logs"] = errorLogs.toList()
-        }
-        val result = diagnostics.toJSONObject().toString()
-        malformedEvents?.clear()
-        errorLogs.clear()
-        return result
-    }
 }

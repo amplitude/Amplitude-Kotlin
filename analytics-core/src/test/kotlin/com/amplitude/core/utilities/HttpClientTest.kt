@@ -385,7 +385,7 @@ class HttpClientTest {
             HttpClient.Request(
                 url = server.url("/api").toString(),
                 method = HttpClient.Request.Method.POST,
-                body = "{\"test\": \"data\"}",
+                body = listOf("{\"test\": \"data\"}"),
                 headers = mapOf("Content-Type" to "application/json"),
             )
         val response = httpClient.request(postRequest)
@@ -502,6 +502,42 @@ class HttpClientTest {
                 enableRequestBodyCompression = true,
             )
         assertTrue(customConfigOptIn.shouldCompressUploadBody())
+    }
+
+    @Test
+    fun `test body written in parts is identical to the joined body`() {
+        server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+
+        val config = Configuration(apiKey = apiKey, serverUrl = server.url("/").toString())
+        // multi-byte characters must survive being written on either side of a part boundary
+        val event = BaseEvent().apply { eventType = "test 世界 😀" }
+        val eventsString = JSONUtil.eventsToString(listOf(event))
+
+        HttpClient(config, silentLogger).upload(eventsString)
+
+        val body = runRequest()?.body?.readUtf8()
+        assertNotNull(body)
+        assertTrue(body!!.startsWith("{\"api_key\":\"$apiKey\""), body)
+        assertTrue(body.contains("\"events\":$eventsString"), body)
+        assertTrue(body.endsWith("}"), body)
+    }
+
+    @Test
+    fun `should send an uncompressed body when compression fails`() {
+        server.enqueue(MockResponse().setBody("{}"))
+        io.mockk.mockkObject(GzipUtils)
+        try {
+            io.mockk.every { GzipUtils.compress(any<Iterable<String>>()) } throws java.io.IOException("compression failed")
+            val config = Configuration(apiKey = apiKey, serverUrl = server.url("/").toString(), enableRequestBodyCompression = true)
+            HttpClient(config, silentLogger).upload("[{\"event_type\":\"世界😀\"}]")
+            val request = runRequest()!!
+            assertNull(request.getHeader("Content-Encoding"))
+            assertNull(request.getHeader("Transfer-Encoding"))
+            assertEquals(request.bodySize.toString(), request.getHeader("Content-Length"))
+            assertEquals("世界😀", JSONObject(request.body.readUtf8()).getJSONArray("events").getJSONObject(0).getString("event_type"))
+        } finally {
+            io.mockk.unmockkObject(GzipUtils)
+        }
     }
 
     private fun runRequest(): RecordedRequest? {

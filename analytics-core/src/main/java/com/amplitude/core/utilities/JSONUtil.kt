@@ -7,6 +7,7 @@ import com.amplitude.core.events.Plan
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
+import org.json.JSONTokener
 
 public object JSONUtil {
     public fun eventToJsonObject(event: BaseEvent): JSONObject {
@@ -235,6 +236,54 @@ public fun JSONArray.toEvents(): List<BaseEvent> {
         events.add((this.getJSONObject(it)).toBaseEvent())
     }
     return events
+}
+
+/**
+ * Applies [action] to each event in [eventsString], holding one event at a time.
+ *
+ * `JSONArray(eventsString).toEvents()` keeps every event live twice over — once as a [JSONObject]
+ * and once as a [BaseEvent] — which measured ~6.9MB for a 975KB payload. Stepping a [JSONTokener]
+ * lets each event be released as soon as [action] returns.
+ *
+ * Only [JSONTokener] members that the public Android SDK exposes are used, so R8 does not report
+ * a missing method the way `JSONObject.keySet()` did.
+ *
+ * @return the number of events visited
+ * @throws JSONException if [eventsString] is not a JSON array of objects
+ */
+internal fun forEachEvent(
+    eventsString: String,
+    action: (BaseEvent) -> Unit,
+): Int {
+    val tokener = JSONTokener(eventsString)
+    if (tokener.nextClean() != '[') {
+        throw JSONException("A JSONArray text must start with '['")
+    }
+    if (tokener.nextClean() == ']') {
+        return 0
+    }
+    tokener.back()
+
+    var count = 0
+    while (true) {
+        val value = tokener.nextValue()
+        if (value !is JSONObject) {
+            throw JSONException("Expected a JSON object in the events array")
+        }
+        action(value.toBaseEvent())
+        count++
+        when (tokener.nextClean()) {
+            ',' -> {
+                // tolerate a trailing comma, matching JSONArray's own tokenizer
+                if (tokener.nextClean() == ']') return count
+                tokener.back()
+            }
+
+            ']' -> return count
+            // nextClean() returns NUL at end of input, so this also covers a truncated array
+            else -> throw JSONException("Expected a ',' or ']' in the events array")
+        }
+    }
 }
 
 internal fun JSONArray.split(): Pair<List<JSONObject>, List<JSONObject>> {

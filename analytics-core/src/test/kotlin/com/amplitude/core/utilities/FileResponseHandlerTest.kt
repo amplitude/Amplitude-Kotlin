@@ -29,6 +29,7 @@ import org.json.JSONException
 import org.json.JSONObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -211,6 +212,30 @@ class FileResponseHandlerTest {
         verify(exactly = 1) {
             storage.removeFile("file_path")
         }
+    }
+
+    /**
+     * Events are visited one at a time, so a malformed tail is only discovered after the events
+     * before it have been handled. Those events did upload, so their callbacks still fire; the
+     * file is then dropped along with the callbacks for whatever could not be read.
+     */
+    @Test
+    fun `success with an unparseable payload drops the file and its callbacks`() {
+        val insertId = "00000000-0000-0000-0000-000000000001"
+        every { storage.getEventCallback(insertId) } returns null
+        every { storage.removeEventCallback(insertId) } returns Unit
+
+        assertThrows(JSONException::class.java) {
+            handler.handleSuccessResponse(
+                successResponse = SuccessResponse(),
+                events = "file_path",
+                eventsString = """[{"insert_id":"$insertId","event_type":"test1"},truncated""",
+            )
+        }
+
+        assertTrue(configCallBackEventTypes.contains("test1"))
+        verify(exactly = 1) { storage.removeFile("file_path") }
+        verify(exactly = 1) { storage.removeEventCallback(insertId) }
     }
 
     @Test

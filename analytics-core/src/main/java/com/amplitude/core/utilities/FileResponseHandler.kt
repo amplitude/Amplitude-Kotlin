@@ -52,8 +52,27 @@ public class FileResponseHandler
             if (!storage.removeFile(eventFilePath)) {
                 logger?.warn("Failed to remove uploaded event file: $eventFilePath")
             }
-            val eventsList = parseEvents(eventsString, eventFilePath).toEvents()
-            triggerEventsCallback(eventsList, HttpStatus.SUCCESS.statusCode, "Event sent success.")
+            try {
+                val eventCount =
+                    forEachEvent(eventsString) { event ->
+                        configuration.callback?.let {
+                            invokeCallback(it, event, HttpStatus.SUCCESS.statusCode, "Event sent success.")
+                        }
+                    }
+                diagnosticsClient?.recordEventsSent(eventCount)
+            } finally {
+                // Keep only the payload while waiting for storage, rather than a parsed event
+                // and coroutine for every callback. Registrations belong to the storage dispatcher.
+                scope.launch(storageDispatcher) {
+                    try {
+                        forEachEvent(eventsString) { event ->
+                            triggerStoredEventCallback(event, HttpStatus.SUCCESS.statusCode, "Event sent success.")
+                        }
+                    } catch (e: JSONException) {
+                        removeCallbackByInsertId(eventsString)
+                    }
+                }
+            }
         }
 
         override fun handleBadRequestResponse(
@@ -185,13 +204,24 @@ public class FileResponseHandler
             try {
                 rawEvents = JSONArray(eventsString)
             } catch (e: JSONException) {
-                scope.launch(storageDispatcher) {
-                    storage.removeFile(eventFilePath)
-                }
-                removeCallbackByInsertId(eventsString)
+                dropUnparseableFile(eventsString, eventFilePath)
                 throw e
             }
             return rawEvents
+        }
+
+        /**
+         * Discards a file whose contents cannot be parsed, along with any callbacks registered
+         * for the events it held.
+         */
+        private fun dropUnparseableFile(
+            eventsString: String,
+            eventFilePath: String,
+        ) {
+            scope.launch(storageDispatcher) {
+                storage.removeFile(eventFilePath)
+            }
+            removeCallbackByInsertId(eventsString)
         }
 
         private fun triggerEventsCallback(
@@ -203,18 +233,24 @@ public class FileResponseHandler
                 diagnosticsClient?.recordEventOutcome(events, status, message)
             }
             events.forEach { event ->
-                configuration.callback?.let {
-                    invokeCallback(it, event, status, message)
+                configuration.callback?.let { invokeCallback(it, event, status, message) }
+                scope.launch(storageDispatcher) {
+                    triggerStoredEventCallback(event, status, message)
                 }
-                event.insertId?.let { insertId ->
-                    scope.launch(storageDispatcher) {
-                        storage.getEventCallback(insertId)?.let {
-                            try {
-                                invokeCallback(it, event, status, message)
-                            } finally {
-                                storage.removeEventCallback(insertId)
-                            }
-                        }
+            }
+        }
+
+        private fun triggerStoredEventCallback(
+            event: BaseEvent,
+            status: Int,
+            message: String,
+        ) {
+            event.insertId?.let { insertId ->
+                storage.getEventCallback(insertId)?.let {
+                    try {
+                        invokeCallback(it, event, status, message)
+                    } finally {
+                        storage.removeEventCallback(insertId)
                     }
                 }
             }
