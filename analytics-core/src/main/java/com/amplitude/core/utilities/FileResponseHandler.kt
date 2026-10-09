@@ -234,7 +234,7 @@ public class FileResponseHandler
         }
 
         private fun removeCallbackByInsertId(eventsString: String) {
-            val regex = """"insert_id":"(.{36})",""".toRegex()
+            val regex = """"insert_id"\s*:\s*"([^"\\]{36})"""".toRegex()
             regex.findAll(eventsString).forEach {
                 scope.launch(storageDispatcher) {
                     storage.removeEventCallback(it.groupValues[1])
