@@ -468,7 +468,7 @@ internal class DiagnosticsClientImpl(
                             "X-ApiKey" to apiKey,
                             "X-Client-Sample-Rate" to sampleRate.toString(),
                         ),
-                    body = jsonString,
+                    body = listOf(jsonString),
                 )
             val response = httpClient.request(request)
             if (!response.isSuccessful) {

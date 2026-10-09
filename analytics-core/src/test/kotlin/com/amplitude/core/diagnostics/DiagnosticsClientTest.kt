@@ -25,6 +25,10 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.io.File
 
+/** The request body as one string; [HttpClient.Request.body] holds it as segments to be streamed. */
+private val HttpClient.Request.bodyText: String?
+    get() = body?.joinToString(separator = "")
+
 class DiagnosticsClientTest {
     @Test
     fun `flush uploads payload with tags counters histograms and events`() =
@@ -64,7 +68,7 @@ class DiagnosticsClientTest {
 
             verify(atLeast = 1) { httpClient.request(any()) }
 
-            val body = requestSlot.captured.body
+            val body = requestSlot.captured.bodyText
             assertNotNull(body)
             val json = JSONObject(body)
 
@@ -134,7 +138,7 @@ class DiagnosticsClientTest {
 
             verify(atLeast = 1) { httpClient.request(any()) }
 
-            val body = requestSlot.captured.body
+            val body = requestSlot.captured.bodyText
             assertNotNull(body)
             val json = JSONObject(body)
             val counters = json.getJSONObject("counters")
@@ -163,7 +167,7 @@ class DiagnosticsClientTest {
 
             verify(atLeast = 1) { httpClient.request(any()) }
 
-            val body = requestSlot.captured.body
+            val body = requestSlot.captured.bodyText
             assertNotNull(body)
             val json = JSONObject(body)
             val histograms = json.getJSONObject("histogram")
@@ -197,7 +201,7 @@ class DiagnosticsClientTest {
 
             verify(atLeast = 1) { httpClient.request(any()) }
 
-            val body = requestSlot.captured.body
+            val body = requestSlot.captured.bodyText
             assertNotNull(body)
             val json = JSONObject(body)
             val tags = json.getJSONObject("tags")
@@ -227,7 +231,7 @@ class DiagnosticsClientTest {
 
             // First flush should have data
             verify(atLeast = 1) { httpClient.request(any()) }
-            val firstBody = requestSlot.captured.body
+            val firstBody = requestSlot.captured.bodyText
             assertNotNull(firstBody)
             val firstJson = JSONObject(firstBody)
             assertTrue(firstJson.has("counters"))
@@ -239,7 +243,7 @@ class DiagnosticsClientTest {
             delay(200)
 
             // Second flush should only have new data, not the old
-            val secondBody = requestSlot.captured.body
+            val secondBody = requestSlot.captured.bodyText
             assertNotNull(secondBody)
             val secondJson = JSONObject(secondBody)
             val counters = secondJson.getJSONObject("counters")
@@ -323,7 +327,7 @@ class DiagnosticsClientTest {
 
             verify(atLeast = 1) { httpClient.request(any()) }
 
-            val body = requestSlot.captured.body
+            val body = requestSlot.captured.bodyText
             assertNotNull(body)
             val json = JSONObject(body)
             val events = json.getJSONArray("events")
@@ -351,7 +355,7 @@ class DiagnosticsClientTest {
 
             verify(atLeast = 1) { httpClient.request(any()) }
 
-            val body = requestSlot.captured.body
+            val body = requestSlot.captured.bodyText
             assertNotNull(body)
             val json = JSONObject(body)
             val events = json.getJSONArray("events")
@@ -441,7 +445,7 @@ class DiagnosticsClientTest {
             delay(200)
 
             // First flush should have both tag and counter
-            var body = requestSlot.captured.body
+            var body = requestSlot.captured.bodyText
             assertNotNull(body)
             var json = JSONObject(body)
             assertTrue(json.has("tags"))
@@ -454,7 +458,7 @@ class DiagnosticsClientTest {
 
             delay(200)
 
-            body = requestSlot.captured.body
+            body = requestSlot.captured.bodyText
             assertNotNull(body)
             json = JSONObject(body)
             // Tags should still be present

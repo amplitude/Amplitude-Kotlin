@@ -17,6 +17,7 @@ import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
 import org.json.JSONObject
 import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -25,6 +26,8 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import java.io.ByteArrayInputStream
 import java.util.concurrent.TimeUnit
 import java.util.zip.GZIPInputStream
@@ -385,7 +388,7 @@ class HttpClientTest {
             HttpClient.Request(
                 url = server.url("/api").toString(),
                 method = HttpClient.Request.Method.POST,
-                body = "{\"test\": \"data\"}",
+                body = listOf("{\"test\": \"data\"}"),
                 headers = mapOf("Content-Type" to "application/json"),
             )
         val response = httpClient.request(postRequest)
@@ -502,6 +505,71 @@ class HttpClientTest {
                 enableRequestBodyCompression = true,
             )
         assertTrue(customConfigOptIn.shouldCompressUploadBody())
+    }
+
+    @Test
+    fun `test body written in parts is identical to the joined body`() {
+        server.enqueue(MockResponse().setBody("{\"code\": \"success\"}"))
+
+        val config = Configuration(apiKey = apiKey, serverUrl = server.url("/").toString())
+        // multi-byte characters must survive being written on either side of a part boundary
+        val event = BaseEvent().apply { eventType = "test 世界 😀" }
+        val eventsString = JSONUtil.eventsToString(listOf(event))
+
+        HttpClient(config, silentLogger).upload(eventsString)
+
+        val body = runRequest()?.body?.readUtf8()
+        assertNotNull(body)
+        assertTrue(body!!.startsWith("{\"api_key\":\"$apiKey\""), body)
+        assertTrue(body.contains("\"events\":$eventsString"), body)
+        assertTrue(body.endsWith("}"), body)
+    }
+
+    @Test
+    fun `should send an uncompressed body when compression fails`() {
+        server.enqueue(MockResponse().setBody("{}"))
+        io.mockk.mockkObject(GzipUtils)
+        try {
+            io.mockk.every { GzipUtils.compress(any<Iterable<String>>()) } throws java.io.IOException("compression failed")
+            val config = Configuration(apiKey = apiKey, serverUrl = server.url("/").toString(), enableRequestBodyCompression = true)
+            HttpClient(config, silentLogger).upload("[{\"event_type\":\"世界😀\"}]")
+            val request = runRequest()!!
+            assertNull(request.getHeader("Content-Encoding"))
+            assertNull(request.getHeader("Transfer-Encoding"))
+            assertEquals(request.bodySize.toString(), request.getHeader("Content-Length"))
+            assertEquals("世界😀", JSONObject(request.body.readUtf8()).getJSONArray("events").getJSONObject(0).getString("event_type"))
+        } finally {
+            io.mockk.unmockkObject(GzipUtils)
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `should replay the upload body after a temporary redirect`(compressBody: Boolean) {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(307)
+                .setHeader("Location", server.url("/redirected")),
+        )
+        server.enqueue(MockResponse().setBody("{}"))
+        val config =
+            Configuration(
+                apiKey = apiKey,
+                serverUrl = server.url("/original").toString(),
+                enableRequestBodyCompression = compressBody,
+            )
+
+        val response = HttpClient(config, silentLogger).upload("[{\"event_type\":\"世界😀\"}]")
+
+        assertEquals(200, response.status.statusCode)
+        val originalRequest = runRequest()!!
+        val redirectedRequest = runRequest()!!
+        assertEquals("/original", originalRequest.path)
+        assertEquals("/redirected", redirectedRequest.path)
+        assertEquals("POST", redirectedRequest.method)
+        assertEquals(if (compressBody) "gzip" else null, redirectedRequest.getHeader("Content-Encoding"))
+        assertTrue(originalRequest.bodySize > 0)
+        assertArrayEquals(originalRequest.body.readByteArray(), redirectedRequest.body.readByteArray())
     }
 
     private fun runRequest(): RecordedRequest? {
