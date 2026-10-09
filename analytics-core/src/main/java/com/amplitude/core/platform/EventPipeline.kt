@@ -5,6 +5,7 @@ import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.Storage
 import com.amplitude.core.UploadRequestStateStorage
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.utilities.EventsFileStorage
 import com.amplitude.core.utilities.ExponentialBackoffRetryHandler
 import com.amplitude.core.utilities.http.BadRequestResponse
 import com.amplitude.core.utilities.http.HttpClient
@@ -22,6 +23,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 import java.io.FileNotFoundException
 import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.AtomicInteger
@@ -152,7 +154,23 @@ public class EventPipeline(
                         it.uploadRequestPending = false
                     }
                 }
-                val eventFiles = storage.readEventsContent()
+                val eventFiles =
+                    withContext(amplitude.storageIODispatcher) {
+                        storage.readEventsContent().also { files ->
+                            if (amplitude.configuration.enableDiagnostics && storage is EventsFileStorage) {
+                                var bytes = 0L
+                                files.forEach { path ->
+                                    try {
+                                        bytes += File(path as String).length()
+                                    } catch (e: SecurityException) {
+                                        amplitude.logger.warn("Could not measure event backlog: ${e.javaClass.simpleName}")
+                                    }
+                                }
+                                amplitude.diagnosticsClient.recordHistogram("analytics.storage.backlog.file_count", files.size.toDouble())
+                                amplitude.diagnosticsClient.recordHistogram("analytics.storage.backlog.bytes", bytes.toDouble())
+                            }
+                        }
+                    }
                 for (eventFile in eventFiles) {
                     val shouldStop =
                         runCatchingCancellable {

@@ -98,4 +98,26 @@ class GzipUtilsTest {
         // JSON with repeated structure should compress well
         assertTrue(compressed.size < jsonPayload.toByteArray().size)
     }
+
+    @Test
+    fun `compress of parts matches compress of the joined string`() {
+        val parts = listOf("{\"api_key\":\"key\",\"events\":", "[{\"event_type\":\"a\"}]", "}")
+
+        assertEquals(
+            GzipUtils.compress(parts.joinToString(separator = "")).toList(),
+            GzipUtils.compress(parts).toList(),
+        )
+    }
+
+    @Test
+    fun `compress of parts handles a multi-byte character split across parts`() {
+        // The encoder must preserve a surrogate pair even across a part boundary.
+        val parts = listOf("prefix \uD83D", "\uDE00 世界 suffix")
+        val compressed = GzipUtils.compress(parts)
+
+        val decompressed =
+            GZIPInputStream(ByteArrayInputStream(compressed)).bufferedReader().use { it.readText() }
+
+        assertEquals(parts.joinToString(separator = ""), decompressed)
+    }
 }

@@ -6,7 +6,9 @@ import com.amplitude.id.utilities.PropertiesFile
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
 import org.json.JSONArray
+import org.json.JSONObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -17,6 +19,9 @@ import java.io.File
 import kotlin.concurrent.thread
 
 private const val STORAGE_KEY = Configuration.DEFAULT_INSTANCE
+
+/** Enough flush cycles to show growth is unbounded rather than a one-off. */
+private const val READ_CYCLES = 10
 
 class EventsFileManagerTest {
     @TempDir lateinit var tempDir: File
@@ -118,6 +123,32 @@ class EventsFileManagerTest {
 
         assertEquals(eventFiles, expectedFiles)
     }
+
+    @Test
+    fun `should preserve ordering for nested splits large indices and collision suffixes`() {
+        eventsFileManager
+        val names = listOf("21", "2-2", "2-1-2", "2-1-1", "1-1234567890-123", "10000000000", "9")
+        names.forEach { File(tempDir, "$STORAGE_KEY-$it").createNewFile() }
+        File(tempDir, "$STORAGE_KEY-999.tmp").createNewFile()
+        File(tempDir, "other-1").createNewFile()
+        assertEquals(
+            listOf("1-1234567890-123", "2-1-1", "2-1-2", "2-2", "9", "21", "10000000000"),
+            eventsFileManager.read().map { File(it).name.removePrefix("$STORAGE_KEY-") },
+        )
+    }
+
+    @Test
+    fun `should preserve escaped unicode events across read chunks`() =
+        runTest {
+            val properties = org.json.JSONObject().put("event_type", "x".repeat(8191) + "世界😀\n\"escaped\"")
+            val original = properties.toString()
+            eventsFileManager.storeEvent(original)
+            eventsFileManager.storeEvent("not json")
+            eventsFileManager.storeEvent(original)
+            eventsFileManager.rollover()
+            val payload = eventsFileManager.getEventString(eventsFileManager.read().single())
+            assertEquals("[$original,$original]", payload)
+        }
 
     @Test
     fun `rollover should finish current non-empty temp file`() =
@@ -521,6 +552,89 @@ class EventsFileManagerTest {
                 eventsFileManager.matchesStorageFile("$STORAGE_KEY-0.tmp") { !it.endsWith(".tmp") },
             )
         }
+    }
+
+    @Nested
+    inner class GetEventStringSerialization {
+        @Test
+        fun `should return each event's original text verbatim`() =
+            runBlocking {
+                // key order and number formatting survive only if the event text is not re-serialized
+                val event = """{"zzz":1,"aaa":2,"nested":{"b":[1,2]},"big":10000000000000000000000}"""
+                writeEventFile(event)
+
+                val eventsString = eventsFileManager.getEventString(eventsFileManager.read().single())
+
+                assertEquals("[$event]", eventsString)
+            }
+
+        @Test
+        fun `should not emit a stray comma when the first event is malformed`() =
+            runBlocking {
+                writeEventFile("not-json", createEvent("test1"), createEvent("test2"))
+
+                val eventsString = eventsFileManager.getEventString(eventsFileManager.read().single())
+
+                assertEquals("[${createEvent("test1")},${createEvent("test2")}]", eventsString)
+                assertEquals(2, JSONArray(eventsString).length())
+            }
+
+        @Test
+        fun `should not emit a stray comma when a middle or trailing event is malformed`() =
+            runBlocking {
+                writeEventFile(createEvent("test1"), "not-json", createEvent("test2"), "also-not-json")
+
+                val eventsString = eventsFileManager.getEventString(eventsFileManager.read().single())
+
+                assertEquals("[${createEvent("test1")},${createEvent("test2")}]", eventsString)
+                assertEquals(2, JSONArray(eventsString).length())
+            }
+
+        private fun writeEventFile(vararg events: String) {
+            File(tempDir, "$STORAGE_KEY-0")
+                .writeText(events.joinToString(separator = "", postfix = "") { it + EventsFileManager.DELIMITER })
+        }
+    }
+
+    @Nested
+    inner class CorruptEventFile {
+        /**
+         * A file whose every event fails to parse yields an empty string, so
+         * [EventPipeline.upload] skips it before it can flush diagnostics or delete the file.
+         * Each re-read then appends the same raw event strings to [Diagnostics] again.
+         */
+        @Test
+        fun `should not re-add malformed events for a file read repeatedly`() =
+            runBlocking {
+                val corruptFile = File(tempDir, "$STORAGE_KEY-0")
+                corruptFile.writeText("not-json-1${EventsFileManager.DELIMITER}not-json-2${EventsFileManager.DELIMITER}")
+
+                val filePath = eventsFileManager.read().single()
+                repeat(READ_CYCLES) {
+                    assertEquals("", eventsFileManager.getEventString(filePath))
+                }
+
+                // The file yields nothing uploadable, so nothing ever clears the diagnostics.
+                val malformedEvents = malformedEventsIn(testDiagnostics.extractDiagnostics())
+                assertEquals(2, malformedEvents.length())
+            }
+
+        @Test
+        fun `should not retain a file that yields no parseable events`() =
+            runBlocking {
+                val corruptFile = File(tempDir, "$STORAGE_KEY-0")
+                corruptFile.writeText("not-json${EventsFileManager.DELIMITER}")
+
+                val filePath = eventsFileManager.read().single()
+                repeat(READ_CYCLES) {
+                    eventsFileManager.getEventString(filePath)
+                }
+
+                assertFalse(corruptFile.exists(), "corrupt file should not be re-read forever")
+            }
+
+        private fun malformedEventsIn(diagnostics: String?): JSONArray =
+            JSONObject(diagnostics ?: "{}").optJSONArray("malformed_events") ?: JSONArray()
     }
 
     private fun createEarlierVersionEventFiles() {

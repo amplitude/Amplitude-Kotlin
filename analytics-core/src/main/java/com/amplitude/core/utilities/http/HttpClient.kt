@@ -4,6 +4,7 @@ import com.amplitude.common.Logger
 import com.amplitude.core.Configuration
 import com.amplitude.core.utilities.GzipUtils
 import com.amplitude.core.utilities.http.HttpClient.Request.Method.POST
+import com.amplitude.core.utilities.writeUtf8
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStream
@@ -26,7 +27,7 @@ internal class HttpClient(
                 events,
                 configuration.minIdLength,
                 diagnostics,
-            ).getBodyStr()
+            ).bodyParts()
         val request = Request(url, POST, body = requestBody, compressBody = configuration.shouldCompressUploadBody())
         val httpResponse = request(request)
         return AnalyticsResponse.create(httpResponse.statusCode, httpResponse.body)
@@ -68,24 +69,33 @@ internal class HttpClient(
             }
 
             // Set request body if present
-            request.body?.let { body ->
+            request.body?.let { parts ->
                 connection.doOutput = true
-                val input =
+                // Compress before opening the output stream so a compression failure can still
+                // fall back to sending the body uncompressed on this attempt.
+                val compressed =
                     if (request.compressBody) {
                         try {
-                            GzipUtils.compress(body)
+                            GzipUtils.compress(parts)
                                 .also {
                                     connection.setRequestProperty("Content-Encoding", "gzip")
                                 }
                         } catch (e: Exception) {
                             logger.warn("Gzip compression failed, sending uncompressed: ${e.message}")
-                            body.toByteArray()
+                            null
                         }
                     } else {
-                        body.toByteArray()
+                        null
                     }
-                connection.outputStream.write(input, 0, input.size)
-                connection.outputStream.close()
+                connection.outputStream.use { output ->
+                    if (compressed != null) {
+                        output.write(compressed, 0, compressed.size)
+                    } else {
+                        // Write part by part; the joined body would be another full copy of the
+                        // event payload, which can approach 1MB.
+                        parts.writeUtf8(output)
+                    }
+                }
             }
 
             // Read response
@@ -140,7 +150,8 @@ internal class HttpClient(
         val url: String,
         val method: Method,
         val headers: Map<String, String> = emptyMap(),
-        val body: String? = null,
+        /** Body segments, written to the connection in order. Never joined into one string. */
+        val body: List<String>? = null,
         val compressBody: Boolean = false,
         val connectTimeoutMs: Int = DEFAULT_CONNECT_TIMEOUT_MS,
         val readTimeoutMs: Int = DEFAULT_READ_TIMEOUT_MS,

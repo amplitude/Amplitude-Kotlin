@@ -19,16 +19,20 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.json.JSONException
 import org.json.JSONObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
@@ -171,6 +175,39 @@ class FileResponseHandlerTest {
         }
 
     @Test
+    fun `should not schedule stored callbacks for events without insert IDs`() =
+        runTest {
+            val callbacks = mutableListOf<String>()
+            val parent = Job()
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val handler =
+                FileResponseHandler(
+                    storage,
+                    pipeline,
+                    Configuration(apiKey = "test", callback = { event, _, _ -> callbacks.add(event.eventType) }),
+                    CoroutineScope(parent + dispatcher),
+                    dispatcher,
+                    null,
+                )
+            try {
+                handler.handleBadRequestResponse(
+                    BadRequestResponse(JSONObject("""{"error":"Invalid API key"}""")),
+                    "file_path",
+                    """[{"event_type":"first"},{"event_type":"second"}]""",
+                )
+
+                assertEquals(listOf("first", "second"), callbacks)
+                // Only file deletion should be queued; neither event needs a callback task.
+                assertEquals(1, parent.children.count())
+                advanceUntilIdle()
+                verify(exactly = 0) { storage.getEventCallback(any()) }
+                verify(exactly = 1) { storage.removeFile("file_path") }
+            } finally {
+                parent.cancel()
+            }
+        }
+
+    @Test
     fun `success single event`() {
         val response = SuccessResponse()
 
@@ -211,6 +248,30 @@ class FileResponseHandlerTest {
         verify(exactly = 1) {
             storage.removeFile("file_path")
         }
+    }
+
+    /**
+     * Events are visited one at a time, so a malformed tail is only discovered after the events
+     * before it have been handled. Those events did upload, so their callbacks still fire; the
+     * file is then dropped along with the callbacks for whatever could not be read.
+     */
+    @Test
+    fun `success with an unparseable payload drops the file and its callbacks`() {
+        val insertId = "00000000-0000-0000-0000-000000000001"
+        every { storage.getEventCallback(insertId) } returns null
+        every { storage.removeEventCallback(insertId) } returns Unit
+
+        assertThrows(JSONException::class.java) {
+            handler.handleSuccessResponse(
+                successResponse = SuccessResponse(),
+                events = "file_path",
+                eventsString = """[{"insert_id":"$insertId","event_type":"test1"},truncated""",
+            )
+        }
+
+        assertTrue(configCallBackEventTypes.contains("test1"))
+        verify(exactly = 1) { storage.removeFile("file_path") }
+        verify(exactly = 1) { storage.removeEventCallback(insertId) }
     }
 
     @Test
