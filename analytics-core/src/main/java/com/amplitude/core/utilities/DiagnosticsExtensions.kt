@@ -21,7 +21,7 @@ internal fun DiagnosticsClient.recordEventOutcome(
     if (events.isEmpty()) return
 
     if (status in 200..299) {
-        increment(name = "analytics.events.sent", size = events.size.toLong())
+        recordEventsSent(events.size)
     } else {
         increment(name = "analytics.events.dropped", size = events.size.toLong())
         recordEvent(
@@ -35,4 +35,11 @@ internal fun DiagnosticsClient.recordEventOutcome(
                 ),
         )
     }
+}
+
+@OptIn(RestrictedAmplitudeFeature::class)
+internal fun DiagnosticsClient.recordEventsSent(count: Int) {
+    if (count <= 0) return
+
+    increment(name = "analytics.events.sent", size = count.toLong())
 }

@@ -105,22 +105,23 @@ public class EventsFileManager(
         val fileList = listStorageFiles { !it.endsWith(".tmp") && !it.endsWith(".properties") }
 
         return fileList
-            .sortedBy { file ->
+            .map { file ->
                 val name = file.nameWithoutExtension.replace("$storageKey-", "")
 
                 // we're padding file name with 0s to ensure they are sorted in the correct order,
                 // even for file names with varying lengths and split files (e.g. "1-1", "2",  "21")
                 val dashIndex = name.indexOf('-')
-                if (dashIndex >= 0) {
-                    name.substring(0, dashIndex)
-                        .padStart(FILE_NAME_DESIRED_PADDED_LENGTH, '0') + name.substring(dashIndex)
-                } else {
-                    name.padStart(FILE_NAME_DESIRED_PADDED_LENGTH, '0')
-                }
+                val sortKey =
+                    if (dashIndex >= 0) {
+                        name.substring(0, dashIndex)
+                            .padStart(FILE_NAME_DESIRED_PADDED_LENGTH, '0') + name.substring(dashIndex)
+                    } else {
+                        name.padStart(FILE_NAME_DESIRED_PADDED_LENGTH, '0')
+                    }
+                sortKey to file.absolutePath
             }
-            .map {
-                it.absolutePath
-            }
+            .sortedBy { it.first }
+            .map { it.second }
     }
 
     public fun remove(filePath: String): Boolean {
@@ -171,10 +172,11 @@ public class EventsFileManager(
     /**
      * Reads an event file and returns its contents as a JSON array string.
      *
-     * Uses chunk-based streaming instead of loading the entire file into memory at once.
-     * Event files can be up to [MAX_FILE_SIZE] (~975KB), and loading the full content +
-     * split + JSONArray.toString() would require ~4-6MB of peak heap, causing OOM on
-     * memory-constrained devices.
+     * Reads in chunks and validates one event at a time, never holding more than a single
+     * parsed event. Event files can be up to [MAX_FILE_SIZE] (~975KB); loading the whole file
+     * and materializing every event as a [JSONObject] costs roughly 7x the file's text
+     * (measured ~6.9MB for a 975KB file), which was the largest allocation in the upload path
+     * and adds pressure on memory-constrained devices.
      *
      * File format: events are separated by a null character ([DELIMITER]).
      * Legacy files (pre-delimiter format) are detected and handled via [handleLegacyFormat].
@@ -194,53 +196,77 @@ public class EventsFileManager(
             }
 
             // Read in chunks to avoid loading the entire file at once
-            file.bufferedReader().use { reader ->
-                val events = JSONArray()
-                val buffer = StringBuilder()
-                val chunk = CharArray(8192) // 8 KB chunk size
-                var bytesRead: Int
-                var hasDelimiter = false
+            val content =
+                file.bufferedReader().use { reader ->
+                    val events = StringBuilder("[")
+                    val buffer = StringBuilder()
+                    val chunk = CharArray(8192) // 8 KB chunk size
+                    var bytesRead: Int
+                    var hasDelimiter = false
 
-                while (reader.read(chunk).also { bytesRead = it } != -1) {
-                    for (i in 0 until bytesRead) {
-                        if (chunk[i] == DELIMITER_CHAR) {
-                            // Delimiter found - parse the buffered event and reset
-                            hasDelimiter = true
-                            if (buffer.isNotEmpty()) {
-                                tryParseEvent(buffer.toString(), events)
-                                buffer.clear()
+                    while (reader.read(chunk).also { bytesRead = it } != -1) {
+                        for (i in 0 until bytesRead) {
+                            if (chunk[i] == DELIMITER_CHAR) {
+                                // Delimiter found - validate the buffered event and reset
+                                hasDelimiter = true
+                                if (buffer.isNotEmpty()) {
+                                    appendEventIfParseable(buffer.toString(), events)
+                                    buffer.clear()
+                                }
+                            } else {
+                                buffer.append(chunk[i])
                             }
-                        } else {
-                            buffer.append(chunk[i])
                         }
                     }
-                }
 
-                // After reading the full file, handle any remaining content in the buffer
-                if (buffer.isNotEmpty()) {
-                    val remaining = buffer.toString()
-                    if (!hasDelimiter) {
-                        // No delimiters found anywhere - this is a legacy format file
-                        return@use handleLegacyFormat(remaining, filePath)
+                    // After reading the full file, handle any remaining content in the buffer
+                    if (buffer.isNotEmpty()) {
+                        val remaining = buffer.toString()
+                        if (!hasDelimiter) {
+                            // No delimiters found anywhere - this is a legacy format file
+                            return@use handleLegacyFormat(remaining, filePath)
+                        }
+                        // Content after the last delimiter (unexpected but handled gracefully)
+                        appendEventIfParseable(remaining, events)
                     }
-                    // Content after the last delimiter (unexpected but handled gracefully)
-                    tryParseEvent(remaining, events)
+
+                    // length > 1 means at least one event was appended after the opening bracket
+                    if (events.length > 1) events.append(']').toString() else ""
                 }
 
-                return@use if (events.length() > 0) events.toString() else ""
+            if (content.isEmpty()) {
+                // Nothing here can ever be uploaded, so the caller skips this file without
+                // cleaning it up. Drop it now — otherwise every flush re-parses it and re-reports
+                // each unparseable event to diagnostics, which nothing clears until an upload
+                // succeeds.
+                logger.debug("No parseable events in $filePath, dropping file.")
+                remove(filePath)
             }
+            return@withLock content
         }
 
-    private fun tryParseEvent(
+    /**
+     * Appends [eventString] to [events] if it is valid JSON, reporting it as malformed if not.
+     *
+     * The parsed [JSONObject] is discarded immediately — it exists only to validate. The event's
+     * own text is already the compact JSON we want to upload, so re-serializing it would just
+     * cost another copy of every event in the file.
+     */
+    private fun appendEventIfParseable(
         eventString: String,
-        events: JSONArray,
+        events: StringBuilder,
     ) {
         try {
-            events.put(JSONObject(eventString))
+            JSONObject(eventString)
         } catch (e: JSONException) {
             diagnostics.addMalformedEvent(eventString)
             logger.error("Failed to parse event: $eventString, error: $e")
+            return
         }
+        if (events.length > 1) {
+            events.append(',')
+        }
+        events.append(eventString)
     }
 
     /**
