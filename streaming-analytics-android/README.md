@@ -38,11 +38,11 @@ import com.amplitude.core.AmplitudePreview
 amplitude.trackPlayer(exoPlayer)
 ```
 
-Set content identity on the player's `MediaItem`. Streaming events report `mediaId` as `content_id`, which is the primary key for joining playback to a catalog. A blank media ID is omitted; the SDK never substitutes or captures the playback URI.
+Set content identity on the player's `MediaItem`. Streaming events report `mediaId` as `[Streaming] Content ID`, which is the primary key for joining playback to a catalog. A blank media ID is omitted; the SDK never substitutes or captures the playback URI.
 
 Also mapped:
 
-- `MediaMetadata.title` (or `displayTitle`) to `title`
+- `MediaMetadata.title` (or `displayTitle`) to `[Streaming] Title`
 - JSON-safe primitives from `MediaMetadata.extras` (`String`, numbers, booleans) onto the event
 
 ```kotlin
@@ -65,7 +65,7 @@ exoPlayer.setMediaItem(mediaItem)
 amplitude.trackPlayer(exoPlayer)
 ```
 
-Opaque values such as parcelables and nested bundles are ignored. URIs, DRM configuration, and `MediaItem.localConfiguration.tag` are not captured. `delivery_mode` is inferred from whether the player reports live content.
+Opaque values such as parcelables and nested bundles are ignored. URIs, DRM configuration, and `MediaItem.localConfiguration.tag` are not captured. `[Streaming] Delivery Mode` is inferred from whether the player reports live content.
 
 The SDK holds the player with a `WeakReference`. Releasing ExoPlayer is enough to avoid a leak. Call `untrackPlayer` only when you want a terminal stream stop immediately; it is optional.
 
@@ -78,26 +78,26 @@ From Java, use `AmplitudeStreamingAnalytics.trackPlayer` and `AmplitudeStreaming
 
 ## Event taxonomy
 
-All event names are prefixed with `[Amplitude]`. Durations and positions are **seconds**.
+Event names and properties are prefixed with `[Streaming]`. Durations and positions are **seconds** with millisecond precision (`0.001` is one millisecond).
 
 ### Content
 
 | Event | When |
 | --- | --- |
-| `[Amplitude] Stream Started` | Content starts playing |
-| `[Amplitude] Stream Stopped` | Content stops or is interrupted |
+| `[Streaming] Stream Started` | Content starts playing |
+| `[Streaming] Stream Stopped` | Content stops or is interrupted |
 
-`Stream Stopped` includes `stop_reason`:
+`Stream Stopped` includes `[Streaming] Stop Reason`:
 
-| `stop_reason` | When |
+| `[Streaming] Stop Reason` | When |
 | --- | --- |
 | `paused` | User or app pause |
 | `ended` | Playback reached the end, or Media3 auto/repeat item transition |
-| `error` | Player error (`error_message` when available) |
+| `error` | Player error (`[Streaming] Error Message` when available) |
 | `content_changed` | Media item changed without completing |
 | `timeout` | Heartbeat while still playing (delayed event) |
 | `untracked` | `untrackPlayer`, Amplitude teardown, or the player was collected |
 
-Shared content properties: `stream_session_id`, `play_id`, `content_id`, `title`, `media_type` (`video` or `audio`), `delivery_mode`, `duration`, `start_time`, `position`, `play_time`, `percent_completed` (stopped).
+Shared content properties: `[Streaming] Stream Session ID`, `[Streaming] Play ID`, `[Streaming] Content ID`, `[Streaming] Title`, `[Streaming] Media Type` (`video` or `audio`), `[Streaming] Delivery Mode`, `[Streaming] Duration Sec`, `[Streaming] Start Position Sec`, `[Streaming] Position Sec`, `[Streaming] Play Time Sec`, `[Streaming] Play Time Total Sec`, `[Streaming] Percent Completed` (stopped).
 
-`play_time` is seconds of playhead movement while playing (pauses, seeks, and buffering do not count). It is cumulative per `stream_session_id`; the latest Stream Stopped holds the session total. Seeking and buffering do not emit Stream Stopped.
+`[Streaming] Play Time Sec` is seconds of playhead movement while playing for that `[Streaming] Play ID`, with millisecond precision (pauses, seeks, and buffering do not count). A pause starts a new play at zero. `[Streaming] Play Time Total Sec` is that same measure summed across the `[Streaming] Stream Session ID`; the latest Stream Stopped holds the session total. Seeking and buffering do not emit Stream Stopped.

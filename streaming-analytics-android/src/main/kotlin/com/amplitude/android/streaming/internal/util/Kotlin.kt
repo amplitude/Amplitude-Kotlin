@@ -1,6 +1,7 @@
 package com.amplitude.android.streaming.internal.util
 
 import kotlin.coroutines.cancellation.CancellationException
+import kotlin.math.round
 
 internal fun Map<String, Any?>.deepCopy(): MutableMap<String, Any?> {
     val copy = LinkedHashMap<String, Any?>(size)
@@ -23,7 +24,10 @@ private fun Any?.deepCopyValue(): Any? =
         else -> this
     }
 
-internal fun Long.millisToSeconds(): Double = this / 1_000.0
+/**
+ * Seconds with millisecond precision. One millisecond is `0.001`.
+ */
+internal fun Long.millisToSeconds(): Double = round(toDouble()) / 1_000.0
 
 /**
  * Like [runCatching], but rethrows [CancellationException] so coroutine cancellation is not

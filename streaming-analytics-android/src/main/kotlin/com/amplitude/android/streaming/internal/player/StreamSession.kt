@@ -18,8 +18,8 @@ internal class StreamSession(
     /**
      * Play time already accrued by earlier plays of the same stream session.
      *
-     * `play_time` is cumulative per `stream_session_id`. A pause starts a new play but keeps
-     * counting from the total so far. Seeks and buffering stay on the same play.
+     * `[Streaming] Play Time Sec` counts only this play. `[Streaming] Play Time Total Sec` adds
+     * this play to [playTimeBeforeMillis].
      */
     private val playTimeBeforeMillis: Long = 0L,
 ) {
@@ -72,8 +72,11 @@ internal class StreamSession(
     @Synchronized
     fun durationMillis(): Long {
         if (frozen) return frozenDurationMillis
-        return playTimeBeforeMillis + playTimeMillis
+        return playTimeMillis
     }
+
+    @Synchronized
+    fun totalDurationMillis(): Long = playTimeBeforeMillis + durationMillis()
 
     @Synchronized
     fun updateSnapshot(snapshot: PlayerMediaSnapshot) {

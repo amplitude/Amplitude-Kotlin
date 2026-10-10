@@ -398,10 +398,10 @@ class UploadPipelineTest {
             events =
                 listOf(
                     DelayedEvent(
-                        eventType = "[Amplitude] Stream Stopped",
+                        eventType = "[Streaming] Stream Stopped",
                         kind = DelayedEvent.Kind.DELAYED,
                         timestamp = 1L,
-                        eventProperties = mutableMapOf("stream_session_id" to id),
+                        eventProperties = mutableMapOf("[Streaming] Stream Session ID" to id),
                     ).toEntity(),
                 ),
             queueKey = "queue-$id",
