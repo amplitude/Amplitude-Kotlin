@@ -19,130 +19,129 @@ import org.json.JSONArray
 import java.io.File
 
 @OptIn(RestrictedAmplitudeFeature::class)
-public class FileStorage
-    internal constructor(
+public class FileStorage internal constructor(
+    storageKey: String,
+    private val logger: Logger,
+    private val prefix: String?,
+    diagnostics: Diagnostics,
+    private val diagnosticsClientProvider: DiagnosticsClientProvider? = null,
+) : Storage, EventsFileStorage {
+    public constructor(
         storageKey: String,
-        private val logger: Logger,
-        private val prefix: String?,
+        logger: Logger,
+        prefix: String?,
         diagnostics: Diagnostics,
-        private val diagnosticsClientProvider: DiagnosticsClientProvider? = null,
-    ) : Storage, EventsFileStorage {
-        public constructor(
-            storageKey: String,
-            logger: Logger,
-            prefix: String?,
-            diagnostics: Diagnostics,
-        ) : this(storageKey, logger, prefix, diagnostics, null)
+    ) : this(storageKey, logger, prefix, diagnostics, null)
 
-        public companion object {
-            public const val STORAGE_PREFIX: String = "amplitude-kotlin"
-        }
+    public companion object {
+        public const val STORAGE_PREFIX: String = "amplitude-kotlin"
+    }
 
-        private val storageDirectory = File("/tmp/${getPrefix()}/$storageKey")
-        private val storageDirectoryEvents = File(storageDirectory, "events")
+    private val storageDirectory by lazy { File("/tmp/${getPrefix()}/$storageKey") }
+    private val storageDirectoryEvents by lazy { File(storageDirectory, "events") }
 
-        private val propertiesFile =
-            PropertiesFile(
-                storageDirectory,
-                "${getPrefix()}-$storageKey",
-                null,
-            )
-        private val eventsFile =
-            EventsFileManager(
-                storageDirectoryEvents,
-                storageKey,
-                propertiesFile,
-                logger,
-                diagnostics,
-            )
-        private val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
+    private val propertiesFile by lazy {
+        PropertiesFile(
+            storageDirectory,
+            "${getPrefix()}-$storageKey",
+            null,
+        ).apply { load() }
+    }
 
-        init {
-            propertiesFile.load()
-        }
+    private val eventsFile by lazy {
+        EventsFileManager(
+            storageDirectoryEvents,
+            storageKey,
+            propertiesFile,
+            logger,
+            diagnostics,
+        )
+    }
 
-        override suspend fun writeEvent(event: BaseEvent) {
-            eventsFile.storeEvent(JSONUtil.eventToString(event))
-            event.callback?.let { callback ->
-                event.insertId?.let {
-                    eventCallbacksMap.put(it, callback)
-                }
+    private val eventCallbacksMap = mutableMapOf<String, EventCallBack>()
+
+    override suspend fun writeEvent(event: BaseEvent) {
+        eventsFile.storeEvent(JSONUtil.eventToString(event))
+        event.callback?.let { callback ->
+            event.insertId?.let {
+                eventCallbacksMap.put(it, callback)
             }
         }
-
-        override suspend fun write(
-            key: Storage.Constants,
-            value: String,
-        ) {
-            propertiesFile.putString(key.rawVal, value)
-        }
-
-        override suspend fun remove(key: Storage.Constants) {
-            propertiesFile.remove(key.rawVal)
-        }
-
-        override suspend fun rollover() {
-            eventsFile.rollover()
-        }
-
-        override fun read(key: Storage.Constants): String? {
-            return propertiesFile.getString(key.rawVal, null)
-        }
-
-        override fun readEventsContent(): List<Any> {
-            // return List<String> list of file paths
-            return eventsFile.read()
-        }
-
-        override fun releaseFile(filePath: String) {
-            eventsFile.release(filePath)
-        }
-
-        override suspend fun getEventsString(filePath: Any): String {
-            // content is filePath String
-            return eventsFile.getEventString(filePath as String)
-        }
-
-        override fun getResponseHandler(
-            eventPipeline: EventPipeline,
-            configuration: Configuration,
-            scope: CoroutineScope,
-            storageDispatcher: CoroutineDispatcher,
-        ): ResponseHandler {
-            return FileResponseHandler(
-                this,
-                eventPipeline,
-                configuration,
-                scope,
-                storageDispatcher,
-                logger,
-                diagnosticsClientProvider?.get(),
-            )
-        }
-
-        override fun removeFile(filePath: String): Boolean {
-            return eventsFile.remove(filePath)
-        }
-
-        override fun getEventCallback(insertId: String): EventCallBack? {
-            return eventCallbacksMap.getOrDefault(insertId, null)
-        }
-
-        override fun removeEventCallback(insertId: String) {
-            eventCallbacksMap.remove(insertId)
-        }
-
-        override fun splitEventFile(
-            filePath: String,
-            events: JSONArray,
-        ) {
-            eventsFile.splitFile(filePath, events)
-        }
-
-        private fun getPrefix(): String {
-            return prefix ?: STORAGE_PREFIX
-        }
     }
+
+    override suspend fun write(
+        key: Storage.Constants,
+        value: String,
+    ) {
+        propertiesFile.putString(key.rawVal, value)
+    }
+
+    override suspend fun remove(key: Storage.Constants) {
+        propertiesFile.remove(key.rawVal)
+    }
+
+    override suspend fun rollover() {
+        eventsFile.rollover()
+    }
+
+    override fun read(key: Storage.Constants): String? {
+        return propertiesFile.getString(key.rawVal, null)
+    }
+
+    override fun readEventsContent(): List<Any> {
+        // return List<String> list of file paths
+        return eventsFile.read()
+    }
+
+    override fun releaseFile(filePath: String) {
+        eventsFile.release(filePath)
+    }
+
+    override suspend fun getEventsString(filePath: Any): String {
+        // content is filePath String
+        return eventsFile.getEventString(filePath as String)
+    }
+
+    override fun getResponseHandler(
+        eventPipeline: EventPipeline,
+        configuration: Configuration,
+        scope: CoroutineScope,
+        storageDispatcher: CoroutineDispatcher,
+    ): ResponseHandler {
+        return FileResponseHandler(
+            this,
+            eventPipeline,
+            configuration,
+            scope,
+            storageDispatcher,
+            logger,
+            diagnosticsClientProvider?.get(),
+        )
+    }
+
+    override fun removeFile(filePath: String): Boolean {
+        return eventsFile.remove(filePath)
+    }
+
+    override fun getEventCallback(insertId: String): EventCallBack? {
+        return eventCallbacksMap[insertId]
+    }
+
+    override fun removeEventCallback(insertId: String) {
+        eventCallbacksMap.remove(insertId)
+    }
+
+    override fun splitEventFile(
+        filePath: String,
+        events: JSONArray,
+    ) {
+        eventsFile.splitFile(filePath, events)
+    }
+
+    private fun getPrefix(): String {
+        return prefix ?: STORAGE_PREFIX
+    }
+}
 
 @OptIn(RestrictedAmplitudeFeature::class)
 @Deprecated("Not intended for public use. Will be internal in a future release.")
