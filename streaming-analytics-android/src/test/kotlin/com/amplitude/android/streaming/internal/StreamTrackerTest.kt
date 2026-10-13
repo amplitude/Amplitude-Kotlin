@@ -75,27 +75,27 @@ class StreamTrackerTest {
 
             assertEquals(1, events.size)
             val event = events.first() as DelayedEvent
-            assertEquals("[Amplitude] Stream Started", event.eventType)
+            assertEquals("[Streaming] Stream Started", event.eventType)
             assertEquals(DelayedEvent.Kind.INSTANT, event.kind)
             assertEquals(1_000L, event.timestamp)
             assertEquals("insert-start-1", event.insertId)
 
             val props = event.eventProperties!!
-            assertEquals("stream-1", props["stream_session_id"])
-            assertEquals("play-1", props["play_id"])
-            assertEquals("video", props["media_type"])
-            assertEquals("custom-id", props["content_id"])
-            assertEquals("Custom Title", props["title"])
-            assertEquals("on_demand", props["delivery_mode"])
-            assertEquals(15.0, props["start_time"])
-            assertEquals(15.0, props["position"])
-            assertEquals(60.0, props["duration"])
-            assertFalse(props.containsKey("is_in_picture_in_picture"))
-            assertFalse(props.containsKey("is_in_background"))
+            assertEquals("stream-1", props["[Streaming] Stream Session ID"])
+            assertEquals("play-1", props["[Streaming] Play ID"])
+            assertEquals("video", props["[Streaming] Media Type"])
+            assertEquals("custom-id", props["[Streaming] Content ID"])
+            assertEquals("Custom Title", props["[Streaming] Title"])
+            assertEquals("on_demand", props["[Streaming] Delivery Mode"])
+            assertEquals(15.0, props["[Streaming] Start Position Sec"])
+            assertEquals(15.0, props["[Streaming] Position Sec"])
+            assertEquals(60.0, props["[Streaming] Duration Sec"])
+            assertFalse(props.containsKey("[Streaming] Is In Picture In Picture"))
+            assertFalse(props.containsKey("[Streaming] Is In Background"))
             assertEquals("news", props["channel"])
-            assertFalse(props.containsKey("start_position"))
-            assertFalse(props.containsKey("play_time"))
-            assertFalse(props.containsKey("stop_reason"))
+            assertFalse(props.containsKey("[Streaming] Play Time Sec"))
+            assertFalse(props.containsKey("[Streaming] Play Time Total Sec"))
+            assertFalse(props.containsKey("[Streaming] Stop Reason"))
         }
 
         @Test
@@ -111,7 +111,7 @@ class StreamTrackerTest {
                 insertId = "insert-blank-id",
             )
 
-            assertFalse(events.first().eventProperties!!.containsKey("content_id"))
+            assertFalse(events.first().eventProperties!!.containsKey("[Streaming] Content ID"))
         }
 
         @Test
@@ -124,6 +124,7 @@ class StreamTrackerTest {
                 playId = "play-1",
                 startTimeMillis = 10_000L,
                 playTimeMillis = 5_000L,
+                playTimeTotalMillis = 12_000L,
                 timestamp = 6_000L,
                 insertId = "insert-stop-1",
                 stopReason = StopReason.PAUSED,
@@ -131,21 +132,22 @@ class StreamTrackerTest {
 
             assertEquals(1, events.size)
             val event = events.first() as DelayedEvent
-            assertEquals("[Amplitude] Stream Stopped", event.eventType)
+            assertEquals("[Streaming] Stream Stopped", event.eventType)
             assertEquals(DelayedEvent.Kind.INSTANT, event.kind)
             assertEquals(6_000L, event.timestamp)
             assertEquals("insert-stop-1", event.insertId)
 
             val props = event.eventProperties!!
-            assertEquals("stream-1", props["stream_session_id"])
-            assertEquals("play-1", props["play_id"])
-            assertEquals("video", props["media_type"])
-            assertEquals(15.0, props["position"])
-            assertEquals(10.0, props["start_time"])
-            assertEquals(5.0, props["play_time"])
-            assertEquals("paused", props["stop_reason"])
-            assertEquals(25.0, props["percent_completed"])
-            assertFalse(props.containsKey("current_time"))
+            assertEquals("stream-1", props["[Streaming] Stream Session ID"])
+            assertEquals("play-1", props["[Streaming] Play ID"])
+            assertEquals("video", props["[Streaming] Media Type"])
+            assertEquals(15.0, props["[Streaming] Position Sec"])
+            assertEquals(10.0, props["[Streaming] Start Position Sec"])
+            assertEquals(5.0, props["[Streaming] Play Time Sec"])
+            assertEquals(12.0, props["[Streaming] Play Time Total Sec"])
+            assertEquals("paused", props["[Streaming] Stop Reason"])
+            assertEquals(25.0, props["[Streaming] Percent Completed"])
+            assertFalse(props.containsKey("[Streaming] Current Time"))
         }
 
         @Test
@@ -163,7 +165,7 @@ class StreamTrackerTest {
                 stopReason = StopReason.TIMEOUT,
             )
             assertEquals(DelayedEvent.Kind.DELAYED, (events.last() as DelayedEvent).kind)
-            assertEquals("timeout", events.last().eventProperties?.get("stop_reason"))
+            assertEquals("timeout", events.last().eventProperties?.get("[Streaming] Stop Reason"))
 
             val instantReasons =
                 listOf(
@@ -188,12 +190,12 @@ class StreamTrackerTest {
                     stopReason = reason,
                 )
                 assertEquals(DelayedEvent.Kind.INSTANT, (events.last() as DelayedEvent).kind)
-                assertEquals(reason.value, events.last().eventProperties?.get("stop_reason"))
+                assertEquals(reason.value, events.last().eventProperties?.get("[Streaming] Stop Reason"))
             }
         }
 
         @Test
-        fun `audio streams use media_type audio and on_demand delivery_mode`() {
+        fun `audio streams use media type audio and on-demand delivery mode`() {
             tracker.trackStreamStarted(
                 options = PlayerContent(),
                 snapshot = snapshot,
@@ -217,19 +219,19 @@ class StreamTrackerTest {
             )
 
             assertEquals(2, events.size)
-            assertEquals("[Amplitude] Stream Started", events[0].eventType)
-            assertEquals("audio", events[0].eventProperties?.get("media_type"))
-            assertEquals("on_demand", events[0].eventProperties?.get("delivery_mode"))
+            assertEquals("[Streaming] Stream Started", events[0].eventType)
+            assertEquals("audio", events[0].eventProperties?.get("[Streaming] Media Type"))
+            assertEquals("on_demand", events[0].eventProperties?.get("[Streaming] Delivery Mode"))
             assertEquals("audio-start", events[0].insertId)
 
-            assertEquals("[Amplitude] Stream Stopped", events[1].eventType)
-            assertEquals("audio", events[1].eventProperties?.get("media_type"))
-            assertEquals("on_demand", events[1].eventProperties?.get("delivery_mode"))
+            assertEquals("[Streaming] Stream Stopped", events[1].eventType)
+            assertEquals("audio", events[1].eventProperties?.get("[Streaming] Media Type"))
+            assertEquals("on_demand", events[1].eventProperties?.get("[Streaming] Delivery Mode"))
             assertEquals("audio-stop", events[1].insertId)
         }
 
         @Test
-        fun `live stream omits duration and percent_completed`() {
+        fun `live stream omits duration and percent completed`() {
             val liveSnapshot = snapshot.copy(isLive = true)
             tracker.trackStreamStopped(
                 options = PlayerContent(),
@@ -244,13 +246,13 @@ class StreamTrackerTest {
             )
 
             val props = events.first().eventProperties!!
-            assertEquals("live", props["delivery_mode"])
-            assertFalse(props.containsKey("duration"))
-            assertFalse(props.containsKey("percent_completed"))
+            assertEquals("live", props["[Streaming] Delivery Mode"])
+            assertFalse(props.containsKey("[Streaming] Duration Sec"))
+            assertFalse(props.containsKey("[Streaming] Percent Completed"))
         }
 
         @Test
-        fun `unknown duration omits duration and percent_completed`() {
+        fun `unknown duration omits duration and percent completed`() {
             val unknownDurationSnapshot = snapshot.copy(durationMillis = C.TIME_UNSET)
             tracker.trackStreamStopped(
                 options = PlayerContent(),
@@ -265,12 +267,12 @@ class StreamTrackerTest {
             )
 
             val props = events.first().eventProperties!!
-            assertFalse(props.containsKey("duration"))
-            assertFalse(props.containsKey("percent_completed"))
+            assertFalse(props.containsKey("[Streaming] Duration Sec"))
+            assertFalse(props.containsKey("[Streaming] Percent Completed"))
         }
 
         @Test
-        fun `zero duration emits duration and zero percent_completed`() {
+        fun `zero duration emits duration and zero percent completed`() {
             val zeroDurationSnapshot = snapshot.copy(durationMillis = 0L)
             tracker.trackStreamStopped(
                 options = PlayerContent(),
@@ -286,8 +288,31 @@ class StreamTrackerTest {
             )
 
             val props = events.first().eventProperties!!
-            assertEquals(0.0, props["duration"])
-            assertEquals(0.0, props["percent_completed"])
+            assertEquals(0.0, props["[Streaming] Duration Sec"])
+            assertEquals(0.0, props["[Streaming] Percent Completed"])
+        }
+
+        @Test
+        fun `times are seconds rounded to millisecond precision`() {
+            tracker.trackStreamStopped(
+                options = PlayerContent(),
+                snapshot = snapshot.copy(positionMillis = 1_501L, durationMillis = 2_500L),
+                mediaType = MediaType.VIDEO,
+                streamSessionId = "stream-precision",
+                playId = "play-precision",
+                startTimeMillis = 1L,
+                playTimeMillis = 1_501L,
+                timestamp = 5_000L,
+                insertId = "stop-precision",
+                stopReason = StopReason.ENDED,
+            )
+
+            val props = events.first().eventProperties!!
+            assertEquals(0.001, props["[Streaming] Start Position Sec"])
+            assertEquals(1.501, props["[Streaming] Position Sec"])
+            assertEquals(2.5, props["[Streaming] Duration Sec"])
+            assertEquals(1.501, props["[Streaming] Play Time Sec"])
+            assertEquals(1.501, props["[Streaming] Play Time Total Sec"])
         }
     }
 
@@ -358,14 +383,14 @@ class StreamTrackerTest {
 
             assertEquals(1, events.size)
             val event = events.first() as DelayedEvent
-            assertEquals("[Amplitude] Ad Started", event.eventType)
+            assertEquals("[Streaming] Ad Started", event.eventType)
             assertEquals(DelayedEvent.Kind.INSTANT, event.kind)
             val props = event.eventProperties!!
-            assertEquals("video-789:0:0:1", props["ad_id"])
-            assertEquals("video-789", props["content_id"])
-            assertEquals("stream-ad-1", props["stream_session_id"])
-            assertEquals(45.0, props["ad_position"])
-            assertEquals(30.0, props["ad_duration"])
+            assertEquals("video-789:0:0:1", props["[Streaming] Ad ID"])
+            assertEquals("video-789", props["[Streaming] Content ID"])
+            assertEquals("stream-ad-1", props["[Streaming] Stream Session ID"])
+            assertEquals(45.0, props["[Streaming] Ad Position Sec"])
+            assertEquals(30.0, props["[Streaming] Ad Duration Sec"])
             assertEquals("summer", props["ad_campaign"])
         }
 
@@ -391,11 +416,11 @@ class StreamTrackerTest {
 
             val event = events.first() as DelayedEvent
             val props = event.eventProperties!!
-            assertEquals("[Amplitude] Ad Stopped", event.eventType)
+            assertEquals("[Streaming] Ad Stopped", event.eventType)
             assertEquals(DelayedEvent.Kind.INSTANT, event.kind)
-            assertEquals(30.0, props["ad_play_time"])
-            assertEquals("ended", props["ad_completion_status"])
-            assertEquals(100.0, props["ad_percent_completed"])
+            assertEquals(30.0, props["[Streaming] Ad Play Time Sec"])
+            assertEquals("ended", props["[Streaming] Ad Completion Status"])
+            assertEquals(100.0, props["[Streaming] Ad Percent Completed"])
         }
 
         @Test
@@ -411,8 +436,8 @@ class StreamTrackerTest {
             )
 
             val props = events.first().eventProperties!!
-            assertEquals("abandoned", props["ad_completion_status"])
-            assertEquals(5.0, props["ad_play_time"])
+            assertEquals("abandoned", props["[Streaming] Ad Completion Status"])
+            assertEquals(5.0, props["[Streaming] Ad Play Time Sec"])
         }
 
         @Test
@@ -427,7 +452,7 @@ class StreamTrackerTest {
                 insertId = "ad-stop-1",
             )
 
-            assertEquals("skipped", events.first().eventProperties!!["ad_completion_status"])
+            assertEquals("skipped", events.first().eventProperties!!["[Streaming] Ad Completion Status"])
         }
 
         @Test
@@ -442,10 +467,10 @@ class StreamTrackerTest {
 
             assertEquals(1, events.size)
             val event = events.first() as DelayedEvent
-            assertEquals("[Amplitude] Ad Skipped", event.eventType)
+            assertEquals("[Streaming] Ad Skipped", event.eventType)
             assertEquals(DelayedEvent.Kind.INSTANT, event.kind)
-            assertEquals("video-789:0:0:1", event.eventProperties?.get("ad_id"))
-            assertEquals(10.0, event.eventProperties?.get("skip_position"))
+            assertEquals("video-789:0:0:1", event.eventProperties?.get("[Streaming] Ad ID"))
+            assertEquals(10.0, event.eventProperties?.get("[Streaming] Skip Position Sec"))
         }
 
         @Test
@@ -461,7 +486,7 @@ class StreamTrackerTest {
             )
             val timeout = events.last() as DelayedEvent
             assertEquals(DelayedEvent.Kind.DELAYED, timeout.kind)
-            assertEquals("timeout", timeout.eventProperties?.get("ad_completion_status"))
+            assertEquals("timeout", timeout.eventProperties?.get("[Streaming] Ad Completion Status"))
             assertEquals("ad-stop-timeout", timeout.insertId)
 
             val instantStatuses =
@@ -483,7 +508,7 @@ class StreamTrackerTest {
                 )
                 val event = events.last() as DelayedEvent
                 assertEquals(DelayedEvent.Kind.INSTANT, event.kind)
-                assertEquals(status.value, event.eventProperties?.get("ad_completion_status"))
+                assertEquals(status.value, event.eventProperties?.get("[Streaming] Ad Completion Status"))
             }
         }
     }
@@ -523,8 +548,8 @@ class StreamTrackerTest {
 
             assertEquals(emptyList<BaseEvent>(), events)
             assertEquals(1, routed.size)
-            assertEquals("[Amplitude] Stream Stopped", routed.single().eventType)
-            assertEquals("untracked", routed.single().eventProperties?.get("stop_reason"))
+            assertEquals("[Streaming] Stream Stopped", routed.single().eventType)
+            assertEquals("untracked", routed.single().eventProperties?.get("[Streaming] Stop Reason"))
         }
 
         @Test
@@ -566,7 +591,7 @@ class StreamTrackerTest {
 
                 assertEquals(emptyList<BaseEvent>(), events)
                 assertEquals(1, routed.size)
-                assertEquals("[Amplitude] Ad Started", routed.single().eventType)
+                assertEquals("[Streaming] Ad Started", routed.single().eventType)
                 assertEquals(DelayedEvent.Kind.INSTANT, routed.single().kind)
             } finally {
                 StreamTracker.adsEventsEnabled = false

@@ -5,7 +5,7 @@ import com.amplitude.android.streaming.internal.StreamingDiGraph
 import com.amplitude.android.streaming.internal.util.DiGraph.Companion.weak
 import com.amplitude.common.Logger
 
-private const val STREAM_SESSION_ID = "stream_session_id"
+private const val STREAM_SESSION_ID = "[Streaming] Stream Session ID"
 
 /**
  * One hour.
