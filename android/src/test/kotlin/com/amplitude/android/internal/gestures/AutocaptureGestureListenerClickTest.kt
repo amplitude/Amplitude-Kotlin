@@ -12,6 +12,7 @@ import com.amplitude.MainDispatcherRule
 import com.amplitude.android.AutocaptureState
 import com.amplitude.android.InteractionType
 import com.amplitude.android.internal.TrackFunction
+import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.locators.AndroidViewTargetLocator
 import com.amplitude.common.Logger
 import io.mockk.every
@@ -47,6 +48,7 @@ class AutocaptureGestureListenerClickTest {
             isInvalidTargetClickable: Boolean = true,
             attachViewsToRoot: Boolean = true,
             targetOverride: View? = null,
+            onViewTargetFound: ((ViewTarget) -> Unit)? = null,
         ): AutocaptureGestureListener {
             invalidTarget =
                 mockView(
@@ -101,6 +103,7 @@ class AutocaptureGestureListenerClickTest {
                 logger,
                 listOf(AndroidViewTargetLocator()),
                 { AutocaptureState(interactions = listOf(InteractionType.ElementInteraction)) },
+                onViewTargetFound,
             )
         }
     }
@@ -328,6 +331,96 @@ class AutocaptureGestureListenerClickTest {
                         it["[Amplitude] Target Resource"] == "test_button"
                 },
             )
+        }
+    }
+
+    @Test
+    fun `long-press captures an event with Action long press`() {
+        val event = mockk<MotionEvent>(relaxed = true)
+        val sut =
+            fixture.getSut(
+                type = View::class,
+                event = event,
+                isInvalidTargetVisible = false,
+            )
+
+        sut.onLongPress(event)
+
+        verify(exactly = 1) {
+            fixture.track(
+                "[Amplitude] Element Interacted",
+                match {
+                    it["[Amplitude] Action"] == "long press" &&
+                        it["[Amplitude] Target Class"] == "android.view.View" &&
+                        it["[Amplitude] Target Resource"] == "test_button"
+                },
+            )
+        }
+    }
+
+    @Test
+    fun `long-press does not notify view target found callback`() {
+        val event = mockk<MotionEvent>(relaxed = true)
+        val onViewTargetFound = mockk<(ViewTarget) -> Unit>(relaxed = true)
+        val sut =
+            fixture.getSut(
+                type = View::class,
+                event = event,
+                isInvalidTargetVisible = false,
+                onViewTargetFound = onViewTargetFound,
+            )
+
+        sut.onLongPress(event)
+
+        verify(exactly = 0) { onViewTargetFound(any()) }
+        verify(exactly = 1) {
+            fixture.track("[Amplitude] Element Interacted", any())
+        }
+    }
+
+    @Test
+    fun `tap notifies view target found callback`() {
+        val event = mockk<MotionEvent>(relaxed = true)
+        val onViewTargetFound = mockk<(ViewTarget) -> Unit>(relaxed = true)
+        val sut =
+            fixture.getSut(
+                type = View::class,
+                event = event,
+                isInvalidTargetVisible = false,
+                onViewTargetFound = onViewTargetFound,
+            )
+
+        sut.onSingleTapUp(event)
+
+        verify(exactly = 1) { onViewTargetFound(any()) }
+    }
+
+    @Test
+    fun `does not track long-press when element interaction is disabled`() {
+        val event = mockk<MotionEvent>(relaxed = true)
+        val decorView =
+            fixture.window.mockDecorView(type = ViewGroup::class, event = event, clickable = true) {
+                every { it.childCount } returns 0
+            }
+
+        fixture.resources.mockForTarget(decorView, "decor_view")
+        every { fixture.context.resources } returns fixture.resources
+        every { decorView.context } returns fixture.context
+
+        val sut =
+            AutocaptureGestureListener(
+                decorView,
+                fixture.activityName,
+                fixture.track,
+                fixture.logger,
+                listOf(AndroidViewTargetLocator()),
+                { AutocaptureState(interactions = emptyList()) },
+            )
+
+        sut.onLongPress(event)
+
+        verify(exactly = 0) {
+            fixture.track(any(), any())
         }
     }
 }
