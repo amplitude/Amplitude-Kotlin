@@ -43,12 +43,15 @@ internal class AndroidViewTargetLocator : ViewTargetLocator {
     /**
      * Gestures this view declared. A view that declares any of them consumes the touch stream,
      * so its ancestors never receive the gesture.
+     *
+     * A disabled drag control returns false from its touch handler, so the touch falls through
+     * to its ancestors. It declares nothing unless it is also clickable.
      */
     private fun View.declaredGestures(): Set<String> =
         buildSet {
             if (isClickable) add(GestureActions.TOUCH)
             if (isLongClickable) add(GestureActions.LONG_PRESS)
-            if (isDraggableViewType()) add(GestureActions.PAN)
+            if (isEnabled && isDraggableViewType()) add(GestureActions.PAN)
         }
 
     private fun View.isDraggableViewType(): Boolean =

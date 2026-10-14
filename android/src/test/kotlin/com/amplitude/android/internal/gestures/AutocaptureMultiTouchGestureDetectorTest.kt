@@ -40,6 +40,40 @@ class AutocaptureMultiTouchGestureDetectorTest {
     }
 
     @Test
+    fun `tracks a pinch that crossed the threshold and settled back`() {
+        val gestures = mutableListOf<String>()
+        val detector =
+            AutocaptureMultiTouchGestureDetector(
+                onTrackingStarted = { _, _ -> },
+                onGesture = { gestures += it },
+            )
+
+        detector.onTouchEvent(event(MotionEvent.ACTION_POINTER_DOWN, 0f, 0f, 100f, 0f))
+        detector.onTouchEvent(event(MotionEvent.ACTION_MOVE, 0f, 0f, 130f, 0f))
+        detector.onTouchEvent(event(MotionEvent.ACTION_MOVE, 0f, 0f, 105f, 0f))
+        detector.onTouchEvent(event(MotionEvent.ACTION_POINTER_UP, 0f, 0f, 105f, 0f))
+
+        assertEquals(listOf(GestureActions.PINCH), gestures)
+    }
+
+    @Test
+    fun `tracks a rotation that crossed the threshold and settled back`() {
+        val gestures = mutableListOf<String>()
+        val detector =
+            AutocaptureMultiTouchGestureDetector(
+                onTrackingStarted = { _, _ -> },
+                onGesture = { gestures += it },
+            )
+
+        detector.onTouchEvent(event(MotionEvent.ACTION_POINTER_DOWN, 0f, 0f, 100f, 0f))
+        detector.onTouchEvent(event(MotionEvent.ACTION_MOVE, 0f, 0f, 86.6f, 50f))
+        detector.onTouchEvent(event(MotionEvent.ACTION_MOVE, 0f, 0f, 100f, 5f))
+        detector.onTouchEvent(event(MotionEvent.ACTION_POINTER_UP, 0f, 0f, 100f, 5f))
+
+        assertEquals(listOf(GestureActions.ROTATION), gestures)
+    }
+
+    @Test
     fun `does not track incidental two-finger movement`() {
         val gestures = mutableListOf<String>()
         val detector =

@@ -53,6 +53,19 @@ class DeclaredGestureTargetTest {
     }
 
     @Test
+    fun `a tap on a disabled slider is reported on its clickable parent`() {
+        val parent = FrameLayout(context)
+        parent.isClickable = true
+        val slider = SeekBar(context)
+        slider.isEnabled = false
+        parent.addView(slider)
+
+        val hit = parent.layoutAndFindTarget(slider)
+
+        assertSame(parent, hit?.resolvedFor(GestureActions.TOUCH)?.view)
+    }
+
+    @Test
     fun `a slider inside a scroll view declares pan`() {
         val scrollView = ScrollView(context)
         val slider = SeekBar(context)

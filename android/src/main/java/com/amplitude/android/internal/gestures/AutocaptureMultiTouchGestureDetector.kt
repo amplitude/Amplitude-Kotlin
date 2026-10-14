@@ -14,8 +14,10 @@ internal class AutocaptureMultiTouchGestureDetector(
     private var secondPointerId = MotionEvent.INVALID_POINTER_ID
     private var initialSpan = 0f
     private var initialAngle = 0f
-    private var scaleDelta = 0f
-    private var rotationDelta = 0f
+
+    // Peak deltas, so a gesture that crosses a threshold and settles back is still reported.
+    private var peakScaleDelta = 0f
+    private var peakRotationDelta = 0f
     private var tracking = false
 
     fun onTouchEvent(event: MotionEvent) {
@@ -39,8 +41,10 @@ internal class AutocaptureMultiTouchGestureDetector(
                     if (firstIndex < 0 || secondIndex < 0) {
                         reset()
                     } else if (initialSpan > 0f) {
-                        scaleDelta = abs(event.span(firstIndex, secondIndex) / initialSpan - 1f)
-                        rotationDelta = abs(normalizeAngle(event.angle(firstIndex, secondIndex) - initialAngle))
+                        val scaleDelta = abs(event.span(firstIndex, secondIndex) / initialSpan - 1f)
+                        val rotationDelta = abs(normalizeAngle(event.angle(firstIndex, secondIndex) - initialAngle))
+                        peakScaleDelta = maxOf(peakScaleDelta, scaleDelta)
+                        peakRotationDelta = maxOf(peakRotationDelta, rotationDelta)
                     }
                 }
             }
@@ -59,10 +63,10 @@ internal class AutocaptureMultiTouchGestureDetector(
         if (!tracking) return
         val action =
             when {
-                rotationDelta >= ROTATION_THRESHOLD &&
-                    rotationDelta / ROTATION_THRESHOLD > scaleDelta / SCALE_THRESHOLD -> GestureActions.ROTATION
-                scaleDelta >= SCALE_THRESHOLD -> GestureActions.PINCH
-                rotationDelta >= ROTATION_THRESHOLD -> GestureActions.ROTATION
+                peakRotationDelta >= ROTATION_THRESHOLD &&
+                    peakRotationDelta / ROTATION_THRESHOLD > peakScaleDelta / SCALE_THRESHOLD -> GestureActions.ROTATION
+                peakScaleDelta >= SCALE_THRESHOLD -> GestureActions.PINCH
+                peakRotationDelta >= ROTATION_THRESHOLD -> GestureActions.ROTATION
                 else -> null
             }
         action?.let { onGesture(it) }
@@ -98,8 +102,8 @@ internal class AutocaptureMultiTouchGestureDetector(
         secondPointerId = MotionEvent.INVALID_POINTER_ID
         initialSpan = 0f
         initialAngle = 0f
-        scaleDelta = 0f
-        rotationDelta = 0f
+        peakScaleDelta = 0f
+        peakRotationDelta = 0f
         tracking = false
         if (wasTracking) onTrackingEnded()
     }
