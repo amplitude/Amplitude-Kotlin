@@ -34,6 +34,9 @@
 
 -keepnames class androidx.compose.foundation.ClickableElement
 -keepnames class androidx.compose.foundation.CombinedClickableElement
+-keepnames class androidx.compose.foundation.selection.ToggleableElement
+-keepnames class androidx.compose.foundation.selection.TriStateToggleableElement
+-keepnames class androidx.compose.foundation.selection.SelectableElement
 -keepnames class androidx.compose.foundation.gestures.DraggableElement
 -keepnames class androidx.compose.foundation.gestures.Draggable2DElement
 -keepnames class androidx.compose.foundation.gestures.AnchoredDraggableElement

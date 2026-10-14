@@ -14,7 +14,9 @@ import com.amplitude.android.internal.ViewTarget
 import com.amplitude.android.internal.buildElementInteractedProperties
 import com.amplitude.android.internal.locators.ViewTargetLocator
 import com.amplitude.android.internal.locators.claimsPan
+import com.amplitude.android.internal.resolvedAs
 import com.amplitude.android.internal.resolvedFor
+import com.amplitude.android.internal.tapAction
 import com.amplitude.common.Logger
 import java.lang.ref.WeakReference
 import kotlin.math.abs
@@ -32,6 +34,7 @@ public class AutocaptureGestureListener(
 ) : GestureDetector.OnGestureListener {
     private var panStarted = false
     private var panTarget: ViewTarget? = null
+    private var dragAction: String = GestureActions.PAN
     private var transformHit: ViewTarget? = null
     private var gestureTracked = false
 
@@ -46,6 +49,7 @@ public class AutocaptureGestureListener(
     override fun onDown(e: MotionEvent): Boolean {
         panStarted = false
         panTarget = null
+        dragAction = GestureActions.PAN
         transformHit = null
         gestureTracked = false
         return false
@@ -68,14 +72,15 @@ public class AutocaptureGestureListener(
             ) ?: logger.warn("Unable to find click target. No event captured.").let {
                 return false
             }
-        val target = hit.resolvedFor(GestureActions.TOUCH) ?: return false
+        val action = hit.tapAction() ?: return false
+        val target = hit.resolvedFor(action) ?: return false
 
         // Notify callback with found target (for reuse by frustration interactions)
         onViewTargetFound?.invoke(target)
 
         // Track element interaction events only if ElementInteraction is enabled
         if (ElementInteraction in autocaptureState.interactions) {
-            trackInteraction(target, GestureActions.TOUCH)
+            trackInteraction(target, target.interactionAction.eventValue)
         }
 
         return false
@@ -90,16 +95,27 @@ public class AutocaptureGestureListener(
         if (panStarted || e1 == null) return false
         panStarted = true
 
-        // Resolve before this drag moves any content, so the pan belongs to the element it
-        // started on, like the view an iOS recognizer is attached to. A horizontal slider or
-        // switch does not claim a vertical drag; that drag is a scroll. Compose drag targets
-        // have no view, and their axis is unknown, so any direction still counts.
+        // Resolve before this drag moves any content, so it belongs to the element it started
+        // on. The innermost owner wins: a slider claims pan, and a switch claims a horizontal
+        // drag as a value change. A vertical drag on a switch is a scroll, so it falls through
+        // to an ancestor that pans, or to nobody.
+        val hit = findHit(e1.x, e1.y) ?: return false
         val horizontal = abs(distanceX) > abs(distanceY)
-        panTarget =
-            findGestureTarget(e1.x, e1.y, GestureActions.PAN)?.takeIf { target ->
-                val dragView = target.view as? View
-                dragView == null || dragView.claimsPan(horizontal)
+        val dragView = hit.view as? View
+        for (owner in hit.gestureOwners.asReversed()) {
+            when {
+                GestureActions.PAN in owner.actions && (dragView == null || dragView.claimsPan(horizontal)) -> {
+                    panTarget = hit.resolvedAs(owner)
+                    dragAction = GestureActions.PAN
+                    return false
+                }
+                owner.dragReportsValueChange && horizontal -> {
+                    panTarget = hit.resolvedAs(owner)
+                    dragAction = GestureActions.VALUE_CHANGE
+                    return false
+                }
             }
+        }
         return false
     }
 
@@ -128,7 +144,7 @@ public class AutocaptureGestureListener(
                 // cancellation clears its pressed state.
                 val dragView = target.view as? View
                 if (dragView == null || (dragView.isEnabled && (dragView !is SeekBar || dragView.isPressed))) {
-                    trackGesture(target, GestureActions.PAN)
+                    trackGesture(target, dragAction)
                 }
             }
         }
@@ -136,6 +152,7 @@ public class AutocaptureGestureListener(
             transformHit = null
             panStarted = false
             panTarget = null
+            dragAction = GestureActions.PAN
         }
     }
 
