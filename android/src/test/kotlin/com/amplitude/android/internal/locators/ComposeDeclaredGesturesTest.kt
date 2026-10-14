@@ -62,9 +62,47 @@ class ComposeDeclaredGesturesTest {
         assertEquals(GestureActions.TRANSFORM, composeDeclaredGestures("transformable", "unknown", hasLongClick = false))
     }
 
+    @Test
+    fun `toggleable declares value change only when enabled`() {
+        assertEquals(setOf(GestureActions.VALUE_CHANGE), composeDeclaredGestures("toggleable", "unknown", hasLongClick = false))
+        assertEquals(
+            setOf(GestureActions.VALUE_CHANGE),
+            composeDeclaredGestures("triStateToggleable", "unknown", hasLongClick = false),
+        )
+        assertEquals(
+            emptySet<String>(),
+            composeDeclaredGestures("toggleable", "unknown", hasLongClick = false, enabled = false),
+        )
+    }
+
+    @Test
+    fun `selectable declares touch only when enabled`() {
+        assertEquals(setOf(GestureActions.TOUCH), composeDeclaredGestures("selectable", "unknown", hasLongClick = false))
+        assertEquals(
+            emptySet<String>(),
+            composeDeclaredGestures(
+                null,
+                "androidx.compose.foundation.selection.SelectableElement",
+                hasLongClick = false,
+                enabled = false,
+            ),
+        )
+    }
+
     @ParameterizedTest
     @ValueSource(
-        strings = ["clickable", "combinedClickable", "draggable", "draggable2D", "anchoredDraggable", "swipeable", "transformable"],
+        strings = [
+            "clickable",
+            "combinedClickable",
+            "draggable",
+            "draggable2D",
+            "anchoredDraggable",
+            "swipeable",
+            "transformable",
+            "toggleable",
+            "triStateToggleable",
+            "selectable",
+        ],
     )
     fun `disabled modifiers declare no gestures`(name: String) {
         assertEquals(
@@ -82,6 +120,9 @@ class ComposeDeclaredGesturesTest {
             "androidx.compose.foundation.gestures.Draggable2DElement",
             "androidx.compose.foundation.gestures.AnchoredDraggableElement",
             "androidx.compose.foundation.gestures.TransformableElement",
+            "androidx.compose.foundation.selection.ToggleableElement",
+            "androidx.compose.foundation.selection.TriStateToggleableElement",
+            "androidx.compose.foundation.selection.SelectableElement",
         ],
     )
     fun `disabled modifier class fallbacks declare no gestures`(className: String) {

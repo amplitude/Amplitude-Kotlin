@@ -78,10 +78,13 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
                         ignoreDeadClick = modifier.ignoreDeadClick
                     }
 
-                    if (modifier is InspectableValue) {
-                        when (modifier.nameFallback) {
+                    val inspectable = modifier as? InspectableValue
+                    val enabled =
+                        inspectable?.inspectableElements?.none { it.name == "enabled" && it.value == false } ?: true
+                    if (inspectable != null) {
+                        when (inspectable.nameFallback) {
                             "testTag" -> {
-                                for (element in modifier.inspectableElements) {
+                                for (element in inspectable.inspectableElements) {
                                     if (element.name == "tag") {
                                         lastKnownTag = element.value as? String
                                         break
@@ -90,7 +93,7 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
                             }
 
                             "semantics" -> {
-                                for (element in modifier.inspectableElements) {
+                                for (element in inspectable.inspectableElements) {
                                     if (element.name == "properties") {
                                         val elementValue = element.value
                                         if (elementValue is LinkedHashMap<*, *>) {
@@ -116,30 +119,31 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
                                 }
                             }
                         }
-
-                        nodeGestures.addAll(
-                            composeDeclaredGestures(
-                                nameFallback = modifier.nameFallback,
-                                className = modifier.javaClass.name,
-                                hasLongClick = modifier.hasLongClickHandler(),
-                                enabled = modifier.inspectableElements.none { it.name == "enabled" && it.value == false },
-                            ),
-                        )
                     }
 
-                    when (composeModifierInteractionKind(modifier)) {
-                        ComposeModifierInteractionKind.Toggle -> {
-                            nodeGestures += GestureActions.VALUE_CHANGE
-                            interactionAction = InteractionAction.ValueChange
+                    nodeGestures.addAll(
+                        composeDeclaredGestures(
+                            nameFallback = inspectable?.nameFallback,
+                            className = modifier.javaClass.name,
+                            hasLongClick = inspectable?.hasLongClickHandler() ?: false,
+                            enabled = enabled,
+                        ),
+                    )
+
+                    // A disabled toggle or selectable does not consume the tap.
+                    if (enabled) {
+                        when (composeModifierInteractionKind(modifier)) {
+                            ComposeModifierInteractionKind.Toggle -> {
+                                interactionAction = InteractionAction.ValueChange
+                            }
+                            ComposeModifierInteractionKind.Select -> {
+                                hasSelectableModifier = true
+                                hasValueChangeRole = hasValueChangeRole || modifier.inspectableRole().isValueChangeRole()
+                            }
+                            ComposeModifierInteractionKind.Click,
+                            ComposeModifierInteractionKind.None,
+                            -> Unit
                         }
-                        ComposeModifierInteractionKind.Select -> {
-                            hasSelectableModifier = true
-                            nodeGestures += GestureActions.TOUCH
-                            hasValueChangeRole = hasValueChangeRole || modifier.inspectableRole().isValueChangeRole()
-                        }
-                        ComposeModifierInteractionKind.Click,
-                        ComposeModifierInteractionKind.None,
-                        -> Unit
                     }
                 }
 
@@ -221,6 +225,16 @@ internal fun composeDeclaredGestures(
         nameFallback == "transformable" ||
             className == "androidx.compose.foundation.gestures.TransformableElement" -> {
             GestureActions.TRANSFORM
+        }
+        nameFallback == "toggleable" ||
+            nameFallback == "triStateToggleable" ||
+            className == "androidx.compose.foundation.selection.ToggleableElement" ||
+            className == "androidx.compose.foundation.selection.TriStateToggleableElement" -> {
+            setOf(GestureActions.VALUE_CHANGE)
+        }
+        nameFallback == "selectable" ||
+            className == "androidx.compose.foundation.selection.SelectableElement" -> {
+            setOf(GestureActions.TOUCH)
         }
         else -> emptySet()
     }
