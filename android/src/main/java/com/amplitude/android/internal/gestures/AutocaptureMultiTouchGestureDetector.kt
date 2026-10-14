@@ -8,69 +8,82 @@ import kotlin.math.hypot
 internal class AutocaptureMultiTouchGestureDetector(
     private val onTrackingStarted: (x: Float, y: Float) -> Unit,
     private val onGesture: (action: String) -> Unit,
+    private val onTrackingEnded: () -> Unit = {},
 ) {
+    private var firstPointerId = MotionEvent.INVALID_POINTER_ID
+    private var secondPointerId = MotionEvent.INVALID_POINTER_ID
     private var initialSpan = 0f
     private var initialAngle = 0f
     private var scaleDelta = 0f
     private var rotationDelta = 0f
-    private var focusX = 0f
-    private var focusY = 0f
     private var tracking = false
 
     fun onTouchEvent(event: MotionEvent) {
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> reset()
             MotionEvent.ACTION_POINTER_DOWN -> {
-                if (event.pointerCount == REQUIRED_POINTER_COUNT) {
-                    initialSpan = event.span()
-                    initialAngle = event.angle()
-                    updateFocus(event)
+                if (!tracking && event.pointerCount == REQUIRED_POINTER_COUNT) {
+                    firstPointerId = event.getPointerId(0)
+                    secondPointerId = event.getPointerId(1)
+                    initialSpan = event.span(0, 1)
+                    initialAngle = event.angle(0, 1)
                     tracking = true
                     // Report the focus now, before the gesture moves any content.
-                    onTrackingStarted(focusX, focusY)
+                    onTrackingStarted((event.getX(0) + event.getX(1)) / 2, (event.getY(0) + event.getY(1)) / 2)
                 }
             }
             MotionEvent.ACTION_MOVE -> {
-                if (tracking && initialSpan > 0f && event.pointerCount >= REQUIRED_POINTER_COUNT) {
-                    scaleDelta = abs(event.span() / initialSpan - 1f)
-                    rotationDelta = abs(normalizeAngle(event.angle() - initialAngle))
-                    updateFocus(event)
-                }
-            }
-            MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_UP -> {
                 if (tracking) {
-                    val action =
-                        when {
-                            rotationDelta >= ROTATION_THRESHOLD &&
-                                rotationDelta / ROTATION_THRESHOLD > scaleDelta / SCALE_THRESHOLD -> {
-                                GestureActions.ROTATION
-                            }
-                            scaleDelta >= SCALE_THRESHOLD -> GestureActions.PINCH
-                            rotationDelta >= ROTATION_THRESHOLD -> GestureActions.ROTATION
-                            else -> null
-                        }
-                    action?.let { onGesture(it) }
-                    reset()
+                    val firstIndex = event.findPointerIndex(firstPointerId)
+                    val secondIndex = event.findPointerIndex(secondPointerId)
+                    if (firstIndex < 0 || secondIndex < 0) {
+                        reset()
+                    } else if (initialSpan > 0f) {
+                        scaleDelta = abs(event.span(firstIndex, secondIndex) / initialSpan - 1f)
+                        rotationDelta = abs(normalizeAngle(event.angle(firstIndex, secondIndex) - initialAngle))
+                    }
                 }
             }
+            MotionEvent.ACTION_POINTER_UP -> {
+                val pointerId = event.getPointerId(event.actionIndex)
+                if (pointerId == firstPointerId || pointerId == secondPointerId) {
+                    finishTracking()
+                }
+            }
+            MotionEvent.ACTION_UP -> finishTracking()
             MotionEvent.ACTION_CANCEL -> reset()
         }
     }
 
-    private fun MotionEvent.span(): Float = hypot(getX(1) - getX(0), getY(1) - getY(0))
+    private fun finishTracking() {
+        if (!tracking) return
+        val action =
+            when {
+                rotationDelta >= ROTATION_THRESHOLD &&
+                    rotationDelta / ROTATION_THRESHOLD > scaleDelta / SCALE_THRESHOLD -> GestureActions.ROTATION
+                scaleDelta >= SCALE_THRESHOLD -> GestureActions.PINCH
+                rotationDelta >= ROTATION_THRESHOLD -> GestureActions.ROTATION
+                else -> null
+            }
+        action?.let { onGesture(it) }
+        reset()
+    }
 
-    private fun MotionEvent.angle(): Float =
+    private fun MotionEvent.span(
+        firstIndex: Int,
+        secondIndex: Int,
+    ): Float = hypot(getX(secondIndex) - getX(firstIndex), getY(secondIndex) - getY(firstIndex))
+
+    private fun MotionEvent.angle(
+        firstIndex: Int,
+        secondIndex: Int,
+    ): Float =
         Math.toDegrees(
             atan2(
-                (getY(1) - getY(0)).toDouble(),
-                (getX(1) - getX(0)).toDouble(),
+                (getY(secondIndex) - getY(firstIndex)).toDouble(),
+                (getX(secondIndex) - getX(firstIndex)).toDouble(),
             ),
         ).toFloat()
-
-    private fun updateFocus(event: MotionEvent) {
-        focusX = (event.getX(0) + event.getX(1)) / 2
-        focusY = (event.getY(0) + event.getY(1)) / 2
-    }
 
     private fun normalizeAngle(angle: Float): Float {
         var normalized = angle
@@ -80,13 +93,15 @@ internal class AutocaptureMultiTouchGestureDetector(
     }
 
     private fun reset() {
+        val wasTracking = tracking
+        firstPointerId = MotionEvent.INVALID_POINTER_ID
+        secondPointerId = MotionEvent.INVALID_POINTER_ID
         initialSpan = 0f
         initialAngle = 0f
         scaleDelta = 0f
         rotationDelta = 0f
-        focusX = 0f
-        focusY = 0f
         tracking = false
+        if (wasTracking) onTrackingEnded()
     }
 
     private companion object {

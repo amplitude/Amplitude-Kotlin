@@ -657,6 +657,31 @@ class AutocaptureGestureListenerClickTest {
         verify(exactly = 0) { fixture.track(any(), any()) }
     }
 
+    @Test
+    fun `preserves the transform target when an extra finger lifts`() {
+        val sut = transformListener { true }
+        sut.onTransformStarted(20f, 20f)
+        sut.onTouchEventCompleted(motionEvent(MotionEvent.ACTION_POINTER_UP))
+        sut.onTransformRecognized(GestureActions.PINCH)
+
+        verify(exactly = 1) {
+            fixture.track(
+                "[Amplitude] Element Interacted",
+                match { it["[Amplitude] Action"] == "pinch" && it["[Amplitude] Target Tag"] == "map" },
+            )
+        }
+    }
+
+    @Test
+    fun `clears the target when an unqualified transform ends`() {
+        val sut = transformListener { true }
+        sut.onTransformStarted(20f, 20f)
+        sut.onTransformEnded()
+        sut.onTransformRecognized(GestureActions.PINCH)
+
+        verify(exactly = 0) { fixture.track(any(), any()) }
+    }
+
     private fun transformListener(underStart: () -> Boolean): AutocaptureGestureListener {
         val decor =
             mockView(

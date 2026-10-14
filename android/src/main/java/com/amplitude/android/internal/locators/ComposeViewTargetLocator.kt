@@ -107,7 +107,6 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
                                     }
                                 }
                             }
-
                         }
 
                         nodeGestures.addAll(
@@ -115,6 +114,7 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
                                 nameFallback = modifier.nameFallback,
                                 className = modifier.javaClass.name,
                                 hasLongClick = modifier.hasLongClickHandler(),
+                                enabled = modifier.inspectableElements.none { it.name == "enabled" && it.value == false },
                             ),
                         )
                     }
@@ -155,20 +155,21 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
         }
     }
 
-    private fun InspectableValue.hasLongClickHandler(): Boolean =
-        inspectableElements.any { it.name == "onLongClick" && it.value != null }
+    private fun InspectableValue.hasLongClickHandler(): Boolean = inspectableElements.any { it.name == "onLongClick" && it.value != null }
 }
 
 /**
- * Maps a Compose modifier to the gesture actions it handles. Only modifiers that install a
- * gesture handler count; a `pointerInput` block is opaque and cannot be classified.
+ * Maps an enabled Compose modifier to the gesture actions it handles. Only modifiers that install
+ * a gesture handler count; a `pointerInput` block is opaque and cannot be classified.
  */
 internal fun composeDeclaredGestures(
     nameFallback: String?,
     className: String,
     hasLongClick: Boolean,
+    enabled: Boolean = true,
 ): Set<String> =
     when {
+        !enabled -> emptySet()
         nameFallback == "clickable" ||
             className == "androidx.compose.foundation.ClickableElement" -> {
             setOf(GestureActions.TOUCH)

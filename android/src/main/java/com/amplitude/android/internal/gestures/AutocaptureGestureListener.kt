@@ -126,15 +126,8 @@ public class AutocaptureGestureListener(
                 }
             }
         }
-        // The transform detector reports a qualified gesture before this runs, so dropping the
-        // captured target here only discards one that never crossed its threshold.
-        if (event.actionMasked == MotionEvent.ACTION_POINTER_UP ||
-            event.actionMasked == MotionEvent.ACTION_UP ||
-            event.actionMasked == MotionEvent.ACTION_CANCEL
-        ) {
-            transformHit = null
-        }
         if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) {
+            transformHit = null
             panStarted = false
             panTarget = null
         }
@@ -143,7 +136,10 @@ public class AutocaptureGestureListener(
     /**
      * Called when a second finger lands, before the gesture has moved anything.
      */
-    internal fun onTransformStarted(x: Float, y: Float) {
+    internal fun onTransformStarted(
+        x: Float,
+        y: Float,
+    ) {
         transformHit = findHit(x, y)
     }
 
@@ -155,6 +151,11 @@ public class AutocaptureGestureListener(
         val hit = transformHit
         transformHit = null
         hit?.resolvedFor(action)?.let { trackGesture(it, action) }
+    }
+
+    /** Clears the target when the tracked pair ends, including gestures below the threshold. */
+    internal fun onTransformEnded() {
+        transformHit = null
     }
 
     private fun trackGesture(

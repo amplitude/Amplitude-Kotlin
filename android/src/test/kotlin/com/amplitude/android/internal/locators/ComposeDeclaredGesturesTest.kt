@@ -7,6 +7,8 @@ import com.amplitude.android.internal.resolvedFor
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 
 class ComposeDeclaredGesturesTest {
     @Test
@@ -60,25 +62,53 @@ class ComposeDeclaredGesturesTest {
         assertEquals(GestureActions.TRANSFORM, composeDeclaredGestures("transformable", "unknown", hasLongClick = false))
     }
 
+    @ParameterizedTest
+    @ValueSource(
+        strings = ["clickable", "combinedClickable", "draggable", "draggable2D", "anchoredDraggable", "swipeable", "transformable"],
+    )
+    fun `disabled modifiers declare no gestures`(name: String) {
+        assertEquals(
+            emptySet<String>(),
+            composeDeclaredGestures(name, "unknown", hasLongClick = true, enabled = false),
+        )
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+        strings = [
+            "androidx.compose.foundation.ClickableElement",
+            "androidx.compose.foundation.CombinedClickableElement",
+            "androidx.compose.foundation.gestures.DraggableElement",
+            "androidx.compose.foundation.gestures.Draggable2DElement",
+            "androidx.compose.foundation.gestures.AnchoredDraggableElement",
+            "androidx.compose.foundation.gestures.TransformableElement",
+        ],
+    )
+    fun `disabled modifier class fallbacks declare no gestures`(className: String) {
+        assertEquals(
+            emptySet<String>(),
+            composeDeclaredGestures(null, className, hasLongClick = true, enabled = false),
+        )
+    }
+
+    @Test
+    fun `enabled ancestor handles a drag when the child modifier is disabled`() {
+        val target =
+            target(
+                GestureOwner(composeDeclaredGestures("draggable", "unknown", false, enabled = true), "parent", null),
+                GestureOwner(composeDeclaredGestures("draggable", "unknown", false, enabled = false), "child", null),
+            )
+
+        assertEquals("parent", target.resolvedFor(GestureActions.PAN)?.tag)
+    }
+
     @Test
     fun `resolvedFor reports the innermost node that declared the action`() {
         val target =
-            ViewTarget(
-                _view = null,
-                className = null,
-                resourceName = null,
-                tag = "slider",
-                text = null,
-                accessibilityLabel = null,
-                source = "jetpack_compose",
-                hierarchy = null,
-            ).apply {
-                gestureOwners =
-                    listOf(
-                        GestureOwner(setOf(GestureActions.TOUCH), "parent", null),
-                        GestureOwner(setOf(GestureActions.PAN), "slider", null),
-                    )
-            }
+            target(
+                GestureOwner(setOf(GestureActions.TOUCH), "parent", null),
+                GestureOwner(setOf(GestureActions.PAN), "slider", null),
+            )
 
         assertEquals("parent", target.resolvedFor(GestureActions.TOUCH)?.tag)
         assertEquals("slider", target.resolvedFor(GestureActions.PAN)?.tag)
@@ -89,4 +119,18 @@ class ComposeDeclaredGesturesTest {
     fun `pointerInput is opaque and declares nothing`() {
         assertEquals(emptySet<String>(), composeDeclaredGestures("pointerInput", "unknown", hasLongClick = false))
     }
+
+    private fun target(vararg owners: GestureOwner): ViewTarget =
+        ViewTarget(
+            _view = null,
+            className = null,
+            resourceName = null,
+            tag = owners.last().tag,
+            text = null,
+            accessibilityLabel = null,
+            source = "jetpack_compose",
+            hierarchy = null,
+        ).apply {
+            gestureOwners = owners.toList()
+        }
 }
