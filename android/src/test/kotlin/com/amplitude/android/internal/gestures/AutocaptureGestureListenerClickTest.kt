@@ -376,6 +376,18 @@ class AutocaptureGestureListenerClickTest {
     }
 
     @Test
+    fun `does not throw when long press tracking fails`() {
+        val event = motionEvent(MotionEvent.ACTION_DOWN)
+        val sut = fixture.getSut(type = View::class, event = event, isTargetLongClickable = true)
+        every { fixture.track(any(), any()) } throws IllegalStateException("tracking failed")
+
+        sut.onLongPress(event)
+
+        verify { fixture.logger.error(match { it.contains("Error handling long press") }) }
+        event.recycle()
+    }
+
+    @Test
     fun `does not track a pan on a view that only handles clicks`() {
         val down = motionEvent(MotionEvent.ACTION_DOWN)
         val move = motionEvent(MotionEvent.ACTION_MOVE)

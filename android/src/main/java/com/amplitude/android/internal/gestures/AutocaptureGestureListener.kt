@@ -104,7 +104,13 @@ public class AutocaptureGestureListener(
     }
 
     override fun onLongPress(e: MotionEvent) {
-        trackGesture(e.x, e.y, GestureActions.LONG_PRESS)
+        try {
+            trackGesture(e.x, e.y, GestureActions.LONG_PRESS)
+        } catch (exception: Exception) {
+            // GestureDetector invokes long presses from its Handler, outside dispatchTouchEvent's
+            // exception boundary. Autocapture failures must not crash the host application.
+            logger.error("Error handling long press: $exception")
+        }
     }
 
     override fun onFling(
