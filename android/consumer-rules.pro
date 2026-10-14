@@ -16,6 +16,16 @@
 # Keep the plugin names readable so the log is usable in a minified build.
 -keepnames class com.amplitude.** implements com.amplitude.core.platform.UniversalPlugin
 
+# Gesture classification compares these class names at runtime. They are optional
+# dependencies, so the SDK cannot reference the types directly. -keepnames on the class
+# does not preserve member names, and vertical sliders are detected by calling
+# getOrientation reflectively.
+-keepnames class androidx.appcompat.widget.SwitchCompat
+-keepnames class com.google.android.material.slider.BaseSlider
+-keepclassmembers class com.google.android.material.slider.BaseSlider {
+    public int getOrientation();
+}
+
 #################### START: Compose Proguard Rules ####################
 
 # The Android SDK checks at runtime if these classes are available via Class.forName
@@ -24,6 +34,10 @@
 
 -keepnames class androidx.compose.foundation.ClickableElement
 -keepnames class androidx.compose.foundation.CombinedClickableElement
+-keepnames class androidx.compose.foundation.gestures.DraggableElement
+-keepnames class androidx.compose.foundation.gestures.Draggable2DElement
+-keepnames class androidx.compose.foundation.gestures.AnchoredDraggableElement
+-keepnames class androidx.compose.foundation.gestures.TransformableElement
 
 # Keep custom Compose modifiers for type-based detection
 -keep class com.amplitude.android.internal.compose.AmpFrustrationIgnoreElement

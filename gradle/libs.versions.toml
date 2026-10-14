@@ -26,6 +26,7 @@ ktlint = "12.3.0"
 lifecycle = "2.8.7"
 media3 = "1.8.0"
 material = "1.5.0"
+materialTest = "1.13.0"
 mavenPublish = "0.35.0"
 metro = "0.6.5"
 mockk = "1.14.11"
@@ -83,6 +84,7 @@ play-services-base = { module = "com.google.android.gms:play-services-base", ver
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 test-core = { module = "androidx.test:core", version.ref = "testCore" }
 test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "testExtJunit" }
+test-material = { module = "com.google.android.material:material", version.ref = "materialTest" }
 test-runner = { module = "androidx.test:runner", version.ref = "testRunner" }
 ui = { module = "androidx.compose.ui:ui" }
 ui-test-manifest = { module = "androidx.compose.ui:ui-test-manifest" }

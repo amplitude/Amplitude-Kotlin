@@ -20,7 +20,7 @@ internal fun <T : View> Window.mockDecorView(
     context: Context? = null,
     finalize: (T) -> Unit = {},
 ): T {
-    val view = mockView(type, id, event, touchWithinBounds, clickable, visible, context, finalize)
+    val view = mockView(type, id, event, touchWithinBounds, clickable, visible, context, finalize = finalize)
     every { decorView } returns view
     return view
 }
@@ -33,6 +33,7 @@ internal fun <T : View> mockView(
     clickable: Boolean = false,
     visible: Boolean = true,
     context: Context? = null,
+    longClickable: Boolean = false,
     finalize: (T) -> Unit = {},
 ): T {
     val coordinates = IntArray(2)
@@ -48,6 +49,7 @@ internal fun <T : View> mockView(
     every { mockView.id } returns id
     every { mockView.context } returns context
     every { mockView.isClickable } returns clickable
+    every { mockView.isLongClickable } returns longClickable
     every { mockView.visibility } returns if (visible) View.VISIBLE else View.GONE
     every { mockView.contentDescription } returns null
 
