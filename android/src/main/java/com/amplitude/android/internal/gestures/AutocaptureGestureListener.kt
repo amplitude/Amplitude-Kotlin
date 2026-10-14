@@ -117,10 +117,11 @@ public class AutocaptureGestureListener(
     internal fun onTouchEventCompleted(event: MotionEvent) {
         if (event.actionMasked == MotionEvent.ACTION_UP) {
             panTarget?.let { target ->
-                // This runs before dispatching UP to the view, while a SeekBar that is still
-                // tracking the drag is pressed. A prior cancellation clears its pressed state.
-                val seekBar = target.view as? SeekBar
-                if (seekBar == null || (seekBar.isEnabled && seekBar.isPressed)) {
+                // Disabled native controls do not handle drags. This runs before dispatching
+                // UP, while a SeekBar that is still tracking the drag is pressed. A prior
+                // cancellation clears its pressed state.
+                val dragView = target.view as? View
+                if (dragView == null || (dragView.isEnabled && (dragView !is SeekBar || dragView.isPressed))) {
                     trackGesture(target, GestureActions.PAN)
                 }
             }
