@@ -77,6 +77,12 @@ class AutocaptureGestureListenerClickTest {
                 this.target = targetOverride
             }
 
+            // Listener-only tests simulate a SeekBar that accepted the drag.
+            if (this.target is SeekBar) {
+                every { this@Fixture.target.isEnabled } returns true
+                every { this@Fixture.target.isPressed } returns true
+            }
+
             if (attachViewsToRoot) {
                 decorView =
                     window.mockDecorView(
