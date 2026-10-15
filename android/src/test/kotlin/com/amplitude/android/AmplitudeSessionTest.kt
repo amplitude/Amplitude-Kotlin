@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.net.ConnectivityManager
 import com.amplitude.MainDispatcherRule
+import com.amplitude.android.utilities.FakeAndroidAmplitude
 import com.amplitude.android.utilities.createFakeAmplitude
 import com.amplitude.android.utilities.enterForeground
 import com.amplitude.android.utilities.exitForeground
@@ -21,6 +22,7 @@ import io.mockk.slot
 import io.mockk.spyk
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -729,6 +731,126 @@ class AmplitudeSessionTest {
         }
 
     @Test
+    fun `should start a new session after opting in on a cold start with an expired session`() =
+        runTest {
+            val storageProvider = InstanceStorageProvider(InMemoryStorage())
+            val previousAmplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = createConfiguration(storageProvider, shouldTrackSessions = false),
+                )
+            previousAmplitude.isBuilt.await()
+            previousAmplitude.track(createEvent(1000L, "previous event"))
+            advanceUntilIdle()
+
+            val amplitude =
+                createFakeAmplitude(
+                    scheduler = testScheduler,
+                    configuration = createConfiguration(storageProvider, shouldTrackSessions = false, optOut = true),
+                )
+            val eventPlugin = FakeEventPlugin()
+            amplitude.add(eventPlugin)
+            amplitude.isBuilt.await()
+            assertEquals(1000L, amplitude.sessionId)
+
+            enterForeground(amplitude, 2000L)
+            amplitude.track(createEvent(2025L, "opted out event"))
+            advanceUntilIdle()
+            assertEquals(0, eventPlugin.trackedEvents.size)
+            assertEquals(1000L, (amplitude.timeline as Timeline).lastEventTime)
+
+            amplitude.configuration.optOut = false
+            amplitude.track(createEvent(2050L, "opted in event"))
+            advanceUntilIdle()
+
+            val event = eventPlugin.trackedEvents.single()
+            assertEquals("opted in event", event.eventType)
+            assertEquals(2050L, event.sessionId)
+            assertEquals(2050L, amplitude.sessionId)
+
+            amplitude.track(createEvent(3000L, "later foreground event"))
+            advanceUntilIdle()
+            assertEquals(2050L, eventPlugin.trackedEvents.last().sessionId)
+        }
+
+    @Test
+    fun `should resume a recent saved session after opting in on a cold start`() =
+        runTest {
+            val amplitude = createOptedOutAmplitudeWithSavedSession()
+            val eventPlugin = FakeEventPlugin()
+            amplitude.add(eventPlugin)
+
+            enterForeground(amplitude, 1025L)
+            amplitude.optOut = false
+            amplitude.track(createEvent(1050L, "opted in event"))
+            advanceUntilIdle()
+
+            assertEquals(1000L, eventPlugin.trackedEvents.single().sessionId)
+
+            amplitude.track(createEvent(2000L, "later foreground event"))
+            advanceUntilIdle()
+            assertEquals(1000L, eventPlugin.trackedEvents.last().sessionId)
+        }
+
+    @Test
+    fun `should not extend an unchecked saved session when backgrounded while opted out`() =
+        runTest {
+            val amplitude = createOptedOutAmplitudeWithSavedSession()
+            val eventPlugin = FakeEventPlugin()
+            amplitude.add(eventPlugin)
+
+            enterForeground(amplitude, 2000L)
+            exitForeground(amplitude, 2025L)
+            assertEquals(1000L, (amplitude.timeline as Timeline).lastEventTime)
+            assertEquals(0, eventPlugin.trackedEvents.size)
+
+            amplitude.optOut = false
+            amplitude.track(createEvent(2050L, "opted in event"))
+            advanceUntilIdle()
+            assertEquals(2050L, eventPlugin.trackedEvents.single().sessionId)
+
+            amplitude.track(createEvent(3000L, "later background event"))
+            advanceUntilIdle()
+            assertEquals(3000L, eventPlugin.trackedEvents.last().sessionId)
+        }
+
+    @Test
+    fun `should emit session events after opting in with an expired saved session`() =
+        runTest {
+            val amplitude = createOptedOutAmplitudeWithSavedSession(shouldTrackSessions = true)
+            val eventPlugin = FakeEventPlugin()
+            amplitude.add(eventPlugin)
+
+            enterForeground(amplitude, 2000L)
+            assertEquals(0, eventPlugin.trackedEvents.size)
+
+            amplitude.optOut = false
+            amplitude.track(createEvent(2050L, "opted in event"))
+            advanceUntilIdle()
+
+            val events = eventPlugin.trackedEvents.sortedBy { it.eventId }
+            assertEquals(listOf(Amplitude.END_SESSION_EVENT, Amplitude.START_SESSION_EVENT, "opted in event"), events.map { it.eventType })
+            assertEquals(listOf(1000L, 2050L, 2050L), events.map { it.sessionId })
+            assertEquals(listOf(1000L, 2050L, 2050L), events.map { it.timestamp })
+        }
+
+    @Test
+    fun `should keep an explicitly started session active in the foreground after opting in`() =
+        runTest {
+            val amplitude = createOptedOutAmplitudeWithSavedSession()
+            val eventPlugin = FakeEventPlugin()
+            amplitude.add(eventPlugin)
+
+            enterForeground(amplitude, 2000L)
+            amplitude.optOut = false
+            amplitude.track(createEvent(2050L, Amplitude.START_SESSION_EVENT))
+            amplitude.track(createEvent(3000L, "later foreground event"))
+            advanceUntilIdle()
+
+            assertEquals(listOf(2050L, 2050L), eventPlugin.trackedEvents.map { it.sessionId })
+        }
+
+    @Test
     fun amplitude_optInAfterForegroundWhileOptedOutShouldStartSession() =
         runTest {
             val amplitude =
@@ -883,6 +1005,21 @@ class AmplitudeSessionTest {
             assertEquals(1000L, event.sessionId)
             assertEquals(1150L, event.timestamp)
         }
+
+    private suspend fun TestScope.createOptedOutAmplitudeWithSavedSession(shouldTrackSessions: Boolean = false): FakeAndroidAmplitude {
+        val storage = InMemoryStorage()
+        storage.write(Storage.Constants.PREVIOUS_SESSION_ID, "1000")
+        storage.write(Storage.Constants.LAST_EVENT_TIME, "1000")
+        val amplitude =
+            createFakeAmplitude(
+                scheduler = testScheduler,
+                configuration = createConfiguration(InstanceStorageProvider(storage), shouldTrackSessions, optOut = true),
+            )
+        amplitude.isBuilt.await()
+        advanceUntilIdle()
+        assertEquals(1000L, amplitude.sessionId)
+        return amplitude
+    }
 
     private fun createEvent(
         timestamp: Long,

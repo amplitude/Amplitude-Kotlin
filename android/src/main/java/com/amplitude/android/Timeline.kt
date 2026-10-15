@@ -26,6 +26,7 @@ public class Timeline(
 
     private val _sessionId = AtomicLong(initialSessionId ?: DEFAULT_SESSION_ID)
     private val foreground = AtomicBoolean(false)
+    private var sessionPendingForegroundCheck = false
     public val sessionId: Long
         get() {
             return _sessionId.get()
@@ -114,6 +115,9 @@ public class Timeline(
         when (message) {
             is EventQueueMessage.EnterForeground -> {
                 if (!ownsSessions()) return
+                if (!foreground.get()) {
+                    sessionPendingForegroundCheck = true
+                }
                 val stopAndStartSessionEvents = startNewSessionIfNeeded(message.timestamp)
                 foreground.set(true)
                 processAndPersistEvents(stopAndStartSessionEvents)
@@ -124,7 +128,9 @@ public class Timeline(
             is EventQueueMessage.ExitForeground -> {
                 if (!ownsSessions()) return
                 foreground.set(false)
-                refreshSessionTime(message.timestamp)
+                if (!sessionPendingForegroundCheck) {
+                    refreshSessionTime(message.timestamp)
+                }
             }
         }
     }
@@ -184,7 +190,10 @@ public class Timeline(
         if (amplitude.optOut) {
             return emptyList()
         }
-        if (inSession() && (foreground.get() || isWithinMinTimeBetweenSessions(timestamp))) {
+        // A foreground transition while opted out still needs a timeout check after opting in.
+        val sessionActiveInForeground = foreground.get() && !sessionPendingForegroundCheck
+        sessionPendingForegroundCheck = false
+        if (inSession() && (sessionActiveInForeground || isWithinMinTimeBetweenSessions(timestamp))) {
             refreshSessionTime(timestamp)
             return emptyList()
         }
@@ -192,6 +201,7 @@ public class Timeline(
     }
 
     private suspend fun setSessionId(timestamp: Long) {
+        sessionPendingForegroundCheck = false
         _sessionId.set(timestamp)
         amplitude.storage.write(PREVIOUS_SESSION_ID, sessionId.toString())
         (amplitude as Amplitude).notifySessionIdChanged(timestamp)
