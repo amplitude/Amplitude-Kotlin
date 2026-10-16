@@ -1,16 +1,24 @@
 package com.amplitude.android
 
+import android.app.ActivityManager
 import android.app.Application
+import android.app.ApplicationExitInfo
 import android.content.Context
 import android.content.SharedPreferences
 import android.net.ConnectivityManager
+import android.os.Build
 import com.amplitude.MainDispatcherRule
+import com.amplitude.android.anr.AnrStorage
+import com.amplitude.android.anr.LegacyAnrCatcher
+import com.amplitude.android.anr.recordAnr
 import com.amplitude.android.crash.CrashStorage
 import com.amplitude.android.crash.CrashTrackingEnabledStore
 import com.amplitude.android.crash.recordCrash
+import com.amplitude.android.plugins.AndroidLifecyclePlugin
 import com.amplitude.android.utilities.FakeAndroidAmplitude
 import com.amplitude.android.utilities.createFakeAmplitude
 import com.amplitude.android.utilities.setupMockAndroidContext
+import com.amplitude.common.android.AndroidContextProvider
 import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.diagnostics.DiagnosticsClient
 import com.amplitude.core.utilities.ConsoleLoggerProvider
@@ -20,6 +28,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
 import io.mockk.slot
+import io.mockk.unmockkConstructor
 import io.mockk.unmockkStatic
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -27,9 +36,11 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.io.File
 import kotlin.coroutines.CoroutineContext
 import kotlin.test.Test
@@ -46,6 +57,12 @@ import kotlin.test.assertTrue
 class AmplitudeStartupTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
+
+    @After
+    fun tearDown() {
+        unmockkConstructor(AndroidContextProvider::class)
+        unmockkStatic(AndroidLifecyclePlugin::class)
+    }
 
     @Test
     fun `crash handler is not registered when the previous launch left crash tracking off`() =
@@ -223,21 +240,7 @@ class AmplitudeStartupTest {
             val application = mockApplication(crashTrackingEnabled = false)
             val instanceName = "crash-replacement-during-read"
             val dispatcher = StandardTestDispatcher(testScheduler)
-            val pendingStorage = mutableListOf<() -> Unit>()
-            var paused = true
-            val storageDispatcher =
-                object : CoroutineDispatcher() {
-                    override fun dispatch(
-                        context: CoroutineContext,
-                        block: Runnable,
-                    ) {
-                        if (paused) {
-                            pendingStorage.add { dispatcher.dispatch(context, block) }
-                        } else {
-                            dispatcher.dispatch(context, block)
-                        }
-                    }
-                }
+            val storageDispatcher = PausedStorageDispatcher(dispatcher)
             val recordedBy = mutableListOf<DiagnosticsClient>()
             mockkStatic("com.amplitude.android.crash.CrashDiagnosticsKt")
             every { any<DiagnosticsClient>().recordCrash(any()) } answers {
@@ -265,9 +268,7 @@ class AmplitudeStartupTest {
                 assertFalse(first.isActive)
                 assertTrue(second.isActive)
 
-                paused = false
-                pendingStorage.forEach { it() }
-                pendingStorage.clear()
+                storageDispatcher.resume()
                 advanceUntilIdle()
 
                 assertEquals(listOf(second.diagnosticsClient), recordedBy)
@@ -275,6 +276,68 @@ class AmplitudeStartupTest {
                 assertTrue(second.isBuilt.isCompleted)
             } finally {
                 unmockkStatic("com.amplitude.android.crash.CrashDiagnosticsKt")
+            }
+        }
+
+    @Test
+    @Config(sdk = [Build.VERSION_CODES.Q, Build.VERSION_CODES.R])
+    fun `a replaced build must leave the previous ANR for its active replacement`() =
+        runTest {
+            val application = mockApplication(crashTrackingEnabled = true)
+            val originalHandler = Thread.getDefaultUncaughtExceptionHandler()
+            val instanceName = "anr-replacement-during-read"
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val storageDispatcher = PausedStorageDispatcher(dispatcher)
+            val recordedBy = mutableListOf<DiagnosticsClient>()
+            mockkStatic("com.amplitude.android.anr.AnrDiagnosticsKt")
+            every { any<DiagnosticsClient>().recordAnr(any()) } answers {
+                recordedBy.add(firstArg())
+                Unit
+            }
+            try {
+                val storage = AnrStorage(application, instanceName)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    storage.saveLastAeiTimestamp(0L)
+                    val activityManager = mockk<ActivityManager>()
+                    val exit = mockk<ApplicationExitInfo>()
+                    every { exit.reason } returns ApplicationExitInfo.REASON_ANR
+                    every { exit.timestamp } returns 1_000L
+                    every { exit.pid } returns 42
+                    every { exit.description } returns "previous launch"
+                    every { exit.traceInputStream } answers { "previous trace".byteInputStream() }
+                    every { application.getSystemService(Context.ACTIVITY_SERVICE) } returns activityManager
+                    every { activityManager.getHistoricalProcessExitReasons(any(), 0, 0) } returns listOf(exit)
+                } else {
+                    storage.saveAnrReport(5_000)
+                }
+                val first =
+                    FakeAndroidAmplitude(
+                        configuration = configuration(instanceName, application),
+                        androidTestDispatcher = dispatcher,
+                        storageIODispatcher = storageDispatcher,
+                    )
+                runCurrent()
+                assertFalse(first.isBuilt.isCompleted)
+                val second =
+                    FakeAndroidAmplitude(
+                        configuration = configuration(instanceName, application),
+                        androidTestDispatcher = dispatcher,
+                        storageIODispatcher = storageDispatcher,
+                    )
+                runCurrent()
+                assertFalse(first.isActive)
+                assertTrue(second.isActive)
+
+                storageDispatcher.resume()
+                advanceUntilIdle()
+
+                assertEquals(listOf(second.diagnosticsClient), recordedBy)
+                assertTrue(first.isBuilt.isCompleted)
+                assertTrue(second.isBuilt.isCompleted)
+            } finally {
+                unmockkStatic("com.amplitude.android.anr.AnrDiagnosticsKt")
+                LegacyAnrCatcher.stopWatchdog()
+                Thread.setDefaultUncaughtExceptionHandler(originalHandler)
             }
         }
 
@@ -340,5 +403,27 @@ class AmplitudeStartupTest {
         every { prefs.edit() } returns editor
         every { context.getSharedPreferences(any(), any()) } returns prefs
         return context
+    }
+}
+
+private class PausedStorageDispatcher(private val delegate: CoroutineDispatcher) : CoroutineDispatcher() {
+    private val pending = mutableListOf<() -> Unit>()
+    private var paused = true
+
+    override fun dispatch(
+        context: CoroutineContext,
+        block: Runnable,
+    ) {
+        if (paused) {
+            pending.add { delegate.dispatch(context, block) }
+        } else {
+            delegate.dispatch(context, block)
+        }
+    }
+
+    fun resume() {
+        paused = false
+        pending.forEach { it() }
+        pending.clear()
     }
 }

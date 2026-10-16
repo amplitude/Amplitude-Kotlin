@@ -29,37 +29,50 @@ internal class AndroidRAnrCatcher(
         AnrStorage(
             appContext = context.applicationContext,
             instanceName = instanceName,
-            ioDispatcher = ioDispatcher,
         )
     }
 
-    override suspend fun consumePreviousAnrs(): List<String> {
-        if (!crashTrackingRemoteConfig.isCrashTrackingEnabled) return emptyList()
-        val unreadAnrs =
-            consumeMutex.withLock {
-                // Persist collection start before querying exit history. A failed or cancelled
-                // lookup must not move the baseline past new ANRs on the next launch.
-                val lastTimestamp =
-                    anrStorage.loadLastAeiTimestamp()
-                        ?: System.currentTimeMillis().also { anrStorage.saveLastAeiTimestamp(it) }
-                val exits = loadHistoricalExits() ?: return@withLock emptyList()
-                val unread =
-                    exits
-                        .filter { exit ->
-                            exit.reason == ApplicationExitInfo.REASON_ANR &&
-                                exit.timestamp > lastTimestamp
+    override suspend fun consumePreviousAnrs(consumeAndRecord: (() -> List<String>) -> Unit) {
+        if (!crashTrackingRemoteConfig.isCrashTrackingEnabled) return
+        val collectionStart =
+            withContext(ioDispatcher) {
+                consumeMutex.withLock {
+                    var timestamp: Long? = null
+                    consumeAndRecord {
+                        if (crashTrackingRemoteConfig.isCrashTrackingEnabled) {
+                            // Persist the baseline before the system lookup can fail or suspend.
+                            timestamp =
+                                anrStorage.loadLastAeiTimestamp()
+                                    ?: System.currentTimeMillis().also { anrStorage.saveLastAeiTimestamp(it) }
                         }
-                        .sortedBy { it.timestamp }
-                if (unread.isNotEmpty()) {
-                    anrStorage.saveLastAeiTimestamp(unread.maxOf { it.timestamp })
+                        emptyList()
+                    }
+                    timestamp
                 }
-                unread
-            }
+            } ?: return
 
-        return unreadAnrs
-            .map { exit ->
-                formatReport(exit)
+        val exits = loadHistoricalExits() ?: return
+        // System calls and trace reads can be slow. Prepare them without blocking replacement.
+        val prepared =
+            exits.filter { it.reason == ApplicationExitInfo.REASON_ANR && it.timestamp > collectionStart }
+                .sortedBy { it.timestamp }
+                .map { PreparedAnr(it.timestamp, formatReport(it)) }
+        if (prepared.isEmpty()) return
+
+        withContext(ioDispatcher) {
+            consumeMutex.withLock {
+                consumeAndRecord {
+                    if (!crashTrackingRemoteConfig.isCrashTrackingEnabled) return@consumeAndRecord emptyList()
+                    // Another consumer may have claimed the same exits during preparation.
+                    val lastTimestamp = anrStorage.loadLastAeiTimestamp() ?: collectionStart
+                    val unread = prepared.filter { it.timestamp > lastTimestamp }
+                    if (unread.isNotEmpty()) {
+                        anrStorage.saveLastAeiTimestamp(unread.last().timestamp)
+                    }
+                    unread.map { it.report }
+                }
             }
+        }
     }
 
     private suspend fun loadHistoricalExits(): List<ApplicationExitInfo>? =
@@ -136,3 +149,5 @@ internal class AndroidRAnrCatcher(
         private val consumeMutex = Mutex()
     }
 }
+
+private data class PreparedAnr(val timestamp: Long, val report: String)

@@ -173,8 +173,10 @@ public open class Amplitude internal constructor(
                 }
             }
         }
-        anrCatcher.consumePreviousAnrs().forEach { previousAnr ->
-            diagnosticsClient.recordAnr(previousAnr)
+        anrCatcher.consumePreviousAnrs { claim ->
+            AmplitudeRegistry.runIfActive(this@Amplitude) {
+                claim().forEach { previousAnr -> diagnosticsClient.recordAnr(previousAnr) }
+            }
         }
 
         if (!isActive) return

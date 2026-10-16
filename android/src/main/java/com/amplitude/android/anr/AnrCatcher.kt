@@ -6,7 +6,12 @@ import com.amplitude.android.crash.CrashTrackingRemoteConfig
 import kotlinx.coroutines.CoroutineDispatcher
 
 internal interface AnrCatcher {
-    suspend fun consumePreviousAnrs(): List<String>
+    /**
+     * Supplies synchronous claims on the storage dispatcher. The caller must check ownership,
+     * execute each accepted claim, and record its reports atomically. System lookups and trace
+     * preparation may suspend outside that ownership guard.
+     */
+    suspend fun consumePreviousAnrs(consumeAndRecord: (() -> List<String>) -> Unit)
 
     fun detach() {}
 }

@@ -7,6 +7,7 @@ import android.os.Looper
 import android.os.Process
 import com.amplitude.android.crash.CrashTrackingRemoteConfig
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.min
 
@@ -24,7 +25,7 @@ private const val ANR_STATE_POLL_MS = 500L
 internal class LegacyAnrCatcher(
     context: Context,
     private val instanceName: String,
-    ioDispatcher: CoroutineDispatcher,
+    private val ioDispatcher: CoroutineDispatcher,
     private val crashTrackingRemoteConfig: CrashTrackingRemoteConfig,
 ) : AnrCatcher {
     private val appContext = context.applicationContext
@@ -32,7 +33,6 @@ internal class LegacyAnrCatcher(
         AnrStorage(
             appContext = appContext,
             instanceName = instanceName,
-            ioDispatcher = ioDispatcher,
         )
     }
     private val mainHandler: Handler by lazy { Handler(Looper.getMainLooper()) }
@@ -43,9 +43,13 @@ internal class LegacyAnrCatcher(
         }
     }
 
-    override suspend fun consumePreviousAnrs(): List<String> {
-        val report = anrStorage.consumePreviousAnr()
-        return if (report == null) emptyList() else listOf(report)
+    override suspend fun consumePreviousAnrs(consumeAndRecord: (() -> List<String>) -> Unit) {
+        withContext(ioDispatcher) {
+            consumeAndRecord {
+                val report = anrStorage.consumePreviousAnr()
+                if (report == null) emptyList() else listOf(report)
+            }
+        }
     }
 
     /**

@@ -39,7 +39,6 @@ class LegacyAnrCatcherTest {
             AnrStorage(
                 appContext = context,
                 instanceName = "test-instance",
-                ioDispatcher = StandardTestDispatcher(testScheduler),
             ).consumePreviousAnr()
         }
 
@@ -51,7 +50,6 @@ class LegacyAnrCatcherTest {
             AnrStorage(
                 appContext = context,
                 instanceName = "test-instance",
-                ioDispatcher = StandardTestDispatcher(testScheduler),
             ).consumePreviousAnr()
         }
 
@@ -60,12 +58,12 @@ class LegacyAnrCatcherTest {
     fun `should consume only its instance's legacy ANR report`() =
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
-            AnrStorage(context, "first", dispatcher).saveAnrReport(1_000)
+            AnrStorage(context, "first").saveAnrReport(1_000)
             val first = createAnrCatcher(context, "first", dispatcher, trackingConfig(enabled = false))
             val second = createAnrCatcher(context, "second", dispatcher, trackingConfig(enabled = false))
 
             assertTrue(second.consumePreviousAnrs().isEmpty())
-            AnrStorage(context, "second", dispatcher).saveAnrReport(2_000)
+            AnrStorage(context, "second").saveAnrReport(2_000)
 
             assertTrue(first.consumePreviousAnrs().single().contains("Timeout: 1000ms"))
             assertTrue(second.consumePreviousAnrs().single().contains("Timeout: 2000ms"))
@@ -100,7 +98,7 @@ class LegacyAnrCatcherTest {
                 )
             // A write failure for one instance must not stop reports for later instances.
             val blockedReport =
-                File(AnrStorage(spiedContext, "failing-instance", testDispatcher).directory!!, "com.amplitude.anr_report")
+                File(AnrStorage(spiedContext, "failing-instance").directory!!, "com.amplitude.anr_report")
             assertTrue(blockedReport.mkdirs())
             LegacyAnrCatcher(
                 context = spiedContext,

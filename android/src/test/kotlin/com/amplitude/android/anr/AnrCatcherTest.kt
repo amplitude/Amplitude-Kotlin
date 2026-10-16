@@ -45,13 +45,69 @@ class AndroidRAnrCatcherTest {
             AnrStorage(
                 appContext = context,
                 instanceName = "test-instance",
-                ioDispatcher = testDispatcher,
             ).saveLastAeiTimestamp(0L)
             AnrStorage(
                 appContext = context,
                 instanceName = "test-instance",
-                ioDispatcher = testDispatcher,
             ).consumePreviousAnr()
+        }
+
+    @Test
+    fun `should leave the cursor unchanged when ownership is lost during trace preparation`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val storage = AnrStorage(context, "test-instance")
+            var active = true
+            val exit = mockExit(1_000L, "previous anr", "previous trace")
+            every { exit.traceInputStream } answers {
+                active = false
+                "previous trace".byteInputStream()
+            }
+            every {
+                activityManager.getHistoricalProcessExitReasons(any(), 0, 0)
+            } returns listOf(exit)
+            val reports = mutableListOf<String>()
+
+            AndroidRAnrCatcher(context, "test-instance", dispatcher, trackingConfig(enabled = true))
+                .consumePreviousAnrs { claim -> if (active) reports.addAll(claim()) }
+
+            assertTrue(reports.isEmpty())
+            assertEquals(0L, storage.loadLastAeiTimestamp())
+            every { exit.traceInputStream } answers { "previous trace".byteInputStream() }
+            val replacementReports =
+                AndroidRAnrCatcher(context, "test-instance", dispatcher, trackingConfig(enabled = true))
+                    .consumePreviousAnrs()
+            assertTrue(replacementReports.single().contains("previous anr"))
+            assertEquals(1_000L, storage.loadLastAeiTimestamp())
+        }
+
+    @Test
+    fun `should not initialize a cursor without instance ownership`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val instanceName = "inactive-initial-lookup"
+
+            AndroidRAnrCatcher(context, instanceName, dispatcher, trackingConfig(enabled = true))
+                .consumePreviousAnrs { /* The instance has already been replaced. */ }
+
+            assertNull(AnrStorage(context, instanceName).loadLastAeiTimestamp())
+        }
+
+    @Test
+    fun `should not advance the cursor when trace preparation is cancelled`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val exit = mockExit(1_000L, "previous anr", "previous trace")
+            every { exit.traceInputStream } throws CancellationException()
+            every {
+                activityManager.getHistoricalProcessExitReasons(any(), 0, 0)
+            } returns listOf(exit)
+
+            assertFailsWith<CancellationException> {
+                AndroidRAnrCatcher(context, "test-instance", dispatcher, trackingConfig(enabled = true))
+                    .consumePreviousAnrs()
+            }
+            assertEquals(0L, AnrStorage(context, "test-instance").loadLastAeiTimestamp())
         }
 
     @Test
@@ -59,7 +115,7 @@ class AndroidRAnrCatcherTest {
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
             val instanceName = "failed-initial-lookup"
-            val storage = AnrStorage(context, instanceName, dispatcher)
+            val storage = AnrStorage(context, instanceName)
             every {
                 activityManager.getHistoricalProcessExitReasons(any(), 0, 0)
             } throws IllegalStateException("binder unavailable")
@@ -90,7 +146,7 @@ class AndroidRAnrCatcherTest {
     fun `should retain an existing cursor when exit history lookup fails`() =
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
-            val storage = AnrStorage(context, "test-instance", dispatcher)
+            val storage = AnrStorage(context, "test-instance")
             storage.saveLastAeiTimestamp(1_234L)
             every {
                 activityManager.getHistoricalProcessExitReasons(any(), 0, 0)
@@ -108,7 +164,7 @@ class AndroidRAnrCatcherTest {
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
             val instanceName = "cancelled-initial-lookup"
-            val storage = AnrStorage(context, instanceName, dispatcher)
+            val storage = AnrStorage(context, instanceName)
             every {
                 activityManager.getHistoricalProcessExitReasons(any(), 0, 0)
             } throws CancellationException()
@@ -132,8 +188,8 @@ class AndroidRAnrCatcherTest {
     fun `should consume exit history independently for each instance name`() =
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
-            AnrStorage(context, "first", dispatcher).saveLastAeiTimestamp(1_000L)
-            AnrStorage(context, "second", dispatcher).saveLastAeiTimestamp(2_000L)
+            AnrStorage(context, "first").saveLastAeiTimestamp(1_000L)
+            AnrStorage(context, "second").saveLastAeiTimestamp(2_000L)
             every {
                 activityManager.getHistoricalProcessExitReasons(any(), 0, 0)
             } returns
@@ -268,7 +324,6 @@ class AndroidRAnrCatcherTest {
                 AnrStorage(
                     appContext = context,
                     instanceName = "test-instance",
-                    ioDispatcher = testDispatcher,
                 )
             File(storage.directory!!, "com.amplitude.anr_aei_timestamp").delete()
             val historical = mockExit(timestamp = 2_000L, description = "historical anr", trace = "trace")
@@ -311,7 +366,6 @@ class AndroidRAnrCatcherTest {
                 AnrStorage(
                     appContext = context,
                     instanceName = "test-instance",
-                    ioDispatcher = testDispatcher,
                 )
             File(storage.directory!!, "com.amplitude.anr_aei_timestamp").delete()
             every {
@@ -339,7 +393,6 @@ class AndroidRAnrCatcherTest {
                 AnrStorage(
                     appContext = context,
                     instanceName = "test-instance",
-                    ioDispatcher = testDispatcher,
                 )
             File(storage.directory!!, "com.amplitude.anr_aei_timestamp").delete()
             every {
@@ -382,7 +435,7 @@ class AndroidRAnrCatcherTest {
             every { this@mockk.timestamp } returns timestamp
             every { pid } returns 42
             every { this@mockk.description } returns description
-            every { traceInputStream } returns trace.byteInputStream()
+            every { traceInputStream } answers { trace.byteInputStream() }
         }
     }
 }
@@ -399,7 +452,6 @@ class AnrCatcherFactoryTest {
             AnrStorage(
                 appContext = context,
                 instanceName = "test-instance",
-                ioDispatcher = StandardTestDispatcher(testScheduler),
             ).consumePreviousAnr()
         }
 

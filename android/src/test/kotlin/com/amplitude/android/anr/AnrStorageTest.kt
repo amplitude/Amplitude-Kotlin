@@ -5,7 +5,6 @@ import androidx.test.core.app.ApplicationProvider
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -23,17 +22,16 @@ class AnrStorageTest {
     @Test
     fun `should isolate ANR reports by instance name across launches`() =
         runTest {
-            val dispatcher = StandardTestDispatcher(testScheduler)
-            val first = AnrStorage(context, "first", dispatcher)
-            val second = AnrStorage(context, "second", dispatcher)
+            val first = AnrStorage(context, "first")
+            val second = AnrStorage(context, "second")
             first.saveAnrReport(1_000)
 
             assertNull(second.consumePreviousAnr())
             second.saveAnrReport(2_000)
 
-            val firstReport = AnrStorage(context, "first", dispatcher).consumePreviousAnr()!!
+            val firstReport = AnrStorage(context, "first").consumePreviousAnr()!!
             assertTrue(firstReport.contains("Timeout: 1000ms"))
-            val secondReport = AnrStorage(context, "second", dispatcher).consumePreviousAnr()!!
+            val secondReport = AnrStorage(context, "second").consumePreviousAnr()!!
             assertTrue(secondReport.contains("Timeout: 2000ms"))
             assertNull(first.consumePreviousAnr())
             assertNull(second.consumePreviousAnr())
@@ -42,24 +40,22 @@ class AnrStorageTest {
     @Test
     fun `should isolate exit history cursors by instance name across launches`() =
         runTest {
-            val dispatcher = StandardTestDispatcher(testScheduler)
-            val first = AnrStorage(context, "first", dispatcher)
-            val second = AnrStorage(context, "second", dispatcher)
+            val first = AnrStorage(context, "first")
+            val second = AnrStorage(context, "second")
             first.saveLastAeiTimestamp(1_000L)
 
             assertNull(second.loadLastAeiTimestamp())
             second.saveLastAeiTimestamp(2_000L)
 
-            assertEquals(1_000L, AnrStorage(context, "first", dispatcher).loadLastAeiTimestamp())
-            assertEquals(2_000L, AnrStorage(context, "second", dispatcher).loadLastAeiTimestamp())
+            assertEquals(1_000L, AnrStorage(context, "first").loadLastAeiTimestamp())
+            assertEquals(2_000L, AnrStorage(context, "second").loadLastAeiTimestamp())
         }
 
     @Test
     fun `should keep instance names with path separators in separate directories`() =
         runTest {
-            val dispatcher = StandardTestDispatcher(testScheduler)
-            val first = AnrStorage(context, "first/../second", dispatcher)
-            val second = AnrStorage(context, "second", dispatcher)
+            val first = AnrStorage(context, "first/../second")
+            val second = AnrStorage(context, "second")
             assertEquals(first.directory!!.parentFile, second.directory!!.parentFile)
             first.saveAnrReport(1_000)
             second.saveAnrReport(2_000)
@@ -71,12 +67,10 @@ class AnrStorageTest {
     @Test
     fun `directory is created without recursing`() =
         runTest {
-            val testDispatcher = StandardTestDispatcher(testScheduler)
             val storage =
                 AnrStorage(
                     appContext = context,
                     instanceName = "test-instance",
-                    ioDispatcher = testDispatcher,
                 )
             assertTrue(storage.directory!!.isDirectory)
             storage.saveAnrReport(5_000)
@@ -89,12 +83,10 @@ class AnrStorageTest {
     @Test
     fun `anr report includes the main thread`() =
         runTest {
-            val testDispatcher = StandardTestDispatcher(testScheduler)
             val storage =
                 AnrStorage(
                     appContext = context,
                     instanceName = "test-instance",
-                    ioDispatcher = testDispatcher,
                 )
             storage.saveAnrReport(5_000)
             val report = storage.consumePreviousAnr()!!
@@ -111,7 +103,6 @@ class AnrStorageTest {
                 AnrStorage(
                     appContext = failingContext,
                     instanceName = "test-instance",
-                    ioDispatcher = StandardTestDispatcher(testScheduler),
                 )
 
             assertNull(storage.directory)
@@ -124,12 +115,10 @@ class AnrStorageTest {
     @Test
     fun `a failed timestamp write does not throw`() =
         runTest {
-            val testDispatcher = StandardTestDispatcher(testScheduler)
             val storage =
                 AnrStorage(
                     appContext = context,
                     instanceName = "test-instance",
-                    ioDispatcher = testDispatcher,
                 )
             File(storage.directory!!, "com.amplitude.anr_aei_timestamp").apply {
                 delete()

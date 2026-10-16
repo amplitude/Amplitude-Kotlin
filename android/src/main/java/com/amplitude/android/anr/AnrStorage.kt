@@ -4,8 +4,6 @@ import android.content.Context
 import android.os.Looper
 import com.amplitude.android.utilities.runCatchingCancellable
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStreamWriter
@@ -18,10 +16,10 @@ private const val AEI_TIMESTAMP_FILE_NAME = "com.amplitude.anr_aei_timestamp"
 private const val MAX_STACK_FRAMES = 64
 private const val MAX_THREADS = 16
 
+/** Synchronous persistence helpers; call from the storage dispatcher or the ANR watchdog. */
 internal class AnrStorage(
     private val appContext: Context,
     private val instanceName: String,
-    private val ioDispatcher: CoroutineDispatcher,
 ) {
     val directory: File? by lazy {
         try {
@@ -57,21 +55,19 @@ internal class AnrStorage(
         }
     }
 
-    suspend fun consumePreviousAnr(): String? {
+    fun consumePreviousAnr(): String? {
         val storageDirectory = directory ?: return null
-        return withContext(ioDispatcher) {
-            synchronized(fileLock) {
-                val file = File(storageDirectory, ANR_REPORT_FILE_NAME)
-                if (!file.exists()) return@withContext null
-                try {
-                    file.readText().ifEmpty { null }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (_: Exception) {
-                    null
-                } finally {
-                    file.delete()
-                }
+        return synchronized(fileLock) {
+            val file = File(storageDirectory, ANR_REPORT_FILE_NAME)
+            if (!file.exists()) return@synchronized null
+            try {
+                file.readText().ifEmpty { null }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            } finally {
+                file.delete()
             }
         }
     }
@@ -80,30 +76,26 @@ internal class AnrStorage(
      * Returns the last consumed [android.app.ApplicationExitInfo] timestamp, or null when no cursor
      * has been stored. A missing cursor is not the same as a cursor at `0`.
      */
-    suspend fun loadLastAeiTimestamp(): Long? {
+    fun loadLastAeiTimestamp(): Long? {
         val storageDirectory = directory ?: return null
-        return withContext(ioDispatcher) {
-            synchronized(fileLock) {
-                val file = File(storageDirectory, AEI_TIMESTAMP_FILE_NAME)
-                if (!file.exists()) return@withContext null
-                try {
-                    file.readText().trim().toLongOrNull()
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (_: Exception) {
-                    null
-                }
+        return synchronized(fileLock) {
+            val file = File(storageDirectory, AEI_TIMESTAMP_FILE_NAME)
+            if (!file.exists()) return@synchronized null
+            try {
+                file.readText().trim().toLongOrNull()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
             }
         }
     }
 
-    suspend fun saveLastAeiTimestamp(timestamp: Long) {
+    fun saveLastAeiTimestamp(timestamp: Long) {
         val storageDirectory = directory ?: return
-        withContext(ioDispatcher) {
-            synchronized(fileLock) {
-                runCatchingCancellable {
-                    File(storageDirectory, AEI_TIMESTAMP_FILE_NAME).writeText(timestamp.toString())
-                }
+        synchronized(fileLock) {
+            runCatchingCancellable {
+                File(storageDirectory, AEI_TIMESTAMP_FILE_NAME).writeText(timestamp.toString())
             }
         }
     }
