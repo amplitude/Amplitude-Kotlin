@@ -1,5 +1,7 @@
 package com.amplitude.core.utilities
 
+import java.io.OutputStream
+import java.io.OutputStreamWriter
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
@@ -22,5 +24,12 @@ internal inline fun <T, R> T.runCatchingCancellable(
         Result.failure(e)
     } finally {
         finally()
+    }
+}
+
+/** Encodes continuously, including surrogate pairs crossing segment boundaries. */
+internal fun Iterable<String>.writeUtf8(output: OutputStream) {
+    OutputStreamWriter(output, Charsets.UTF_8).buffered().use { writer ->
+        forEach { writer.write(it) }
     }
 }

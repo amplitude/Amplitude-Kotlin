@@ -56,8 +56,8 @@ class PlayerBindingInsertIdTest {
                     observer.emit(PlayerEvent.Playing)
                     runCurrent()
 
-                    val started = events.filter { it.eventType == "[Amplitude] Stream Started" }
-                    val stopped = events.filter { it.eventType == "[Amplitude] Stream Stopped" }
+                    val started = events.filter { it.eventType == "[Streaming] Stream Started" }
+                    val stopped = events.filter { it.eventType == "[Streaming] Stream Stopped" }
                     assertEquals(2, started.size)
                     assertTrue(stopped.size >= 3)
 
@@ -71,9 +71,9 @@ class PlayerBindingInsertIdTest {
                     assertNotEquals(firstStoppedInsertId, stopped.last().insertId)
                     assertNotEquals(started[1].insertId, stopped.last().insertId)
 
-                    val streamSessionId = started[0].eventProperties?.get("stream_session_id")
-                    assertEquals(streamSessionId, started[1].eventProperties?.get("stream_session_id"))
-                    assertTrue(stopped.all { it.eventProperties?.get("stream_session_id") == streamSessionId })
+                    val streamSessionId = started[0].eventProperties?.get("[Streaming] Stream Session ID")
+                    assertEquals(streamSessionId, started[1].eventProperties?.get("[Streaming] Stream Session ID"))
+                    assertTrue(stopped.all { it.eventProperties?.get("[Streaming] Stream Session ID") == streamSessionId })
                 } finally {
                     binding.stop()
                     runCurrent()

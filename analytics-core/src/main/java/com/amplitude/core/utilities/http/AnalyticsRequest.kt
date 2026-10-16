@@ -18,17 +18,24 @@ public data class AnalyticsRequest(
         }
 
     public fun getBodyStr(): String {
-        return buildString {
-            append("{\"api_key\":\"$apiKey\",\"client_upload_time\":\"${getClientUploadTime()}\",\"events\":$events")
+        return bodyParts().joinToString(separator = "")
+    }
+
+    /**
+     * The request body split at the [events] boundary, to be written in order.
+     */
+    internal fun bodyParts(): List<String> =
+        buildList {
+            add("{\"api_key\":\"$apiKey\",\"client_upload_time\":\"${getClientUploadTime()}\",\"events\":")
+            add(events)
             if (minIdLength != null) {
-                append(",\"options\":{\"min_id_length\":$minIdLength}")
+                add(",\"options\":{\"min_id_length\":$minIdLength}")
             }
             if (diagnostics != null) {
-                append(",\"request_metadata\":{\"sdk\":$diagnostics}")
+                add(",\"request_metadata\":{\"sdk\":$diagnostics}")
             }
-            append("}")
+            add("}")
         }
-    }
 
     internal fun getClientUploadTime(): String {
         return sdf.format(Date(clientUploadTime))

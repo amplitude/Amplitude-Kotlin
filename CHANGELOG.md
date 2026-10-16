@@ -1,3 +1,17 @@
+# [1.35.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.34.0...v1.35.0) (2026-10-16)
+
+
+### Bug Fixes
+
+* **android:** capture selectable Compose controls ([#554](https://github.com/amplitude/Amplitude-Kotlin/issues/554)) ([51e50d5](https://github.com/amplitude/Amplitude-Kotlin/commit/51e50d5fd7ae11b7e579ee3fa3782d5d7e2ae22b))
+* validate saved sessions after opting in on cold start ([#572](https://github.com/amplitude/Amplitude-Kotlin/issues/572)) ([301b7ff](https://github.com/amplitude/Amplitude-Kotlin/commit/301b7fffe03e736f8b6ac0800da5937ea6d26f9a))
+
+
+### Features
+
+* align streaming events and properties to the [Streaming] taxonomy ([#553](https://github.com/amplitude/Amplitude-Kotlin/issues/553)) ([0a5262b](https://github.com/amplitude/Amplitude-Kotlin/commit/0a5262b4a34757a8b9a5f0c0702bd1152b6db839))
+* **android:** capture non-tap gestures ([#544](https://github.com/amplitude/Amplitude-Kotlin/issues/544)) ([1e80956](https://github.com/amplitude/Amplitude-Kotlin/commit/1e80956a65d42f0961f78625e94ec95f1ac53127))
+
 # [1.34.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.33.0...v1.34.0) (2026-10-08)
 
 

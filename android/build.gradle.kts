@@ -108,6 +108,7 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.test.core)
     testImplementation(libs.test.ext.junit)
+    testImplementation(libs.test.material)
     testImplementation(libs.json)
     testImplementation(libs.play.services.base)
     testImplementation(libs.playServicesAdsIdentifier)

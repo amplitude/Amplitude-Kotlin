@@ -14,10 +14,19 @@ internal object GzipUtils {
      * @return The gzip-compressed data as a byte array
      * @throws java.io.IOException if compression fails
      */
-    fun compress(data: String): ByteArray {
+    fun compress(data: String): ByteArray = compress(listOf(data))
+
+    /**
+     * Compresses [parts] using gzip as if they were concatenated, without joining them first.
+     *
+     * @param parts The strings to compress, written in order
+     * @return The gzip-compressed data as a byte array
+     * @throws java.io.IOException if compression fails
+     */
+    fun compress(parts: Iterable<String>): ByteArray {
         val byteArrayOutputStream = ByteArrayOutputStream()
         GZIPOutputStream(byteArrayOutputStream).use { gzipStream ->
-            gzipStream.write(data.toByteArray(Charsets.UTF_8))
+            parts.writeUtf8(gzipStream)
         }
         return byteArrayOutputStream.toByteArray()
     }

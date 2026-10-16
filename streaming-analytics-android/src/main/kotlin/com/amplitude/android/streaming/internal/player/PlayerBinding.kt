@@ -136,7 +136,7 @@ internal class PlayerBinding internal constructor(
             PlayerEvent.Paused -> onPaused()
             PlayerEvent.Buffering -> onBuffering()
             PlayerEvent.Ready -> onReady()
-            PlayerEvent.Ended -> finishSession(StopReason.ENDED)
+            PlayerEvent.Ended -> endPlay(StopReason.ENDED)
             is PlayerEvent.Seeking -> onSeeking(event)
             is PlayerEvent.Error -> finishSession(StopReason.ERROR, event.message)
             is PlayerEvent.MediaChanged -> {
@@ -174,8 +174,9 @@ internal class PlayerBinding internal constructor(
     }
 
     /**
-     * Opens a play. [previousSegment] is the last play of the same stream session, whose play
-     * time this one continues from.
+     * Opens a play. `[Streaming] Play Time Sec` counts only this play ID. A pause or a replay
+     * after the content ends starts a new play at zero and keeps the session total in
+     * `[Streaming] Play Time Total Sec`. Seeks and buffering stay on the same play.
      */
     private suspend fun startContent(
         viewSessionId: String?,
@@ -197,7 +198,7 @@ internal class PlayerBinding internal constructor(
                 playTimeBeforeMillis =
                     previousSegment
                         ?.takeIf { it.streamSessionId == id }
-                        ?.durationMillis()
+                        ?.totalDurationMillis()
                         ?: 0L,
             ).also { it.resumeWatch(snapshot.positionMillis) }
         streamTracker.trackStreamStarted(
@@ -311,6 +312,34 @@ internal class PlayerBinding internal constructor(
                 if (!playerIsPlaying() || playerIsPlayingAd()) return
                 startContent(state.viewSessionId, state.lastSegment)
             }
+        }
+    }
+
+    /**
+     * Closes the open play and leaves the stream session open. A later play keeps the session id
+     * and continues `[Streaming] Play Time Total Sec`.
+     */
+    private suspend fun endPlay(reason: StopReason) {
+        when (val state = playback) {
+            is PlaybackState.Content -> {
+                finishSegment(state.segment, state.heartbeat, reason)
+                playback = PlaybackState.Idle(state.viewSessionId, state.segment)
+            }
+            is PlaybackState.Suspended -> {
+                finishSegment(state.segment, heartbeat = null, reason = reason)
+                playback = PlaybackState.Idle(state.viewSessionId, state.segment)
+            }
+            is PlaybackState.Ad -> {
+                finishAdPlayback(state, AdCompletionStatus.ABANDONED)
+                val content = state.content
+                if (content != null) {
+                    finishSegment(content.segment, heartbeat = null, reason = reason)
+                    playback = PlaybackState.Idle(content.viewSessionId, content.segment)
+                } else {
+                    playback = PlaybackState.Idle(state.viewSessionId, state.lastSegment)
+                }
+            }
+            is PlaybackState.Idle -> Unit
         }
     }
 
@@ -605,6 +634,7 @@ internal class PlayerBinding internal constructor(
             playId = segment.playId,
             startTimeMillis = segment.startTimeMillis,
             playTimeMillis = segment.durationMillis(),
+            playTimeTotalMillis = segment.totalDurationMillis(),
             timestamp = timestamp,
             insertId = segment.stoppedInsertId,
             stopReason = stopReason,
