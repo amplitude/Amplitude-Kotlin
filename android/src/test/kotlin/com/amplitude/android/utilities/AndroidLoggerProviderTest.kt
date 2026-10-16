@@ -28,6 +28,7 @@ class AndroidLoggerProviderTest {
     fun androidLoggerProvider_getLogger_returnsSingletonInstance() {
         val testApiKey = "test-123"
         val context = mockk<Application>(relaxed = true)
+        every { context.applicationContext } returns context
         every { context.getDir(any(), any()) } returns temporaryFolder.newFolder("testDir")
 
         val amplitude =

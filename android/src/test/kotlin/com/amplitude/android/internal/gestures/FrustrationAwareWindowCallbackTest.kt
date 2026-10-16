@@ -19,6 +19,7 @@ import com.amplitude.common.Logger
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -29,7 +30,8 @@ import org.robolectric.annotation.Config
 class FrustrationAwareWindowCallbackTest {
     private val delegate = mockk<Window.Callback>(relaxed = true)
     private val decorView = View(ApplicationProvider.getApplicationContext())
-    private val track = mockk<TrackFunction>(relaxed = true)
+    private val trackedEvents = mutableListOf<String>()
+    private val track: TrackFunction = { eventType, _ -> trackedEvents.add(eventType) }
     private val logger = mockk<Logger>(relaxed = true)
     private val frustrationDetector = mockk<FrustrationInteractionsDetector>(relaxed = true)
 
@@ -98,8 +100,8 @@ class FrustrationAwareWindowCallbackTest {
 
         verify(exactly = 0) {
             frustrationDetector.processClick(any(), any(), any(), any())
-            track(any(), any())
         }
+        assertTrue(trackedEvents.isEmpty())
     }
 
     @Test
