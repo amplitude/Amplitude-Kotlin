@@ -26,6 +26,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -51,6 +52,80 @@ class AndroidRAnrCatcherTest {
                 instanceName = "test-instance",
                 ioDispatcher = testDispatcher,
             ).consumePreviousAnr()
+        }
+
+    @Test
+    fun `should preserve collection start when the first exit history lookup fails`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val instanceName = "failed-initial-lookup"
+            val storage = AnrStorage(context, instanceName, dispatcher)
+            every {
+                activityManager.getHistoricalProcessExitReasons(any(), 0, 0)
+            } throws IllegalStateException("binder unavailable")
+
+            assertTrue(
+                AndroidRAnrCatcher(context, instanceName, dispatcher, trackingConfig(enabled = true))
+                    .consumePreviousAnrs().isEmpty(),
+            )
+            val collectionStart = assertNotNull(storage.loadLastAeiTimestamp())
+            every {
+                activityManager.getHistoricalProcessExitReasons(any(), 0, 0)
+            } returns
+                listOf(
+                    mockExit(collectionStart - 1, "before collection", "historical trace"),
+                    mockExit(collectionStart + 1, "after collection", "new trace"),
+                )
+
+            // A later launch must reuse the original baseline instead of skipping the new ANR.
+            val nextLaunch = AndroidRAnrCatcher(context, instanceName, dispatcher, trackingConfig(enabled = true))
+            val report = nextLaunch.consumePreviousAnrs().single()
+            assertTrue(report.contains("after collection"))
+            assertTrue(report.contains("new trace"))
+            assertEquals(collectionStart + 1, storage.loadLastAeiTimestamp())
+            assertTrue(nextLaunch.consumePreviousAnrs().isEmpty())
+        }
+
+    @Test
+    fun `should retain an existing cursor when exit history lookup fails`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val storage = AnrStorage(context, "test-instance", dispatcher)
+            storage.saveLastAeiTimestamp(1_234L)
+            every {
+                activityManager.getHistoricalProcessExitReasons(any(), 0, 0)
+            } throws IllegalStateException("binder unavailable")
+
+            assertTrue(
+                AndroidRAnrCatcher(context, "test-instance", dispatcher, trackingConfig(enabled = true))
+                    .consumePreviousAnrs().isEmpty(),
+            )
+            assertEquals(1_234L, storage.loadLastAeiTimestamp())
+        }
+
+    @Test
+    fun `should persist collection start before a cancelled first history lookup`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val instanceName = "cancelled-initial-lookup"
+            val storage = AnrStorage(context, instanceName, dispatcher)
+            every {
+                activityManager.getHistoricalProcessExitReasons(any(), 0, 0)
+            } throws CancellationException()
+
+            assertFailsWith<CancellationException> {
+                AndroidRAnrCatcher(context, instanceName, dispatcher, trackingConfig(enabled = true))
+                    .consumePreviousAnrs()
+            }
+            val collectionStart = assertNotNull(storage.loadLastAeiTimestamp())
+            every {
+                activityManager.getHistoricalProcessExitReasons(any(), 0, 0)
+            } returns listOf(mockExit(collectionStart + 1, "after cancellation", "new trace"))
+
+            val reports =
+                AndroidRAnrCatcher(context, instanceName, dispatcher, trackingConfig(enabled = true))
+                    .consumePreviousAnrs()
+            assertTrue(reports.single().contains("after cancellation"))
         }
 
     @Test
