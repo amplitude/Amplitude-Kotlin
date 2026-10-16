@@ -20,9 +20,11 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class, RestrictedAmplitudeFeature::class)
@@ -72,7 +74,7 @@ class LegacyAnrCatcherTest {
         }
 
     @Test
-    fun `watchdog persists an ANR only after the system marks this process not responding`() =
+    fun `watchdog persists ANRs for each enabled instance only after system confirmation`() =
         runTest {
             val activityManager = mockk<ActivityManager>()
             val errorStates =
@@ -96,9 +98,35 @@ class LegacyAnrCatcherTest {
                     ioDispatcher = testDispatcher,
                     crashTrackingRemoteConfig = trackingConfig(enabled = true),
                 )
+            // A write failure for one instance must not stop reports for later instances.
+            val blockedReport =
+                File(AnrStorage(spiedContext, "failing-instance", testDispatcher).directory!!, "com.amplitude.anr_report")
+            assertTrue(blockedReport.mkdirs())
+            LegacyAnrCatcher(
+                context = spiedContext,
+                instanceName = "failing-instance",
+                ioDispatcher = testDispatcher,
+                crashTrackingRemoteConfig = trackingConfig(enabled = true),
+            )
+            val second =
+                LegacyAnrCatcher(
+                    context = spiedContext,
+                    instanceName = "second-instance",
+                    ioDispatcher = testDispatcher,
+                    crashTrackingRemoteConfig = trackingConfig(enabled = true),
+                )
+            val disabled =
+                LegacyAnrCatcher(
+                    context = spiedContext,
+                    instanceName = "disabled-instance",
+                    ioDispatcher = testDispatcher,
+                    crashTrackingRemoteConfig = trackingConfig(enabled = false),
+                )
+            assertEquals(1, watchdogThreads().size)
 
             Thread.sleep(5_500)
             assertTrue(catcher.consumePreviousAnrs().isEmpty())
+            assertTrue(second.consumePreviousAnrs().isEmpty())
 
             errorStates +=
                 errorState(
@@ -107,14 +135,22 @@ class LegacyAnrCatcherTest {
                 )
             val deadline = System.currentTimeMillis() + 3_000
             var reports: List<String> = emptyList()
-            while (reports.isEmpty() && System.currentTimeMillis() < deadline) {
+            var secondReports: List<String> = emptyList()
+            while ((reports.isEmpty() || secondReports.isEmpty()) && System.currentTimeMillis() < deadline) {
                 Thread.sleep(50)
-                reports = catcher.consumePreviousAnrs()
+                if (reports.isEmpty()) reports = catcher.consumePreviousAnrs()
+                if (secondReports.isEmpty()) secondReports = second.consumePreviousAnrs()
             }
+            blockedReport.delete()
 
             assertTrue(reports.isNotEmpty())
             assertTrue(reports.first().contains("ANR detected"))
             assertTrue(reports.first().contains("Timeout: 5000ms"))
+            assertTrue(secondReports.single().contains("ANR detected"))
+            assertTrue(secondReports.single().contains("Timeout: 5000ms"))
+            assertTrue(disabled.consumePreviousAnrs().isEmpty())
+            assertTrue(catcher.consumePreviousAnrs().isEmpty())
+            assertTrue(second.consumePreviousAnrs().isEmpty())
         }
 
     @Test
@@ -203,6 +239,33 @@ class LegacyAnrCatcherTest {
         )
         first.detach()
         assertTrue(watchdogThreads().isNotEmpty())
+    }
+
+    @Test
+    fun `should retain earlier catchers when the latest catcher detaches`() {
+        for (instanceName in listOf("test-instance", "other-instance")) {
+            val first =
+                LegacyAnrCatcher(
+                    context = context,
+                    instanceName = "test-instance",
+                    ioDispatcher = StandardTestDispatcher(),
+                    crashTrackingRemoteConfig = trackingConfig(enabled = true),
+                )
+            val watchdog = watchdogThreads().single()
+            val latest =
+                LegacyAnrCatcher(
+                    context = context,
+                    instanceName = instanceName,
+                    ioDispatcher = StandardTestDispatcher(),
+                    crashTrackingRemoteConfig = trackingConfig(enabled = true),
+                )
+
+            latest.detach()
+
+            assertSame(watchdog, watchdogThreads().single())
+            first.detach()
+            assertTrue(watchdogThreads().isEmpty())
+        }
     }
 
     @Test

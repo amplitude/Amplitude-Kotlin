@@ -19,7 +19,7 @@ private const val ANR_STATE_POLL_MS = 500L
  *
  * A main-thread stall is recorded only when [ActivityManager] reports this process as
  * [ActivityManager.ProcessErrorStateInfo.NOT_RESPONDING]. The watchdog keeps checking until the
- * main thread answers, and writes the report once.
+ * main thread answers, and writes one report for each enabled instance name.
  */
 internal class LegacyAnrCatcher(
     context: Context,
@@ -49,14 +49,13 @@ internal class LegacyAnrCatcher(
     }
 
     /**
-     * Stops the process-wide watchdog if this catcher still owns it. A replacement that has
-     * already [register]ed keeps the thread and is left alone.
+     * Unregisters this catcher, stopping the process-wide watchdog only when no catchers remain.
+     * Earlier catchers stay registered until retirement, so a failed replacement leaves them active.
      */
     override fun detach() {
         val thread =
             synchronized(watchdogLock) {
-                if (activeCatcher !== this) return
-                activeCatcher = null
+                if (!registeredCatchers.remove(this) || registeredCatchers.isNotEmpty()) return
                 val running = watchdogThread
                 watchdogThread = null
                 running
@@ -67,22 +66,19 @@ internal class LegacyAnrCatcher(
 
     private fun persistAnrReport() {
         if (!crashTrackingRemoteConfig.isCrashTrackingEnabled) return
-        synchronized(storageLock) {
-            anrStorage.saveAnrReport(ANR_TIMEOUT_MS)
-        }
+        anrStorage.saveAnrReport(ANR_TIMEOUT_MS)
     }
 
     companion object {
-        private val storageLock = Any()
         private val watchdogLock = Any()
         private var watchdogThread: Thread? = null
 
-        @Volatile
-        private var activeCatcher: LegacyAnrCatcher? = null
+        /** Registration order lets the newest catcher for each instance name write the report. */
+        private val registeredCatchers = linkedSetOf<LegacyAnrCatcher>()
 
         private fun register(catcher: LegacyAnrCatcher) {
             synchronized(watchdogLock) {
-                activeCatcher = catcher
+                registeredCatchers.add(catcher)
                 if (watchdogThread?.isAlive == true) return
 
                 val thread =
@@ -101,7 +97,7 @@ internal class LegacyAnrCatcher(
                 synchronized(watchdogLock) {
                     val running = watchdogThread
                     watchdogThread = null
-                    activeCatcher = null
+                    registeredCatchers.clear()
                     running
                 }
             thread?.interrupt()
@@ -111,7 +107,11 @@ internal class LegacyAnrCatcher(
         private fun runWatchdog() {
             try {
                 while (!Thread.currentThread().isInterrupted) {
-                    val catcher = activeCatcher ?: break
+                    val catcher =
+                        synchronized(watchdogLock) {
+                            if (watchdogThread !== Thread.currentThread()) return
+                            registeredCatchers.lastOrNull()
+                        } ?: break
                     val responded = AtomicBoolean(false)
                     catcher.mainHandler.post { responded.set(true) }
                     Thread.sleep(PING_INTERVAL_MS)
@@ -133,15 +133,25 @@ internal class LegacyAnrCatcher(
                     throw InterruptedException()
                 }
                 if (isProcessNotResponding(catcher.appContext)) {
-                    try {
-                        catcher.persistAnrReport()
-                    } catch (_: Throwable) {
-                        // Best-effort: never throw from the watchdog
-                    }
+                    persistAnrReports()
                     waitUntil(responded, Long.MAX_VALUE)
                     return
                 }
                 if (waitUntil(responded, ANR_STATE_POLL_MS)) return
+            }
+        }
+
+        private fun persistAnrReports() {
+            synchronized(watchdogLock) {
+                if (watchdogThread !== Thread.currentThread()) return
+                // Keep removal atomic with persistence so detach cannot leave a pending write.
+                for (catcher in registeredCatchers.associateBy { it.instanceName }.values) {
+                    try {
+                        catcher.persistAnrReport()
+                    } catch (_: Throwable) {
+                        // A failed instance must not prevent reports for the others.
+                    }
+                }
             }
         }
 
