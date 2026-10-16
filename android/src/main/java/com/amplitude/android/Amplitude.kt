@@ -107,6 +107,7 @@ public open class Amplitude internal constructor(
             crashCatcher =
                 CrashCatcher(
                     context = androidConfig.context,
+                    instanceName = androidConfig.instanceName,
                     ioDispatcher = storageIODispatcher,
                     crashTrackingRemoteConfig = crashTrackingRemoteConfig,
                 )

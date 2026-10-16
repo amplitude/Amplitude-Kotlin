@@ -171,6 +171,7 @@ class AmplitudeStartupTest {
                 val report =
                     CrashStorage(
                         appContext = application,
+                        instanceName = "crash-startup",
                         ioDispatcher = UnconfinedTestDispatcher(testScheduler),
                     ).consumePreviousCrash()
                 assertTrue(report!!.contains("startup"))
@@ -200,6 +201,7 @@ class AmplitudeStartupTest {
                 assertNull(
                     CrashStorage(
                         appContext = application,
+                        instanceName = "crash-activation-fails",
                         ioDispatcher = UnconfinedTestDispatcher(testScheduler),
                     ).consumePreviousCrash(),
                 )
@@ -214,6 +216,7 @@ class AmplitudeStartupTest {
             val application = mockApplication(crashTrackingEnabled = false)
             CrashStorage(
                 appContext = application,
+                instanceName = "crash-report-previous",
                 ioDispatcher = UnconfinedTestDispatcher(testScheduler),
             ).saveCrashReport(RuntimeException("previous launch"))
 
@@ -228,6 +231,7 @@ class AmplitudeStartupTest {
             assertNull(
                 CrashStorage(
                     appContext = application,
+                    instanceName = "crash-report-previous",
                     ioDispatcher = UnconfinedTestDispatcher(testScheduler),
                 ).consumePreviousCrash(),
             )

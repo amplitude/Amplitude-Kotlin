@@ -7,6 +7,7 @@ import kotlin.system.exitProcess
 
 internal class CrashCatcher(
     context: Context,
+    private val instanceName: String,
     ioDispatcher: CoroutineDispatcher,
     private val crashTrackingRemoteConfig: CrashTrackingRemoteConfig,
 ) {
@@ -14,6 +15,7 @@ internal class CrashCatcher(
     private val crashStorage by lazy {
         CrashStorage(
             appContext = appContext,
+            instanceName = instanceName,
             ioDispatcher = ioDispatcher,
         )
     }
@@ -67,18 +69,20 @@ internal class CrashCatcher(
 
     private fun saveCrashReport(throwable: Throwable) {
         synchronized(storageLock) {
-            if (lastPersistedThrowable === throwable) {
-                // Already written; skip if another handler in the chain persists the same crash
+            if (lastPersistedThrowables[instanceName] === throwable) {
+                // Already written for this instance name by another handler in the chain.
                 return
             }
-            lastPersistedThrowable = throwable
             crashStorage.saveCrashReport(throwable)
+            lastPersistedThrowables[instanceName] = throwable
         }
     }
 
     companion object {
         private val handlerInstallLock = Any()
         private val storageLock = Any()
-        private var lastPersistedThrowable: Throwable? = null
+
+        /** instanceName -> Throwable */
+        private val lastPersistedThrowables = mutableMapOf<String, Throwable>()
     }
 }

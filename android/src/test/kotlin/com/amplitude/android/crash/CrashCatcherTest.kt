@@ -16,6 +16,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.io.IOException
 import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
@@ -45,8 +46,41 @@ class CrashCatcherTest {
             CrashTrackingEnabledStore(context, "test-instance").setEnabled(false)
             CrashStorage(
                 appContext = context,
+                instanceName = "test-instance",
                 ioDispatcher = StandardTestDispatcher(testScheduler),
             ).consumePreviousCrash()
+        }
+
+    @Test
+    fun `should persist the same crash for each enabled instance`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Thread.setDefaultUncaughtExceptionHandler { _, _ -> }
+            val first = createCrashCatcher(dispatcher, instanceName = "first")
+            val second = createCrashCatcher(dispatcher, instanceName = "second")
+
+            Thread.getDefaultUncaughtExceptionHandler()!!
+                .uncaughtException(Thread.currentThread(), RuntimeException("shared crash"))
+
+            assertTrue(first.consumePreviousCrash()!!.contains("shared crash"))
+            assertTrue(second.consumePreviousCrash()!!.contains("shared crash"))
+            assertNull(first.consumePreviousCrash())
+            assertNull(second.consumePreviousCrash())
+        }
+
+    @Test
+    fun `should not let a disabled instance consume another instance's crash`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Thread.setDefaultUncaughtExceptionHandler { _, _ -> }
+            val enabled = createCrashCatcher(dispatcher, instanceName = "enabled")
+            val disabled = createCrashCatcher(dispatcher, crashTrackingRemoteConfig(false), "disabled")
+
+            Thread.getDefaultUncaughtExceptionHandler()!!
+                .uncaughtException(Thread.currentThread(), RuntimeException("enabled crash"))
+
+            assertNull(disabled.consumePreviousCrash())
+            assertTrue(enabled.consumePreviousCrash()!!.contains("enabled crash"))
         }
 
     @Test
@@ -90,6 +124,7 @@ class CrashCatcherTest {
             val report =
                 CrashStorage(
                     appContext = context,
+                    instanceName = "test-instance",
                     ioDispatcher = testDispatcher,
                 ).consumePreviousCrash()
             assertTrue(report!!.contains("startup"))
@@ -116,6 +151,7 @@ class CrashCatcherTest {
             val report =
                 CrashStorage(
                     appContext = context,
+                    instanceName = "test-instance",
                     ioDispatcher = testDispatcher,
                 ).consumePreviousCrash()
             assertTrue(report!!.contains("boom"))
@@ -178,11 +214,38 @@ class CrashCatcherTest {
         }
 
     @Test
+    fun `should retry a failed crash write in the next same-name handler`() =
+        runTest {
+            val testDispatcher = StandardTestDispatcher(testScheduler)
+            var saveCount = 0
+            var chainedCount = 0
+            mockkConstructor(CrashStorage::class)
+            every { anyConstructed<CrashStorage>().saveCrashReport(any()) } answers {
+                saveCount++
+                if (saveCount == 1) throw IOException("first write failed")
+                callOriginal()
+            }
+
+            Thread.setDefaultUncaughtExceptionHandler { _, _ -> chainedCount++ }
+            val catcher = createCrashCatcher(testDispatcher)
+            repeat(2) { createCrashCatcher(testDispatcher) }
+
+            Thread.getDefaultUncaughtExceptionHandler()!!
+                .uncaughtException(Thread.currentThread(), RuntimeException("retry crash"))
+
+            assertEquals(2, saveCount)
+            assertEquals(1, chainedCount)
+            assertTrue(catcher.consumePreviousCrash()!!.contains("retry crash"))
+            assertNull(catcher.consumePreviousCrash())
+        }
+
+    @Test
     fun `consumePreviousCrash returns the persisted report`() =
         runTest {
             val testDispatcher = StandardTestDispatcher(testScheduler)
             CrashStorage(
                 appContext = context,
+                instanceName = "test-instance",
                 ioDispatcher = testDispatcher,
             ).saveCrashReport(RuntimeException("previous"))
             val report =
@@ -192,6 +255,7 @@ class CrashCatcherTest {
             assertNull(
                 CrashStorage(
                     appContext = context,
+                    instanceName = "test-instance",
                     ioDispatcher = testDispatcher,
                 ).consumePreviousCrash(),
             )
@@ -209,6 +273,7 @@ class CrashCatcherTest {
             assertNull(
                 CrashStorage(
                     appContext = context,
+                    instanceName = "test-instance",
                     ioDispatcher = testDispatcher,
                 ).consumePreviousCrash(),
             )
@@ -228,6 +293,7 @@ class CrashCatcherTest {
             assertNull(
                 CrashStorage(
                     appContext = context,
+                    instanceName = "test-instance",
                     ioDispatcher = testDispatcher,
                 ).consumePreviousCrash(),
             )
@@ -241,9 +307,11 @@ class CrashCatcherTest {
     private fun createCrashCatcher(
         dispatcher: CoroutineDispatcher,
         crashTrackingRemoteConfig: CrashTrackingRemoteConfig = crashTrackingRemoteConfig(true),
+        instanceName: String = "test-instance",
     ): CrashCatcher =
         CrashCatcher(
             context = context,
+            instanceName = instanceName,
             ioDispatcher = dispatcher,
             crashTrackingRemoteConfig = crashTrackingRemoteConfig,
         )

@@ -7,6 +7,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStreamWriter
 import java.io.PrintWriter
+import java.net.URLEncoder
 
 private const val STORAGE_PREFIX = "com.amplitude.crash_report"
 private const val CRASH_REPORT_FILE_NAME = "com.amplitude.crash_report"
@@ -15,13 +16,13 @@ private const val MAX_CAUSE_DEPTH = 4
 
 internal class CrashStorage(
     private val appContext: Context,
+    private val instanceName: String,
     private val ioDispatcher: CoroutineDispatcher,
 ) {
-
     val directory: File by lazy {
         File(
             appContext.getDir("amplitude", Context.MODE_PRIVATE),
-            STORAGE_PREFIX,
+            "$STORAGE_PREFIX-${URLEncoder.encode(instanceName, "UTF-8")}",
         ).also {
             it.mkdirs()
         }
