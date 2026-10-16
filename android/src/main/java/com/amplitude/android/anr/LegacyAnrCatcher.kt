@@ -23,6 +23,7 @@ private const val ANR_STATE_POLL_MS = 500L
  */
 internal class LegacyAnrCatcher(
     context: Context,
+    private val instanceName: String,
     ioDispatcher: CoroutineDispatcher,
     private val crashTrackingRemoteConfig: CrashTrackingRemoteConfig,
 ) : AnrCatcher {
@@ -30,6 +31,7 @@ internal class LegacyAnrCatcher(
     private val anrStorage by lazy {
         AnrStorage(
             appContext = appContext,
+            instanceName = instanceName,
             ioDispatcher = ioDispatcher,
         )
     }

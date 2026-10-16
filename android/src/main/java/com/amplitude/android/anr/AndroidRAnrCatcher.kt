@@ -21,12 +21,14 @@ private const val MAX_TRACE_CHARS = 32 * 1024
 @RequiresApi(Build.VERSION_CODES.R)
 internal class AndroidRAnrCatcher(
     private val context: Context,
+    private val instanceName: String,
     private val ioDispatcher: CoroutineDispatcher,
     private val crashTrackingRemoteConfig: CrashTrackingRemoteConfig,
 ) : AnrCatcher {
     private val anrStorage by lazy {
         AnrStorage(
             appContext = context.applicationContext,
+            instanceName = instanceName,
             ioDispatcher = ioDispatcher,
         )
     }

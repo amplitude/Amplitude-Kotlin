@@ -118,6 +118,7 @@ public open class Amplitude internal constructor(
             anrCatcher =
                 createAnrCatcher(
                     context = androidConfig.context,
+                    instanceName = androidConfig.instanceName,
                     ioDispatcher = storageIODispatcher,
                     crashTrackingRemoteConfig = crashTrackingRemoteConfig,
                 )

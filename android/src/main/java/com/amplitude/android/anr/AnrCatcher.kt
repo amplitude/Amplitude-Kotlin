@@ -13,18 +13,21 @@ internal interface AnrCatcher {
 
 internal fun createAnrCatcher(
     context: Context,
+    instanceName: String,
     ioDispatcher: CoroutineDispatcher,
     crashTrackingRemoteConfig: CrashTrackingRemoteConfig,
 ): AnrCatcher {
     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         AndroidRAnrCatcher(
             context = context,
+            instanceName = instanceName,
             ioDispatcher = ioDispatcher,
             crashTrackingRemoteConfig = crashTrackingRemoteConfig,
         )
     } else {
         LegacyAnrCatcher(
             context = context,
+            instanceName = instanceName,
             ioDispatcher = ioDispatcher,
             crashTrackingRemoteConfig = crashTrackingRemoteConfig,
         )

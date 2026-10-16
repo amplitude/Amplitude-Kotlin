@@ -43,12 +43,45 @@ class AndroidRAnrCatcherTest {
             val testDispatcher = StandardTestDispatcher(testScheduler)
             AnrStorage(
                 appContext = context,
+                instanceName = "test-instance",
                 ioDispatcher = testDispatcher,
             ).saveLastAeiTimestamp(0L)
             AnrStorage(
                 appContext = context,
+                instanceName = "test-instance",
                 ioDispatcher = testDispatcher,
             ).consumePreviousAnr()
+        }
+
+    @Test
+    fun `should consume exit history independently for each instance name`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            AnrStorage(context, "first", dispatcher).saveLastAeiTimestamp(1_000L)
+            AnrStorage(context, "second", dispatcher).saveLastAeiTimestamp(2_000L)
+            every {
+                activityManager.getHistoricalProcessExitReasons(any(), 0, 0)
+            } returns
+                listOf(
+                    mockExit(timestamp = 1_500L, description = "earlier anr", trace = "earlier trace"),
+                    mockExit(timestamp = 2_500L, description = "later anr", trace = "later trace"),
+                )
+
+            val first = createAnrCatcher(context, "first", dispatcher, trackingConfig(enabled = true))
+            val second = createAnrCatcher(context, "second", dispatcher, trackingConfig(enabled = true))
+            val firstReports = first.consumePreviousAnrs()
+            assertEquals(2, firstReports.size)
+            assertTrue(firstReports[0].contains("earlier anr"))
+            assertTrue(firstReports[1].contains("later anr"))
+            val secondReports = second.consumePreviousAnrs()
+            assertEquals(1, secondReports.size)
+            assertTrue(secondReports.single().contains("later anr"))
+
+            assertTrue(
+                createAnrCatcher(context, "first", dispatcher, trackingConfig(enabled = true))
+                    .consumePreviousAnrs().isEmpty(),
+            )
+            assertTrue(second.consumePreviousAnrs().isEmpty())
         }
 
     @Test
@@ -64,6 +97,7 @@ class AndroidRAnrCatcherTest {
             val reports =
                 AndroidRAnrCatcher(
                     context = context,
+                    instanceName = "test-instance",
                     ioDispatcher = testDispatcher,
                     crashTrackingRemoteConfig = trackingConfig(enabled = true),
                 ).consumePreviousAnrs()
@@ -76,6 +110,7 @@ class AndroidRAnrCatcherTest {
             val again =
                 AndroidRAnrCatcher(
                     context = context,
+                    instanceName = "test-instance",
                     ioDispatcher = testDispatcher,
                     crashTrackingRemoteConfig = trackingConfig(enabled = true),
                 ).consumePreviousAnrs()
@@ -92,6 +127,7 @@ class AndroidRAnrCatcherTest {
             assertFailsWith<CancellationException> {
                 AndroidRAnrCatcher(
                     context = context,
+                    instanceName = "test-instance",
                     ioDispatcher = StandardTestDispatcher(testScheduler),
                     crashTrackingRemoteConfig = trackingConfig(enabled = true),
                 ).consumePreviousAnrs()
@@ -113,6 +149,7 @@ class AndroidRAnrCatcherTest {
                     async {
                         AndroidRAnrCatcher(
                             context = context,
+                            instanceName = "test-instance",
                             ioDispatcher = testDispatcher,
                             crashTrackingRemoteConfig = trackingConfig(enabled = true),
                         ).consumePreviousAnrs()
@@ -141,6 +178,7 @@ class AndroidRAnrCatcherTest {
                 emptyList(),
                 AndroidRAnrCatcher(
                     context = context,
+                    instanceName = "test-instance",
                     ioDispatcher = testDispatcher,
                     crashTrackingRemoteConfig = trackingConfig(enabled = true),
                 ).consumePreviousAnrs(),
@@ -154,6 +192,7 @@ class AndroidRAnrCatcherTest {
             val storage =
                 AnrStorage(
                     appContext = context,
+                    instanceName = "test-instance",
                     ioDispatcher = testDispatcher,
                 )
             File(storage.directory!!, "com.amplitude.anr_aei_timestamp").delete()
@@ -165,6 +204,7 @@ class AndroidRAnrCatcherTest {
             val catcher =
                 AndroidRAnrCatcher(
                     context = context,
+                    instanceName = "test-instance",
                     ioDispatcher = testDispatcher,
                     crashTrackingRemoteConfig = trackingConfig(enabled = true),
                 )
@@ -195,6 +235,7 @@ class AndroidRAnrCatcherTest {
             val storage =
                 AnrStorage(
                     appContext = context,
+                    instanceName = "test-instance",
                     ioDispatcher = testDispatcher,
                 )
             File(storage.directory!!, "com.amplitude.anr_aei_timestamp").delete()
@@ -206,6 +247,7 @@ class AndroidRAnrCatcherTest {
                 emptyList(),
                 AndroidRAnrCatcher(
                     context = context,
+                    instanceName = "test-instance",
                     ioDispatcher = testDispatcher,
                     crashTrackingRemoteConfig = trackingConfig(enabled = true),
                 ).consumePreviousAnrs(),
@@ -221,6 +263,7 @@ class AndroidRAnrCatcherTest {
             val storage =
                 AnrStorage(
                     appContext = context,
+                    instanceName = "test-instance",
                     ioDispatcher = testDispatcher,
                 )
             File(storage.directory!!, "com.amplitude.anr_aei_timestamp").delete()
@@ -232,6 +275,7 @@ class AndroidRAnrCatcherTest {
                 emptyList(),
                 AndroidRAnrCatcher(
                     context = context,
+                    instanceName = "test-instance",
                     ioDispatcher = testDispatcher,
                     crashTrackingRemoteConfig = trackingConfig(enabled = false),
                 ).consumePreviousAnrs(),
@@ -246,6 +290,7 @@ class AndroidRAnrCatcherTest {
                 emptyList(),
                 AndroidRAnrCatcher(
                     context = context,
+                    instanceName = "test-instance",
                     ioDispatcher = StandardTestDispatcher(testScheduler),
                     crashTrackingRemoteConfig = trackingConfig(enabled = false),
                 ).consumePreviousAnrs(),
@@ -278,6 +323,7 @@ class AnrCatcherFactoryTest {
             LegacyAnrCatcher.stopWatchdog()
             AnrStorage(
                 appContext = context,
+                instanceName = "test-instance",
                 ioDispatcher = StandardTestDispatcher(testScheduler),
             ).consumePreviousAnr()
         }
@@ -289,6 +335,7 @@ class AnrCatcherFactoryTest {
             assertIs<LegacyAnrCatcher>(
                 createAnrCatcher(
                     context = context,
+                    instanceName = "test-instance",
                     ioDispatcher = StandardTestDispatcher(testScheduler),
                     crashTrackingRemoteConfig = trackingConfig(enabled = false),
                 ),
@@ -302,6 +349,7 @@ class AnrCatcherFactoryTest {
             assertIs<AndroidRAnrCatcher>(
                 createAnrCatcher(
                     context = context,
+                    instanceName = "test-instance",
                     ioDispatcher = StandardTestDispatcher(testScheduler),
                     crashTrackingRemoteConfig = trackingConfig(enabled = false),
                 ),

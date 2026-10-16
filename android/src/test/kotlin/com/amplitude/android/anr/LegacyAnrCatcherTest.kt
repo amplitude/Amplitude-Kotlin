@@ -2,6 +2,7 @@ package com.amplitude.android.anr
 
 import android.app.ActivityManager
 import android.content.Context
+import android.os.Build
 import android.os.Looper
 import android.os.Process
 import androidx.test.core.app.ApplicationProvider
@@ -18,7 +19,9 @@ import org.junit.Before
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.annotation.Config
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -33,6 +36,7 @@ class LegacyAnrCatcherTest {
             LegacyAnrCatcher.stopWatchdog()
             AnrStorage(
                 appContext = context,
+                instanceName = "test-instance",
                 ioDispatcher = StandardTestDispatcher(testScheduler),
             ).consumePreviousAnr()
         }
@@ -44,8 +48,27 @@ class LegacyAnrCatcherTest {
             shadowOf(Looper.getMainLooper()).idle()
             AnrStorage(
                 appContext = context,
+                instanceName = "test-instance",
                 ioDispatcher = StandardTestDispatcher(testScheduler),
             ).consumePreviousAnr()
+        }
+
+    @Test
+    @Config(sdk = [Build.VERSION_CODES.Q])
+    fun `should consume only its instance's legacy ANR report`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            AnrStorage(context, "first", dispatcher).saveAnrReport(1_000)
+            val first = createAnrCatcher(context, "first", dispatcher, trackingConfig(enabled = false))
+            val second = createAnrCatcher(context, "second", dispatcher, trackingConfig(enabled = false))
+
+            assertTrue(second.consumePreviousAnrs().isEmpty())
+            AnrStorage(context, "second", dispatcher).saveAnrReport(2_000)
+
+            assertTrue(first.consumePreviousAnrs().single().contains("Timeout: 1000ms"))
+            assertTrue(second.consumePreviousAnrs().single().contains("Timeout: 2000ms"))
+            assertEquals(emptyList(), first.consumePreviousAnrs())
+            assertEquals(emptyList(), second.consumePreviousAnrs())
         }
 
     @Test
@@ -69,6 +92,7 @@ class LegacyAnrCatcherTest {
             val catcher =
                 LegacyAnrCatcher(
                     context = spiedContext,
+                    instanceName = "test-instance",
                     ioDispatcher = testDispatcher,
                     crashTrackingRemoteConfig = trackingConfig(enabled = true),
                 )
@@ -153,6 +177,7 @@ class LegacyAnrCatcherTest {
         val catcher =
             LegacyAnrCatcher(
                 context = context,
+                instanceName = "test-instance",
                 ioDispatcher = StandardTestDispatcher(),
                 crashTrackingRemoteConfig = trackingConfig(enabled = true),
             )
@@ -166,11 +191,13 @@ class LegacyAnrCatcherTest {
         val first =
             LegacyAnrCatcher(
                 context = context,
+                instanceName = "test-instance",
                 ioDispatcher = StandardTestDispatcher(),
                 crashTrackingRemoteConfig = trackingConfig(enabled = true),
             )
         LegacyAnrCatcher(
             context = context,
+            instanceName = "test-instance",
             ioDispatcher = StandardTestDispatcher(),
             crashTrackingRemoteConfig = trackingConfig(enabled = true),
         )
@@ -182,6 +209,7 @@ class LegacyAnrCatcherTest {
     fun `does not start the watchdog when crash tracking is off`() {
         LegacyAnrCatcher(
             context = context,
+            instanceName = "test-instance",
             ioDispatcher = StandardTestDispatcher(),
             crashTrackingRemoteConfig = trackingConfig(enabled = false),
         )

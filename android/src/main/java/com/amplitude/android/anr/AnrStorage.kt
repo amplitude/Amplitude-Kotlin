@@ -10,6 +10,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStreamWriter
 import java.io.PrintWriter
+import java.net.URLEncoder
 
 private const val STORAGE_PREFIX = "com.amplitude.anr_report"
 private const val ANR_REPORT_FILE_NAME = "com.amplitude.anr_report"
@@ -19,13 +20,14 @@ private const val MAX_THREADS = 16
 
 internal class AnrStorage(
     private val appContext: Context,
+    private val instanceName: String,
     private val ioDispatcher: CoroutineDispatcher,
 ) {
     val directory: File? by lazy {
         try {
             File(
                 appContext.getDir("amplitude", Context.MODE_PRIVATE),
-                STORAGE_PREFIX,
+                "$STORAGE_PREFIX-${URLEncoder.encode(instanceName, "UTF-8")}",
             ).also {
                 it.mkdirs()
             }
