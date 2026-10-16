@@ -21,6 +21,7 @@ internal class CrashTrackingEnabledStore(
     fun isEnabled(): Boolean = prefs.getBoolean(enabledKey, false)
 
     fun setEnabled(enabled: Boolean) {
-        prefs.edit { putBoolean(enabledKey, enabled) }
+        // The process may crash as soon as this returns, so an asynchronous apply() is too late.
+        prefs.edit(commit = true) { putBoolean(enabledKey, enabled) }
     }
 }

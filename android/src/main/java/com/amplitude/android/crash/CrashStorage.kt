@@ -1,8 +1,6 @@
 package com.amplitude.android.crash
 
 import android.content.Context
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStreamWriter
@@ -17,7 +15,6 @@ private const val MAX_CAUSE_DEPTH = 4
 internal class CrashStorage(
     private val appContext: Context,
     private val instanceName: String,
-    private val ioDispatcher: CoroutineDispatcher,
 ) {
     val directory: File by lazy {
         File(
@@ -48,18 +45,17 @@ internal class CrashStorage(
         }
     }
 
-    suspend fun consumePreviousCrash(): String? =
-        withContext(ioDispatcher) {
-            synchronized(fileLock) {
-                val file = File(directory, CRASH_REPORT_FILE_NAME)
-                if (!file.exists()) return@withContext null
-                try {
-                    file.readText().ifEmpty { null }
-                } catch (_: Exception) {
-                    null
-                } finally {
-                    file.delete()
-                }
+    /** Claims the report synchronously; callers must use the storage dispatcher. */
+    fun consumePreviousCrash(): String? =
+        synchronized(fileLock) {
+            val file = File(directory, CRASH_REPORT_FILE_NAME)
+            if (!file.exists()) return@synchronized null
+            try {
+                file.readText().ifEmpty { null }
+            } catch (_: Exception) {
+                null
+            } finally {
+                file.delete()
             }
         }
 

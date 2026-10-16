@@ -7,24 +7,33 @@ import android.net.ConnectivityManager
 import com.amplitude.MainDispatcherRule
 import com.amplitude.android.crash.CrashStorage
 import com.amplitude.android.crash.CrashTrackingEnabledStore
+import com.amplitude.android.crash.recordCrash
+import com.amplitude.android.utilities.FakeAndroidAmplitude
 import com.amplitude.android.utilities.createFakeAmplitude
 import com.amplitude.android.utilities.setupMockAndroidContext
 import com.amplitude.core.RestrictedAmplitudeFeature
+import com.amplitude.core.diagnostics.DiagnosticsClient
 import com.amplitude.core.utilities.ConsoleLoggerProvider
 import com.amplitude.core.utilities.InMemoryStorageProvider
 import com.amplitude.id.IMIdentityStorageProvider
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
 import io.mockk.slot
+import io.mockk.unmockkStatic
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Rule
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.io.File
+import kotlin.coroutines.CoroutineContext
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNotSame
@@ -167,12 +176,11 @@ class AmplitudeStartupTest {
                 Thread.getDefaultUncaughtExceptionHandler()!!
                     .uncaughtException(Thread.currentThread(), RuntimeException("startup"))
 
-                // Unconfined, so the pending build does not consume the report before this read.
+                // Read synchronously before the pending build can consume the report.
                 val report =
                     CrashStorage(
                         appContext = application,
                         instanceName = "crash-startup",
-                        ioDispatcher = UnconfinedTestDispatcher(testScheduler),
                     ).consumePreviousCrash()
                 assertTrue(report!!.contains("startup"))
                 advanceUntilIdle()
@@ -202,11 +210,71 @@ class AmplitudeStartupTest {
                     CrashStorage(
                         appContext = application,
                         instanceName = "crash-activation-fails",
-                        ioDispatcher = UnconfinedTestDispatcher(testScheduler),
                     ).consumePreviousCrash(),
                 )
             } finally {
                 Thread.setDefaultUncaughtExceptionHandler(originalHandler)
+            }
+        }
+
+    @Test
+    fun `a replaced build must leave the previous crash for its active replacement`() =
+        runTest {
+            val application = mockApplication(crashTrackingEnabled = false)
+            val instanceName = "crash-replacement-during-read"
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val pendingStorage = mutableListOf<() -> Unit>()
+            var paused = true
+            val storageDispatcher =
+                object : CoroutineDispatcher() {
+                    override fun dispatch(
+                        context: CoroutineContext,
+                        block: Runnable,
+                    ) {
+                        if (paused) {
+                            pendingStorage.add { dispatcher.dispatch(context, block) }
+                        } else {
+                            dispatcher.dispatch(context, block)
+                        }
+                    }
+                }
+            val recordedBy = mutableListOf<DiagnosticsClient>()
+            mockkStatic("com.amplitude.android.crash.CrashDiagnosticsKt")
+            every { any<DiagnosticsClient>().recordCrash(any()) } answers {
+                recordedBy.add(firstArg())
+                Unit
+            }
+            try {
+                CrashStorage(application, instanceName)
+                    .saveCrashReport(RuntimeException("previous launch"))
+                val first =
+                    FakeAndroidAmplitude(
+                        configuration = configuration(instanceName, application),
+                        androidTestDispatcher = dispatcher,
+                        storageIODispatcher = storageDispatcher,
+                    )
+                runCurrent()
+                assertFalse(first.isBuilt.isCompleted)
+                val second =
+                    FakeAndroidAmplitude(
+                        configuration = configuration(instanceName, application),
+                        androidTestDispatcher = dispatcher,
+                        storageIODispatcher = storageDispatcher,
+                    )
+                runCurrent()
+                assertFalse(first.isActive)
+                assertTrue(second.isActive)
+
+                paused = false
+                pendingStorage.forEach { it() }
+                pendingStorage.clear()
+                advanceUntilIdle()
+
+                assertEquals(listOf(second.diagnosticsClient), recordedBy)
+                assertTrue(first.isBuilt.isCompleted)
+                assertTrue(second.isBuilt.isCompleted)
+            } finally {
+                unmockkStatic("com.amplitude.android.crash.CrashDiagnosticsKt")
             }
         }
 
@@ -217,7 +285,6 @@ class AmplitudeStartupTest {
             CrashStorage(
                 appContext = application,
                 instanceName = "crash-report-previous",
-                ioDispatcher = UnconfinedTestDispatcher(testScheduler),
             ).saveCrashReport(RuntimeException("previous launch"))
 
             val amplitude =
@@ -232,7 +299,6 @@ class AmplitudeStartupTest {
                 CrashStorage(
                     appContext = application,
                     instanceName = "crash-report-previous",
-                    ioDispatcher = UnconfinedTestDispatcher(testScheduler),
                 ).consumePreviousCrash(),
             )
         }

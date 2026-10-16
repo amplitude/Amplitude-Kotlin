@@ -2,13 +2,11 @@ package com.amplitude.android.crash
 
 import android.content.Context
 import android.os.Process
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlin.system.exitProcess
 
 internal class CrashCatcher(
     context: Context,
     private val instanceName: String,
-    ioDispatcher: CoroutineDispatcher,
     private val crashTrackingRemoteConfig: CrashTrackingRemoteConfig,
 ) {
     private val appContext = context.applicationContext
@@ -16,7 +14,6 @@ internal class CrashCatcher(
         CrashStorage(
             appContext = appContext,
             instanceName = instanceName,
-            ioDispatcher = ioDispatcher,
         )
     }
 
@@ -63,7 +60,7 @@ internal class CrashCatcher(
         crashTrackingRemoteConfig.detach()
     }
 
-    suspend fun consumePreviousCrash(): String? {
+    fun consumePreviousCrash(): String? {
         return crashStorage.consumePreviousCrash()
     }
 

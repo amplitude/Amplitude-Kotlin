@@ -32,6 +32,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.lang.ref.WeakReference
 import java.util.concurrent.atomic.AtomicBoolean
@@ -108,7 +109,6 @@ public open class Amplitude internal constructor(
                 CrashCatcher(
                     context = androidConfig.context,
                     instanceName = androidConfig.instanceName,
-                    ioDispatcher = storageIODispatcher,
                     crashTrackingRemoteConfig = crashTrackingRemoteConfig,
                 )
             autocaptureManager =
@@ -154,9 +154,16 @@ public open class Amplitude internal constructor(
         // the replacement owns both by then.
         if (!isActive) return
 
-        crashCatcher.consumePreviousCrash()?.let { previousCrash ->
-            diagnosticsClient.recordCrash(previousCrash)
+        withContext(storageIODispatcher) {
+            // No suspension between checking ownership, claiming the file, and recording it.
+            AmplitudeRegistry.runIfActive(this@Amplitude) {
+                crashCatcher.consumePreviousCrash()?.let { previousCrash ->
+                    diagnosticsClient.recordCrash(previousCrash)
+                }
+            }
         }
+
+        if (!isActive) return
 
         val migrationManager = MigrationManager(this)
         migrationManager.migrateOldStorage()

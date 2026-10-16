@@ -3,7 +3,6 @@ package com.amplitude.android.crash
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -20,17 +19,16 @@ class CrashStorageTest {
     @Test
     fun `should isolate crash reports by instance name across launches`() =
         runTest {
-            val dispatcher = StandardTestDispatcher(testScheduler)
-            val first = CrashStorage(context, "first", dispatcher)
-            val second = CrashStorage(context, "second", dispatcher)
+            val first = CrashStorage(context, "first")
+            val second = CrashStorage(context, "second")
             first.saveCrashReport(RuntimeException("first crash"))
 
             assertNull(second.consumePreviousCrash())
             second.saveCrashReport(RuntimeException("second crash"))
 
-            val firstReport = CrashStorage(context, "first", dispatcher).consumePreviousCrash()!!
+            val firstReport = CrashStorage(context, "first").consumePreviousCrash()!!
             assertTrue(firstReport.contains("first crash"))
-            val secondReport = CrashStorage(context, "second", dispatcher).consumePreviousCrash()!!
+            val secondReport = CrashStorage(context, "second").consumePreviousCrash()!!
             assertTrue(secondReport.contains("second crash"))
             assertNull(first.consumePreviousCrash())
             assertNull(second.consumePreviousCrash())
@@ -39,9 +37,8 @@ class CrashStorageTest {
     @Test
     fun `should keep instance names with path separators in separate directories`() =
         runTest {
-            val dispatcher = StandardTestDispatcher(testScheduler)
-            val first = CrashStorage(context, "first/../second", dispatcher)
-            val second = CrashStorage(context, "second", dispatcher)
+            val first = CrashStorage(context, "first/../second")
+            val second = CrashStorage(context, "second")
             assertEquals(first.directory.parentFile, second.directory.parentFile)
             first.saveCrashReport(RuntimeException("first crash"))
             second.saveCrashReport(RuntimeException("second crash"))
@@ -53,12 +50,10 @@ class CrashStorageTest {
     @Test
     fun `directory is created without recursing`() =
         runTest {
-            val testDispatcher = StandardTestDispatcher(testScheduler)
             val storage =
                 CrashStorage(
                     appContext = context,
                     instanceName = "test-instance",
-                    ioDispatcher = testDispatcher,
                 )
             assertTrue(storage.directory.isDirectory)
             storage.saveCrashReport(IllegalStateException("failed"))
@@ -71,12 +66,10 @@ class CrashStorageTest {
     @Test
     fun `only one consumer receives the report`() =
         runTest {
-            val testDispatcher = StandardTestDispatcher(testScheduler)
             val storage =
                 CrashStorage(
                     appContext = context,
                     instanceName = "test-instance",
-                    ioDispatcher = testDispatcher,
                 )
             storage.saveCrashReport(IllegalStateException("once"))
 
@@ -90,7 +83,6 @@ class CrashStorageTest {
     @Test
     fun `crash report bounds the number of stack frames`() =
         runTest {
-            val testDispatcher = StandardTestDispatcher(testScheduler)
             val throwable =
                 RuntimeException("large").apply {
                     stackTrace =
@@ -102,7 +94,6 @@ class CrashStorageTest {
                 CrashStorage(
                     appContext = context,
                     instanceName = "test-instance",
-                    ioDispatcher = testDispatcher,
                 )
             storage.saveCrashReport(throwable)
 

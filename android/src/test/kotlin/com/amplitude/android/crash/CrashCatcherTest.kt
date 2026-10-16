@@ -8,9 +8,7 @@ import io.mockk.mockk
 import io.mockk.mockkConstructor
 import io.mockk.unmockkConstructor
 import io.mockk.verify
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
@@ -47,17 +45,15 @@ class CrashCatcherTest {
             CrashStorage(
                 appContext = context,
                 instanceName = "test-instance",
-                ioDispatcher = StandardTestDispatcher(testScheduler),
             ).consumePreviousCrash()
         }
 
     @Test
     fun `should persist the same crash for each enabled instance`() =
         runTest {
-            val dispatcher = StandardTestDispatcher(testScheduler)
             Thread.setDefaultUncaughtExceptionHandler { _, _ -> }
-            val first = createCrashCatcher(dispatcher, instanceName = "first")
-            val second = createCrashCatcher(dispatcher, instanceName = "second")
+            val first = createCrashCatcher(instanceName = "first")
+            val second = createCrashCatcher(instanceName = "second")
 
             Thread.getDefaultUncaughtExceptionHandler()!!
                 .uncaughtException(Thread.currentThread(), RuntimeException("shared crash"))
@@ -71,10 +67,9 @@ class CrashCatcherTest {
     @Test
     fun `should not let a disabled instance consume another instance's crash`() =
         runTest {
-            val dispatcher = StandardTestDispatcher(testScheduler)
             Thread.setDefaultUncaughtExceptionHandler { _, _ -> }
-            val enabled = createCrashCatcher(dispatcher, instanceName = "enabled")
-            val disabled = createCrashCatcher(dispatcher, crashTrackingRemoteConfig(false), "disabled")
+            val enabled = createCrashCatcher(instanceName = "enabled")
+            val disabled = createCrashCatcher(crashTrackingRemoteConfig(false), "disabled")
 
             Thread.getDefaultUncaughtExceptionHandler()!!
                 .uncaughtException(Thread.currentThread(), RuntimeException("enabled crash"))
@@ -86,27 +81,24 @@ class CrashCatcherTest {
     @Test
     fun `does not install the handler when crash tracking is off at startup`() =
         runTest {
-            val testDispatcher = StandardTestDispatcher(testScheduler)
             Thread.setDefaultUncaughtExceptionHandler { _, _ -> }
             val before = Thread.getDefaultUncaughtExceptionHandler()
-            createCrashCatcher(testDispatcher, crashTrackingRemoteConfig(false))
+            createCrashCatcher(crashTrackingRemoteConfig(false))
             assertSame(before, Thread.getDefaultUncaughtExceptionHandler())
         }
 
     @Test
     fun `installs the handler during init when crash tracking is on at startup`() =
         runTest {
-            val testDispatcher = StandardTestDispatcher(testScheduler)
             Thread.setDefaultUncaughtExceptionHandler { _, _ -> }
             val before = Thread.getDefaultUncaughtExceptionHandler()
-            createCrashCatcher(testDispatcher)
+            createCrashCatcher()
             assertNotSame(before, Thread.getDefaultUncaughtExceptionHandler())
         }
 
     @Test
     fun `persists a startup crash before remote config arrives when the previous run enabled tracking`() =
         runTest {
-            val testDispatcher = StandardTestDispatcher(testScheduler)
             Thread.setDefaultUncaughtExceptionHandler { _, _ -> }
             val store = CrashTrackingEnabledStore(context, "test-instance")
             store.setEnabled(true)
@@ -116,7 +108,7 @@ class CrashCatcherTest {
                     sdkVersion = "1.8.0",
                     crashTrackingEnabledStore = store,
                 )
-            createCrashCatcher(testDispatcher, remoteConfig)
+            createCrashCatcher(remoteConfig)
 
             Thread.getDefaultUncaughtExceptionHandler()!!
                 .uncaughtException(Thread.currentThread(), RuntimeException("startup"))
@@ -125,7 +117,6 @@ class CrashCatcherTest {
                 CrashStorage(
                     appContext = context,
                     instanceName = "test-instance",
-                    ioDispatcher = testDispatcher,
                 ).consumePreviousCrash()
             assertTrue(report!!.contains("startup"))
         }
@@ -133,14 +124,13 @@ class CrashCatcherTest {
     @Test
     fun `multiple catchers invoke the original handler once`() =
         runTest {
-            val testDispatcher = StandardTestDispatcher(testScheduler)
             var chainedCount = 0
             Thread.setDefaultUncaughtExceptionHandler { _, _ -> chainedCount++ }
 
-            createCrashCatcher(testDispatcher)
+            createCrashCatcher()
             val firstHandler = Thread.getDefaultUncaughtExceptionHandler()
 
-            createCrashCatcher(testDispatcher)
+            createCrashCatcher()
             val latestHandler = Thread.getDefaultUncaughtExceptionHandler()
 
             assertNotSame(firstHandler, latestHandler)
@@ -152,7 +142,6 @@ class CrashCatcherTest {
                 CrashStorage(
                     appContext = context,
                     instanceName = "test-instance",
-                    ioDispatcher = testDispatcher,
                 ).consumePreviousCrash()
             assertTrue(report!!.contains("boom"))
         }
@@ -160,7 +149,6 @@ class CrashCatcherTest {
     @Test
     fun `concurrent catchers each wrap the previous handler`() =
         runTest {
-            val testDispatcher = StandardTestDispatcher(testScheduler)
             var chainedCount = 0
             Thread.setDefaultUncaughtExceptionHandler { _, _ -> chainedCount++ }
 
@@ -175,7 +163,7 @@ class CrashCatcherTest {
                             true
                         }
                         start.await()
-                        createCrashCatcher(testDispatcher, remoteConfig)
+                        createCrashCatcher(remoteConfig)
                     }
                 }
             workers.forEach { it.join() }
@@ -191,7 +179,6 @@ class CrashCatcherTest {
     @Test
     fun `wrapped Amplitude handler persists a throwable only once`() =
         runTest {
-            val testDispatcher = StandardTestDispatcher(testScheduler)
             var saveCount = 0
             mockkConstructor(CrashStorage::class)
             every { anyConstructed<CrashStorage>().saveCrashReport(any()) } answers {
@@ -200,13 +187,13 @@ class CrashCatcherTest {
             }
 
             Thread.setDefaultUncaughtExceptionHandler { _, _ -> }
-            createCrashCatcher(testDispatcher)
+            createCrashCatcher()
             val firstHandler = Thread.getDefaultUncaughtExceptionHandler()!!
             Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
                 firstHandler.uncaughtException(thread, throwable)
             }
 
-            createCrashCatcher(testDispatcher)
+            createCrashCatcher()
             Thread.getDefaultUncaughtExceptionHandler()!!
                 .uncaughtException(Thread.currentThread(), RuntimeException("boom"))
 
@@ -216,7 +203,6 @@ class CrashCatcherTest {
     @Test
     fun `should retry a failed crash write in the next same-name handler`() =
         runTest {
-            val testDispatcher = StandardTestDispatcher(testScheduler)
             var saveCount = 0
             var chainedCount = 0
             mockkConstructor(CrashStorage::class)
@@ -227,8 +213,8 @@ class CrashCatcherTest {
             }
 
             Thread.setDefaultUncaughtExceptionHandler { _, _ -> chainedCount++ }
-            val catcher = createCrashCatcher(testDispatcher)
-            repeat(2) { createCrashCatcher(testDispatcher) }
+            val catcher = createCrashCatcher()
+            repeat(2) { createCrashCatcher() }
 
             Thread.getDefaultUncaughtExceptionHandler()!!
                 .uncaughtException(Thread.currentThread(), RuntimeException("retry crash"))
@@ -242,21 +228,18 @@ class CrashCatcherTest {
     @Test
     fun `consumePreviousCrash returns the persisted report`() =
         runTest {
-            val testDispatcher = StandardTestDispatcher(testScheduler)
             CrashStorage(
                 appContext = context,
                 instanceName = "test-instance",
-                ioDispatcher = testDispatcher,
             ).saveCrashReport(RuntimeException("previous"))
             val report =
-                createCrashCatcher(testDispatcher, crashTrackingRemoteConfig(false))
+                createCrashCatcher(crashTrackingRemoteConfig(false))
                     .consumePreviousCrash()
             assertTrue(report!!.contains("previous"))
             assertNull(
                 CrashStorage(
                     appContext = context,
                     instanceName = "test-instance",
-                    ioDispatcher = testDispatcher,
                 ).consumePreviousCrash(),
             )
         }
@@ -264,9 +247,8 @@ class CrashCatcherTest {
     @Test
     fun `does not persist when remote config turns crash tracking off after startup`() =
         runTest {
-            val testDispatcher = StandardTestDispatcher(testScheduler)
             Thread.setDefaultUncaughtExceptionHandler { _, _ -> }
-            createCrashCatcher(testDispatcher, crashTrackingRemoteConfig(true, false))
+            createCrashCatcher(crashTrackingRemoteConfig(true, false))
             Thread.getDefaultUncaughtExceptionHandler()!!
                 .uncaughtException(Thread.currentThread(), RuntimeException("boom"))
 
@@ -274,7 +256,6 @@ class CrashCatcherTest {
                 CrashStorage(
                     appContext = context,
                     instanceName = "test-instance",
-                    ioDispatcher = testDispatcher,
                 ).consumePreviousCrash(),
             )
         }
@@ -282,10 +263,9 @@ class CrashCatcherTest {
     @Test
     fun `does not persist after detach`() =
         runTest {
-            val testDispatcher = StandardTestDispatcher(testScheduler)
             Thread.setDefaultUncaughtExceptionHandler { _, _ -> }
             val remoteConfig = crashTrackingRemoteConfig(true)
-            createCrashCatcher(testDispatcher, remoteConfig).detach()
+            createCrashCatcher(remoteConfig).detach()
             verify(exactly = 1) { remoteConfig.detach() }
             Thread.getDefaultUncaughtExceptionHandler()!!
                 .uncaughtException(Thread.currentThread(), RuntimeException("boom"))
@@ -294,7 +274,6 @@ class CrashCatcherTest {
                 CrashStorage(
                     appContext = context,
                     instanceName = "test-instance",
-                    ioDispatcher = testDispatcher,
                 ).consumePreviousCrash(),
             )
         }
@@ -305,14 +284,12 @@ class CrashCatcherTest {
         }
 
     private fun createCrashCatcher(
-        dispatcher: CoroutineDispatcher,
         crashTrackingRemoteConfig: CrashTrackingRemoteConfig = crashTrackingRemoteConfig(true),
         instanceName: String = "test-instance",
     ): CrashCatcher =
         CrashCatcher(
             context = context,
             instanceName = instanceName,
-            ioDispatcher = dispatcher,
             crashTrackingRemoteConfig = crashTrackingRemoteConfig,
         )
 }
