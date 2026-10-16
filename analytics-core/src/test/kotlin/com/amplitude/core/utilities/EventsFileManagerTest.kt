@@ -15,6 +15,8 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import java.io.File
 import kotlin.concurrent.thread
 
@@ -557,15 +559,45 @@ class EventsFileManagerTest {
     @Nested
     inner class GetEventStringSerialization {
         @Test
-        fun `should return each event's original text verbatim`() =
-            runBlocking {
-                // key order and number formatting survive only if the event text is not re-serialized
+        fun `should preserve event values when normalizing JSON`() =
+            runTest {
                 val event = """{"zzz":1,"aaa":2,"nested":{"b":[1,2]},"big":10000000000000000000000}"""
                 writeEventFile(event)
 
                 val eventsString = eventsFileManager.getEventString(eventsFileManager.read().single())
 
-                assertEquals("[$event]", eventsString)
+                val parsed = JSONArray(eventsString)
+                assertEquals(1, parsed.length())
+                val actual = parsed.getJSONObject(0)
+                assertEquals(1, actual.getInt("zzz"))
+                assertEquals(2, actual.getInt("aaa"))
+                assertEquals(listOf(1, 2), actual.getJSONObject("nested").getJSONArray("b").toList())
+                assertEquals("10000000000000000000000", actual.get("big").toString())
+            }
+
+        @ParameterizedTest
+        @ValueSource(strings = ["junk", "{}", "{\"eventType\":"])
+        fun `should normalize accepted prefixes without losing later valid events`(suffix: String) =
+            runTest {
+                writeEventFile(createEvent("first") + suffix, createEvent("later-valid"))
+
+                val eventsString = eventsFileManager.getEventString(eventsFileManager.read().single())
+
+                val parsed = JSONArray(eventsString)
+                assertEquals(
+                    listOf("first", "later-valid"),
+                    (0 until parsed.length()).map { parsed.getJSONObject(it).getString("eventType") },
+                )
+            }
+
+        @Test
+        fun `should normalize lenient object syntax to valid JSON`() =
+            runTest {
+                writeEventFile("{eventType:'世界 😀'}")
+
+                val eventsString = eventsFileManager.getEventString(eventsFileManager.read().single())
+
+                assertEquals("""[{"eventType":"世界 😀"}]""", eventsString)
             }
 
         @Test

@@ -246,27 +246,25 @@ public class EventsFileManager(
         }
 
     /**
-     * Appends [eventString] to [events] if it is valid JSON, reporting it as malformed if not.
-     *
-     * The parsed [JSONObject] is discarded immediately — it exists only to validate. The event's
-     * own text is already the compact JSON we want to upload, so re-serializing it would just
-     * cost another copy of every event in the file.
+     * Appends a parseable event as normalized JSON, reporting parse failures as malformed.
+     * Normalizing prevents leniently accepted input or trailing text from corrupting the array.
      */
     private fun appendEventIfParseable(
         eventString: String,
         events: StringBuilder,
     ) {
-        try {
-            JSONObject(eventString)
-        } catch (e: JSONException) {
-            diagnostics.addMalformedEvent(eventString)
-            logger.error("Failed to parse event: $eventString, error: $e")
-            return
-        }
+        val event =
+            try {
+                JSONObject(eventString)
+            } catch (e: JSONException) {
+                diagnostics.addMalformedEvent(eventString)
+                logger.error("Failed to parse event: $eventString, error: $e")
+                return
+            }
         if (events.length > 1) {
             events.append(',')
         }
-        events.append(eventString)
+        events.append(event.toString())
     }
 
     /**
