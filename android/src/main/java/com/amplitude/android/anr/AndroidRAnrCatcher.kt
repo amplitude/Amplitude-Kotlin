@@ -38,23 +38,36 @@ internal class AndroidRAnrCatcher(
             withContext(ioDispatcher) {
                 consumeMutex.withLock {
                     var timestamp: Long? = null
+                    var establishedBaseline = false
                     consumeAndRecord {
                         if (crashTrackingRemoteConfig.isCrashTrackingEnabled) {
-                            // Persist the baseline before the system lookup can fail or suspend.
-                            timestamp =
-                                anrStorage.loadLastAeiTimestamp()
-                                    ?: System.currentTimeMillis().also { anrStorage.saveLastAeiTimestamp(it) }
+                            val existing = anrStorage.loadLastAeiTimestamp()
+                            if (existing == null) {
+                                // Persist the baseline before the system lookup can fail or suspend.
+                                timestamp =
+                                    System.currentTimeMillis().also { anrStorage.saveLastAeiTimestamp(it) }
+                                establishedBaseline = true
+                            } else {
+                                timestamp = existing
+                            }
                         }
                         emptyList()
                     }
-                    timestamp
+                    timestamp?.let { AeiCursor(it, establishedBaseline) }
                 }
             } ?: return
+
+        // Exit timestamps can run ahead of the wall clock. The consume that starts collection
+        // moves the cursor past ANRs already in history and records none of them.
+        if (collectionStart.establishedBaseline) {
+            moveCursorPastHistoricalAnrs(collectionStart.timestamp, consumeAndRecord)
+            return
+        }
 
         val exits = loadHistoricalExits() ?: return
         // System calls and trace reads can be slow. Prepare them without blocking replacement.
         val prepared =
-            exits.filter { it.reason == ApplicationExitInfo.REASON_ANR && it.timestamp > collectionStart }
+            exits.filter { it.reason == ApplicationExitInfo.REASON_ANR && it.timestamp > collectionStart.timestamp }
                 .sortedBy { it.timestamp }
                 .map { PreparedAnr(it.timestamp, formatReport(it)) }
         if (prepared.isEmpty()) return
@@ -64,12 +77,36 @@ internal class AndroidRAnrCatcher(
                 consumeAndRecord {
                     if (!crashTrackingRemoteConfig.isCrashTrackingEnabled) return@consumeAndRecord emptyList()
                     // Another consumer may have claimed the same exits during preparation.
-                    val lastTimestamp = anrStorage.loadLastAeiTimestamp() ?: collectionStart
+                    val lastTimestamp = anrStorage.loadLastAeiTimestamp() ?: collectionStart.timestamp
                     val unread = prepared.filter { it.timestamp > lastTimestamp }
                     if (unread.isNotEmpty()) {
                         anrStorage.saveLastAeiTimestamp(unread.last().timestamp)
                     }
                     unread.map { it.report }
+                }
+            }
+        }
+    }
+
+    private suspend fun moveCursorPastHistoricalAnrs(
+        baseline: Long,
+        consumeAndRecord: (() -> List<String>) -> Unit,
+    ) {
+        val exits = loadHistoricalExits() ?: return
+        val newestHistorical =
+            exits
+                .filter { it.reason == ApplicationExitInfo.REASON_ANR && it.timestamp > baseline }
+                .maxOfOrNull { it.timestamp }
+                ?: return
+        withContext(ioDispatcher) {
+            consumeMutex.withLock {
+                consumeAndRecord {
+                    if (!crashTrackingRemoteConfig.isCrashTrackingEnabled) return@consumeAndRecord emptyList()
+                    val current = anrStorage.loadLastAeiTimestamp() ?: baseline
+                    if (newestHistorical > current) {
+                        anrStorage.saveLastAeiTimestamp(newestHistorical)
+                    }
+                    emptyList()
                 }
             }
         }
@@ -149,5 +186,7 @@ internal class AndroidRAnrCatcher(
         private val consumeMutex = Mutex()
     }
 }
+
+private data class AeiCursor(val timestamp: Long, val establishedBaseline: Boolean)
 
 private data class PreparedAnr(val timestamp: Long, val report: String)

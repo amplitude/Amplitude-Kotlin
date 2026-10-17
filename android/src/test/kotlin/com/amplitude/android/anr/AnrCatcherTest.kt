@@ -317,6 +317,56 @@ class AndroidRAnrCatcherTest {
         }
 
     @Test
+    fun `first consume does not report historical ANRs timestamped after the baseline`() =
+        runTest {
+            val testDispatcher = StandardTestDispatcher(testScheduler)
+            val instanceName = "future-historical-anr"
+            val storage = AnrStorage(context, instanceName)
+            val futureTimestamp = 9_000_000_000_000L
+            every {
+                activityManager.getHistoricalProcessExitReasons(any(), 0, 0)
+            } returns listOf(mockExit(futureTimestamp, "historical anr", "historical trace"))
+
+            val catcher =
+                AndroidRAnrCatcher(
+                    context = context,
+                    instanceName = instanceName,
+                    ioDispatcher = testDispatcher,
+                    crashTrackingRemoteConfig = trackingConfig(enabled = true),
+                )
+            assertEquals(emptyList(), catcher.consumePreviousAnrs())
+            assertEquals(futureTimestamp, storage.loadLastAeiTimestamp())
+            assertEquals(emptyList(), catcher.consumePreviousAnrs())
+        }
+
+    @Test
+    fun `should not advance past historical ANRs when ownership is lost after the baseline`() =
+        runTest {
+            val testDispatcher = StandardTestDispatcher(testScheduler)
+            val instanceName = "baseline-then-inactive"
+            val storage = AnrStorage(context, instanceName)
+            val futureTimestamp = 9_000_000_000_000L
+            every {
+                activityManager.getHistoricalProcessExitReasons(any(), 0, 0)
+            } returns listOf(mockExit(futureTimestamp, "historical anr", "historical trace"))
+            var claims = 0
+
+            AndroidRAnrCatcher(
+                context = context,
+                instanceName = instanceName,
+                ioDispatcher = testDispatcher,
+                crashTrackingRemoteConfig = trackingConfig(enabled = true),
+            ).consumePreviousAnrs { claim ->
+                claims += 1
+                if (claims == 1) claim()
+            }
+
+            assertEquals(2, claims)
+            val cursor = assertNotNull(storage.loadLastAeiTimestamp())
+            assertTrue(cursor < futureTimestamp)
+        }
+
+    @Test
     fun `first consume skips historical ANRs and reports only later ones`() =
         runTest {
             val testDispatcher = StandardTestDispatcher(testScheduler)
