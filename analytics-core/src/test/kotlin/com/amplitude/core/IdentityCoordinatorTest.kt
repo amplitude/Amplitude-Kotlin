@@ -2,9 +2,11 @@ package com.amplitude.core
 
 import com.amplitude.id.Identity
 import com.amplitude.id.IdentityManager
+import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import io.mockk.verifyOrder
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
@@ -166,6 +168,35 @@ internal class IdentityCoordinatorTest {
 
             verify(exactly = 2) { editor.setDeviceId("device") }
             verify(exactly = 3) { editor.commit() }
+        }
+
+        @Test
+        fun `identify option ids commit together once`() {
+            clearMocks(editor, answers = false)
+            val identitiesAtCommit = mutableListOf<AnalyticsIdentity>()
+            every { editor.commit() } answers { identitiesAtCommit += coordinator.snapshot() }
+
+            val change = coordinator.identify("user", "device", mapOf("\$set" to mapOf("plan" to "paid")))
+
+            assertEquals(mapOf("plan" to "paid"), identitiesAtCommit.single().userProperties)
+            assertEquals("user", change?.current?.userId)
+            assertEquals("device", change?.current?.deviceId)
+            assertEquals(mapOf("plan" to "paid"), change?.current?.userProperties)
+            verifyOrder {
+                editor.setUserId("user")
+                editor.setDeviceId("device")
+                editor.commit()
+            }
+            verify(exactly = 1) { editor.commit() }
+        }
+
+        @Test
+        fun `unchanged identify option ids still commit without a change`() {
+            coordinator.identify("user", "device", null)
+            clearMocks(editor, answers = false)
+
+            assertNull(coordinator.identify("user", "device", null))
+            verify(exactly = 1) { editor.commit() }
         }
 
         @Test

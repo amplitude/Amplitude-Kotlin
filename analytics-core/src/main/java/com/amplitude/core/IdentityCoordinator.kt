@@ -75,6 +75,35 @@ internal class IdentityCoordinator internal constructor(private val state: State
             changed
         }
 
+    /**
+     * Applies Identify option ids and supported property [operations] as one change, so
+     * callers can notify plugins once with the complete identity. Supplied ids commit together,
+     * even when unchanged. Returns null when nothing changed.
+     */
+    fun identify(
+        userId: String?,
+        deviceId: String?,
+        operations: Map<String, Any?>?,
+    ): IdentityChange? =
+        synchronized(lock) {
+            val previous = snapshot()
+            userId?.let { state.userId = it }
+            deviceId?.let { state.deviceId = it }
+            operations?.let { applyUserProperties(it) }
+            if (userId != null || deviceId != null) {
+                val editor = identityManager?.editIdentity()
+                if (editor != null) {
+                    userId?.let { editor.setUserId(it) }
+                    deviceId?.let { editor.setDeviceId(it) }
+                    editor.commit()
+                } else {
+                    userId?.let { pendingUserId = Pending(it) }
+                    deviceId?.let { pendingDeviceId = Pending(it) }
+                }
+            }
+            IdentityChange(previous, snapshot()).takeIf { it.idsChanged || it.propertiesChanged }
+        }
+
     @JvmInline
     private value class Pending<T>(val value: T)
 

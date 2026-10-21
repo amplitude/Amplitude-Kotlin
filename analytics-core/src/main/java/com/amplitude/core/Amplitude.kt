@@ -288,7 +288,8 @@ public open class Amplitude(
 
     /**
      * Identify lets you set the user properties.
-     * You can modify user properties by calling this api.
+     * You can modify user properties by calling this api. User and device ids in [options]
+     * are applied with the properties as one identity change.
      *
      * @param userProperties user properties
      * @param options optional event options
@@ -304,7 +305,8 @@ public open class Amplitude(
 
     /**
      * Identify lets you to send an Identify object containing user property operations to Amplitude server.
-     * You can modify user properties by calling this api.
+     * You can modify user properties by calling this api. User and device ids in [options]
+     * are applied with the properties as one identity change, so plugins are notified once.
      *
      * @param identify identify object
      * @param options optional event options
@@ -318,13 +320,10 @@ public open class Amplitude(
         val event = IdentifyEvent()
         event.userProperties = identify.properties
 
-        options ?. let { eventOptions ->
-            event.mergeEventOptions(eventOptions)
-            eventOptions.userId ?.let { this.setUserId(it) }
-            eventOptions.deviceId ?.let { this.setDeviceId(it) }
-        }
-
-        process(event)
+        options?.let { event.mergeEventOptions(it) }
+        // Option ids and the Identify properties form one identity change, so plugins are
+        // never notified of the new ids with the previous properties.
+        process(event, options?.userId, options?.deviceId)
         return this
     }
 
@@ -404,12 +403,7 @@ public open class Amplitude(
             )
         }
 
-        if (change.userIdChanged) {
-            plugins.filterIsInstance<Plugin>().forEach { safelyNotify(it) { p -> p.onUserIdChanged(store.userId) } }
-        }
-        if (change.deviceIdChanged) {
-            plugins.filterIsInstance<Plugin>().forEach { safelyNotify(it) { p -> p.onDeviceIdChanged(store.deviceId) } }
-        }
+        notifyIdsChanged(change, plugins)
         notifyIdentityChanged(plugins)
         return this
     }
@@ -607,15 +601,51 @@ public open class Amplitude(
         return this
     }
 
-    private fun process(event: BaseEvent) {
+    /**
+     * Queues [event] after applying its local identity effects: [optionUserId] and
+     * [optionDeviceId] from Identify options, and Identify property operations. Option ids
+     * apply even when the event is dropped, such as while opted out. Changed ids reach legacy
+     * plugins before the event is queued, as in earlier releases; the complete identity is
+     * delivered once, after it is queued.
+     */
+    private fun process(
+        event: BaseEvent,
+        optionUserId: String? = null,
+        optionDeviceId: String? = null,
+    ) {
+        val accepted = prepare(event)
+        val operations =
+            event.userProperties.takeIf {
+                accepted && event.eventType == Constants.IDENTIFY_EVENT && event !is SetIdentityEvent
+            }
+        val change =
+            if (optionUserId != null || optionDeviceId != null || operations != null) {
+                identityCoordinator.identify(optionUserId, optionDeviceId, operations)
+            } else {
+                null
+            }
+
+        val plugins = if (change != null) pluginsSnapshot() else emptyList()
+        // Legacy connector plugins mirror ids before the event's properties reach them.
+        change?.let { notifyIdsChanged(it, plugins) }
+        if (accepted) {
+            logger.debug("Logged event with type: ${event.eventType}")
+            timeline.process(event)
+        }
+        // Queue the event before the complete-identity callback can reenter identify().
+        if (change != null) notifyIdentityChanged(plugins)
+    }
+
+    /** Validates [event] and detaches its maps from the caller; returns false to drop it. */
+    private fun prepare(event: BaseEvent): Boolean {
         if (optOut) {
             logger.info("Skip event for opt out config.")
-            return
+            return false
         }
 
         if (event.eventType.isBlank()) {
             logger.warn("Event has an empty event type, dropping it.")
-            return
+            return false
         }
 
         if (event.timestamp == null) {
@@ -629,16 +659,7 @@ public open class Amplitude(
         event.userProperties = event.userProperties?.deepCopy()
         event.groups = event.groups?.deepCopy()
         event.groupProperties = event.groupProperties?.deepCopy()
-
-        val propertiesChanged =
-            event.eventType == Constants.IDENTIFY_EVENT &&
-                event !is SetIdentityEvent &&
-                event.userProperties?.let { identityCoordinator.applyUserProperties(it) } == true
-
-        logger.debug("Logged event with type: ${event.eventType}")
-        timeline.process(event)
-        // Queue the event before callbacks can reenter identify(), preserving server order.
-        if (propertiesChanged) notifyIdentityChanged()
+        return true
     }
 
     /**
@@ -713,6 +734,19 @@ public open class Amplitude(
     }
 
     private fun pluginsSnapshot(): List<UniversalPlugin> = timeline.pluginsSnapshot()
+
+    /** Notifies legacy plugins of each changed individual id. */
+    private fun notifyIdsChanged(
+        change: IdentityChange,
+        plugins: List<UniversalPlugin>,
+    ) {
+        if (change.userIdChanged) {
+            plugins.filterIsInstance<Plugin>().forEach { safelyNotify(it) { p -> p.onUserIdChanged(store.userId) } }
+        }
+        if (change.deviceIdChanged) {
+            plugins.filterIsInstance<Plugin>().forEach { safelyNotify(it) { p -> p.onDeviceIdChanged(store.deviceId) } }
+        }
+    }
 
     /**
      * Delivers the current identity to each plugin, read per plugin so a reentrant change

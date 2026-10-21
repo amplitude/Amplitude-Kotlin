@@ -31,6 +31,11 @@ from the legacy connector.
 - Repeating `setUserId` or `setDeviceId` with the current value no longer calls
   the individual-id callback or `onIdentityChanged`. Use an explicit product
   fetch API if the app previously used repeated setters to trigger a fetch.
+- `identify` with `EventOptions` user or device ids applies those ids and the
+  Identify properties as one change. Plugins receive one `onIdentityChanged` with
+  both, after the Identify is queued, instead of one per id followed by one for
+  the properties. `onUserIdChanged` and `onDeviceIdChanged` still fire before the
+  Identify is queued.
 - Reset skips `onUserIdChanged(null)` when no user id was set. It still rotates
   device id, calls `onDeviceIdChanged`, delivers one complete identity, then calls
   `onReset`.
