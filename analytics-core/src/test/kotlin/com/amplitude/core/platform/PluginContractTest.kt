@@ -63,6 +63,7 @@ class PluginContractTest {
                 }
             }
 
+        amplitude.setUserId("before-reset")
         amplitude.add(mutator)
         amplitude.reset()
 
@@ -83,7 +84,7 @@ class PluginContractTest {
 
         amplitude.reset()
 
-        assertEquals(listOf<String?>(null), recorder.userIds)
+        assertTrue(recorder.userIds.isEmpty())
         assertEquals(1, recorder.deviceIds.size)
         assertEquals(1, recorder.resets)
         assertEquals(1, thrower.deviceCallbackAttempts)
@@ -507,6 +508,7 @@ class PluginContractTest {
 
                 override fun onDeviceIdChanged(deviceId: String?) {}
             }
+        amplitude.setUserId("before-reset")
         amplitude.add(reentrantPlugin)
 
         amplitude.reset()

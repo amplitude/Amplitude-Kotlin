@@ -2,10 +2,13 @@ package com.amplitude.core
 
 import com.amplitude.id.Identity
 import com.amplitude.id.IdentityManager
+import io.mockk.clearMocks
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import io.mockk.verifyOrder
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
@@ -47,6 +50,55 @@ internal class IdentityCoordinatorTest {
 
     @Nested
     inner class Bootstrap {
+        @Test
+        fun `complete identity set before bootstrap replaces persisted ids and keeps runtime properties`() {
+            coordinator.setIdentity(IdentitySnapshot("new-user", null, mapOf("plan" to "paid")))
+            coordinator.bootstrap(mockIdentityManager(Identity("persisted-user", "persisted-device")))
+
+            assertEquals("new-user", coordinator.snapshot().userId)
+            assertNull(coordinator.snapshot().deviceId)
+            assertEquals(mapOf("plan" to "paid"), coordinator.snapshot().userProperties)
+        }
+
+        @Test
+        fun `unchanged identify option ids still override persisted ids during bootstrap`() {
+            coordinator.identify("user", "device", null)
+            assertNull(coordinator.identify("user", "device", null))
+            coordinator.bootstrap(mockIdentityManager(Identity("persisted-user", "persisted-device")))
+
+            assertEquals("user", state.userId)
+            assertEquals("device", state.deviceId)
+        }
+
+        @Test
+        fun `unchanged individual ids still override persisted ids during bootstrap`() {
+            assertFalse(coordinator.setUserId(null))
+            coordinator.setDeviceId("device")
+            assertFalse(coordinator.setDeviceId("device"))
+            coordinator.bootstrap(mockIdentityManager(Identity("persisted-user", "persisted-device")))
+
+            assertNull(state.userId)
+            assertEquals("device", state.deviceId)
+        }
+
+        @Test
+        fun `setting an unchanged null identity before bootstrap still clears persisted ids`() {
+            assertNull(coordinator.setIdentity(IdentitySnapshot(null, null, emptyMap())))
+            coordinator.bootstrap(mockIdentityManager(Identity("persisted-user", "persisted-device")))
+
+            assertNull(coordinator.snapshot().userId)
+            assertNull(coordinator.snapshot().deviceId)
+        }
+
+        @Test
+        fun `pending properties survive bootstrap without being persisted`() {
+            coordinator.applyUserProperties(mapOf("\$set" to mapOf("plan" to "paid")))
+            coordinator.bootstrap(mockIdentityManager(Identity("persisted-user", "persisted-device")))
+
+            assertEquals("persisted-user", coordinator.snapshot().userId)
+            assertEquals(mapOf("plan" to "paid"), coordinator.snapshot().userProperties)
+        }
+
         @Test
         fun `without pending changes - uses persisted identity`() {
             val identityManager = mockIdentityManager(Identity("persisted-user", "persisted-device"))
@@ -109,6 +161,52 @@ internal class IdentityCoordinatorTest {
                     every { editIdentity() } returns editor
                 }
             coordinator.bootstrap(identityManager)
+        }
+
+        @Test
+        fun `unchanged user id still commits to IdentityManager`() {
+            assertFalse(coordinator.setUserId(null))
+
+            verify(exactly = 2) { editor.setUserId(null) }
+            verify(exactly = 2) { editor.commit() }
+        }
+
+        @Test
+        fun `unchanged device id still commits to IdentityManager`() {
+            coordinator.setDeviceId("device")
+            assertFalse(coordinator.setDeviceId("device"))
+
+            verify(exactly = 2) { editor.setDeviceId("device") }
+            verify(exactly = 3) { editor.commit() }
+        }
+
+        @Test
+        fun `identify option ids commit together once`() {
+            clearMocks(editor, answers = false)
+            val identitiesAtCommit = mutableListOf<AnalyticsIdentity>()
+            every { editor.commit() } answers { identitiesAtCommit += coordinator.snapshot() }
+
+            val change = coordinator.identify("user", "device", mapOf("\$set" to mapOf("plan" to "paid")))
+
+            assertEquals(mapOf("plan" to "paid"), identitiesAtCommit.single().userProperties)
+            assertEquals("user", change?.current?.userId)
+            assertEquals("device", change?.current?.deviceId)
+            assertEquals(mapOf("plan" to "paid"), change?.current?.userProperties)
+            verifyOrder {
+                editor.setUserId("user")
+                editor.setDeviceId("device")
+                editor.commit()
+            }
+            verify(exactly = 1) { editor.commit() }
+        }
+
+        @Test
+        fun `unchanged identify option ids still commit without a change`() {
+            coordinator.identify("user", "device", null)
+            clearMocks(editor, answers = false)
+
+            assertNull(coordinator.identify("user", "device", null))
+            verify(exactly = 1) { editor.commit() }
         }
 
         @Test

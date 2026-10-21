@@ -45,11 +45,10 @@ public open class ContextPlugin : Plugin {
         event.library ?: let {
             event.library = "${Constants.SDK_LIBRARY}/${Constants.SDK_VERSION}"
         }
-        event.userId ?: let {
-            event.userId = amplitude.store.userId
-        }
-        event.deviceId ?: let {
-            event.deviceId = amplitude.store.deviceId
+        if (event.userId == null || event.deviceId == null) {
+            val identity = amplitude.identity
+            if (event.userId == null) event.userId = identity.userId
+            if (event.deviceId == null) event.deviceId = identity.deviceId
         }
         event.partnerId ?: let {
             amplitude.configuration.partnerId ?. let {

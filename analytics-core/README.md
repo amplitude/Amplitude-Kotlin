@@ -40,3 +40,8 @@ Execute:
 ```
 ./gradlew :analytics-core:assemble
 ```
+
+## Shared identity
+
+See the [shared identity migration guide](SHARED_IDENTITY_MIGRATION.md) for local
+property semantics, plugin callback changes, and the affected Experiment versions.

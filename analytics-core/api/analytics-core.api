@@ -105,6 +105,10 @@ public class com/amplitude/core/Amplitude : com/amplitude/core/platform/PluginHo
 	public final fun setGroup (Ljava/lang/String;[Ljava/lang/String;Lcom/amplitude/core/events/EventOptions;)Lcom/amplitude/core/Amplitude;
 	public static synthetic fun setGroup$default (Lcom/amplitude/core/Amplitude;Ljava/lang/String;Ljava/lang/String;Lcom/amplitude/core/events/EventOptions;ILjava/lang/Object;)Lcom/amplitude/core/Amplitude;
 	public static synthetic fun setGroup$default (Lcom/amplitude/core/Amplitude;Ljava/lang/String;[Ljava/lang/String;Lcom/amplitude/core/events/EventOptions;ILjava/lang/Object;)Lcom/amplitude/core/Amplitude;
+	public final fun setIdentity (Lcom/amplitude/core/AnalyticsIdentity;)Lcom/amplitude/core/Amplitude;
+	public final fun setIdentity (Ljava/lang/String;Ljava/lang/String;)Lcom/amplitude/core/Amplitude;
+	public final fun setIdentity (Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;)Lcom/amplitude/core/Amplitude;
+	public static synthetic fun setIdentity$default (Lcom/amplitude/core/Amplitude;Ljava/lang/String;Ljava/lang/String;Ljava/util/Map;ILjava/lang/Object;)Lcom/amplitude/core/Amplitude;
 	public fun setOptOut (Z)V
 	public final fun setUserId (Ljava/lang/String;)Lcom/amplitude/core/Amplitude;
 	public final fun track (Lcom/amplitude/core/events/BaseEvent;)Lcom/amplitude/core/Amplitude;
@@ -341,6 +345,7 @@ public final class com/amplitude/core/State {
 	public final fun getDeviceId ()Ljava/lang/String;
 	public final fun getPlugins ()Ljava/util/List;
 	public final fun getUserId ()Ljava/lang/String;
+	public final fun getUserProperties ()Ljava/util/Map;
 	public final fun remove (Lcom/amplitude/core/platform/ObservePlugin;)Z
 	public final fun setDeviceId (Ljava/lang/String;)V
 	public final fun setUserId (Ljava/lang/String;)V

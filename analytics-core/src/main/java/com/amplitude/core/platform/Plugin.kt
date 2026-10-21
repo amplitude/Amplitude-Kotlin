@@ -56,7 +56,7 @@ public interface Plugin : UniversalPlugin {
     }
 
     /**
-     * Called when the user id or device id changes.
+     * Called when the user id changes. Reassigning the same value does not notify plugins.
      *
      * Callbacks run synchronously on the thread that triggered the change, which is not
      * guaranteed to be the main thread, so keep them fast and non-blocking. An exception
@@ -64,7 +64,10 @@ public interface Plugin : UniversalPlugin {
      */
     public fun onUserIdChanged(userId: String?) {}
 
-    /** Called when the device id changes. Shares the threading contract of [onUserIdChanged]. */
+    /**
+     * Called when the device id changes, or on reset. Reassigning the same value does not
+     * notify plugins. Shares the threading contract of [onUserIdChanged].
+     */
     public fun onDeviceIdChanged(deviceId: String?) {}
 
     /** Called when the session id changes. Only fires on SDK builds that track sessions. */
@@ -74,8 +77,8 @@ public interface Plugin : UniversalPlugin {
     override fun onOptOutChanged(optOut: Boolean) {}
 
     /**
-     * Called when [Amplitude.reset] is invoked, after the [onUserIdChanged],
-     * [onDeviceIdChanged], and [onIdentityChanged] callbacks for that reset.
+     * Called whenever [Amplitude.reset] is invoked, after its identity callbacks.
+     * [onUserIdChanged] is skipped when the user id was already null.
      */
     override fun onReset() {}
 }

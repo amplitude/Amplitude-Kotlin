@@ -46,16 +46,29 @@ Two ways to reach the "observe" world — **both receive the state callbacks bel
 snapshots `timeline + store` **once** and invokes each plugin inside `safelyNotify`
 (try/catch + log). A throwing plugin can't break the loop, the calling thread, or
 the Android event-message coroutine. `reset()` reuses a single snapshot for its
-three passes (userId → deviceId → reset), so a plugin added *during* a callback
+passes (changed userId → deviceId → identity → reset), so a plugin added *during* a callback
 doesn't receive that reset's callbacks but is immediately findable afterward.
 
-**Semantics: intent-based.** Every explicit `setUserId` / `setDeviceId` / `optOut` /
-`reset` notifies once, whether or not the value changed. Delivery is best-effort,
-latest-value: each callback reads the *current* `store` value (reset's three passes
-re-read too), so under concurrent setters — or a plugin that reentrantly re-sets
-identity from within a callback — notifications may coalesce, but the value a plugin
-sees is always consistent with the instance's current identity. Identity mutation is
-expected from a single thread.
+**Identity callbacks report changes.** Repeating `setUserId` or `setDeviceId` with
+an unchanged value produces no individual-id or complete-identity callback. The
+coordinator still persists the value or records its pending pre-build intent.
+Every plugin receives `onIdentityChanged` for effective local property changes.
+Only Identify events and `setIdentity` update the local property map. Other events
+upload their user-property operations without applying them locally.
+
+`reset()` clears user id and properties and rotates device id in one locked
+mutation. It notifies user id only if the prior user id was non-null, always
+notifies device id, delivers one complete identity, then calls `onReset`.
+All passes share the same plugin list. Each plugin receives the identity current
+when its callback runs, so with the default `identity` a reentrant change can repeat
+the latest identity but never leaves a later plugin on an obsolete one.
+Restoring persisted identity during initialization does not notify plugins. A plugin
+added before initialization completes can see null ids in `setup`; on Android, read
+identity again in `onSessionIdChanged`, which fires once the restored identity is ready.
+
+Individual-id callback values read the current store, so concurrent or reentrant
+changes may coalesce. No callback runs under the coordinator lock. Opt-out and
+session callbacks retain their existing behavior.
 
 ---
 

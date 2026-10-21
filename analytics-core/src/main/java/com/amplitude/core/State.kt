@@ -3,8 +3,8 @@ package com.amplitude.core
 import com.amplitude.core.platform.ObservePlugin
 
 /**
- * Runtime mirror of identity (userId / deviceId) for synchronous reads — event enrichment
- * and the values handed to plugin state-change callbacks.
+ * Runtime mirror of identity (userId / deviceId / user properties) for synchronous reads — event
+ * enrichment and the values handed to plugin state-change callbacks.
  *
  * Identity fields are written **silently**; notification is owned by [Amplitude] so a single
  * fan-out reaches every registered plugin. Mutate identity via [Amplitude.setUserId] /
@@ -23,6 +23,11 @@ public class State {
 
     @Volatile
     public var deviceId: String? = null
+
+    /** Locally known user properties, as described by [AnalyticsIdentity.userProperties]. */
+    @Volatile
+    public var userProperties: Map<String, Any?> = emptyMap()
+        internal set
 
     @Deprecated(
         "Observe plugins are managed by Amplitude/Timeline; this registry will be removed in the " +
