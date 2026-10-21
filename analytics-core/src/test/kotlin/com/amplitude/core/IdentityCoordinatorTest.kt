@@ -61,6 +61,16 @@ internal class IdentityCoordinatorTest {
         }
 
         @Test
+        fun `unchanged identify option ids still override persisted ids during bootstrap`() {
+            coordinator.identify("user", "device", null)
+            assertNull(coordinator.identify("user", "device", null))
+            coordinator.bootstrap(mockIdentityManager(Identity("persisted-user", "persisted-device")))
+
+            assertEquals("user", state.userId)
+            assertEquals("device", state.deviceId)
+        }
+
+        @Test
         fun `unchanged individual ids still override persisted ids during bootstrap`() {
             assertFalse(coordinator.setUserId(null))
             coordinator.setDeviceId("device")

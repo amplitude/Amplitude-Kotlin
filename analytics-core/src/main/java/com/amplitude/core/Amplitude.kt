@@ -306,7 +306,7 @@ public open class Amplitude(
     /**
      * Identify lets you to send an Identify object containing user property operations to Amplitude server.
      * You can modify user properties by calling this api. User and device ids in [options]
-     * are applied with the properties as one identity change, so plugins are notified once.
+     * are applied with the properties as one identity change, delivered in one `onIdentityChanged`.
      *
      * @param identify identify object
      * @param options optional event options
@@ -414,8 +414,11 @@ public open class Amplitude(
      *
      * Example:
      * ```
-     * amplitude.setIdentity("user-123", amplitude.getDeviceId(), mapOf("plan" to "paid"))
+     * amplitude.isBuilt.await()
+     * val deviceId = requireNotNull(amplitude.getDeviceId())
+     * amplitude.setIdentity("user-123", deviceId, mapOf("plan" to "paid"))
      * ```
+     * Wait for initialization before reading a persisted device id; a null device id clears it.
      *
      * @return this Amplitude instance.
      */
@@ -625,15 +628,17 @@ public open class Amplitude(
                 null
             }
 
-        val plugins = if (change != null) pluginsSnapshot() else emptyList()
         // Legacy connector plugins mirror ids before the event's properties reach them.
-        change?.let { notifyIdsChanged(it, plugins) }
-        if (accepted) {
-            logger.debug("Logged event with type: ${event.eventType}")
-            timeline.process(event)
+        change?.let { notifyIdsChanged(it, pluginsSnapshot()) }
+        try {
+            if (accepted) {
+                logger.debug("Logged event with type: ${event.eventType}")
+                timeline.process(event)
+            }
+        } finally {
+            // Queue the event before the complete-identity callback can reenter identify().
+            if (change != null) notifyIdentityChanged()
         }
-        // Queue the event before the complete-identity callback can reenter identify().
-        if (change != null) notifyIdentityChanged(plugins)
     }
 
     /** Validates [event] and detaches its maps from the caller; returns false to drop it. */

@@ -4,8 +4,10 @@ import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.events.EventOptions
 import com.amplitude.core.events.Identify
 import com.amplitude.core.platform.Plugin
+import com.amplitude.core.platform.UniversalPlugin
 import com.amplitude.core.utils.FakeAmplitude
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -213,6 +215,50 @@ internal class IdentityCallbackTest {
                 assertTrue(finished.await(10, TimeUnit.SECONDS))
                 assertTrue(failures.isEmpty(), failures.toString())
             }
+        }
+
+        @Test
+        fun `throwing pipeline plugin still delivers the complete identity`() {
+            amplitude.add(plugin).add(
+                object : Plugin {
+                    override val type = Plugin.Type.Before
+                    override lateinit var amplitude: Amplitude
+
+                    override fun execute(event: BaseEvent): BaseEvent = error("pipeline failed")
+                },
+            )
+
+            assertThrows(IllegalStateException::class.java) {
+                amplitude.identify(Identify().set("plan", "paid"), signIn)
+            }
+
+            assertEquals(listOf("user:user", "device:device", "identity"), callbacks)
+            assertEquals(mapOf("plan" to "paid"), identities.single().userProperties)
+        }
+
+        @Test
+        fun `plugin removed by a legacy id callback is not notified afterwards`() {
+            val late = mutableListOf<AnalyticsIdentity>()
+            val removable =
+                object : UniversalPlugin {
+                    override fun onIdentityChanged(identity: AnalyticsIdentity) {
+                        late += identity
+                    }
+                }
+            amplitude.add(
+                object : Plugin {
+                    override val type = Plugin.Type.Before
+                    override lateinit var amplitude: Amplitude
+
+                    override fun onUserIdChanged(userId: String?) {
+                        amplitude.remove(removable)
+                    }
+                },
+            ).add(removable)
+
+            amplitude.identify(Identify().set("plan", "paid"), signIn)
+
+            assertTrue(late.isEmpty())
         }
 
         private fun destination(onEvent: (BaseEvent) -> Unit) =

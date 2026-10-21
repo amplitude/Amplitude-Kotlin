@@ -74,11 +74,15 @@ UniversalPlugin integration. Their existing connector limitations remain.
 ## Whole-identity replacement
 
 ```kotlin
-amplitude.setIdentity("user-123", amplitude.getDeviceId(), mapOf("plan" to "pro"))
+amplitude.isBuilt.await()
+val deviceId = requireNotNull(amplitude.getDeviceId())
+amplitude.setIdentity("user-123", deviceId, mapOf("plan" to "pro"))
 ```
 
 The setter replaces the complete local identity, following iOS replacement
-semantics. Omitting properties clears the local map. Changed nonempty properties
+semantics. Wait for initialization before reading a persisted device id: before
+then, `getDeviceId()` can return null, which clears the device id when passed to
+`setIdentity`. Omitting properties clears the local map. Changed nonempty properties
 also generate an Identify `$set`. Removing a local key does not delete its server
 value. Use `identify(Identify().unset("plan"))` or `clearAll()` for server removal.
 Web's setter accepts partial updates instead.
