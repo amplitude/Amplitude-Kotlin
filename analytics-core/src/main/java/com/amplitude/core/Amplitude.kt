@@ -394,13 +394,13 @@ public open class Amplitude(
 
         // Queue the upload before plugin callbacks can reenter and replace this identity.
         if (change.propertiesChanged && snapshot.userProperties.isNotEmpty()) {
-            process(
-                SetIdentityEvent().apply {
+            val event =
+                IdentifyEvent().apply {
                     userId = snapshot.userId
                     deviceId = snapshot.deviceId
                     userProperties = mutableMapOf("\$set" to snapshot.userProperties)
-                },
-            )
+                }
+            if (prepare(event)) queuePrepared(event)
         }
 
         notifyIdsChanged(change, plugins)
@@ -619,7 +619,7 @@ public open class Amplitude(
         val accepted = prepare(event)
         val operations =
             event.userProperties.takeIf {
-                accepted && event.eventType == Constants.IDENTIFY_EVENT && event !is SetIdentityEvent
+                accepted && event.eventType == Constants.IDENTIFY_EVENT
             }
         val change =
             if (optionUserId != null || optionDeviceId != null || operations != null) {
@@ -631,14 +631,16 @@ public open class Amplitude(
         // Legacy connector plugins mirror ids before the event's properties reach them.
         change?.let { notifyIdsChanged(it, pluginsSnapshot()) }
         try {
-            if (accepted) {
-                logger.debug("Logged event with type: ${event.eventType}")
-                timeline.process(event)
-            }
+            if (accepted) queuePrepared(event)
         } finally {
             // Queue the event before the complete-identity callback can reenter identify().
             if (change != null) notifyIdentityChanged()
         }
+    }
+
+    private fun queuePrepared(event: BaseEvent) {
+        logger.debug("Logged event with type: ${event.eventType}")
+        timeline.process(event)
     }
 
     /** Validates [event] and detaches its maps from the caller; returns false to drop it. */
@@ -791,9 +793,6 @@ public open class Amplitude(
         return identify
     }
 }
-
-/** Uploads [Amplitude.setIdentity] properties that are already committed locally. */
-private class SetIdentityEvent : IdentifyEvent()
 
 private class AmplitudeAnalyticsClient(
     private val amplitude: Amplitude,
