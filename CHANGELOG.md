@@ -1,3 +1,18 @@
+# [1.36.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.35.0...v1.36.0) (2026-10-21)
+
+
+### Bug Fixes
+
+* harden event file migration and callback cleanup ([#569](https://github.com/amplitude/Amplitude-Kotlin/issues/569)) ([92493ed](https://github.com/amplitude/Amplitude-Kotlin/commit/92493ed45767d22f318a74c11e28c0601917cded))
+* reduce upload memory and diagnose event backlog ([#568](https://github.com/amplitude/Amplitude-Kotlin/issues/568)) ([54e87d6](https://github.com/amplitude/Amplitude-Kotlin/commit/54e87d6ae098bc1b37e678de3b189efd60359d93))
+
+
+### Features
+
+* add shared identity properties and atomic setter ([#574](https://github.com/amplitude/Amplitude-Kotlin/issues/574)) ([26ff02c](https://github.com/amplitude/Amplitude-Kotlin/commit/26ff02c3a212258f7538b235c1f8d6e8d7011c09))
+* capture ANRs as diagnostics ([#551](https://github.com/amplitude/Amplitude-Kotlin/issues/551)) ([0de809a](https://github.com/amplitude/Amplitude-Kotlin/commit/0de809adb05a3ce74f2eee283cc8fa26b69367df))
+* capture uncaught exceptions as diagnostics ([#549](https://github.com/amplitude/Amplitude-Kotlin/issues/549)) ([004e401](https://github.com/amplitude/Amplitude-Kotlin/commit/004e4014430eff931b3df04f16931a953b462a12))
+
 # [1.35.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.34.0...v1.35.0) (2026-10-16)
 
 
