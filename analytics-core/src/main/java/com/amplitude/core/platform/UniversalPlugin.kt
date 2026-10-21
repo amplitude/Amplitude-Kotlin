@@ -45,7 +45,12 @@ public interface UniversalPlugin {
     /** Releases any resources acquired in [setup]. */
     public fun teardown() {}
 
-    /** Called when the user id or device id changes. */
+    /**
+     * Called when the user id, device id, or local user properties change. The identity is a
+     * detached snapshot. Reassigning an unchanged identity does not notify plugins.
+     * Restoring persisted identity at initialization does not notify plugins: read identity from
+     * the [setup] client, and again in [onSessionIdChanged] if it was not ready during setup.
+     */
     public fun onIdentityChanged(identity: AnalyticsIdentity) {}
 
     /** Called when the session id changes. */

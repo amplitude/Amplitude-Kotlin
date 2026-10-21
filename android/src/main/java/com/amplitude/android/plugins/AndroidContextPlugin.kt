@@ -118,11 +118,10 @@ public open class AndroidContextPlugin : Plugin {
         event.library ?: let {
             event.library = "$SDK_LIBRARY/$SDK_VERSION"
         }
-        event.userId ?: let {
-            event.userId = amplitude.store.userId
-        }
-        event.deviceId ?: let {
-            event.deviceId = amplitude.store.deviceId
+        if (event.userId == null || event.deviceId == null) {
+            val identity = amplitude.identity
+            if (event.userId == null) event.userId = identity.userId
+            if (event.deviceId == null) event.deviceId = identity.deviceId
         }
         val trackingOptions = configuration.trackingOptions
         if (configuration.enableCoppaControl) {

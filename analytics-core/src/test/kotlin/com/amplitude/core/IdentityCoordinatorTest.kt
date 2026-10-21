@@ -6,6 +6,7 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
@@ -47,6 +48,45 @@ internal class IdentityCoordinatorTest {
 
     @Nested
     inner class Bootstrap {
+        @Test
+        fun `complete identity set before bootstrap replaces persisted ids and keeps runtime properties`() {
+            coordinator.setIdentity(IdentitySnapshot("new-user", null, mapOf("plan" to "paid")))
+            coordinator.bootstrap(mockIdentityManager(Identity("persisted-user", "persisted-device")))
+
+            assertEquals("new-user", coordinator.snapshot().userId)
+            assertNull(coordinator.snapshot().deviceId)
+            assertEquals(mapOf("plan" to "paid"), coordinator.snapshot().userProperties)
+        }
+
+        @Test
+        fun `unchanged individual ids still override persisted ids during bootstrap`() {
+            assertFalse(coordinator.setUserId(null))
+            coordinator.setDeviceId("device")
+            assertFalse(coordinator.setDeviceId("device"))
+            coordinator.bootstrap(mockIdentityManager(Identity("persisted-user", "persisted-device")))
+
+            assertNull(state.userId)
+            assertEquals("device", state.deviceId)
+        }
+
+        @Test
+        fun `setting an unchanged null identity before bootstrap still clears persisted ids`() {
+            assertNull(coordinator.setIdentity(IdentitySnapshot(null, null, emptyMap())))
+            coordinator.bootstrap(mockIdentityManager(Identity("persisted-user", "persisted-device")))
+
+            assertNull(coordinator.snapshot().userId)
+            assertNull(coordinator.snapshot().deviceId)
+        }
+
+        @Test
+        fun `pending properties survive bootstrap without being persisted`() {
+            coordinator.applyUserProperties(mapOf("\$set" to mapOf("plan" to "paid")))
+            coordinator.bootstrap(mockIdentityManager(Identity("persisted-user", "persisted-device")))
+
+            assertEquals("persisted-user", coordinator.snapshot().userId)
+            assertEquals(mapOf("plan" to "paid"), coordinator.snapshot().userProperties)
+        }
+
         @Test
         fun `without pending changes - uses persisted identity`() {
             val identityManager = mockIdentityManager(Identity("persisted-user", "persisted-device"))
@@ -109,6 +149,23 @@ internal class IdentityCoordinatorTest {
                     every { editIdentity() } returns editor
                 }
             coordinator.bootstrap(identityManager)
+        }
+
+        @Test
+        fun `unchanged user id still commits to IdentityManager`() {
+            assertFalse(coordinator.setUserId(null))
+
+            verify(exactly = 2) { editor.setUserId(null) }
+            verify(exactly = 2) { editor.commit() }
+        }
+
+        @Test
+        fun `unchanged device id still commits to IdentityManager`() {
+            coordinator.setDeviceId("device")
+            assertFalse(coordinator.setDeviceId("device"))
+
+            verify(exactly = 2) { editor.setDeviceId("device") }
+            verify(exactly = 3) { editor.commit() }
         }
 
         @Test

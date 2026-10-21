@@ -1,9 +1,12 @@
 package com.amplitude.core
 
+import com.amplitude.core.events.IdentifyOperation
 import com.amplitude.id.IdentityManager
 
+private val identifyOperationTypes = IdentifyOperation.values().map { it.operationType }.toSet()
+
 /**
- * Owns **runtime** identity (userId/deviceId) for one [Amplitude] instance. The two-layer model:
+ * Owns **runtime** identity (userId/deviceId/user properties) for one [Amplitude] instance. The two-layer model:
  *
  *  - [IdentityCoordinator] (here): the in-memory mirror in [State] + pre-build pending intent +
  *    bootstrap reconciliation. Every mutation is serialized on [lock] so the State write and the
@@ -21,38 +24,93 @@ internal class IdentityCoordinator internal constructor(private val state: State
     private val lock = Any()
     private var identityManager: IdentityManager? = null
     private var pendingUserId: Pending<String?>? = null
-    private var pendingDeviceId: Pending<String>? = null
+    private var pendingDeviceId: Pending<String?>? = null
+
+    fun snapshot(): IdentitySnapshot =
+        synchronized(lock) {
+            IdentitySnapshot(state.userId, state.deviceId, state.userProperties)
+        }
+
+    /** Replaces the complete identity, retaining explicit null ids until bootstrap. */
+    fun setIdentity(identity: AnalyticsIdentity): IdentityChange? {
+        val next = IdentitySnapshot(identity.userId, identity.deviceId, identity.userProperties)
+        return synchronized(lock) {
+            val previous = snapshot()
+            if (identityManager == null) {
+                pendingUserId = Pending(next.userId)
+                pendingDeviceId = Pending(next.deviceId)
+            }
+            val change = IdentityChange(previous, next)
+            if (!change.idsChanged && !change.propertiesChanged) return@synchronized null
+            state.userId = next.userId
+            state.deviceId = next.deviceId
+            state.userProperties = next.userProperties
+            if (change.idsChanged) {
+                identityManager?.editIdentity()
+                    ?.setUserId(next.userId)
+                    ?.setDeviceId(next.deviceId)
+                    ?.commit()
+            }
+            change
+        }
+    }
+
+    /**
+     * Applies the locally supported Identify operations without persisting user properties.
+     * Returns whether the properties changed.
+     */
+    fun applyUserProperties(operations: Map<String, Any?>): Boolean =
+        synchronized(lock) {
+            val updated = state.userProperties.toMutableMap()
+            if (operations.containsKey("\$clearAll")) updated.clear()
+            (operations["\$unset"] as? Map<*, *>)?.keys?.forEach { updated.remove(it) }
+            (operations["\$set"] as? Map<*, *>)?.forEach { (key, value) ->
+                if (key is String) updated[key] = value
+            }
+            operations.forEach { (key, value) ->
+                if (key !in identifyOperationTypes) updated[key] = value
+            }
+            val changed = state.userProperties != updated
+            if (changed) state.userProperties = immutableProperties(updated)
+            changed
+        }
 
     @JvmInline
     private value class Pending<T>(val value: T)
 
     private fun <T> Pending<T>?.getOrElse(default: T?) = if (this != null) value else default
 
-    fun setUserId(userId: String?) {
+    /** Returns whether the user id changed. */
+    fun setUserId(userId: String?): Boolean =
         synchronized(lock) {
+            val changed = state.userId != userId
             state.userId = userId
             identityManager?.editIdentity()?.setUserId(userId)?.commit()
                 ?: run { pendingUserId = Pending(userId) }
+            changed
         }
-    }
 
-    fun setDeviceId(deviceId: String) {
+    /** Returns whether the device id changed. */
+    fun setDeviceId(deviceId: String): Boolean =
         synchronized(lock) {
+            val changed = state.deviceId != deviceId
             state.deviceId = deviceId
             identityManager?.editIdentity()?.setDeviceId(deviceId)?.commit()
                 ?: run { pendingDeviceId = Pending(deviceId) }
+            changed
         }
-    }
 
     /**
      * Reset clears userId and rotates deviceId as **one** locked mutation, so the two fields
      * never tear apart and persistence commits once. Callers fan out callbacks after this
      * returns (lock released) — never from inside.
      */
-    fun reset(newDeviceId: String) {
+    fun reset(newDeviceId: String): IdentityChange =
         synchronized(lock) {
+            val previous = snapshot()
             state.userId = null
             state.deviceId = newDeviceId
+            state.userProperties = emptyMap()
             val editor = identityManager?.editIdentity()
             if (editor != null) {
                 editor.setUserId(null).setDeviceId(newDeviceId).commit()
@@ -60,8 +118,8 @@ internal class IdentityCoordinator internal constructor(private val state: State
                 pendingUserId = Pending(null)
                 pendingDeviceId = Pending(newDeviceId)
             }
+            IdentityChange(previous, snapshot())
         }
-    }
 
     /**
      * Called during [com.amplitude.core.Amplitude.createIdentityContainer] to reconcile
@@ -87,4 +145,11 @@ internal class IdentityCoordinator internal constructor(private val state: State
             pendingDeviceId = null
         }
     }
+}
+
+internal class IdentityChange(val previous: AnalyticsIdentity, val current: IdentitySnapshot) {
+    val userIdChanged = previous.userId != current.userId
+    val deviceIdChanged = previous.deviceId != current.deviceId
+    val idsChanged = userIdChanged || deviceIdChanged
+    val propertiesChanged = previous.userProperties != current.userProperties
 }

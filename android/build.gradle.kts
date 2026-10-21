@@ -110,6 +110,8 @@ dependencies {
     testImplementation(libs.test.ext.junit)
     testImplementation(libs.test.material)
     testImplementation(libs.json)
+    // Keep the released integration in the compatibility tests, independently of candidate plugins.
+    testImplementation(libs.experiment.android.client)
     testImplementation(libs.play.services.base)
     testImplementation(libs.playServicesAdsIdentifier)
     testImplementation(libs.playServicesAppset)
