@@ -37,9 +37,8 @@ internal class StoragePipeline(
             return
         }
         val entity = event.toEntity()
-        val isCleanStop =
-            event.kind == DelayedEvent.Kind.INSTANT &&
-                (event.eventType == StreamEvents.STREAM_STOPPED || event.eventType == StreamEvents.AD_STOPPED)
+        // Ads share the stream session ID, so an ad stop must not clear the content timeout.
+        val isCleanStop = event.kind == DelayedEvent.Kind.INSTANT && event.eventType == StreamEvents.STREAM_STOPPED
         queue.enqueue(
             DelayedEventsRequestEntity(
                 id = streamSessionId,

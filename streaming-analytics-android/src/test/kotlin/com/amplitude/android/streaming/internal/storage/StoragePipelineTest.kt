@@ -56,7 +56,7 @@ class StoragePipelineTest {
         @ParameterizedTest
         @CsvSource(
             "[Streaming] Stream Stopped, 0",
-            "[Streaming] Ad Stopped, 0",
+            "[Streaming] Ad Stopped, 3600000",
             "[Streaming] Stream Started, 3600000",
             "[Streaming] Ad Started, 3600000",
             "[Streaming] Ad Skipped, 3600000",
