@@ -10,12 +10,6 @@ import com.amplitude.core.AmplitudePreview
 import com.amplitude.core.platform.Plugin
 import java.util.concurrent.atomic.AtomicReference
 
-private const val AD_STARTED = "[Streaming] Ad Started"
-private const val AD_STOPPED = "[Streaming] Ad Stopped"
-private const val AD_SKIPPED = "[Streaming] Ad Skipped"
-private const val STREAM_STARTED = "[Streaming] Stream Started"
-private const val STREAM_STOPPED = "[Streaming] Stream Stopped"
-
 internal val StreamingDiGraph.streamTracker: StreamTracker by weak {
     StreamTracker(
         amplitude = amplitude,
@@ -56,7 +50,7 @@ internal class StreamTracker(
         if (!adsEventsEnabled) return
         trackDelayed(
             DelayedEvent(
-                eventType = AD_STARTED,
+                eventType = StreamEvents.AD_STARTED,
                 kind = DelayedEvent.Kind.INSTANT,
                 timestamp = timestamp,
                 eventProperties =
@@ -81,7 +75,7 @@ internal class StreamTracker(
         if (!adsEventsEnabled) return
         trackDelayed(
             DelayedEvent(
-                eventType = AD_STOPPED,
+                eventType = StreamEvents.AD_STOPPED,
                 kind = status.eventKind(),
                 timestamp = timestamp,
                 eventProperties =
@@ -106,7 +100,7 @@ internal class StreamTracker(
         if (!adsEventsEnabled) return
         trackDelayed(
             DelayedEvent(
-                eventType = AD_SKIPPED,
+                eventType = StreamEvents.AD_SKIPPED,
                 kind = DelayedEvent.Kind.INSTANT,
                 timestamp = timestamp,
                 eventProperties =
@@ -133,7 +127,7 @@ internal class StreamTracker(
     ) {
         trackDelayed(
             DelayedEvent(
-                eventType = STREAM_STARTED,
+                eventType = StreamEvents.STREAM_STARTED,
                 kind = DelayedEvent.Kind.INSTANT,
                 timestamp = timestamp,
                 eventProperties =
@@ -165,7 +159,7 @@ internal class StreamTracker(
     ) {
         trackDelayed(
             DelayedEvent(
-                eventType = STREAM_STOPPED,
+                eventType = StreamEvents.STREAM_STOPPED,
                 kind = stopReason.eventKind(),
                 timestamp = timestamp,
                 eventProperties =

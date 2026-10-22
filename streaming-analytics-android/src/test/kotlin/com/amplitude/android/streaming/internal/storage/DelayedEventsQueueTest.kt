@@ -30,16 +30,17 @@ class DelayedEventsQueueTest {
     @Nested
     inner class Enqueue {
         @Test
-        fun `instant update keeps existing delayed events and timeout`() =
+        fun `instant update keeps other delayed events and timeout`() =
             runTest {
-                val delayed = eventEntity("stopped")
-                val instant = eventEntity("started")
+                val delayed = eventEntity("stopped", insertId = "content-1")
+                val adStop = eventEntity("ad-stopped", insertId = "ad-1")
+                val instant = eventEntity("ad-ended", insertId = "ad-1", timestamp = 2L)
                 coEvery { storage.findKey(any()) } returns "existing-key"
                 coEvery { storage.read("existing-key") } returns
                     DelayedEventsRequestEntity(
                         id = "stream-1",
                         timeoutMillis = 5_000L,
-                        events = listOf(delayed),
+                        events = listOf(delayed, adStop),
                     )
                 coEvery { storage.write(any(), any()) } returns Unit
 
@@ -196,8 +197,77 @@ class DelayedEventsQueueTest {
                         "existing-key",
                         match { stored ->
                             stored.events.isEmpty() &&
-                                stored.timeoutMillis == 5_000L &&
+                                stored.timeoutMillis == 0L &&
                                 stored.instantEvents == listOf(pausedStop)
+                        },
+                    )
+                }
+            }
+
+        @Test
+        fun `late heartbeat cannot restore a cleared timeout`() =
+            runTest {
+                val stopped = eventEntity("stopped", insertId = "stop-1", timestamp = 2L)
+                coEvery { storage.findKey(any()) } returns "existing-key"
+                coEvery { storage.read("existing-key") } returns
+                    DelayedEventsRequestEntity(
+                        id = "stream-1",
+                        timeoutMillis = 0L,
+                        events = emptyList(),
+                        instantEvents = listOf(stopped),
+                    )
+                coEvery { storage.write(any(), any()) } returns Unit
+
+                queue.enqueue(
+                    DelayedEventsRequestEntity(
+                        id = "stream-1",
+                        timeoutMillis = 5_000L,
+                        events = listOf(eventEntity("timeout", insertId = "stop-1", timestamp = 1L)),
+                    ),
+                )
+
+                coVerify {
+                    storage.write(
+                        "existing-key",
+                        match { stored ->
+                            stored.events.isEmpty() &&
+                                stored.timeoutMillis == 0L &&
+                                stored.instantEvents == listOf(stopped)
+                        },
+                    )
+                }
+            }
+
+        @Test
+        fun `new playback restores the timeout after a clean stop`() =
+            runTest {
+                val stopped = eventEntity("stopped", insertId = "stop-1", timestamp = 1L)
+                val heartbeat = eventEntity("timeout", insertId = "stop-2", timestamp = 2L)
+                coEvery { storage.findKey(any()) } returns "existing-key"
+                coEvery { storage.read("existing-key") } returns
+                    DelayedEventsRequestEntity(
+                        id = "stream-1",
+                        timeoutMillis = 0L,
+                        events = emptyList(),
+                        instantEvents = listOf(stopped),
+                    )
+                coEvery { storage.write(any(), any()) } returns Unit
+
+                queue.enqueue(
+                    DelayedEventsRequestEntity(
+                        id = "stream-1",
+                        timeoutMillis = 5_000L,
+                        events = listOf(heartbeat),
+                    ),
+                )
+
+                coVerify {
+                    storage.write(
+                        "existing-key",
+                        match { stored ->
+                            stored.events == listOf(heartbeat) &&
+                                stored.timeoutMillis == 5_000L &&
+                                stored.instantEvents == listOf(stopped)
                         },
                     )
                 }
