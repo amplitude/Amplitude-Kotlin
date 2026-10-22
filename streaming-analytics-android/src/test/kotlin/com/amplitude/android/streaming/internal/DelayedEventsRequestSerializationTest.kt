@@ -1,5 +1,6 @@
 package com.amplitude.android.streaming.internal
 
+import com.amplitude.android.streaming.internal.network.DelayedEventsRequestDto
 import com.amplitude.android.streaming.internal.storage.DelayedEventsRequestEntity
 import com.amplitude.android.streaming.internal.storage.delayedEventsStorageJson
 import com.amplitude.android.streaming.internal.storage.toDelayedEvent
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import java.util.UUID
 
 class DelayedEventsRequestSerializationTest {
     @Nested
@@ -24,6 +26,7 @@ class DelayedEventsRequestSerializationTest {
                     deviceId = "device-1",
                     userId = "user-1",
                     sessionId = 42L,
+                    batchInfo = BatchInfo(UUID.randomUUID(), 2),
                     eventProperties =
                         mutableMapOf(
                             "video_id" to "v-100",
@@ -64,7 +67,13 @@ class DelayedEventsRequestSerializationTest {
                     delayedEventsStorageJson.encodeToString(request),
                 )
             val restored = decoded.events.single().toDelayedEvent(DelayedEvent.Kind.DELAYED)
+            val cloudRequest = DelayedEventsRequestDto("view-1", timeoutMillis = 5_000L, events = listOf(delayed))
+            val cloudEvent = JSONObject(cloudRequest.toJson("test-key")).getJSONArray("events").getJSONObject(0)
 
+            // Local grouping metadata must not change either serialized representation.
+            assertEquals(DelayedEvent(delayed, delayed.kind).toEntity(), decoded.events.single())
+            assertEquals(decoded.events.single().ingestJson.keys, cloudEvent.keys().asSequence().toSet())
+            assertNull(restored.batchInfo)
             assertEquals("view-1", decoded.id)
             assertEquals("video_stopped", restored.eventType)
             assertEquals("user-1", restored.userId)
