@@ -3,12 +3,15 @@ package com.amplitude.core.utilities
 import com.amplitude.common.jvm.ConsoleLogger
 import com.amplitude.core.Configuration
 import com.amplitude.id.utilities.PropertiesFile
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.json.JSONArray
 import org.json.JSONObject
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -25,14 +28,12 @@ private const val STORAGE_KEY = Configuration.DEFAULT_INSTANCE
 /** Enough flush cycles to show growth is unbounded rather than a one-off. */
 private const val READ_CYCLES = 10
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class EventsFileManagerTest {
     @TempDir lateinit var tempDir: File
+    private val propertiesDispatcher = StandardTestDispatcher()
     private val propertiesFile by lazy {
-        PropertiesFile(
-            tempDir,
-            "test-prefix-$STORAGE_KEY",
-            logger,
-        )
+        createPropertiesFile()
     }
     private val logger = ConsoleLogger()
     private val testDiagnostics = Diagnostics()
@@ -44,6 +45,11 @@ class EventsFileManagerTest {
             logger = logger,
             diagnostics = testDiagnostics,
         )
+    }
+
+    @AfterEach
+    fun finishPropertiesSaves() {
+        propertiesDispatcher.scheduler.advanceUntilIdle()
     }
 
     @Test
@@ -284,7 +290,7 @@ class EventsFileManagerTest {
                 "{\"eventType\":\"test1\"}\u0000{\"eventType\":\"test2\"}\u0000{\"eventType\":\"test3\"\u0000",
             )
             val logger = ConsoleLogger()
-            val propertiesFile = PropertiesFile(tempDir, "test-prefix-$STORAGE_KEY", logger)
+            val propertiesFile = createPropertiesFile()
             val diagnostics = Diagnostics()
             val eventsFileManager =
                 EventsFileManager(tempDir, STORAGE_KEY, propertiesFile, logger, diagnostics)
@@ -454,8 +460,8 @@ class EventsFileManagerTest {
     fun `concurrent write to two instances with same configuration`() =
         runBlocking {
             val logger = ConsoleLogger()
-            val propertiesFile1 = PropertiesFile(tempDir, "test-prefix-$STORAGE_KEY", logger)
-            val propertiesFile2 = PropertiesFile(tempDir, "test-prefix-$STORAGE_KEY", logger)
+            val propertiesFile1 = createPropertiesFile()
+            val propertiesFile2 = createPropertiesFile()
             val eventsFileManager1 =
                 EventsFileManager(tempDir, STORAGE_KEY, propertiesFile1, logger, testDiagnostics)
             val eventsFileManager2 =
@@ -502,7 +508,7 @@ class EventsFileManagerTest {
     fun `concurrent write from multiple threads on multiple instances`() =
         runBlocking {
             val logger = ConsoleLogger()
-            val propertiesFile = PropertiesFile(tempDir, "test-prefix-$STORAGE_KEY", logger)
+            val propertiesFile = createPropertiesFile()
             for (i in 0..100) {
                 val eventsFileManager =
                     EventsFileManager(tempDir, STORAGE_KEY, propertiesFile, logger, testDiagnostics)
@@ -689,4 +695,11 @@ class EventsFileManagerTest {
     private fun createEvent(eventType: String): String {
         return "{\"eventType\":\"$eventType\"}"
     }
+
+    private fun createPropertiesFile(): PropertiesFile = PropertiesFile.getInstance(
+        File(tempDir, "metadata").path,
+        "test-prefix-$STORAGE_KEY.properties",
+        logger,
+        propertiesDispatcher,
+    )
 }

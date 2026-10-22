@@ -2,7 +2,10 @@ package com.amplitude.core.utilities
 
 import com.amplitude.common.jvm.ConsoleLogger
 import com.amplitude.id.utilities.PropertiesFile
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -13,11 +16,18 @@ import org.junit.jupiter.params.provider.ValueSource
 import java.io.File
 import java.io.FilenameFilter
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class EventsFileMigrationTest {
     @TempDir lateinit var directory: File
     private val storageKey = "migration"
     private val versionKey = "amplitude.events.file.version.$storageKey"
     private val logger = ConsoleLogger()
+    private val propertiesDispatcher = StandardTestDispatcher()
+
+    @AfterEach
+    fun finishPropertiesSaves() {
+        propertiesDispatcher.scheduler.advanceUntilIdle()
+    }
 
     @Test
     fun `should skip a file deleted between enumeration and opening and migrate the remaining file`() {
@@ -34,7 +44,7 @@ class EventsFileMigrationTest {
             object : File(directory.path) {
                 override fun listFiles(filter: FilenameFilter?): Array<File> = arrayOf(disappearing, remaining)
             }
-        val kvs = PropertiesFile(directory, "metadata", null).apply { load() }
+        val kvs = PropertiesFile.getInstance(directory.path, "metadata.properties", ioDispatcher = propertiesDispatcher)
         EventsFileManager(listing, storageKey, kvs, logger, Diagnostics())
         assertFalse(missing.exists())
         assertEquals("{\"event_type\":\"legacy\"}" + EventsFileManager.DELIMITER, remaining.readText())
@@ -46,7 +56,7 @@ class EventsFileMigrationTest {
         // Opening a directory as text raises FileNotFoundException while exists remains true.
         val unreadable = File(directory, "$storageKey-0").apply { mkdir() }
         val remaining = File(directory, "$storageKey-1").apply { writeText("[{\"event_type\":\"legacy\"}]") }
-        val kvs = PropertiesFile(directory, "metadata", null).apply { load() }
+        val kvs = PropertiesFile.getInstance(directory.path, "metadata.properties", ioDispatcher = propertiesDispatcher)
         EventsFileManager(directory, storageKey, kvs, logger, Diagnostics())
         assertTrue(remaining.readText().endsWith(EventsFileManager.DELIMITER))
         assertEquals(1, kvs.getLong(versionKey, 1))
@@ -63,7 +73,7 @@ class EventsFileMigrationTest {
         runTest {
             val unreadable = File(directory, "$storageKey-0").apply { mkdir() }
             val legacy = File(directory, "$storageKey-1").apply { writeText("[{\"event_type\":\"legacy\"}]") }
-            val kvs = PropertiesFile(directory, "metadata", null).apply { load() }
+            val kvs = PropertiesFile.getInstance(directory.path, "metadata.properties", ioDispatcher = propertiesDispatcher)
             EventsFileManager(directory, storageKey, kvs, logger, Diagnostics())
             assertEquals(1, kvs.getLong(versionKey, 1))
 
