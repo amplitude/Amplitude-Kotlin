@@ -1,6 +1,7 @@
 package com.amplitude.android.streaming.internal.storage
 
 import com.amplitude.android.streaming.internal.DelayedEvent
+import com.amplitude.android.streaming.internal.StreamEvents
 import com.amplitude.android.streaming.internal.StreamingDiGraph
 import com.amplitude.android.streaming.internal.util.DiGraph.Companion.weak
 import com.amplitude.common.Logger
@@ -36,10 +37,14 @@ internal class StoragePipeline(
             return
         }
         val entity = event.toEntity()
+        val isCleanStop =
+            event.kind == DelayedEvent.Kind.INSTANT &&
+                (event.eventType == StreamEvents.STREAM_STOPPED || event.eventType == StreamEvents.AD_STOPPED)
         queue.enqueue(
             DelayedEventsRequestEntity(
                 id = streamSessionId,
-                timeoutMillis = DELAYED_EVENT_TIMEOUT_MILLIS,
+                // A zero timeout sends the clean stop and deletes the server's delayed snapshot.
+                timeoutMillis = if (isCleanStop) 0L else DELAYED_EVENT_TIMEOUT_MILLIS,
                 events =
                     if (event.kind == DelayedEvent.Kind.DELAYED) {
                         listOf(entity)

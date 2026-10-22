@@ -1,6 +1,7 @@
 package com.amplitude.android.streaming.internal.storage
 
 import com.amplitude.android.streaming.internal.DelayedEvent
+import com.amplitude.android.streaming.internal.StreamEvents
 import com.amplitude.common.Logger
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -10,6 +11,9 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
+import org.junit.jupiter.params.provider.ValueSource
 
 class StoragePipelineTest {
     private val queue = mockk<DelayedEventsQueue>(relaxed = true)
@@ -29,11 +33,12 @@ class StoragePipelineTest {
             assertEquals(3_600_000L, DELAYED_EVENT_TIMEOUT_MILLIS)
         }
 
-        @Test
-        fun `delayed kind enqueues the event on the request events list`() =
+        @ParameterizedTest
+        @ValueSource(strings = [StreamEvents.STREAM_STOPPED, StreamEvents.AD_STOPPED])
+        fun `delayed kind enqueues the event on the request events list`(eventType: String) =
             runTest {
                 pipeline.onDelayedEvent(
-                    delayedEvent(kind = DelayedEvent.Kind.DELAYED),
+                    delayedEvent(kind = DelayedEvent.Kind.DELAYED).apply { this.eventType = eventType },
                 )
 
                 coVerify {
@@ -48,17 +53,25 @@ class StoragePipelineTest {
                 }
             }
 
-        @Test
-        fun `instant kind enqueues the event on instantEvents`() =
+        @ParameterizedTest
+        @CsvSource(
+            "[Streaming] Stream Stopped, 0",
+            "[Streaming] Ad Stopped, 0",
+            "[Streaming] Stream Started, 3600000",
+            "[Streaming] Ad Started, 3600000",
+            "[Streaming] Ad Skipped, 3600000",
+        )
+        fun `instant kind enqueues the event on instantEvents`(eventType: String, expectedTimeout: Long) =
             runTest {
                 pipeline.onDelayedEvent(
-                    delayedEvent(kind = DelayedEvent.Kind.INSTANT),
+                    delayedEvent(kind = DelayedEvent.Kind.INSTANT).apply { this.eventType = eventType },
                 )
 
                 coVerify {
                     queue.enqueue(
                         match { request ->
                             request.id == "stream-1" &&
+                                request.timeoutMillis == expectedTimeout &&
                                 request.events.isEmpty() &&
                                 request.instantEvents?.size == 1
                         },

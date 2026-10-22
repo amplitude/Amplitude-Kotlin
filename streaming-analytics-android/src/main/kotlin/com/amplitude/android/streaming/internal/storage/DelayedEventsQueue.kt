@@ -110,10 +110,12 @@ private fun DelayedEventsRequestEntity.mergedWith(
     return copy(
         events = delayed,
         timeoutMillis =
-            if (incoming.events.isEmpty() || !delayedChanged) {
-                timeoutMillis
-            } else {
-                incoming.timeoutMillis
+            when {
+                // Clear the server snapshot only after every pending delayed event is completed.
+                // Keep the clear even if a stale heartbeat or another instant event arrives later.
+                delayed.isEmpty() && (timeoutMillis == 0L || incoming.timeoutMillis == 0L) -> 0L
+                incoming.events.isEmpty() || !delayedChanged -> timeoutMillis
+                else -> incoming.timeoutMillis
             },
         instantEvents = mergedInstant,
     )
