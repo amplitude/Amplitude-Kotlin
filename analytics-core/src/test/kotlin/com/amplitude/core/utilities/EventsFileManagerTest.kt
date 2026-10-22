@@ -537,6 +537,155 @@ class EventsFileManagerTest {
         }
 
     @Nested
+    inner class PropertiesFileFiltering {
+        @ParameterizedTest
+        @ValueSource(strings = ["client.properties", "client.properties-archive", ".properties", "properties", "client.[test]+(archive)"])
+        fun `should preserve events when the storage key contains properties`(storageKey: String) = runTest {
+            val manager = EventsFileManager(tempDir, storageKey, createPropertiesFile(storageKey), logger, testDiagnostics)
+            val metadataFiles = createMetadataFiles(storageKey)
+            val event = createEvent("test")
+
+            manager.storeEvent(event)
+            manager.rollover()
+
+            val batch = File(tempDir, "$storageKey-0")
+            assertEquals(listOf(batch.absolutePath), manager.read())
+            assertEquals(event + EventsFileManager.DELIMITER, batch.readText())
+            metadataFiles.forEach { assertEquals("counter=7\n", it.readText()) }
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = ["client.properties", "client.properties-archive", ".properties", "properties", "client.[test]+(archive)"])
+        fun `should migrate and recover events when the storage key contains properties`(storageKey: String) = runTest {
+            val metadataFiles = createMetadataFiles(storageKey)
+            val legacy = createEvent("legacy")
+            File(tempDir, "$storageKey-0").writeText("[$legacy]")
+            File(tempDir, "$storageKey-1.tmp").writeText("[$legacy]")
+            val manager = EventsFileManager(tempDir, storageKey, createPropertiesFile(storageKey), logger, testDiagnostics)
+            val legacyBatch = File(tempDir, "$storageKey-0")
+            val migratedBatch = File(tempDir, "$storageKey-1")
+            assertEquals(legacy + EventsFileManager.DELIMITER, legacyBatch.readText())
+            assertEquals(legacy + EventsFileManager.DELIMITER, migratedBatch.readText())
+
+            val first = createEvent("first")
+            val second = createEvent("second")
+            val unfinished = File(tempDir, "$storageKey-7.tmp")
+            unfinished.writeText(first + EventsFileManager.DELIMITER)
+
+            manager.storeEvent(second)
+            manager.rollover()
+
+            val recoveredBatch = File(tempDir, "$storageKey-7")
+            assertEquals(listOf(legacyBatch.absolutePath, migratedBatch.absolutePath, recoveredBatch.absolutePath), manager.read())
+            assertEquals(first + EventsFileManager.DELIMITER + second + EventsFileManager.DELIMITER, recoveredBatch.readText())
+            assertFalse(unfinished.exists())
+            metadataFiles.forEach { assertEquals("counter=7\n", it.readText()) }
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = [".properties", ".properties.bak", ".properties-123.tmp"])
+        fun `should preserve properties files while storing and reading events`(suffix: String) = runTest {
+            val manager = eventsFileManager
+            val metadata = File(tempDir, "amplitude-metadata-$STORAGE_KEY$suffix")
+            val contents = "counter=7\n"
+            metadata.writeText(contents)
+            val event = createEvent("test")
+
+            manager.storeEvent(event)
+            manager.rollover()
+
+            val batch = File(tempDir, "$STORAGE_KEY-0")
+            assertEquals(listOf(batch.absolutePath), manager.read())
+            assertEquals(event + EventsFileManager.DELIMITER, batch.readText())
+            assertEquals(contents, metadata.readText())
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = [".properties", ".properties.bak", ".properties-123.tmp"])
+        fun `should preserve properties files while migrating legacy events`(suffix: String) = runTest {
+            val metadata = File(tempDir, "amplitude-metadata-$STORAGE_KEY$suffix")
+            val contents = "counter=7\n"
+            metadata.writeText(contents)
+            val event = createEvent("legacy")
+            val batch = File(tempDir, "$STORAGE_KEY-0").apply { writeText("[$event]") }
+
+            val manager = eventsFileManager
+
+            assertEquals(contents, metadata.readText())
+            assertEquals(event + EventsFileManager.DELIMITER, batch.readText())
+            assertEquals(listOf(batch.absolutePath), manager.read())
+        }
+
+        @Test
+        fun `should recover unfinished event files alongside properties sidecars`() = runTest {
+            val manager = eventsFileManager
+            val first = createEvent("first")
+            val second = createEvent("second")
+            val unfinished = File(tempDir, "$STORAGE_KEY-0.tmp")
+            unfinished.writeText(first + EventsFileManager.DELIMITER)
+            val metadata = File(tempDir, "amplitude-metadata-$STORAGE_KEY.properties-123.tmp")
+            val contents = "counter=7\n"
+            metadata.writeText(contents)
+
+            manager.storeEvent(second)
+            manager.rollover()
+
+            val batch = File(tempDir, "$STORAGE_KEY-0")
+            assertEquals(listOf(batch.absolutePath), manager.read())
+            assertEquals(first + EventsFileManager.DELIMITER + second + EventsFileManager.DELIMITER, batch.readText())
+            assertFalse(unfinished.exists())
+            assertEquals(contents, metadata.readText())
+        }
+
+        private fun createMetadataFiles(storageKey: String): List<File> =
+            listOf(".properties", ".properties.bak", ".properties-123.tmp").map { suffix ->
+                File(tempDir, "amplitude-metadata-$storageKey$suffix").apply { writeText("counter=7\n") }
+            }
+    }
+
+    @Nested
+    inner class UnrelatedFiles {
+        @Test
+        fun `should leave unrelated files untouched while storing and reading events`() = runTest {
+            val manager = eventsFileManager
+            val unrelatedFiles = createUnrelatedFiles()
+            val event = createEvent("test")
+
+            manager.storeEvent(event)
+            manager.rollover()
+
+            val batch = File(tempDir, "$STORAGE_KEY-0")
+            assertEquals(listOf(batch.absolutePath), manager.read())
+            assertEquals(event + EventsFileManager.DELIMITER, batch.readText())
+            unrelatedFiles.forEach { assertEquals("unrelated contents", it.readText()) }
+        }
+
+        @Test
+        fun `should leave unrelated files untouched while migrating legacy events`() = runTest {
+            val unrelatedFiles = createUnrelatedFiles()
+            val event = createEvent("legacy")
+            val batch = File(tempDir, "$STORAGE_KEY-0").apply { writeText("[$event]") }
+
+            val manager = eventsFileManager
+
+            assertEquals(listOf(batch.absolutePath), manager.read())
+            assertEquals(event + EventsFileManager.DELIMITER, batch.readText())
+            unrelatedFiles.forEach { assertEquals("unrelated contents", it.readText()) }
+        }
+
+        private fun createUnrelatedFiles(): List<File> =
+            listOf(
+                "prefix-$STORAGE_KEY-9.tmp",
+                "$STORAGE_KEY-notes",
+                "$STORAGE_KEY-notes.tmp",
+                "$STORAGE_KEY-9.bak",
+                "$STORAGE_KEY-9.tmp.bak",
+                "$STORAGE_KEY-9.tmp.tmp",
+                "$STORAGE_KEY-9-custom.tmp",
+            ).map { name -> File(tempDir, name).apply { writeText("unrelated contents") } }
+    }
+
+    @Nested
     inner class MatchesStorageFile {
         @Test
         fun `should not throw when platform passes a null file name`() {
@@ -544,9 +693,23 @@ class EventsFileManagerTest {
             assertFalse(eventsFileManager.matchesStorageFile(null) { true })
         }
 
+        @ParameterizedTest
+        @ValueSource(strings = ["0", "0.tmp", "10000000000", "2-1", "2-1-2.tmp", "1-1700000000000-999", "1-1700000000000-999-1.tmp"])
+        fun `should recognize current and legacy event file names`(suffix: String) {
+            assertTrue(eventsFileManager.matchesStorageFile("$STORAGE_KEY-$suffix") { true })
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = ["", "-1", "1-", "1--2", "1-custom", "1.bak", "1.tmp.bak", "1.tmp.tmp", "1.properties", "1\n"])
+        fun `should reject names outside the event file format`(suffix: String) {
+            assertFalse(eventsFileManager.matchesStorageFile("$STORAGE_KEY-$suffix") { true })
+        }
+
         @Test
-        fun `should match files for this storage key that satisfy the predicate`() {
-            assertTrue(eventsFileManager.matchesStorageFile("$STORAGE_KEY-0") { true })
+        fun `should reject names that only contain the storage key`() {
+            assertFalse(eventsFileManager.matchesStorageFile("prefix-$STORAGE_KEY-0") { true })
+            assertFalse(eventsFileManager.matchesStorageFile("${STORAGE_KEY}other-0") { true })
+            assertFalse(eventsFileManager.matchesStorageFile(STORAGE_KEY) { true })
         }
 
         @Test
@@ -696,9 +859,9 @@ class EventsFileManagerTest {
         return "{\"eventType\":\"$eventType\"}"
     }
 
-    private fun createPropertiesFile(): PropertiesFile = PropertiesFile.getInstance(
-        File(tempDir, "metadata").path,
-        "test-prefix-$STORAGE_KEY.properties",
+    private fun createPropertiesFile(storageKey: String = STORAGE_KEY): PropertiesFile = PropertiesFile.getInstance(
+        tempDir.path,
+        "test-prefix-$storageKey.properties",
         logger,
         propertiesDispatcher,
     )
