@@ -281,14 +281,7 @@ class PropertiesFileTest {
 
                     override fun getParentFile(): File = parent
                 }
-            val constructor =
-                PropertiesFile::class.java.getDeclaredConstructor(
-                    File::class.java,
-                    Logger::class.java,
-                    CoroutineDispatcher::class.java,
-                )
-            constructor.isAccessible = true
-            val store = constructor.newInstance(file, logger, StandardTestDispatcher(testScheduler))
+            val store = createUnsharedStore(StandardTestDispatcher(testScheduler), file)
 
             assertTrue(store.putLong("counter", 1L))
             advanceUntilIdle()
@@ -537,19 +530,100 @@ class PropertiesFileTest {
     @Nested
     inner class Recovery {
         @Test
-        fun `should restore the previous commit when replacement was interrupted`() = runTest {
+        fun `should keep the installed commit when interrupted before backup cleanup`() = runTest {
             backupFile.writeText("counter=1\n")
-            propertiesFile.writeText("counter=2\nbroken=\\uZZZZ\n")
+            propertiesFile.writeText("counter=2\n")
             val store = createStore(StandardTestDispatcher(testScheduler))
 
-            assertEquals(1L, store.getLong("counter", 0L))
+            assertEquals(2L, store.getLong("counter", 0L))
             assertFalse(backupFile.exists())
-            assertEquals("1", readProperties().getProperty("counter"))
+            assertEquals("2", readProperties().getProperty("counter"))
 
             store.putLong("counter", 3L)
             advanceUntilIdle()
 
             assertEquals("3", readProperties().getProperty("counter"))
+        }
+
+        @Test
+        fun `should not roll back a committed save when backup cleanup fails`() = runTest {
+            propertiesFile.writeText("counter=1\n")
+            var cleanupFails = true
+            val backup = object : File(backupFile.path) {
+                override fun delete(): Boolean = if (cleanupFails) false else super.delete()
+            }
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val store = createUnsharedStore(dispatcher, backup = backup)
+
+            store.putLong("counter", 2L)
+            advanceUntilIdle()
+
+            assertEquals("2", readProperties().getProperty("counter"))
+            assertEquals("1", readProperties(backupFile).getProperty("counter"))
+            verify(exactly = 0) { logger.error(any()) }
+            verify(exactly = 1) { logger.warn(match { it.startsWith("Could not remove property file backup") }) }
+
+            // Cleanup failure must not mark the committed save as failed or retry unchanged values.
+            store.putLong("counter", 2L)
+            advanceUntilIdle()
+            verify(exactly = 1) { logger.warn(any()) }
+
+            // A fresh instance models restarting while both snapshots still exist.
+            val restarted = createUnsharedStore(dispatcher, backup = backup)
+            assertEquals(2L, restarted.getLong("counter", 0L))
+            advanceUntilIdle()
+            assertEquals("2", readProperties().getProperty("counter"))
+
+            cleanupFails = false
+            restarted.putLong("counter", 3L)
+            advanceUntilIdle()
+
+            assertEquals("3", readProperties().getProperty("counter"))
+            assertFalse(backupFile.exists())
+            verify(exactly = 0) { logger.error(any()) }
+        }
+
+        @Test
+        fun `should retain the latest commit if a later save cannot remove a stale backup`() = runTest {
+            propertiesFile.writeText("counter=2\n")
+            backupFile.writeText("counter=1\n")
+            var cleanupFails = true
+            val backup = object : File(backupFile.path) {
+                override fun delete(): Boolean = if (cleanupFails) false else super.delete()
+            }
+            val store = createUnsharedStore(StandardTestDispatcher(testScheduler), backup = backup)
+
+            assertEquals(2L, store.getLong("counter", 0L))
+            store.putLong("counter", 3L)
+            advanceUntilIdle()
+
+            assertEquals(3L, store.getLong("counter", 0L))
+            assertEquals("2", readProperties().getProperty("counter"))
+            assertEquals("1", readProperties(backupFile).getProperty("counter"))
+            verify(exactly = 1) { logger.error(match { it.startsWith("Failed to save") }) }
+
+            cleanupFails = false
+            store.putLong("counter", 3L)
+            advanceUntilIdle()
+
+            assertEquals("3", readProperties().getProperty("counter"))
+            assertFalse(backupFile.exists())
+        }
+
+        @Test
+        fun `should preserve both files and reject writes when the installed commit cannot be loaded`() = runTest {
+            backupFile.writeText("counter=1\n")
+            propertiesFile.writeText("counter=2\nbroken=\\uZZZZ\n")
+            val original = propertiesFile.readBytes()
+            val store = createStore(StandardTestDispatcher(testScheduler))
+
+            assertEquals(42L, store.getLong("counter", 42L))
+            assertFalse(store.putLong("counter", 3L))
+            advanceUntilIdle()
+
+            assertArrayEquals(original, propertiesFile.readBytes())
+            assertEquals("1", readProperties(backupFile).getProperty("counter"))
+            verify(exactly = 1) { logger.error(match { it.startsWith("Failed to load") }) }
         }
 
         @Test
@@ -582,6 +656,24 @@ class PropertiesFileTest {
 
     private fun createStore(dispatcher: CoroutineDispatcher): PropertiesFile =
         PropertiesFile.getInstance(directory.path, propertiesFile.name, logger, dispatcher)
+
+    private fun createUnsharedStore(
+        dispatcher: CoroutineDispatcher,
+        file: File = propertiesFile,
+        backup: File = File("${file.path}.bak"),
+    ): PropertiesFile {
+        val constructor = PropertiesFile::class.java.getDeclaredConstructor(
+            File::class.java,
+            Logger::class.java,
+            CoroutineDispatcher::class.java,
+        )
+        constructor.isAccessible = true
+        val store = constructor.newInstance(file, logger, dispatcher)
+        val backupField = PropertiesFile::class.java.getDeclaredField("backupFile\$delegate")
+        backupField.isAccessible = true
+        backupField.set(store, lazy { backup })
+        return store
+    }
 
     private fun readProperties(file: File = propertiesFile): Properties = Properties().apply {
         file.inputStream().use { load(it) }

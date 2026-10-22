@@ -137,6 +137,7 @@ public class PropertiesFile private constructor(
                         underlyingProperties.load(it)
                     }
                 }
+                removeBackupBlocking()
             }
         } catch (e: Exception) {
             loadFailed.set(true)
@@ -176,6 +177,10 @@ public class PropertiesFile private constructor(
             var temporaryFile: File? = null
             try {
                 restoreBackupBlocking()
+                // Do not start another replacement while an older backup is still present.
+                if (backupFile.exists() && !backupFile.delete()) {
+                    throw IOException("Could not remove property file backup at ${backupFile.absolutePath}")
+                }
                 val properties = underlyingProperties.clone() as Properties
                 val directory = propertiesFile.absoluteFile.parentFile
                 if (!directory.isDirectory && !directory.mkdirs() && !directory.isDirectory) {
@@ -194,10 +199,9 @@ public class PropertiesFile private constructor(
                 if (!temporaryFile.renameTo(propertiesFile)) {
                     throw IOException("Could not replace property file at ${propertiesFile.absolutePath}")
                 }
-                if (backupFile.exists() && !backupFile.delete()) {
-                    throw IOException("Could not remove property file backup at ${backupFile.absolutePath}")
-                }
+                // Installing the synced temporary file commits the save; cleanup must not roll it back.
                 saveFailed.set(false)
+                removeBackupBlocking()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
@@ -223,11 +227,16 @@ public class PropertiesFile private constructor(
         if (!backupFile.isFile) {
             throw IOException("Property file backup is not a file at ${backupFile.absolutePath}")
         }
-        if (propertiesFile.exists() && !propertiesFile.delete()) {
-            throw IOException("Could not remove uncommitted property file at ${propertiesFile.absolutePath}")
-        }
+        // A live file was installed atomically and is newer than any leftover backup.
+        if (propertiesFile.exists()) return
         if (!backupFile.renameTo(propertiesFile)) {
             throw IOException("Could not restore property file backup at ${backupFile.absolutePath}")
+        }
+    }
+
+    private fun removeBackupBlocking() {
+        if (backupFile.exists() && !backupFile.delete()) {
+            logger?.warn("Could not remove property file backup at ${backupFile.absolutePath}")
         }
     }
 
