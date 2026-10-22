@@ -29,6 +29,7 @@ public class EventsFileManager(
     private val storageVersionKey = "amplitude.events.file.version.$storageKey"
     private val filePathSet: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap())
     private val curFile: MutableMap<String, File> = ConcurrentHashMap<String, File>()
+    private val eventFileNamePattern = Regex("${Regex.escape(storageKey)}-[0-9]+(?:-[0-9]+)*(?:\\.tmp)?")
 
     public companion object {
         public const val MAX_FILE_SIZE: Int = 975_000 // 975KB
@@ -83,11 +84,12 @@ public class EventsFileManager(
      * Lists this storage's files, applying [matches] to the file name.
      * Returns an empty array if the directory can't be enumerated.
      */
-    private fun listStorageFiles(matches: (name: String) -> Boolean): Array<File> =
+    private fun listStorageFiles(matches: (name: String) -> Boolean = { true }): Array<File> =
         directory.listFiles { _, name -> matchesStorageFile(name, matches) } ?: emptyArray()
 
     /**
-     * True if [name] belongs to this storage and satisfies [matches].
+     * True if [name] has this storage's event-file format and satisfies [matches].
+     * Accepts numeric indices, split and collision suffixes, and an optional `.tmp` extension.
      *
      * [name] is nullable because the platform can hand a null entry to the
      * [java.io.FilenameFilter] callback on some devices/filesystems (SDK-176).
@@ -95,18 +97,18 @@ public class EventsFileManager(
     internal fun matchesStorageFile(
         name: String?,
         matches: (name: String) -> Boolean,
-    ): Boolean = name != null && name.contains(storageKey) && matches(name)
+    ): Boolean = name != null && eventFileNamePattern.matches(name) && matches(name)
 
     /**
      * Returns a sorted list of file paths that are not yet uploaded
      */
     public fun read(): List<String> {
         // we need to filter out .temp file, since it's operating on the writing thread
-        val fileList = listStorageFiles { !it.endsWith(".tmp") && !it.endsWith(".properties") }
+        val fileList = listStorageFiles { !it.endsWith(".tmp") }
 
         return fileList
             .map { file ->
-                val name = file.nameWithoutExtension.replace("$storageKey-", "")
+                val name = file.name.removePrefix("$storageKey-")
 
                 // we're padding file name with 0s to ensure they are sorted in the correct order,
                 // even for file names with varying lengths and split files (e.g. "1-1", "2",  "21")
@@ -303,11 +305,11 @@ public class EventsFileManager(
     }
 
     private fun rename(file: File) {
-        if (!file.exists() || file.extension.isEmpty()) {
-            // if tmp file doesn't exist or empty then we don't need to do anything
+        if (!file.exists() || !file.name.endsWith(".tmp")) {
+            // Only unfinished event files need renaming.
             return
         }
-        val fileNameWithoutExtension = file.nameWithoutExtension
+        val fileNameWithoutExtension = file.name.removeSuffix(".tmp")
         val finishedFile = File(directory, fileNameWithoutExtension)
         if (finishedFile.exists()) {
             logger.debug("File already exists: $finishedFile, handle gracefully.")
@@ -316,7 +318,7 @@ public class EventsFileManager(
             file.renameTo(File(directory, newName))
             return
         } else {
-            file.renameTo(File(directory, file.nameWithoutExtension))
+            file.renameTo(finishedFile)
         }
     }
 
@@ -412,7 +414,7 @@ public class EventsFileManager(
             if (kvs.getLong(storageVersionKey, 1L) > 1L) {
                 return@withLock
             }
-            val unFinishedFiles = listStorageFiles { !it.endsWith(".properties") }
+            val unFinishedFiles = listStorageFiles()
             var migrationComplete = true
             unFinishedFiles.forEach {
                 val content =

@@ -41,11 +41,11 @@ public class FileStorage internal constructor(
     private val storageDirectoryEvents by lazy { File(storageDirectory, "events") }
 
     private val propertiesFile by lazy {
-        PropertiesFile(
-            storageDirectory,
-            "${getPrefix()}-$storageKey",
+        PropertiesFile.getInstance(
+            storageDirectory.path,
+            "${getPrefix()}-$storageKey.properties",
             null,
-        ).apply { load() }
+        )
     }
 
     private val eventsFile by lazy {

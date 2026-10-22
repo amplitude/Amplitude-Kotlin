@@ -1,2 +1,7 @@
 [*.{kt,kts}]
 ktlint_function_naming_ignore_when_annotated_with = Composable
+# Allow expression bodies to start on the signature line or the following line.
+ktlint_standard_function-signature = disabled
+ktlint_standard_multiline-expression-wrapping = disabled
+# This rule requires multiline-expression-wrapping in the current ktlint version.
+ktlint_standard_string-template-indent = disabled

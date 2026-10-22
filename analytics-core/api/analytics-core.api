@@ -1554,6 +1554,7 @@ public abstract interface class com/amplitude/id/utilities/KeyValueStore {
 }
 
 public final class com/amplitude/id/utilities/PropertiesFile : com/amplitude/id/utilities/KeyValueStore {
+	public synthetic fun <init> (Ljava/io/File;Lcom/amplitude/common/Logger;Lkotlinx/coroutines/CoroutineDispatcher;Lkotlin/jvm/internal/DefaultConstructorMarker;)V
 	public fun <init> (Ljava/io/File;Ljava/lang/String;Lcom/amplitude/common/Logger;)V
 	public fun deleteKey (Ljava/lang/String;)V
 	public final fun deletePropertiesFile ()V

@@ -16,8 +16,11 @@ public class FileIdentityStorage(public val configuration: IdentityConfiguration
     init {
         val storageDirectory = configuration.storageDirectory
         createDirectory(storageDirectory)
-        propertiesFile = PropertiesFile(storageDirectory, configuration.fileName, configuration.logger)
-        propertiesFile.load()
+        propertiesFile = PropertiesFile.getInstance(
+            storageDirectory.path,
+            "${configuration.fileName}.properties",
+            configuration.logger,
+        )
         safetyCheck()
     }
 
