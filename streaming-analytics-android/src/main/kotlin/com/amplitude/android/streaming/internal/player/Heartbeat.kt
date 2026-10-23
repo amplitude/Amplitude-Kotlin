@@ -25,10 +25,11 @@ internal class Heartbeat internal constructor(
     private var job: Job? = null
     private val stopped = AtomicBoolean(false)
 
-    fun start() {
+    fun start(sendImmediately: Boolean) {
         if (job != null || stopped.get()) return
         job =
             scope.launch {
+                if (!sendImmediately) delay(HEARTBEAT_INTERVAL_MILLIS.milliseconds)
                 while (true) {
                     runCatchingCancellable {
                         sendHeartbeat()

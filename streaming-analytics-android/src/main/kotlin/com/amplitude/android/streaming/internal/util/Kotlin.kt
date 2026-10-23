@@ -53,3 +53,12 @@ internal inline fun <T, R> T.runCatchingCancellable(
 }
 
 internal fun String?.nonBlank(): String? = this?.takeIf { it.isNotBlank() }
+
+/** Returns an insertion-ordered map that evicts the oldest entry when its size exceeds [maxSize]. */
+internal fun <K, V> maxSizeMap(maxSize: Int): MutableMap<K, V> {
+    return object : LinkedHashMap<K, V>() {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<K, V>?): Boolean {
+            return size > maxSize
+        }
+    }
+}

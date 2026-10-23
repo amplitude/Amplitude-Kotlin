@@ -5,33 +5,36 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class HeartbeatTest {
-    @Test
-    fun `should send immediately and again on the interval`() =
+    @ParameterizedTest
+    @ValueSource(booleans = [false, true])
+    fun `should honor the initial delay and heartbeat interval`(sendImmediately: Boolean) =
         runTest {
             val timestamps = mutableListOf<Long>()
-            var now = 10_000L
             val heartbeat =
                 Heartbeat(
                     scope = this,
                     stoppedEvent = { timestamp, _ -> timestamps.add(timestamp) },
-                    time = time { now },
+                    time = time { 10_000L + currentTime },
                 )
 
-            heartbeat.start()
+            heartbeat.start(sendImmediately = sendImmediately)
             runCurrent()
-            assertEquals(listOf(10_000L), timestamps)
+            val initial = if (sendImmediately) listOf(10_000L) else emptyList()
+            assertEquals(initial, timestamps)
 
-            now = 11_000L
             advanceTimeBy(1_000)
             runCurrent()
-            assertEquals(listOf(10_000L, 11_000L), timestamps)
+            assertEquals(initial + 11_000L, timestamps)
 
             heartbeat.stop()
         }
@@ -48,7 +51,7 @@ class HeartbeatTest {
                     time = time { now },
                 )
 
-            heartbeat.start()
+            heartbeat.start(sendImmediately = true)
             runCurrent()
             now = 10_500L
             heartbeat.stop()
@@ -71,7 +74,7 @@ class HeartbeatTest {
                     time = time { 0L },
                 )
 
-            heartbeat.start()
+            heartbeat.start(sendImmediately = true)
             runCurrent()
             advanceTimeBy(1_000)
             runCurrent()
@@ -91,12 +94,12 @@ class HeartbeatTest {
                     time = time { 0L },
                 )
 
-            heartbeat.start()
+            heartbeat.start(sendImmediately = true)
             runCurrent()
             heartbeat.stop()
             runCurrent()
             val sent = timestamps.size
-            heartbeat.start()
+            heartbeat.start(sendImmediately = true)
             advanceTimeBy(2_000)
             runCurrent()
 
@@ -115,7 +118,7 @@ class HeartbeatTest {
                     time = time { now },
                 )
 
-            heartbeat.start()
+            heartbeat.start(sendImmediately = true)
             runCurrent()
             assertEquals(1, timestamps.size)
             now = 10_500L
@@ -137,7 +140,7 @@ class HeartbeatTest {
                     time = time { now },
                 )
 
-            heartbeat.start()
+            heartbeat.start(sendImmediately = true)
             runCurrent()
             heartbeat.cancel()
             runCurrent()
@@ -160,7 +163,7 @@ class HeartbeatTest {
                     time = time { now },
                 )
 
-            heartbeat.start()
+            heartbeat.start(sendImmediately = true)
             runCurrent()
             heartbeat.stop()
             runCurrent()

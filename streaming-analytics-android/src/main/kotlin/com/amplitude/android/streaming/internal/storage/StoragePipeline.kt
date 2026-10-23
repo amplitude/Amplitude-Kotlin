@@ -30,32 +30,39 @@ internal class StoragePipeline(
     private val queue: DelayedEventsQueue,
     private val logger: Logger,
 ) {
-    suspend fun onDelayedEvent(event: DelayedEvent) {
-        val streamSessionId = event.eventProperties?.get(STREAM_SESSION_ID) as? String
-        if (streamSessionId.isNullOrBlank()) {
-            logger.error("Dropping delayed event without $STREAM_SESSION_ID")
-            return
+    suspend fun onDelayedEvents(events: List<DelayedEvent>) {
+        events
+            .groupBy { event ->
+                event.eventProperties?.get(STREAM_SESSION_ID) as? String
+            }
+            .forEach { (streamSessionId, events) ->
+                if (streamSessionId.isNullOrBlank()) {
+                    logger.error("Dropping delayed event without $STREAM_SESSION_ID")
+                    return@forEach
+                }
+                queueEvents(streamSessionId, events)
+            }
+    }
+
+    private suspend fun queueEvents(streamSessionId: String, events: List<DelayedEvent>) {
+        val delayedEventEntities = events
+            .filter { it.kind == DelayedEvent.Kind.DELAYED }
+            .map { it.toEntity() }
+
+        val instantEventEntities = events
+            .filter { it.kind == DelayedEvent.Kind.INSTANT }
+            .map { it.toEntity() }
+
+        val isCleanStop = events.any {
+            it.kind == DelayedEvent.Kind.INSTANT && it.eventType == StreamEvents.STREAM_STOPPED
         }
-        val entity = event.toEntity()
-        // Ads share the stream session ID, so an ad stop must not clear the content timeout.
-        val isCleanStop = event.kind == DelayedEvent.Kind.INSTANT && event.eventType == StreamEvents.STREAM_STOPPED
         queue.enqueue(
             DelayedEventsRequestEntity(
                 id = streamSessionId,
                 // A zero timeout sends the clean stop and deletes the server's delayed snapshot.
                 timeoutMillis = if (isCleanStop) 0L else DELAYED_EVENT_TIMEOUT_MILLIS,
-                events =
-                    if (event.kind == DelayedEvent.Kind.DELAYED) {
-                        listOf(entity)
-                    } else {
-                        emptyList()
-                    },
-                instantEvents =
-                    if (event.kind == DelayedEvent.Kind.INSTANT) {
-                        listOf(entity)
-                    } else {
-                        null
-                    },
+                events = delayedEventEntities,
+                instantEvents = instantEventEntities,
             ),
         )
     }

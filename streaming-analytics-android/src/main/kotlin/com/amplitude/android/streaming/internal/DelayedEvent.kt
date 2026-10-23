@@ -21,6 +21,7 @@ internal class DelayedEvent(
     userId: String? = null,
     sessionId: Long? = null,
     eventProperties: MutableMap<String, Any?> = mutableMapOf(),
+    val batchInfo: BatchInfo? = null,
 ) : BaseEvent() {
     enum class Kind {
         INSTANT,
@@ -36,9 +37,10 @@ internal class DelayedEvent(
         this.eventProperties = eventProperties
     }
 
-    constructor(wrapping: BaseEvent, kind: Kind) : this(
+    constructor(wrapping: BaseEvent, kind: Kind, batchInfo: BatchInfo? = null) : this(
         eventType = wrapping.eventType,
         kind = kind,
+        batchInfo = batchInfo,
     ) {
         mergeEventOptions(wrapping)
         this.eventProperties = wrapping.eventProperties?.deepCopy()
