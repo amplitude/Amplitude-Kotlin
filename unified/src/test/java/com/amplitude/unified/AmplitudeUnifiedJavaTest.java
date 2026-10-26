@@ -2,6 +2,7 @@ package com.amplitude.unified;
 
 import android.app.Application;
 import androidx.test.core.app.ApplicationProvider;
+import java.util.Collections;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
@@ -28,5 +29,10 @@ public class AmplitudeUnifiedJavaTest {
         assertEquals("experiment-deployment-key", builder.getExperiment().getDeploymentKey());
         assertSame(amplitude, amplitude.getAnalytics());
         assertSame(amplitude, amplitude.track("java inherited track"));
+        assertSame(amplitude, amplitude.setIdentity("java-user", "java-device", Collections.singletonMap("plan", "paid")));
+        assertEquals("paid", amplitude.getIdentity().getUserProperties().get("plan"));
+        assertSame(amplitude, amplitude.setIdentity("java-user", "java-device"));
+        assertEquals(Collections.emptyMap(), amplitude.getIdentity().getUserProperties());
+        assertSame(amplitude, amplitude.setIdentity(amplitude.getIdentity()));
     }
 }

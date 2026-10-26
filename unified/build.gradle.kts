@@ -68,6 +68,7 @@ dependencies {
     compileOnly(libs.coroutines.core)
 
     testImplementation(libs.mockk)
+    testImplementation(libs.mockwebserver)
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.jupiter.engine)
