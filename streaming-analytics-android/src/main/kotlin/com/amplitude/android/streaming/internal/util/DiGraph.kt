@@ -1,6 +1,7 @@
 package com.amplitude.android.streaming.internal.util
 
 import java.lang.ref.WeakReference
+import java.util.IdentityHashMap
 import kotlin.properties.ReadOnlyProperty
 import kotlin.reflect.KProperty
 
@@ -120,10 +121,12 @@ internal abstract class DiGraph(
      * Holds one lazy value per [singleton] property, created on first read of that property and
      * returned to every read after it.
      *
-     * Keying by property rather than by type keeps two dependencies of the same type distinct.
+     * Kotlin reuses one property object per declaration, including inherited member bindings.
+     * Use its identity: KProperty.hashCode/equals can resolve metadata that obfuscation
+     * has removed, causing host-app startup crashes when kotlin-reflect is present.
      */
     private inner class SingletonCache {
-        private val delegates = mutableMapOf<KProperty<*>, Lazy<*>>()
+        private val delegates = IdentityHashMap<KProperty<*>, Lazy<*>>()
 
         @Suppress("UNCHECKED_CAST")
         fun <T> valueOf(
@@ -142,10 +145,12 @@ internal abstract class DiGraph(
      * Holds one [WeakReference] per [weak] property. A collected value is created again on the
      * next read.
      *
-     * Keying by property rather than by type keeps two dependencies of the same type distinct.
+     * Kotlin reuses one property object per declaration, including inherited member bindings.
+     * Use its identity: KProperty.hashCode/equals can resolve metadata that obfuscation
+     * has removed, causing host-app startup crashes when kotlin-reflect is present.
      */
     private class WeakCache {
-        private val entries = mutableMapOf<KProperty<*>, WeakEntry<*>>()
+        private val entries = IdentityHashMap<KProperty<*>, WeakEntry<*>>()
 
         @Suppress("UNCHECKED_CAST")
         fun <T : Any> valueOf(
