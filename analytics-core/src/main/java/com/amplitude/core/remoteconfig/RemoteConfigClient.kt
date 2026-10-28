@@ -19,6 +19,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -27,6 +28,8 @@ import java.lang.ref.WeakReference
 import java.net.URLEncoder
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.math.pow
+import kotlin.random.Random
 
 /**
  * Type alias for remote configuration map data.
@@ -138,6 +141,7 @@ internal class RemoteConfigClientImpl(
     private val remoteConfigStorage: RemoteConfigStorage,
     private val httpClient: HttpClient,
     private val logger: Logger,
+    private val maxRetryDelayMillis: Long = DEFAULT_MAX_RETRY_DELAY_MS,
 ) : RemoteConfigClient {
     /** Wraps the analytics event [storage], keeping the existing on-disk keys. */
     constructor(
@@ -173,6 +177,11 @@ internal class RemoteConfigClientImpl(
         private const val EU_REMOTE_CONFIG_URL = "https://sr-client-cfg.eu.amplitude.com"
         private const val CONFIG_GROUP = "android"
         private const val MIN_FETCH_INTERVAL_MS: Long = 5 * 60 * 1_000L
+        private const val DEFAULT_MAX_RETRY_DELAY_MS: Long = 8_000L
+        private const val HTTP_TOO_MANY_REQUESTS = 429
+
+        /** Retries after the first attempt, mirroring the iOS client. */
+        internal const val MAX_RETRIES = 3
     }
 
     /**
@@ -513,10 +522,44 @@ internal class RemoteConfigClientImpl(
         return deferred
     }
 
+    /** Result of a single fetch attempt. */
+    private sealed interface AttemptResult {
+        data class Success(val blob: ConfigMap) : AttemptResult
+
+        /** Worth another attempt (429, 5xx, other statuses, unparseable 200). */
+        object Retryable : AttemptResult
+
+        /** Retrying cannot help (4xx other than 429). */
+        object Fatal : AttemptResult
+    }
+
+    /**
+     * Fetches with iOS-parity retries: up to [MAX_RETRIES] retries with jittered
+     * exponential backoff. Transport errors are not retried (as on iOS).
+     */
+    private suspend fun fetchWithRetry(): ConfigMap? {
+        var retriesLeft = MAX_RETRIES
+        while (true) {
+            when (val result = fetchRemoteConfig()) {
+                is AttemptResult.Success -> return result.blob
+                AttemptResult.Fatal -> return null
+                AttemptResult.Retryable -> {
+                    if (retriesLeft == 0) return null
+                    // maxDelay / 2^retriesLeft, jittered: ~1s, 2s, 4s at most for 3 retries.
+                    val delayMs =
+                        (maxRetryDelayMillis / 2.0.pow(retriesLeft) * Random.nextDouble(0.4, 1.0)).toLong()
+                    logger.debug("Retrying remote config fetch in ${delayMs}ms ($retriesLeft left)")
+                    delay(delayMs)
+                    retriesLeft--
+                }
+            }
+        }
+    }
+
     private suspend fun performFetch(fetchId: Long): FetchOutcome {
         val blob =
             runCatchingCancellable {
-                fetchRemoteConfig()
+                fetchWithRetry()
             }.getOrElse { e ->
                 logger.error("Error fetching remote configs: ${e.message}")
                 return FetchOutcome.Failure
@@ -644,7 +687,7 @@ internal class RemoteConfigClientImpl(
         return (current as? Map<String, Any?>)?.filterNotNullValues()
     }
 
-    private fun fetchRemoteConfig(): ConfigMap? {
+    private fun fetchRemoteConfig(): AttemptResult {
         // Periodic cleanup of dead references during network operations
         cleanupDeadReferences()
 
@@ -659,18 +702,20 @@ internal class RemoteConfigClientImpl(
         val response = httpClient.request(request)
 
         return when {
-            response.isSuccessful -> parseConfigsFromResponse(response.body)
+            response.isSuccessful ->
+                parseConfigsFromResponse(response.body)
+                    ?.let { AttemptResult.Success(it) } ?: AttemptResult.Retryable
             response.isClientError -> {
                 logger.error(
                     "Client error on fetch remote config: ${response.statusCode}: ${response.statusMessage}",
                 )
-                null
+                if (response.statusCode == HTTP_TOO_MANY_REQUESTS) AttemptResult.Retryable else AttemptResult.Fatal
             }
             else -> {
                 logger.warn(
                     "Failed to fetch remote config: ${response.statusCode}: ${response.statusMessage}",
                 )
-                null
+                AttemptResult.Retryable
             }
         }
     }
