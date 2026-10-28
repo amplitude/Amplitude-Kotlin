@@ -2529,6 +2529,86 @@ class RemoteConfigClientTest {
 
     // endregion Migration and Config Group
 
+    private class FakeRemoteConfigStorage(
+        var cached: CachedRemoteConfig? = null,
+    ) : RemoteConfigStorage {
+        var reads = 0
+        val writes = mutableListOf<CachedRemoteConfig>()
+
+        override fun read(): CachedRemoteConfig? {
+            reads += 1
+            return cached
+        }
+
+        override suspend fun write(value: CachedRemoteConfig) {
+            writes.add(value)
+            cached = value
+        }
+    }
+
+    private fun createClient(remoteConfigStorage: RemoteConfigStorage): RemoteConfigClientImpl {
+        val mockHttpClient = mockk<HttpClient>()
+        every { mockHttpClient.request(any()) } returns
+            HttpClient.Response(
+                statusCode = 200,
+                body = DEFAULT_API_REMOTE_CONFIG_JSON.trimIndent(),
+                headers = emptyMap(),
+                statusMessage = "OK",
+            )
+        return RemoteConfigClientImpl(
+            apiKey = "test-key",
+            serverZone = ServerZone.US,
+            coroutineScope = testScope,
+            networkIODispatcher = testDispatcher,
+            storageIODispatcher = testDispatcher,
+            remoteConfigStorage = remoteConfigStorage,
+            httpClient = mockHttpClient,
+            logger = silentLogger,
+        )
+    }
+
+    @Test
+    fun `preloaded cache is delivered to later subscribers without another read`() =
+        runTest {
+            val fakeStorage =
+                FakeRemoteConfigStorage(
+                    CachedRemoteConfig(DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent(), 1234567890L),
+                )
+            val client = createClient(fakeStorage)
+            val first = mutableListOf<Source>()
+            val second = mutableListOf<Source>()
+
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { _, source, _ -> first.add(source) }
+            testDispatcher.scheduler.advanceUntilIdle()
+            client.subscribeAndRetain(SessionReplaySamplingConfig) { _, source, _ -> second.add(source) }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            assertEquals(Source.CACHE, first.first())
+            assertEquals(Source.CACHE, second.first())
+            assertEquals(1, fakeStorage.reads)
+        }
+
+    @Test
+    fun `fetch persists through remote config storage and refreshes the in-memory cache`() =
+        runTest {
+            val fakeStorage = FakeRemoteConfigStorage()
+            val client = createClient(fakeStorage)
+
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { _, _, _ -> }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            assertEquals(1, fakeStorage.writes.size)
+            assertTrue(fakeStorage.writes.single().timestamp > 0L)
+
+            // A later subscriber gets the fetched config as cache, not the empty preload.
+            val later = mutableListOf<Pair<ConfigMap?, Source>>()
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { config, source, _ -> later.add(config to source) }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            assertEquals(Source.CACHE, later.first().second)
+            assertNotNull(later.first().first)
+        }
+
     companion object {
         private const val DEFAULT_API_REMOTE_CONFIG_JSON =
             """
