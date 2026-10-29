@@ -8,8 +8,6 @@ import com.amplitude.core.Constants.SDK_VERSION
 import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.ServerZone
 import com.amplitude.core.Storage
-import com.amplitude.core.Storage.Constants.REMOTE_CONFIG
-import com.amplitude.core.Storage.Constants.REMOTE_CONFIG_TIMESTAMP
 import com.amplitude.core.remoteconfig.RemoteConfigClient.Key
 import com.amplitude.core.remoteconfig.RemoteConfigClient.Source.CACHE
 import com.amplitude.core.remoteconfig.RemoteConfigClient.Source.REMOTE
@@ -21,6 +19,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
@@ -29,6 +28,8 @@ import java.lang.ref.WeakReference
 import java.net.URLEncoder
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.math.pow
+import kotlin.random.Random
 
 /**
  * Type alias for remote configuration map data.
@@ -137,10 +138,32 @@ internal class RemoteConfigClientImpl(
     private val coroutineScope: CoroutineScope,
     private val networkIODispatcher: CoroutineDispatcher,
     private val storageIODispatcher: CoroutineDispatcher,
-    private val storage: Storage,
+    private val remoteConfigStorage: RemoteConfigStorage,
     private val httpClient: HttpClient,
     private val logger: Logger,
+    private val maxRetryDelayMillis: Long = DEFAULT_MAX_RETRY_DELAY_MS,
 ) : RemoteConfigClient {
+    /** Wraps the analytics event [storage], keeping the existing on-disk keys. */
+    constructor(
+        apiKey: String,
+        serverZone: ServerZone,
+        coroutineScope: CoroutineScope,
+        networkIODispatcher: CoroutineDispatcher,
+        storageIODispatcher: CoroutineDispatcher,
+        storage: Storage,
+        httpClient: HttpClient,
+        logger: Logger,
+    ) : this(
+        apiKey,
+        serverZone,
+        coroutineScope,
+        networkIODispatcher,
+        storageIODispatcher,
+        StorageBackedRemoteConfigStorage(storage),
+        httpClient,
+        logger,
+    )
+
     /**
      * Data class for storing config data with timestamp
      */
@@ -154,6 +177,11 @@ internal class RemoteConfigClientImpl(
         private const val EU_REMOTE_CONFIG_URL = "https://sr-client-cfg.eu.amplitude.com"
         private const val CONFIG_GROUP = "android"
         private const val MIN_FETCH_INTERVAL_MS: Long = 5 * 60 * 1_000L
+        private const val DEFAULT_MAX_RETRY_DELAY_MS: Long = 8_000L
+        private const val HTTP_TOO_MANY_REQUESTS = 429
+
+        /** Retries after the first attempt, mirroring the iOS client. */
+        internal const val MAX_RETRIES = 3
     }
 
     /**
@@ -267,6 +295,13 @@ internal class RemoteConfigClientImpl(
     // Monotonic id per fetch; subscribers use it to de-dup remote deliveries.
     private val fetchSeq = AtomicLong(0L)
 
+    // Cache read starts at construction; a successful fetch supersedes it in memory.
+    private val preloadedCache: Deferred<CachedRemoteConfig?> =
+        coroutineScope.async(storageIODispatcher) { readCache() }
+
+    @Volatile
+    private var fetchedCache: CachedRemoteConfig? = null
+
     override fun subscribe(
         key: Key,
         deliveryMode: RemoteConfigClient.DeliveryMode,
@@ -295,7 +330,7 @@ internal class RemoteConfigClientImpl(
         coroutineScope.launch {
             // A cached blob counts even when the key is absent within it: iOS delivers
             // (null, CACHE, lastFetch) in that case, distinct from a true cache miss.
-            val cached = withContext(storageIODispatcher) { getStoredConfigData(key.value) }
+            val cached = getStoredConfigData(key.value)
             if (cached != null) {
                 weakCallback.deliverCache(cached.config, cached.timestamp)
             }
@@ -368,7 +403,7 @@ internal class RemoteConfigClientImpl(
             // in the common case — deliverFirst's CAS is the actual delivery gate, so a
             // concurrent broadcast that already delivered makes these calls no-ops.
             if (!weakCallback.hasDelivered()) {
-                val cached = withContext(storageIODispatcher) { getStoredConfigData(key.value) }
+                val cached = getStoredConfigData(key.value)
                 if (cached != null) {
                     // A cached blob is a valid answer even when the key is absent within
                     // it: deliver (null, CACHE, lastFetch), mirroring iOS. Only a true
@@ -487,21 +522,56 @@ internal class RemoteConfigClientImpl(
         return deferred
     }
 
+    /** Result of a single fetch attempt. */
+    private sealed interface AttemptResult {
+        data class Success(val blob: ConfigMap) : AttemptResult
+
+        /** Worth another attempt (429, 5xx, other statuses, unparseable 200). */
+        object Retryable : AttemptResult
+
+        /** Not retried: 4xx other than 429, or a transport failure (as on iOS). */
+        object Fatal : AttemptResult
+    }
+
+    /**
+     * Fetches with iOS-parity retries: up to [MAX_RETRIES] retries with jittered
+     * exponential backoff. Transport errors are not retried (as on iOS).
+     */
+    private suspend fun fetchWithRetry(): ConfigMap? {
+        var retriesLeft = MAX_RETRIES
+        while (true) {
+            when (val result = fetchRemoteConfig()) {
+                is AttemptResult.Success -> return result.blob
+                AttemptResult.Fatal -> return null
+                AttemptResult.Retryable -> {
+                    if (retriesLeft == 0) return null
+                    // maxDelay / 2^retriesLeft, jittered: ~1s, 2s, 4s at most for 3 retries.
+                    val delayMs =
+                        (maxRetryDelayMillis / 2.0.pow(retriesLeft) * Random.nextDouble(0.4, 1.0)).toLong()
+                    logger.debug("Retrying remote config fetch in ${delayMs}ms ($retriesLeft left)")
+                    delay(delayMs)
+                    retriesLeft--
+                }
+            }
+        }
+    }
+
     private suspend fun performFetch(fetchId: Long): FetchOutcome {
         val blob =
             runCatchingCancellable {
-                fetchRemoteConfig()
+                fetchWithRetry()
             }.getOrElse { e ->
                 logger.error("Error fetching remote configs: ${e.message}")
                 return FetchOutcome.Failure
             } ?: return FetchOutcome.Failure
         val timestamp = System.currentTimeMillis()
+        val cached = CachedRemoteConfig(blob.toJSONObject().toString(), timestamp)
+        fetchedCache = cached
         // Persisting the blob is best-effort: a storage write failure must not discard
         // a valid in-memory remote config (mirrors iOS `try? storage.setConfig`).
         runCatchingCancellable {
             withContext(storageIODispatcher) {
-                storage.write(REMOTE_CONFIG, blob.toJSONObject().toString())
-                storage.write(REMOTE_CONFIG_TIMESTAMP, timestamp.toString())
+                remoteConfigStorage.write(cached)
                 logger.debug("Successfully stored remote configs to storage")
             }
         }.onFailure { e ->
@@ -516,8 +586,7 @@ internal class RemoteConfigClientImpl(
 
     private suspend fun shouldRateLimit(): Boolean {
         return runCatchingCancellable {
-            val lastTsStr = withContext(storageIODispatcher) { storage.read(REMOTE_CONFIG_TIMESTAMP) }
-            val lastTs = lastTsStr?.toLongOrNull() ?: 0L
+            val lastTs = withContext(storageIODispatcher) { remoteConfigStorage.read()?.timestamp } ?: 0L
             if (lastTs <= 0L) return@runCatchingCancellable false
             (System.currentTimeMillis() - lastTs) < MIN_FETCH_INTERVAL_MS
         }.getOrElse { e ->
@@ -532,16 +601,16 @@ internal class RemoteConfigClientImpl(
      * Retrieve stored configuration data for a specific dot-path key.
      * Walks the stored nested blob using dot-path segments.
      *
-     * Reads storage synchronously, so callers MUST invoke it from
-     * [storageIODispatcher] (e.g. inside `withContext(storageIODispatcher)`).
+     * Uses the in-memory cache: the latest successful fetch, else the preload started
+     * at construction.
      */
-    private fun getStoredConfigData(dotPath: String): ConfigData? {
+    private suspend fun getStoredConfigData(dotPath: String): ConfigData? {
         return runCatchingCancellable {
-            val blob = getStoredConfigBlob() ?: return@runCatchingCancellable null
+            val cached = fetchedCache ?: preloadedCache.await()
+            val blob = cached?.let { parseConfigBlob(it.configJson) } ?: return@runCatchingCancellable null
 
             val resolved = resolveDotPath(blob, dotPath)
-            val timestampStr = storage.read(REMOTE_CONFIG_TIMESTAMP)
-            val timestamp = timestampStr?.toLongOrNull() ?: 0L
+            val timestamp = cached.timestamp
 
             logger.debug("Retrieved stored config for $dotPath with ${resolved?.size ?: 0} properties")
             ConfigData(resolved, timestamp)
@@ -551,8 +620,17 @@ internal class RemoteConfigClientImpl(
         }
     }
 
+    /** Blocking storage read; never throws. Runs on [storageIODispatcher]. */
+    private fun readCache(): CachedRemoteConfig? =
+        try {
+            remoteConfigStorage.read()
+        } catch (e: Exception) {
+            logger.error("Failed to parse all stored configs: ${e.message}")
+            null
+        }
+
     /**
-     * Reads the stored config blob from storage. Returns the nested map
+     * Parses a stored config blob. Returns the nested map
      * structure or null if storage is empty/corrupt. Stale old pre-flattened
      * format blobs are ignored (treated as a cache miss) so the in-flight
      * remote fetch refills storage with the correct nested format. The stale
@@ -560,9 +638,8 @@ internal class RemoteConfigClientImpl(
      * with the fetch's write and erase a freshly stored blob; a successful
      * fetch overwrites it, and until then it is simply never delivered.
      */
-    private fun getStoredConfigBlob(): ConfigMap? {
+    private fun parseConfigBlob(configJson: String?): ConfigMap? {
         return try {
-            val configJson = storage.read(REMOTE_CONFIG)
             if (configJson.isNullOrBlank()) {
                 logger.debug("No stored config found in storage")
                 return null
@@ -610,7 +687,7 @@ internal class RemoteConfigClientImpl(
         return (current as? Map<String, Any?>)?.filterNotNullValues()
     }
 
-    private fun fetchRemoteConfig(): ConfigMap? {
+    private fun fetchRemoteConfig(): AttemptResult {
         // Periodic cleanup of dead references during network operations
         cleanupDeadReferences()
 
@@ -625,18 +702,25 @@ internal class RemoteConfigClientImpl(
         val response = httpClient.request(request)
 
         return when {
-            response.isSuccessful -> parseConfigsFromResponse(response.body)
+            // HttpClient reports connection and read failures as synthetic statuses.
+            response.isTransportError -> {
+                logger.warn("Failed to reach remote config server: ${response.statusMessage}")
+                AttemptResult.Fatal
+            }
+            response.isSuccessful ->
+                parseConfigsFromResponse(response.body)
+                    ?.let { AttemptResult.Success(it) } ?: AttemptResult.Retryable
             response.isClientError -> {
                 logger.error(
                     "Client error on fetch remote config: ${response.statusCode}: ${response.statusMessage}",
                 )
-                null
+                if (response.statusCode == HTTP_TOO_MANY_REQUESTS) AttemptResult.Retryable else AttemptResult.Fatal
             }
             else -> {
                 logger.warn(
                     "Failed to fetch remote config: ${response.statusCode}: ${response.statusMessage}",
                 )
-                null
+                AttemptResult.Retryable
             }
         }
     }

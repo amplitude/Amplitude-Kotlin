@@ -222,6 +222,26 @@ class HttpClientTest {
         assertEquals("", (tooManyRequests as TooManyRequestsResponse).error)
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = [400, 429, 503])
+    fun `should preserve the server status when an error response has no body`(statusCode: Int) {
+        server.enqueue(MockResponse().setResponseCode(statusCode).setHeader("Retry-After", "5"))
+        val httpClient = HttpClient(Configuration(apiKey = apiKey), silentLogger)
+
+        val response =
+            httpClient.request(
+                HttpClient.Request(
+                    url = server.url("/config").toString(),
+                    method = HttpClient.Request.Method.GET,
+                ),
+            )
+
+        assertEquals(statusCode, response.statusCode)
+        assertFalse(response.isTransportError)
+        assertTrue(response.body.isNullOrEmpty())
+        assertEquals(listOf("5"), response.headers["Retry-After"])
+    }
+
     @Test
     fun `test logger functionality and connection failures`() {
         // Test 1: Normal operation with logger injection

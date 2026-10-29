@@ -2529,6 +2529,86 @@ class RemoteConfigClientTest {
 
     // endregion Migration and Config Group
 
+    private class FakeRemoteConfigStorage(
+        var cached: CachedRemoteConfig? = null,
+    ) : RemoteConfigStorage {
+        var reads = 0
+        val writes = mutableListOf<CachedRemoteConfig>()
+
+        override fun read(): CachedRemoteConfig? {
+            reads += 1
+            return cached
+        }
+
+        override suspend fun write(value: CachedRemoteConfig) {
+            writes.add(value)
+            cached = value
+        }
+    }
+
+    private fun createClient(remoteConfigStorage: RemoteConfigStorage): RemoteConfigClientImpl {
+        val mockHttpClient = mockk<HttpClient>()
+        every { mockHttpClient.request(any()) } returns
+            HttpClient.Response(
+                statusCode = 200,
+                body = DEFAULT_API_REMOTE_CONFIG_JSON.trimIndent(),
+                headers = emptyMap(),
+                statusMessage = "OK",
+            )
+        return RemoteConfigClientImpl(
+            apiKey = "test-key",
+            serverZone = ServerZone.US,
+            coroutineScope = testScope,
+            networkIODispatcher = testDispatcher,
+            storageIODispatcher = testDispatcher,
+            remoteConfigStorage = remoteConfigStorage,
+            httpClient = mockHttpClient,
+            logger = silentLogger,
+        )
+    }
+
+    @Test
+    fun `preloaded cache is delivered to later subscribers without another read`() =
+        runTest {
+            val fakeStorage =
+                FakeRemoteConfigStorage(
+                    CachedRemoteConfig(DEFAULT_STORED_REMOTE_CONFIG_JSON.trimIndent(), 1234567890L),
+                )
+            val client = createClient(fakeStorage)
+            val first = mutableListOf<Source>()
+            val second = mutableListOf<Source>()
+
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { _, source, _ -> first.add(source) }
+            testDispatcher.scheduler.advanceUntilIdle()
+            client.subscribeAndRetain(SessionReplaySamplingConfig) { _, source, _ -> second.add(source) }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            assertEquals(Source.CACHE, first.first())
+            assertEquals(Source.CACHE, second.first())
+            assertEquals(1, fakeStorage.reads)
+        }
+
+    @Test
+    fun `fetch persists through remote config storage and refreshes the in-memory cache`() =
+        runTest {
+            val fakeStorage = FakeRemoteConfigStorage()
+            val client = createClient(fakeStorage)
+
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { _, _, _ -> }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            assertEquals(1, fakeStorage.writes.size)
+            assertTrue(fakeStorage.writes.single().timestamp > 0L)
+
+            // A later subscriber gets the fetched config as cache, not the empty preload.
+            val later = mutableListOf<Pair<ConfigMap?, Source>>()
+            client.subscribeAndRetain(SessionReplayPrivacyConfig) { config, source, _ -> later.add(config to source) }
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            assertEquals(Source.CACHE, later.first().second)
+            assertNotNull(later.first().first)
+        }
+
     companion object {
         private const val DEFAULT_API_REMOTE_CONFIG_JSON =
             """
@@ -2564,4 +2644,145 @@ class RemoteConfigClientTest {
             }
             """
     }
+
+    // region Retry / Backoff
+
+    private fun response(
+        statusCode: Int,
+        body: String = "",
+    ) = HttpClient.Response(
+        statusCode = statusCode,
+        body = body,
+        headers = emptyMap(),
+        statusMessage = "status $statusCode",
+    )
+
+    private fun successResponse() = response(200, DEFAULT_API_REMOTE_CONFIG_JSON.trimIndent())
+
+    private fun createRetryClient(
+        httpClient: HttpClient,
+        scope: CoroutineScope = testScope,
+    ) = RemoteConfigClientImpl(
+        apiKey = "test-key",
+        serverZone = ServerZone.US,
+        coroutineScope = scope,
+        networkIODispatcher = testDispatcher,
+        storageIODispatcher = testDispatcher,
+        storage = storage,
+        httpClient = httpClient,
+        logger = silentLogger,
+    )
+
+    private fun httpClientReturning(vararg responses: HttpClient.Response): HttpClient {
+        val http = mockk<HttpClient>()
+        every { http.request(any()) } returnsMany responses.toList()
+        return http
+    }
+
+    /** Subscribes and drains virtual time; returns what the subscriber received. */
+    private fun RemoteConfigClient.collectDeliveries(): List<Triple<ConfigMap?, Source, Long?>> {
+        val results = mutableListOf<Triple<ConfigMap?, Source, Long?>>()
+        subscribeAndRetain(SessionReplayPrivacyConfig) { config, source, timestamp ->
+            results.add(Triple(config, source, timestamp))
+        }
+        testDispatcher.scheduler.advanceUntilIdle()
+        return results
+    }
+
+    @Test
+    fun `5xx then 200 succeeds after one retry`() {
+        val http = httpClientReturning(response(503), successResponse())
+        val results = createRetryClient(http).collectDeliveries()
+
+        verify(exactly = 2) { http.request(any()) }
+        val (config, source, timestamp) = results.single()
+        assertEquals(Source.REMOTE, source)
+        assertNotNull(timestamp)
+        assertEquals("medium", config!!["defaultMaskLevel"])
+    }
+
+    @Test
+    fun `429 is retried`() {
+        val http = httpClientReturning(response(429), successResponse())
+        val results = createRetryClient(http).collectDeliveries()
+
+        verify(exactly = 2) { http.request(any()) }
+        assertNotNull(results.single().third)
+    }
+
+    @Test
+    fun `non-retryable client errors are not retried`() {
+        listOf(401, 403, 404).forEach { status ->
+            val http = httpClientReturning(response(status), successResponse())
+            val results = createRetryClient(http).collectDeliveries()
+
+            verify(exactly = 1) { http.request(any()) }
+            val (config, source, timestamp) = results.single()
+            assertNull(config, "status $status")
+            assertEquals(Source.REMOTE, source, "status $status")
+            assertNull(timestamp, "status $status")
+        }
+    }
+
+    @Test
+    fun `gives up after MAX_RETRIES retries and delivers failure`() {
+        val http = httpClientReturning(response(500))
+        val results = createRetryClient(http).collectDeliveries()
+
+        verify(exactly = 1 + RemoteConfigClientImpl.MAX_RETRIES) { http.request(any()) }
+        val (config, source, timestamp) = results.single()
+        assertNull(config)
+        assertEquals(Source.REMOTE, source)
+        assertNull(timestamp)
+    }
+
+    @Test
+    fun `transport exception is not retried`() {
+        val http = mockk<HttpClient>()
+        every { http.request(any()) } throws java.io.IOException("boom")
+        val results = createRetryClient(http).collectDeliveries()
+
+        verify(exactly = 1) { http.request(any()) }
+        assertNull(results.single().third)
+    }
+
+    @Test
+    fun `transport failure responses are not retried`() {
+        listOf(500, 408).forEach { status ->
+            val transportFailure =
+                HttpClient.Response(status, null, emptyMap(), "Request failed", isTransportError = true)
+            val http = httpClientReturning(transportFailure, successResponse())
+            val results = createRetryClient(http).collectDeliveries()
+
+            verify(exactly = 1) { http.request(any()) }
+            assertNull(results.single().third, "status $status")
+        }
+    }
+
+    @Test
+    fun `200 without configs is retried`() {
+        val http = httpClientReturning(response(200, """{"other": 1}"""), successResponse())
+        val results = createRetryClient(http).collectDeliveries()
+
+        verify(exactly = 2) { http.request(any()) }
+        assertNotNull(results.single().third)
+    }
+
+    @Test
+    fun `retries stop when the scope is cancelled during backoff`() {
+        val http = httpClientReturning(response(500))
+        val scope = CoroutineScope(testDispatcher)
+        val client = createRetryClient(http, scope)
+        client.subscribeAndRetain(SessionReplayPrivacyConfig) { _, _, _ -> }
+
+        // First attempt runs, then the client is waiting out its first backoff.
+        testDispatcher.scheduler.runCurrent()
+        verify(exactly = 1) { http.request(any()) }
+        scope.cancel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        verify(exactly = 1) { http.request(any()) }
+    }
+
+    // endregion Retry / Backoff
 }

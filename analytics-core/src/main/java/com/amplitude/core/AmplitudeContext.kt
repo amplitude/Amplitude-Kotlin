@@ -3,9 +3,9 @@ package com.amplitude.core
 import com.amplitude.common.Logger
 import com.amplitude.core.diagnostics.DiagnosticsClient
 import com.amplitude.core.diagnostics.DiagnosticsClientImpl
+import com.amplitude.core.remoteconfig.FileRemoteConfigStorage
 import com.amplitude.core.remoteconfig.RemoteConfigClient
 import com.amplitude.core.remoteconfig.RemoteConfigClientImpl
-import com.amplitude.core.utilities.InMemoryStorage
 import com.amplitude.core.utilities.http.HttpClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,6 +32,7 @@ public open class AmplitudeContext
         public val logger: Logger,
         remoteConfigClientProvider: () -> RemoteConfigClient,
         diagnosticsClientProvider: () -> DiagnosticsClient,
+        private val onClose: () -> Unit = {},
     ) {
         /**
          * Creates a context with host-provided [remoteConfigClient] and [diagnosticsClient].
@@ -57,8 +58,8 @@ public open class AmplitudeContext
          * Creates a context for use outside an [Amplitude] instance.
          *
          * [remoteConfigClient] and [diagnosticsClient] are created on first access, using
-         * [storageDirectory] for diagnostics persistence. The diagnostics client owns a
-         * standalone coroutine scope that is cancelled by [DiagnosticsClient.close].
+         * [storageDirectory] to persist diagnostics and the remote config cache. Both clients
+         * share a standalone coroutine scope, so the owner must call [close] when finished.
          *
          * ```
          * val context = AmplitudeContext(
@@ -105,8 +106,18 @@ public open class AmplitudeContext
             logger,
             { resolver.remoteConfig() },
             { resolver.diagnostics() },
+            { resolver.close() },
         ) {
             resolver.context = this
+        }
+
+        /**
+         * Releases resources owned by this context. A no-op for host-provided contexts; for a
+         * standalone context it closes diagnostics (if created) and cancels the shared scope.
+         */
+        @RestrictedAmplitudeFeature
+        public open fun close() {
+            onClose()
         }
 
         @RestrictedAmplitudeFeature
@@ -124,6 +135,9 @@ public open class AmplitudeContext
             private val storageDirectory: File,
         ) {
             lateinit var context: AmplitudeContext
+
+            // Standalone contexts share one storage directory, so partition by project and region too.
+            private val storageNamespace = standaloneStorageNamespace(apiKey, serverZone, instanceName)
 
             private val coroutineScope by lazy {
                 CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -147,32 +161,46 @@ public open class AmplitudeContext
                     coroutineScope = coroutineScope,
                     networkIODispatcher = Dispatchers.IO,
                     storageIODispatcher = Dispatchers.IO,
-                    storage = InMemoryStorage(),
+                    remoteConfigStorage =
+                        FileRemoteConfigStorage(
+                            storageDirectory = storageDirectory,
+                            apiKey = apiKey,
+                            namespace = storageNamespace,
+                            logger = logger,
+                        ),
                     httpClient = httpClient,
                     logger = logger,
                 )
 
+            private var diagnosticsClient: DiagnosticsClient? = null
+
             fun diagnostics(): DiagnosticsClient {
-                val ownedScope = coroutineScope
                 val impl =
                     DiagnosticsClientImpl(
                         apiKey = apiKey,
                         serverZone = serverZone,
-                        instanceName = instanceName,
+                        instanceName = storageNamespace,
                         storageDirectory = storageDirectory,
                         logger = logger,
-                        coroutineScope = ownedScope,
+                        coroutineScope = coroutineScope,
                         networkIODispatcher = Dispatchers.IO,
                         storageIODispatcher = Dispatchers.IO,
                         remoteConfigClient = context.remoteConfigClient,
                         httpClient = httpClient,
                     )
-                return object : DiagnosticsClient by impl {
-                    override fun close() {
-                        impl.close()
-                        ownedScope.cancel()
-                    }
-                }
+                return impl.also { diagnosticsClient = it }
+            }
+
+            fun close() {
+                diagnosticsClient?.close()
+                coroutineScope.cancel()
             }
         }
     }
+
+/** Storage namespace for a standalone context. Length-prefixed so distinct triples never collide. */
+internal fun standaloneStorageNamespace(
+    apiKey: String,
+    serverZone: ServerZone,
+    instanceName: String,
+): String = listOf(apiKey, serverZone.name, instanceName).joinToString("") { "${it.length}:$it" }
