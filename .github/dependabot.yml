@@ -13,6 +13,8 @@ updates:
     directory: "/"
     schedule:
       interval: monthly
+    cooldown:
+      default-days: 30
     open-pull-requests-limit: 1
     commit-message:
       prefix: "chore(deps)"
@@ -40,6 +42,8 @@ updates:
     directory: "/"
     schedule:
       interval: monthly
+    cooldown:
+      default-days: 30
     open-pull-requests-limit: 1
     commit-message:
       prefix: "ci(deps)"
@@ -66,6 +70,8 @@ updates:
     directory: "/"
     schedule:
       interval: monthly
+    cooldown:
+      default-days: 30
     open-pull-requests-limit: 5
     commit-message:
       prefix: "chore(deps)"
@@ -106,6 +112,8 @@ updates:
     directory: "/unified"
     schedule:
       interval: monthly
+    cooldown:
+      default-days: 30
     open-pull-requests-limit: 3
     commit-message:
       prefix: "chore(deps)"
