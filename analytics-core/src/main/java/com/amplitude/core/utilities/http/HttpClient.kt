@@ -51,7 +51,7 @@ internal class HttpClient(
                 requestedURL.openConnection() as HttpURLConnection
             } catch (e: IOException) {
                 logger.error("Failed to open connection: ${e.message}")
-                return Response(500, null, emptyMap(), "Connection failed")
+                return Response(500, null, emptyMap(), "Connection failed", isTransportError = true)
             }
         try {
             // Set request method, connect and read timeouts
@@ -108,7 +108,7 @@ internal class HttpClient(
                 responseBody = inputStream.bufferedReader().use(BufferedReader::readText)
             } catch (e: IOException) {
                 logger.error("Failed to read response from server: ${e.message}")
-                return Response(408, null, emptyMap(), "Request timeout")
+                return Response(408, null, emptyMap(), "Request timeout", isTransportError = true)
             } finally {
                 inputStream?.close()
             }
@@ -124,7 +124,7 @@ internal class HttpClient(
             return Response(responseCode, responseBody, headers, responseMessage)
         } catch (e: Exception) {
             logger.error("Request failed: ${e::class.java.name}: ${e.message}")
-            return Response(500, null, emptyMap(), "Request failed: ${e.message}")
+            return Response(500, null, emptyMap(), "Request failed: ${e.message}", isTransportError = true)
         } finally {
             connection.disconnect()
         }
@@ -186,6 +186,8 @@ internal class HttpClient(
         val body: String?,
         val headers: Map<String, List<String>> = emptyMap(),
         val statusMessage: String? = null,
+        /** True when no server response was received; [statusCode] is then synthetic. */
+        val isTransportError: Boolean = false,
     ) {
         val isSuccessful: Boolean
             get() = statusCode in 200..299

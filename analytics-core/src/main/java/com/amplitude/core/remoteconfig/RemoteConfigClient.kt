@@ -529,7 +529,7 @@ internal class RemoteConfigClientImpl(
         /** Worth another attempt (429, 5xx, other statuses, unparseable 200). */
         object Retryable : AttemptResult
 
-        /** Retrying cannot help (4xx other than 429). */
+        /** Not retried: 4xx other than 429, or a transport failure (as on iOS). */
         object Fatal : AttemptResult
     }
 
@@ -702,6 +702,11 @@ internal class RemoteConfigClientImpl(
         val response = httpClient.request(request)
 
         return when {
+            // HttpClient reports connection and read failures as synthetic statuses.
+            response.isTransportError -> {
+                logger.warn("Failed to reach remote config server: ${response.statusMessage}")
+                AttemptResult.Fatal
+            }
             response.isSuccessful ->
                 parseConfigsFromResponse(response.body)
                     ?.let { AttemptResult.Success(it) } ?: AttemptResult.Retryable

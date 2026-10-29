@@ -2747,6 +2747,19 @@ class RemoteConfigClientTest {
     }
 
     @Test
+    fun `transport failure responses are not retried`() {
+        listOf(500, 408).forEach { status ->
+            val transportFailure =
+                HttpClient.Response(status, null, emptyMap(), "Request failed", isTransportError = true)
+            val http = httpClientReturning(transportFailure, successResponse())
+            val results = createRetryClient(http).collectDeliveries()
+
+            verify(exactly = 1) { http.request(any()) }
+            assertNull(results.single().third, "status $status")
+        }
+    }
+
+    @Test
     fun `200 without configs is retried`() {
         val http = httpClientReturning(response(200, """{"other": 1}"""), successResponse())
         val results = createRetryClient(http).collectDeliveries()
