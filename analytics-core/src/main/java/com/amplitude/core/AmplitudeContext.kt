@@ -10,8 +10,8 @@ import com.amplitude.core.utilities.http.HttpClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import java.io.File
+import kotlin.coroutines.CoroutineContext
 
 /**
  * Shared configuration handed to a [com.amplitude.core.platform.UniversalPlugin] at setup.
@@ -56,9 +56,10 @@ public open class AmplitudeContext
         /**
          * Creates a context for use outside an [Amplitude] instance.
          *
-         * [remoteConfigClient] and [diagnosticsClient] are created on first access, using
-         * [storageDirectory] for diagnostics persistence. The diagnostics client owns a
-         * standalone coroutine scope that is cancelled by [DiagnosticsClient.close].
+         * [remoteConfigClient] is created on first access. [diagnosticsClient] initializes in
+         * the background, buffering calls in order until it is ready, and uses
+         * [storageDirectory] for persistence. Its standalone coroutine scope finishes processing
+         * accepted calls when [DiagnosticsClient.close] is called.
          *
          * ```
          * val context = AmplitudeContext(
@@ -125,8 +126,11 @@ public open class AmplitudeContext
         ) {
             lateinit var context: AmplitudeContext
 
-            private val coroutineScope by lazy {
-                CoroutineScope(SupervisorJob() + Dispatchers.IO)
+            private val coroutineJob by lazy { SupervisorJob() }
+            private val coroutineScope = object : CoroutineScope {
+                override val coroutineContext: CoroutineContext by lazy {
+                    coroutineJob + Dispatchers.IO
+                }
             }
 
             private val httpClient by lazy {
@@ -152,27 +156,19 @@ public open class AmplitudeContext
                     logger = logger,
                 )
 
-            fun diagnostics(): DiagnosticsClient {
-                val ownedScope = coroutineScope
-                val impl =
-                    DiagnosticsClientImpl(
-                        apiKey = apiKey,
-                        serverZone = serverZone,
-                        instanceName = instanceName,
-                        storageDirectory = storageDirectory,
-                        logger = logger,
-                        coroutineScope = ownedScope,
-                        networkIODispatcher = Dispatchers.IO,
-                        storageIODispatcher = Dispatchers.IO,
-                        remoteConfigClient = context.remoteConfigClient,
-                        httpClient = httpClient,
-                    )
-                return object : DiagnosticsClient by impl {
-                    override fun close() {
-                        impl.close()
-                        ownedScope.cancel()
-                    }
-                }
-            }
+            fun diagnostics(): DiagnosticsClient =
+                DiagnosticsClientImpl(
+                    apiKey = apiKey,
+                    serverZone = serverZone,
+                    instanceName = instanceName,
+                    storageDirectory = storageDirectory,
+                    logger = logger,
+                    coroutineScope = coroutineScope,
+                    networkIODispatcher = Dispatchers.IO,
+                    storageIODispatcher = Dispatchers.IO,
+                    remoteConfigClient = context.remoteConfigClient,
+                    httpClient = httpClient,
+                    onClosed = { coroutineJob.complete() },
+                )
         }
     }
