@@ -41,10 +41,20 @@ internal class DiagnosticsClientImpl(
     private val flushIntervalMillis: Long = DEFAULT_FLUSH_INTERVAL_MILLIS,
     private val storageIntervalMillis: Long = DEFAULT_STORAGE_INTERVAL_MILLIS,
 ) : DiagnosticsClient {
-    private val storage: DiagnosticsStorage
+    private val storageDelegate = lazy {
+        DiagnosticsStorage(
+            storageDirectory = storageDirectory,
+            instanceName = instanceName,
+            sessionStartAt = startTimestampSeed,
+            logger = logger,
+            coroutineScope = coroutineScope,
+            storageIODispatcher = storageIODispatcher,
+        )
+    }
+    private val storage: DiagnosticsStorage by storageDelegate
 
     private val startTimestamp: Double = System.currentTimeMillis() / 1000.0
-    private val startTimestampSeed: String = startTimestamp.toString()
+    private val startTimestampSeed: String by lazy { startTimestamp.toString() }
     private var sampleRate: Double = sampleRate.coerceIn(0.0, 1.0)
 
     private var shouldTrack: Boolean =
@@ -182,16 +192,6 @@ internal class DiagnosticsClientImpl(
         }
 
     init {
-        storage =
-            DiagnosticsStorage(
-                storageDirectory = storageDirectory,
-                instanceName = instanceName,
-                sessionStartAt = startTimestampSeed,
-                logger = logger,
-                coroutineScope = coroutineScope,
-                storageIODispatcher = storageIODispatcher,
-            )
-
         remoteConfigCallback?.let { callback ->
             remoteConfigClient?.subscribe(RemoteConfigClient.Key.Diagnostics, callback = callback)
         }
@@ -208,7 +208,9 @@ internal class DiagnosticsClientImpl(
      */
     override fun close() {
         channel.close()
-        storage.close()
+        if (storageDelegate.isInitialized()) {
+            storage.close()
+        }
     }
 
     private fun registerShutdownHook() {

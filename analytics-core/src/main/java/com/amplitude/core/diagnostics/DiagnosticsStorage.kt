@@ -37,10 +37,12 @@ internal class DiagnosticsStorage(
     instanceName: String,
     private val sessionStartAt: String,
     private val logger: Logger,
-    private val coroutineScope: CoroutineScope,
-    private val storageIODispatcher: CoroutineDispatcher,
+    coroutineScope: CoroutineScope,
+    storageIODispatcher: CoroutineDispatcher,
 ) {
-    private val sanitizedInstance: String = Hash.fnv1a64(instanceName).toHexString()
+    private val sanitizedInstance: String by lazy {
+        Hash.fnv1a64(instanceName).toHexString()
+    }
 
     companion object {
         private const val STORAGE_PREFIX = "com.amplitude.diagnostics"
