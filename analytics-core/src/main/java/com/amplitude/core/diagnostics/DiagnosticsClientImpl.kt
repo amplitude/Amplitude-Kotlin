@@ -6,18 +6,20 @@ import com.amplitude.core.RestrictedAmplitudeFeature
 import com.amplitude.core.ServerZone
 import com.amplitude.core.remoteconfig.RemoteConfigClient
 import com.amplitude.core.utilities.Sample
+import com.amplitude.core.utilities.deepCopy
 import com.amplitude.core.utilities.http.HttpClient
 import com.amplitude.core.utilities.runCatchingCancellable
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.lang.ref.WeakReference
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.math.min
 
 /**
@@ -40,6 +42,7 @@ internal class DiagnosticsClientImpl(
     sampleRate: Double = DEFAULT_SAMPLE_RATE,
     private val flushIntervalMillis: Long = DEFAULT_FLUSH_INTERVAL_MILLIS,
     private val storageIntervalMillis: Long = DEFAULT_STORAGE_INTERVAL_MILLIS,
+    private val onClosed: () -> Unit = {},
 ) : DiagnosticsClient {
     private val storageDelegate = lazy {
         DiagnosticsStorage(
@@ -57,8 +60,7 @@ internal class DiagnosticsClientImpl(
     private val startTimestampSeed: String by lazy { startTimestamp.toString() }
     private var sampleRate: Double = sampleRate.coerceIn(0.0, 1.0)
 
-    private var shouldTrack: Boolean =
-        enabled && Sample.isInSample(seed = startTimestampSeed, sampleRate = this.sampleRate)
+    private var shouldTrack: Boolean = false
 
     private var didSetBasicTags: Boolean = false
     private var didFlushPreviousSession: Boolean = false
@@ -87,8 +89,6 @@ internal class DiagnosticsClientImpl(
         data class AppendEvent(val event: DiagnosticsEvent) : Update()
 
         data class UpdateConfig(val enabled: Boolean?, val sampleRate: Double?) : Update()
-
-        data object InitializeTasks : Update()
 
         data object Flush : Update()
     }
@@ -148,57 +148,120 @@ internal class DiagnosticsClientImpl(
 
     private val channel: Channel<Update> = Channel(Channel.UNLIMITED)
 
-    private val activeBuffer = Buffer()
+    private val activeBuffer: Buffer by lazy { Buffer() }
 
-    // RemoteConfigClient uses WeakReference for callbacks, so we must hold a strong reference.
-    private val remoteConfigCallback: RemoteConfigClient.RemoteConfigCallback? =
-        if (remoteConfigClient != null) {
-            RemoteConfigClient.RemoteConfigCallback { config, _, _ ->
-                val enabledConfig = config?.get("enabled") as? Boolean
-                val sampleRateConfig = (config?.get("sampleRate") as? Number)?.toDouble()
+    // RemoteConfigClient retains callbacks weakly, so keep this actor-created callback alive.
+    @Volatile
+    private var remoteConfigCallback: RemoteConfigClient.RemoteConfigCallback? = null
 
-                logger.debug("DiagnosticsClient: Did fetch remote config with sampleRate: $sampleRateConfig")
-
-                channel.trySend(Update.UpdateConfig(enabled = enabledConfig, sampleRate = sampleRateConfig))
-            }
-        } else {
-            null
-        }
-
-    private val actorJob: Job =
-        coroutineScope.launch {
-            while (isActive) {
+    init {
+        try {
+            // Dispatch before reading the scope's context or constructing any coroutine jobs.
+            networkIODispatcher.dispatch(context = EmptyCoroutineContext) {
                 try {
-                    val now = System.currentTimeMillis()
-                    val nextTimeoutDelayMs = nextTimeoutDelayMs(now)
-                    if (nextTimeoutDelayMs == null) {
-                        val result = channel.receiveCatching()
-                        if (result.isClosed) break
-                        result.getOrNull()?.let { handleUpdate(it) }
-                    } else {
-                        val result = withTimeoutOrNull(nextTimeoutDelayMs) { channel.receiveCatching() }
-                        when {
-                            result == null -> handleTimeout()
-                            result.isClosed -> break
-                            else -> result.getOrNull()?.let { handleUpdate(it) }
-                        }
-                    }
+                    startActor()
+                } catch (e: Exception) {
+                    initializationFailed(e)
+                }
+            }
+        } catch (e: Exception) {
+            initializationFailed(e)
+        }
+    }
+
+    private fun startActor() {
+        val firstUpdate = channel.tryReceive()
+        if (firstUpdate.isClosed) {
+            onClosed()
+            return
+        }
+        // We are already on the I/O worker; avoid another dispatch for initialization.
+        coroutineScope.launch(start = CoroutineStart.UNDISPATCHED) {
+            try {
+                if (!isActive) return@launch
+                try {
+                    shouldTrack = enabled && Sample.isInSample(seed = startTimestampSeed, sampleRate = sampleRate)
+                    subscribeToRemoteConfig()
+                    registerShutdownHook()
+                    initializeTasksIfNeeded()
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    logger.error("DiagnosticsClient: Error in actor loop: ${e.message}")
+                    logger.error("DiagnosticsClient: Error initializing diagnostics: ${e.message}")
+                }
+                var pendingUpdate = firstUpdate.getOrNull()
+                while (isActive) {
+                    try {
+                        val initialUpdate = pendingUpdate
+                        pendingUpdate = null
+                        if (initialUpdate != null) {
+                            handleUpdate(initialUpdate)
+                            continue
+                        }
+                        val now = System.currentTimeMillis()
+                        val nextTimeoutDelayMs = nextTimeoutDelayMs(now)
+                        if (nextTimeoutDelayMs == null) {
+                            val result = channel.receiveCatching()
+                            if (result.isClosed) break
+                            result.getOrNull()?.let { handleUpdate(it) }
+                        } else {
+                            val result = withTimeoutOrNull(nextTimeoutDelayMs) { channel.receiveCatching() }
+                            when {
+                                result == null -> handleTimeout()
+                                result.isClosed -> break
+                                else -> result.getOrNull()?.let { handleUpdate(it) }
+                            }
+                        }
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        logger.error("DiagnosticsClient: Error in actor loop: ${e.message}")
+                    }
+                }
+            } finally {
+                remoteConfigCallback = null
+                channel.close()
+                if (storageDelegate.isInitialized()) {
+                    storage.close()
+                }
+                onClosed()
+            }
+        }
+    }
+
+    private fun subscribeToRemoteConfig() {
+        val remoteConfigClient = remoteConfigClient ?: return
+        val initialUpdates = mutableListOf<Update.UpdateConfig>()
+        var subscribing = true
+        val callback = RemoteConfigClient.RemoteConfigCallback { config, _, _ ->
+            if (remoteConfigCallback == null) return@RemoteConfigCallback
+            val enabledConfig = config?.get("enabled") as? Boolean
+            val sampleRateConfig = (config?.get("sampleRate") as? Number)?.toDouble()
+            val update = Update.UpdateConfig(enabled = enabledConfig, sampleRate = sampleRateConfig)
+            logger.debug("DiagnosticsClient: Did fetch remote config with sampleRate: $sampleRateConfig")
+            synchronized(initialUpdates) {
+                if (subscribing) {
+                    initialUpdates.add(update)
+                } else {
+                    channel.trySend(update)
                 }
             }
         }
-
-    init {
-        remoteConfigCallback?.let { callback ->
-            remoteConfigClient?.subscribe(RemoteConfigClient.Key.Diagnostics, callback = callback)
+        remoteConfigCallback = callback
+        try {
+            remoteConfigClient.subscribe(RemoteConfigClient.Key.Diagnostics, callback = requireNotNull(remoteConfigCallback))
+        } finally {
+            synchronized(initialUpdates) { subscribing = false }
+            // Apply configuration delivered during subscribe before processing early user calls.
+            initialUpdates.forEach { handleUpdate(it) }
+            initialUpdates.clear()
         }
+    }
 
-        channel.trySend(Update.InitializeTasks)
-
-        registerShutdownHook()
+    private fun initializationFailed(exception: Exception) {
+        channel.close()
+        onClosed()
+        logger.warn("DiagnosticsClient: Unable to start diagnostics: ${exception.message}")
     }
 
     /**
@@ -208,9 +271,6 @@ internal class DiagnosticsClientImpl(
      */
     override fun close() {
         channel.close()
-        if (storageDelegate.isInitialized()) {
-            storage.close()
-        }
     }
 
     private fun registerShutdownHook() {
@@ -240,7 +300,7 @@ internal class DiagnosticsClientImpl(
     }
 
     override fun setTags(tags: Map<String, String>) {
-        channel.trySend(Update.SetTags(tags))
+        channel.trySend(Update.SetTags(tags.toMap()))
     }
 
     override fun increment(
@@ -265,7 +325,7 @@ internal class DiagnosticsClientImpl(
             DiagnosticsEvent(
                 eventName = name,
                 time = System.currentTimeMillis() / 1000.0,
-                eventProperties = properties,
+                eventProperties = properties?.deepCopy(),
             )
         channel.trySend(Update.AppendEvent(event))
     }
@@ -288,6 +348,8 @@ internal class DiagnosticsClientImpl(
         didFlushPreviousSession = true
 
         val sampleRate = sampleRate
+        // Resolve storage on the diagnostics actor so close cannot race its first creation.
+        val storage = storage
         coroutineScope.launch(storageIODispatcher) {
             val historicSnapshots = storage.loadAndClearPreviousSessions()
             for (snapshot in historicSnapshots) {
@@ -303,7 +365,7 @@ internal class DiagnosticsClientImpl(
         didSetBasicTags = true
 
         if (shouldTrack) {
-            increment(name = "sampled.in.and.enabled")
+            handleUpdate(Update.Increment(key = "sampled.in.and.enabled", value = 1))
         }
 
         val contextInfo = contextProvider?.getContextInfo()
@@ -318,7 +380,7 @@ internal class DiagnosticsClientImpl(
                 put("sdk.${Constants.SDK_LIBRARY}.version", Constants.SDK_VERSION)
             }
 
-        setTags(staticContext)
+        handleUpdate(Update.SetTags(tags = staticContext))
     }
 
     private fun handleUpdate(update: Update) {
@@ -382,9 +444,6 @@ internal class DiagnosticsClientImpl(
             }
             is Update.Flush -> {
                 flushActiveBuffer()
-            }
-            is Update.InitializeTasks -> {
-                initializeTasksIfNeeded()
             }
         }
     }
