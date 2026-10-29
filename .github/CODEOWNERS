@@ -1,0 +1,3 @@
+# Default owners for all files, including GitHub Actions, release automation,
+# Gradle configuration, package metadata, and this CODEOWNERS file.
+* @amplitude/dx

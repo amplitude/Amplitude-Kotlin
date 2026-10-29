@@ -17,7 +17,6 @@ import java.util.concurrent.ConcurrentLinkedQueue
 /**
  * Per-Amplitude Streaming Analytics state.
  */
-@OptIn(AmplitudePreview::class)
 internal class StreamingAnalytics(
     amplitude: Amplitude,
 ) {
@@ -43,8 +42,9 @@ internal class StreamingAnalytics(
 
     fun onDelayedEvent(event: DelayedEvent) {
         launchSafeAsync("onDelayedEvent error", CoroutineStart.UNDISPATCHED) {
+            val events = delayedEventBatcher.collect(event) ?: return@launchSafeAsync
             withContext(NonCancellable) {
-                storagePipeline.onDelayedEvent(event)
+                storagePipeline.onDelayedEvents(events)
             }
             uploadPipeline.onNewEvent()
         }
@@ -73,7 +73,11 @@ internal class StreamingAnalytics(
                     // Closes the factory, so an in-flight trackPlayer that is still waiting on
                     // its lock cannot open a session after this drain.
                     graph.playerBindingFactory.detachAll()
-                    terminalEvents.forEach { graph.storagePipeline.onDelayedEvent(it) }
+                    terminalEvents.mapNotNull { event ->
+                        graph.delayedEventBatcher.collect(event)
+                    }.forEach { events ->
+                        graph.storagePipeline.onDelayedEvents(events)
+                    }
                     graph.uploadPipeline.flush()
                 }
             }.onFailure {

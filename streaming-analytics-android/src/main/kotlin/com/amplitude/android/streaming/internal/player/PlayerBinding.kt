@@ -210,12 +210,14 @@ internal class PlayerBinding internal constructor(
             startTimeMillis = segment.startTimeMillis,
             timestamp = time.nowMillis(),
             insertId = segment.startedInsertId,
+            stoppedInsertId = segment.stoppedInsertId,
+            playTimeTotalMillis = segment.totalDurationMillis(),
         )
         playback =
             PlaybackState.Content(
                 viewSessionId = id,
                 segment = segment,
-                heartbeat = createHeartbeat(segment),
+                heartbeat = createHeartbeat(segment, sendImmediately = false),
                 phase = ContentPhase.PLAYING,
             )
     }
@@ -395,6 +397,7 @@ internal class PlayerBinding internal constructor(
         val id = playback.viewSessionId ?: newViewSessionId()
         val playing = playerIsPlaying()
         val heartbeat = createAdHeartbeat()
+        val stoppedInsertId = UUID.randomUUID().toString()
         playback =
             PlaybackState.Ad(
                 viewSessionId = id,
@@ -404,7 +407,7 @@ internal class PlayerBinding internal constructor(
                 lastSegment = lastSegment,
                 paused = !playing,
                 heartbeat = heartbeat,
-                stoppedInsertId = UUID.randomUUID().toString(),
+                stoppedInsertId = stoppedInsertId,
             )
         streamTracker.trackAdStarted(
             options = options,
@@ -412,8 +415,9 @@ internal class PlayerBinding internal constructor(
             streamSessionId = id,
             timestamp = time.nowMillis(),
             insertId = UUID.randomUUID().toString(),
+            stoppedInsertId = stoppedInsertId,
         )
-        heartbeat.start()
+        heartbeat.start(sendImmediately = false)
     }
 
     private suspend fun finishAd(
@@ -487,12 +491,12 @@ internal class PlayerBinding internal constructor(
             PlaybackState.Content(
                 viewSessionId = state.viewSessionId,
                 segment = state.segment,
-                heartbeat = createHeartbeat(state.segment),
+                heartbeat = createHeartbeat(state.segment, sendImmediately = true),
                 phase = ContentPhase.PLAYING,
             )
     }
 
-    private fun createHeartbeat(segment: StreamSession): Heartbeat =
+    private fun createHeartbeat(segment: StreamSession, sendImmediately: Boolean): Heartbeat =
         heartbeatFactory
             .create(
                 scope = scope,
@@ -503,7 +507,7 @@ internal class PlayerBinding internal constructor(
                         stopReason = if (isFinal) segment.stopReason else StopReason.TIMEOUT,
                     )
                 },
-            ).also { it.start() }
+            ).also { it.start(sendImmediately) }
 
     private fun createAdHeartbeat(): Heartbeat =
         heartbeatFactory.create(

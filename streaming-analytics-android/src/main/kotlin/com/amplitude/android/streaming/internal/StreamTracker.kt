@@ -8,6 +8,7 @@ import com.amplitude.android.streaming.internal.util.millisToSeconds
 import com.amplitude.core.Amplitude
 import com.amplitude.core.AmplitudePreview
 import com.amplitude.core.platform.Plugin
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicReference
 
 internal val StreamingDiGraph.streamTracker: StreamTracker by weak {
@@ -16,7 +17,6 @@ internal val StreamingDiGraph.streamTracker: StreamTracker by weak {
     )
 }
 
-@OptIn(AmplitudePreview::class)
 internal class StreamTracker(
     private val amplitude: Amplitude,
 ) {
@@ -46,9 +46,10 @@ internal class StreamTracker(
         streamSessionId: String,
         timestamp: Long,
         insertId: String,
+        stoppedInsertId: String,
     ) {
         if (!adsEventsEnabled) return
-        trackDelayed(
+        val start =
             DelayedEvent(
                 eventType = StreamEvents.AD_STARTED,
                 kind = DelayedEvent.Kind.INSTANT,
@@ -59,7 +60,18 @@ internal class StreamTracker(
                         ad = ad,
                         streamSessionId = streamSessionId,
                     ),
-            ).also { it.insertId = insertId },
+            ).also { it.insertId = insertId }
+        track(
+            start,
+            adStopped(
+                options = options,
+                ad = ad,
+                streamSessionId = streamSessionId,
+                playTimeMillis = 0L,
+                status = AdCompletionStatus.TIMEOUT,
+                timestamp = timestamp,
+                insertId = stoppedInsertId,
+            ),
         )
     }
 
@@ -73,20 +85,16 @@ internal class StreamTracker(
         insertId: String,
     ) {
         if (!adsEventsEnabled) return
-        trackDelayed(
-            DelayedEvent(
-                eventType = StreamEvents.AD_STOPPED,
-                kind = status.eventKind(),
+        track(
+            adStopped(
+                options = options,
+                ad = ad,
+                streamSessionId = streamSessionId,
+                playTimeMillis = playTimeMillis,
+                status = status,
                 timestamp = timestamp,
-                eventProperties =
-                    adProperties(options = options, ad = ad, streamSessionId = streamSessionId).apply {
-                        put("[Streaming] Ad Play Time Sec", playTimeMillis.millisToSeconds())
-                        put("[Streaming] Ad Completion Status", status.value)
-                        ad.percentWatched(playTimeMillis)?.let { percentage ->
-                            put("[Streaming] Ad Percent Completed", percentage)
-                        }
-                    },
-            ).also { it.insertId = insertId },
+                insertId = insertId,
+            ),
         )
     }
 
@@ -98,7 +106,7 @@ internal class StreamTracker(
         insertId: String,
     ) {
         if (!adsEventsEnabled) return
-        trackDelayed(
+        track(
             DelayedEvent(
                 eventType = StreamEvents.AD_SKIPPED,
                 kind = DelayedEvent.Kind.INSTANT,
@@ -124,8 +132,10 @@ internal class StreamTracker(
         startTimeMillis: Long,
         timestamp: Long,
         insertId: String,
+        stoppedInsertId: String,
+        playTimeTotalMillis: Long = 0L,
     ) {
-        trackDelayed(
+        track(
             DelayedEvent(
                 eventType = StreamEvents.STREAM_STARTED,
                 kind = DelayedEvent.Kind.INSTANT,
@@ -140,6 +150,19 @@ internal class StreamTracker(
                         startTimeMillis = startTimeMillis,
                     ),
             ).also { it.insertId = insertId },
+            streamStopped(
+                options = options,
+                snapshot = snapshot,
+                mediaType = mediaType,
+                streamSessionId = streamSessionId,
+                playId = playId,
+                startTimeMillis = startTimeMillis,
+                playTimeMillis = 0L,
+                playTimeTotalMillis = playTimeTotalMillis,
+                timestamp = timestamp,
+                insertId = stoppedInsertId,
+                stopReason = StopReason.TIMEOUT,
+            ),
         )
     }
 
@@ -157,39 +180,95 @@ internal class StreamTracker(
         stopReason: StopReason? = null,
         errorMessage: String? = null,
     ) {
-        trackDelayed(
-            DelayedEvent(
-                eventType = StreamEvents.STREAM_STOPPED,
-                kind = stopReason.eventKind(),
+        track(
+            streamStopped(
+                options = options,
+                snapshot = snapshot,
+                mediaType = mediaType,
+                streamSessionId = streamSessionId,
+                playId = playId,
+                startTimeMillis = startTimeMillis,
+                playTimeMillis = playTimeMillis,
+                playTimeTotalMillis = playTimeTotalMillis,
                 timestamp = timestamp,
-                eventProperties =
-                    stoppedContentProperties(
-                        options = options,
-                        snapshot = snapshot,
-                        mediaType = mediaType,
-                        streamSessionId = streamSessionId,
-                        playId = playId,
-                        startTimeMillis = startTimeMillis,
-                        playTimeMillis = playTimeMillis,
-                        playTimeTotalMillis = playTimeTotalMillis,
-                        stopReason = stopReason,
-                        errorMessage = errorMessage,
-                    ),
-            ).also { it.insertId = insertId },
+                insertId = insertId,
+                stopReason = stopReason,
+                errorMessage = errorMessage,
+            ),
         )
     }
 
-    private fun trackDelayed(event: DelayedEvent) {
-        val sink = delayedEventSink.get()
-        if (sink == null) {
-            amplitude.track(event)
-            return
+    private fun adStopped(
+        options: PlayerContent,
+        ad: AdContext,
+        streamSessionId: String,
+        playTimeMillis: Long,
+        status: AdCompletionStatus,
+        timestamp: Long,
+        insertId: String,
+    ): DelayedEvent =
+        DelayedEvent(
+            eventType = StreamEvents.AD_STOPPED,
+            kind = status.eventKind(),
+            timestamp = timestamp,
+            eventProperties =
+                adProperties(options = options, ad = ad, streamSessionId = streamSessionId).apply {
+                    put("[Streaming] Ad Play Time Sec", playTimeMillis.millisToSeconds())
+                    put("[Streaming] Ad Completion Status", status.value)
+                    ad.percentWatched(playTimeMillis)?.let { percentage ->
+                        put("[Streaming] Ad Percent Completed", percentage)
+                    }
+                },
+        ).also { it.insertId = insertId }
+
+    private fun streamStopped(
+        options: PlayerContent,
+        snapshot: PlayerMediaSnapshot,
+        mediaType: MediaType,
+        streamSessionId: String,
+        playId: String,
+        startTimeMillis: Long,
+        playTimeMillis: Long,
+        playTimeTotalMillis: Long = playTimeMillis,
+        timestamp: Long,
+        insertId: String,
+        stopReason: StopReason? = null,
+        errorMessage: String? = null,
+    ): DelayedEvent =
+        DelayedEvent(
+            eventType = StreamEvents.STREAM_STOPPED,
+            kind = stopReason.eventKind(),
+            timestamp = timestamp,
+            eventProperties =
+                stoppedContentProperties(
+                    options = options,
+                    snapshot = snapshot,
+                    mediaType = mediaType,
+                    streamSessionId = streamSessionId,
+                    playId = playId,
+                    startTimeMillis = startTimeMillis,
+                    playTimeMillis = playTimeMillis,
+                    playTimeTotalMillis = playTimeTotalMillis,
+                    stopReason = stopReason,
+                    errorMessage = errorMessage,
+                ),
+        ).also { it.insertId = insertId }
+
+    private fun track(vararg events: DelayedEvent) {
+        val batchInfo = if (events.size > 1) BatchInfo(UUID.randomUUID(), events.size) else null
+        events.forEach { original ->
+            val event = if (batchInfo == null) original else DelayedEvent(original, original.kind, batchInfo)
+            val sink = delayedEventSink.get()
+            if (sink == null) {
+                amplitude.track(event)
+                return@forEach
+            }
+            if (amplitude.optOut) return@forEach
+            // Stands in for the enrichment the timeline would have applied on the way to the plugin.
+            event.sessionId = event.sessionId ?: amplitude.sessionId
+            if (amplitude.timeline.applyPlugins(Plugin.Type.Before, event) == null) return@forEach
+            sink(event)
         }
-        if (amplitude.optOut) return
-        // Stands in for the enrichment the timeline would have applied on the way to the plugin.
-        event.sessionId = event.sessionId ?: amplitude.sessionId
-        if (amplitude.timeline.applyPlugins(Plugin.Type.Before, event) == null) return
-        sink(event)
     }
 }
 

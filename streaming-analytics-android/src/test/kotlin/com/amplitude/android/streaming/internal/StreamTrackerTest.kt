@@ -63,6 +63,7 @@ class StreamTrackerTest {
         @Test
         fun `trackStreamStarted sends Stream Started with shared identity and position keys`() {
             tracker.trackStreamStarted(
+                stoppedInsertId = "initial-stop",
                 options = options,
                 snapshot = snapshot,
                 mediaType = MediaType.VIDEO,
@@ -73,8 +74,15 @@ class StreamTrackerTest {
                 insertId = "insert-start-1",
             )
 
-            assertEquals(1, events.size)
+            assertEquals(2, events.size)
+            val fallback = events.last() as DelayedEvent
+            assertEquals(DelayedEvent.Kind.DELAYED, fallback.kind)
+            assertEquals("initial-stop", fallback.insertId)
+            assertEquals(1_000L, fallback.timestamp)
+            assertEquals("timeout", fallback.eventProperties?.get("[Streaming] Stop Reason"))
             val event = events.first() as DelayedEvent
+            assertEquals(2, event.batchInfo?.batchSize)
+            assertEquals(event.batchInfo, fallback.batchInfo)
             assertEquals("[Streaming] Stream Started", event.eventType)
             assertEquals(DelayedEvent.Kind.INSTANT, event.kind)
             assertEquals(1_000L, event.timestamp)
@@ -101,6 +109,7 @@ class StreamTrackerTest {
         @Test
         fun `omits whitespace-only content ids from snapshot fallback`() {
             tracker.trackStreamStarted(
+                stoppedInsertId = "initial-stop",
                 options = PlayerContent(),
                 snapshot = snapshot.copy(mediaId = "  "),
                 mediaType = MediaType.VIDEO,
@@ -197,6 +206,7 @@ class StreamTrackerTest {
         @Test
         fun `audio streams use media type audio and on-demand delivery mode`() {
             tracker.trackStreamStarted(
+                stoppedInsertId = "initial-stop",
                 options = PlayerContent(),
                 snapshot = snapshot,
                 mediaType = MediaType.AUDIO,
@@ -218,16 +228,16 @@ class StreamTrackerTest {
                 insertId = "audio-stop",
             )
 
-            assertEquals(2, events.size)
+            assertEquals(3, events.size)
             assertEquals("[Streaming] Stream Started", events[0].eventType)
             assertEquals("audio", events[0].eventProperties?.get("[Streaming] Media Type"))
             assertEquals("on_demand", events[0].eventProperties?.get("[Streaming] Delivery Mode"))
             assertEquals("audio-start", events[0].insertId)
 
-            assertEquals("[Streaming] Stream Stopped", events[1].eventType)
-            assertEquals("audio", events[1].eventProperties?.get("[Streaming] Media Type"))
-            assertEquals("on_demand", events[1].eventProperties?.get("[Streaming] Delivery Mode"))
-            assertEquals("audio-stop", events[1].insertId)
+            assertEquals("[Streaming] Stream Stopped", events[2].eventType)
+            assertEquals("audio", events[2].eventProperties?.get("[Streaming] Media Type"))
+            assertEquals("on_demand", events[2].eventProperties?.get("[Streaming] Delivery Mode"))
+            assertEquals("audio-stop", events[2].insertId)
         }
 
         @Test
@@ -345,6 +355,7 @@ class StreamTrackerTest {
             StreamTracker.adsEventsEnabled = false
 
             tracker.trackAdStarted(
+                stoppedInsertId = "initial-stop",
                 options = options,
                 ad = ad,
                 streamSessionId = "stream-ad-1",
@@ -374,6 +385,7 @@ class StreamTrackerTest {
         @Test
         fun `trackAdStarted emits Ad Started with ad properties`() {
             tracker.trackAdStarted(
+                stoppedInsertId = "initial-stop",
                 options = options,
                 ad = ad,
                 streamSessionId = "stream-ad-1",
@@ -381,8 +393,15 @@ class StreamTrackerTest {
                 insertId = "ad-start-1",
             )
 
-            assertEquals(1, events.size)
+            assertEquals(2, events.size)
+            val fallback = events.last() as DelayedEvent
+            assertEquals(DelayedEvent.Kind.DELAYED, fallback.kind)
+            assertEquals("initial-stop", fallback.insertId)
+            assertEquals(1_000L, fallback.timestamp)
+            assertEquals("timeout", fallback.eventProperties?.get("[Streaming] Ad Completion Status"))
             val event = events.first() as DelayedEvent
+            assertEquals(2, event.batchInfo?.batchSize)
+            assertEquals(event.batchInfo, fallback.batchInfo)
             assertEquals("[Streaming] Ad Started", event.eventType)
             assertEquals(DelayedEvent.Kind.INSTANT, event.kind)
             val props = event.eventProperties!!
@@ -555,6 +574,7 @@ class StreamTrackerTest {
         @Test
         fun `routed events carry the session id the timeline would have assigned`() {
             tracker.trackStreamStarted(
+                stoppedInsertId = "initial-stop",
                 options = PlayerContent(),
                 snapshot = snapshot,
                 mediaType = MediaType.VIDEO,
@@ -565,7 +585,8 @@ class StreamTrackerTest {
                 insertId = "insert-start-1",
             )
 
-            assertEquals(4_200L, routed.single().sessionId)
+            assertEquals(2, routed.size)
+            routed.forEach { assertEquals(4_200L, it.sessionId) }
         }
 
         @Test
@@ -573,6 +594,7 @@ class StreamTrackerTest {
             StreamTracker.adsEventsEnabled = true
             try {
                 tracker.trackAdStarted(
+                    stoppedInsertId = "initial-stop",
                     options = PlayerContent(),
                     ad =
                         AdContext(
@@ -590,9 +612,9 @@ class StreamTrackerTest {
                 )
 
                 assertEquals(emptyList<BaseEvent>(), events)
-                assertEquals(1, routed.size)
-                assertEquals("[Streaming] Ad Started", routed.single().eventType)
-                assertEquals(DelayedEvent.Kind.INSTANT, routed.single().kind)
+                assertEquals(2, routed.size)
+                assertEquals("[Streaming] Ad Started", routed.first().eventType)
+                assertEquals(DelayedEvent.Kind.INSTANT, routed.first().kind)
             } finally {
                 StreamTracker.adsEventsEnabled = false
             }

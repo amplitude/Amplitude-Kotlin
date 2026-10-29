@@ -15,13 +15,44 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import java.lang.ref.ReferenceQueue
 import java.lang.ref.WeakReference
+import java.lang.reflect.Proxy
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit.SECONDS
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.reflect.KProperty
 
 class DiGraphTest {
+    @Nested
+    inner class PropertyIdentity {
+        @ParameterizedTest(name = "weak = {0}")
+        @ValueSource(booleans = [false, true])
+        fun `should cache bindings without resolving property metadata`(weakBinding: Boolean) {
+            val graph = RootGraph()
+            val child = ChildGraph(graph)
+            // Fail on any property method call, including reflective hashCode/equals.
+            val property =
+                Proxy.newProxyInstance(
+                    KProperty::class.java.classLoader,
+                    arrayOf(KProperty::class.java),
+                ) { _, method, _ -> error("Property metadata accessed: ${method.name}") } as KProperty<*>
+            val delegate =
+                if (weakBinding) {
+                    weak<RootGraph, Dependency> { Dependency(this) }
+                } else {
+                    singleton<RootGraph, Dependency> { Dependency(this) }
+                }
+
+            val value = delegate.getValue(child, property)
+
+            assertSame(graph, value.owner)
+            assertSame(value, delegate.getValue(graph, property))
+            assertSame(value, delegate.getValue(child, property))
+            assertNotSame(value, delegate.getValue(RootGraph(), property))
+        }
+    }
+
     @Nested
     inner class Singletons {
         @Test
@@ -208,10 +239,14 @@ class DiGraphTest {
             val second = ChildGraph(root)
 
             val dependency = first.memberSingleton
+            val weakDependency = first.memberWeak
 
             assertSame(root, dependency.owner)
             assertSame(dependency, root.memberSingleton)
             assertSame(dependency, second.memberSingleton)
+            assertSame(root, weakDependency.owner)
+            assertSame(weakDependency, root.memberWeak)
+            assertSame(weakDependency, second.memberWeak)
         }
 
         @Test
@@ -308,6 +343,7 @@ private open class RootGraph(parent: RootGraph? = null) : DiGraph(parent) {
     var beforeWeak: () -> Unit = {}
 
     val memberSingleton: Dependency by singleton { Dependency(this) }
+    val memberWeak: Dependency by weak { Dependency(this) }
 
     override fun <T> lazyOf(initializer: () -> T): Lazy<T> {
         lazyCreations.incrementAndGet()
