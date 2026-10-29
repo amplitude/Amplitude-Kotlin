@@ -105,7 +105,7 @@ internal class HttpClient(
             var inputStream: InputStream? = null
             try {
                 inputStream = getInputStream(connection)
-                responseBody = inputStream.bufferedReader().use(BufferedReader::readText)
+                responseBody = inputStream?.bufferedReader()?.use(BufferedReader::readText)
             } catch (e: IOException) {
                 logger.error("Failed to read response from server: ${e.message}")
                 return Response(408, null, emptyMap(), "Request timeout", isTransportError = true)
@@ -134,7 +134,7 @@ internal class HttpClient(
         return configuration.apiKey
     }
 
-    private fun getInputStream(connection: HttpURLConnection): InputStream {
+    private fun getInputStream(connection: HttpURLConnection): InputStream? {
         return try {
             connection.inputStream
         } catch (e: IOException) {
