@@ -34,6 +34,8 @@ import kotlin.random.Random
 /**
  * Type alias for remote configuration map data.
  * Represents config key-value pairs where keys are strings and values can be any type.
+ * Explicit JSON null entries in the delivered map use [JSONObject.NULL], so callers can
+ * distinguish them from absent keys. Nested maps and lists may contain Kotlin null values.
  */
 public typealias ConfigMap = Map<String, Any>
 
@@ -565,7 +567,7 @@ internal class RemoteConfigClientImpl(
                 return FetchOutcome.Failure
             } ?: return FetchOutcome.Failure
         val timestamp = System.currentTimeMillis()
-        val cached = CachedRemoteConfig(blob.toJSONObject().toString(), timestamp)
+        val cached = CachedRemoteConfig(blob.mapValues { it.value.withJsonNulls() }.toJSONObject().toString(), timestamp)
         fetchedCache = cached
         // Persisting the blob is best-effort: a storage write failure must not discard
         // a valid in-memory remote config (mirrors iOS `try? storage.setConfig`).
@@ -669,9 +671,9 @@ internal class RemoteConfigClientImpl(
 
     /**
      * Walk a dot-path into a nested config blob and return the leaf as a [ConfigMap].
-     * Returns null if any segment is missing or non-map. Null values inside the
-     * resolved leaf (from `JSONObject.NULL` in nested objects) are filtered out so
-     * the delivered map honors the non-null [ConfigMap] contract.
+     * Returns null if any segment is missing or non-map. Explicit JSON null entries
+     * in the resolved leaf use [JSONObject.NULL] to preserve their presence while
+     * honoring the non-null [ConfigMap] contract.
      */
     @Suppress("UNCHECKED_CAST")
     private fun resolveDotPath(
@@ -684,7 +686,7 @@ internal class RemoteConfigClientImpl(
             val map = current as? Map<String, Any?> ?: return null
             current = map[segment] ?: return null
         }
-        return (current as? Map<String, Any?>)?.filterNotNullValues()
+        return (current as? Map<String, Any?>)?.mapValues { it.value ?: JSONObject.NULL }
     }
 
     private fun fetchRemoteConfig(): AttemptResult {
@@ -809,6 +811,15 @@ internal class RemoteConfigClientImpl(
             null
         }
     }
+
+    // JSONObject.put(key, null) removes the key. Preserve explicit nulls when writing the cache.
+    private fun Any?.withJsonNulls(): Any =
+        when (this) {
+            null -> JSONObject.NULL
+            is Map<*, *> -> mapValues { it.value.withJsonNulls() }
+            is Collection<*> -> map { it.withJsonNulls() }
+            else -> this
+        }
 
     /**
      * Extension function to filter out null values from a Map<String, Any?>

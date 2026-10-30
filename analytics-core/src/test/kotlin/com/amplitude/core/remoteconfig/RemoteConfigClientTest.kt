@@ -31,14 +31,22 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
+import org.json.JSONObject
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
+import java.io.File
 
 class RemoteConfigClientTest {
+    @TempDir
+    lateinit var temporaryDirectory: File
+
     private val storage = InMemoryStorage()
     private val logger = spyk(ConsoleLogger())
     private val silentLogger =
@@ -2384,13 +2392,13 @@ class RemoteConfigClientTest {
         }
 
     @Test
-    fun `dot-path leaf with nested null values - nulls filtered from delivered config`() =
+    fun `dot-path leaf preserves explicit null entries with a JSON null sentinel`() =
         runTest {
             val client = createClient()
             val results = mutableListOf<Pair<ConfigMap?, Source>>()
 
             // Leaf contains a JSON null (becomes Java null via toMapObj). The delivered
-            // ConfigMap must not surface it — ConfigMap is Map<String, Any> (non-null).
+            // ConfigMap uses a sentinel so presence is preserved without a Kotlin null value.
             storage.write(
                 Storage.Constants.REMOTE_CONFIG,
                 """
@@ -2413,8 +2421,69 @@ class RemoteConfigClientTest {
 
             val cache = results.first { it.second == Source.CACHE }.first
             assertEquals("medium", cache!!["defaultMaskLevel"])
-            assertFalse(cache.containsKey("optionalField"), "Null leaf value must be filtered out")
+            assertTrue(cache.containsKey("optionalField"), "Explicit null must remain distinct from an absent key")
+            assertTrue(cache["optionalField"] === JSONObject.NULL)
             assertFalse(cache.values.any { it == null }, "Delivered config must contain no null values")
+        }
+
+    @ParameterizedTest
+    @ValueSource(
+        strings = [
+            "{}",
+            "{\"sr_privacy_config\":null}",
+            "{\"sr_privacy_config\":{\"futureField\":null,\"rules\":[null,{\"optional\":null}]}}",
+        ],
+    )
+    fun `remote delivery and file cache retain absent explicit null and nested null policies`(sectionJson: String) =
+        runTest {
+            fun client(response: HttpClient.Response): RemoteConfigClientImpl {
+                val httpClient = mockk<HttpClient>()
+                every { httpClient.request(any()) } returns response
+                return RemoteConfigClientImpl(
+                    apiKey = "test-key",
+                    serverZone = ServerZone.US,
+                    coroutineScope = testScope,
+                    networkIODispatcher = testDispatcher,
+                    storageIODispatcher = testDispatcher,
+                    remoteConfigStorage = FileRemoteConfigStorage(temporaryDirectory, "test-key", "standalone", silentLogger),
+                    httpClient = httpClient,
+                    logger = silentLogger,
+                )
+            }
+
+            fun assertPolicy(config: ConfigMap?) {
+                val section = JSONObject(sectionJson)
+                val delivered = requireNotNull(config)
+                assertEquals(section.has("sr_privacy_config"), delivered.containsKey("sr_privacy_config"))
+                if (!section.has("sr_privacy_config")) return
+                if (section.isNull("sr_privacy_config")) {
+                    assertTrue(delivered["sr_privacy_config"] === JSONObject.NULL)
+                } else {
+                    val policy = delivered["sr_privacy_config"] as Map<*, *>
+                    assertTrue(policy.containsKey("futureField"))
+                    assertNull(policy["futureField"])
+                    val rules = policy["rules"] as List<*>
+                    assertNull(rules.first())
+                    val nestedRule = rules[1] as Map<*, *>
+                    assertTrue(nestedRule.containsKey("optional"))
+                    assertNull(nestedRule["optional"])
+                }
+            }
+
+            val remote = mutableListOf<Pair<ConfigMap?, Source>>()
+            client(HttpClient.Response(200, """{"configs":{"sessionReplay":$sectionJson}}"""))
+                .subscribeAndRetain(Key.Custom("sessionReplay")) { config, source, _ -> remote.add(config to source) }
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertEquals(listOf(Source.REMOTE), remote.map { it.second })
+            assertPolicy(remote.single().first)
+
+            // Construct a fresh client/storage instance and fail its fetch: only the actual disk cache can answer.
+            val cached = mutableListOf<Pair<ConfigMap?, Source>>()
+            client(HttpClient.Response(500, null, isTransportError = true))
+                .subscribeAndRetain(Key.Custom("sessionReplay")) { config, source, _ -> cached.add(config to source) }
+            testDispatcher.scheduler.advanceUntilIdle()
+            assertEquals(listOf(Source.CACHE), cached.map { it.second })
+            assertPolicy(cached.single().first)
         }
 
     @Test
