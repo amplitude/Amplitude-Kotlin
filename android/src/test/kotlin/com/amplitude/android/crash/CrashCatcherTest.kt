@@ -2,13 +2,16 @@ package com.amplitude.android.crash
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.amplitude.core.remoteconfig.RemoteConfigClient
 import com.amplitude.core.RestrictedAmplitudeFeature
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.slot
 import io.mockk.mockkConstructor
 import io.mockk.unmockkConstructor
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
@@ -79,7 +82,27 @@ class CrashCatcherTest {
         }
 
     @Test
-    fun `does not install the handler when crash tracking is off at startup`() =
+    fun `construction neither installs the handler nor reads the persisted decision`() =
+        runTest {
+            Thread.setDefaultUncaughtExceptionHandler { _, _ -> }
+            val before = Thread.getDefaultUncaughtExceptionHandler()
+            val config = crashTrackingRemoteConfig(true)
+            CrashCatcher(context = context, instanceName = "test-instance", crashTrackingRemoteConfig = config)
+            assertSame(before, Thread.getDefaultUncaughtExceptionHandler())
+            verify(exactly = 0) { config.isCrashTrackingEnabled }
+        }
+
+    @Test
+    fun `install chains the handler when crash tracking is on at startup`() =
+        runTest {
+            Thread.setDefaultUncaughtExceptionHandler { _, _ -> }
+            val before = Thread.getDefaultUncaughtExceptionHandler()
+            createCrashCatcher()
+            assertNotSame(before, Thread.getDefaultUncaughtExceptionHandler())
+        }
+
+    @Test
+    fun `install leaves the handler alone when crash tracking is off at startup`() =
         runTest {
             Thread.setDefaultUncaughtExceptionHandler { _, _ -> }
             val before = Thread.getDefaultUncaughtExceptionHandler()
@@ -88,12 +111,19 @@ class CrashCatcherTest {
         }
 
     @Test
-    fun `installs the handler during init when crash tracking is on at startup`() =
+    fun `install after detach leaves the handler alone`() =
         runTest {
             Thread.setDefaultUncaughtExceptionHandler { _, _ -> }
             val before = Thread.getDefaultUncaughtExceptionHandler()
-            createCrashCatcher()
-            assertNotSame(before, Thread.getDefaultUncaughtExceptionHandler())
+            val catcher =
+                CrashCatcher(
+                    context = context,
+                    instanceName = "test-instance",
+                    crashTrackingRemoteConfig = crashTrackingRemoteConfig(true),
+                )
+            catcher.detach()
+            catcher.install()
+            assertSame(before, Thread.getDefaultUncaughtExceptionHandler())
         }
 
     @Test
@@ -104,10 +134,9 @@ class CrashCatcherTest {
             store.setEnabled(true)
             val remoteConfig =
                 CrashTrackingRemoteConfig(
-                    remoteConfigClient = mockk(relaxed = true),
                     sdkVersion = "1.8.0",
                     crashTrackingEnabledStore = store,
-                )
+                ).also { it.connect(mockk(relaxed = true)) }
             createCrashCatcher(remoteConfig)
 
             Thread.getDefaultUncaughtExceptionHandler()!!
@@ -120,6 +149,43 @@ class CrashCatcherTest {
                 ).consumePreviousCrash()
             assertTrue(report!!.contains("startup"))
         }
+
+    @Test
+    fun `remote enablement only captures crashes on the next launch when startup tracking was disabled`() = runTest {
+        var forwarded = 0
+        Thread.setDefaultUncaughtExceptionHandler { _, _ -> forwarded++ }
+        val store = CrashTrackingEnabledStore(context, "test-instance")
+        store.setEnabled(false)
+        val config = CrashTrackingRemoteConfig("1.8.0", store)
+        val catcher = createCrashCatcher(config)
+        val callback = slot<RemoteConfigClient.RemoteConfigCallback>()
+        val client = mockk<RemoteConfigClient>()
+        every { client.subscribe(any(), any(), capture(callback)) } returns Unit
+        config.connect(client)
+        callback.captured.onUpdate(
+            mapOf(
+                "enabled" to true,
+                "sampleRate" to 1.0,
+                "availabilities" to mapOf("CrashTracking" to "1.0.0"),
+            ),
+            RemoteConfigClient.Source.REMOTE,
+            1L,
+        )
+        assertTrue(store.isEnabled())
+        Thread.getDefaultUncaughtExceptionHandler()!!.uncaughtException(
+            Thread.currentThread(), RuntimeException("current launch"),
+        )
+        assertNull(catcher.consumePreviousCrash())
+        assertEquals(1, forwarded)
+
+        val nextConfig = CrashTrackingRemoteConfig("1.8.0", store)
+        val nextCatcher = createCrashCatcher(nextConfig)
+        Thread.getDefaultUncaughtExceptionHandler()!!.uncaughtException(
+            Thread.currentThread(), RuntimeException("next launch"),
+        )
+        assertTrue(nextCatcher.consumePreviousCrash()!!.contains("next launch"))
+        assertEquals(2, forwarded)
+    }
 
     @Test
     fun `multiple catchers invoke the original handler once`() =
@@ -163,7 +229,7 @@ class CrashCatcherTest {
                             true
                         }
                         start.await()
-                        createCrashCatcher(remoteConfig)
+                        runBlocking { createCrashCatcher(remoteConfig) }
                     }
                 }
             workers.forEach { it.join() }
@@ -248,7 +314,9 @@ class CrashCatcherTest {
     fun `does not persist when remote config turns crash tracking off after startup`() =
         runTest {
             Thread.setDefaultUncaughtExceptionHandler { _, _ -> }
-            createCrashCatcher(crashTrackingRemoteConfig(true, false))
+            val config = crashTrackingRemoteConfig(true)
+            createCrashCatcher(config)
+            every { config.isCrashTrackingEnabled } returns false
             Thread.getDefaultUncaughtExceptionHandler()!!
                 .uncaughtException(Thread.currentThread(), RuntimeException("boom"))
 
@@ -283,7 +351,7 @@ class CrashCatcherTest {
             every { it.isCrashTrackingEnabled } returnsMany enabled.toList()
         }
 
-    private fun createCrashCatcher(
+    private suspend fun createCrashCatcher(
         crashTrackingRemoteConfig: CrashTrackingRemoteConfig = crashTrackingRemoteConfig(true),
         instanceName: String = "test-instance",
     ): CrashCatcher =
@@ -291,5 +359,5 @@ class CrashCatcherTest {
             context = context,
             instanceName = instanceName,
             crashTrackingRemoteConfig = crashTrackingRemoteConfig,
-        )
+        ).also { it.install() }
 }

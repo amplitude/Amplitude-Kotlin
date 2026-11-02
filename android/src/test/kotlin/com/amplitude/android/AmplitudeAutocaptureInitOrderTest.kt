@@ -172,9 +172,7 @@ class AmplitudeAutocaptureInitOrderTest {
             AutocaptureManager(
                 initialAutocapture = configuration.autocapture,
                 initialInteractionsOptions = configuration.interactionsOptions,
-                remoteConfigClient = null,
                 logger = logger,
-                diagnosticsClient = null,
             )
         }
 

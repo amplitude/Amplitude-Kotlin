@@ -214,10 +214,9 @@ class CrashTrackingRemoteConfigTest {
         previousRunEnabled: Boolean = false,
         store: CrashTrackingEnabledStore = store(previousRunEnabled),
     ) = CrashTrackingRemoteConfig(
-        remoteConfigClient = client,
         sdkVersion = sdkVersion,
         crashTrackingEnabledStore = store,
-    )
+    ).also { it.connect(client) }
 
     private class TestRemoteConfigClient : RemoteConfigClient {
         private val callbacks = mutableListOf<RemoteConfigClient.RemoteConfigCallback>()

@@ -22,27 +22,29 @@ import kotlinx.coroutines.flow.asStateFlow
 internal class AutocaptureManager(
     initialAutocapture: Set<AutocaptureOption>,
     initialInteractionsOptions: InteractionsOptions,
-    remoteConfigClient: RemoteConfigClient?,
     private val logger: Logger,
-    private val diagnosticsClient: DiagnosticsClient? = null,
 ) {
+    private var diagnosticsClient: DiagnosticsClient? = null
+
     private val _state = MutableStateFlow(AutocaptureState.from(initialAutocapture, initialInteractionsOptions))
     val state: StateFlow<AutocaptureState> = _state.asStateFlow()
 
     // Strong reference to prevent GC since RemoteConfigClient uses WeakReference
-    private val remoteConfigCallback: RemoteConfigClient.RemoteConfigCallback?
+    private val remoteConfigCallback =
+        RemoteConfigClient.RemoteConfigCallback { config, _, _ ->
+            handleRemoteConfig(config)
+        }
 
-    init {
+    /** Wires in the clients once the SDK has built them off the main thread. */
+    fun connect(
+        remoteConfigClient: RemoteConfigClient?,
+        diagnosticsClient: DiagnosticsClient?,
+    ) {
+        this.diagnosticsClient = diagnosticsClient
         updateDiagnosticsTag(_state.value)
 
         if (remoteConfigClient != null) {
-            remoteConfigCallback =
-                RemoteConfigClient.RemoteConfigCallback { config, _, _ ->
-                    handleRemoteConfig(config)
-                }
             remoteConfigClient.subscribe(RemoteConfigClient.Key.AnalyticsSdk, callback = remoteConfigCallback)
-        } else {
-            remoteConfigCallback = null
         }
     }
 

@@ -102,10 +102,8 @@ public open class Amplitude internal constructor(
         androidContextPlugin = AndroidContextPlugin()
         try {
             val androidConfig = configuration as Configuration
-            // First, so the crash handler covers the rest of startup.
             crashTrackingRemoteConfig =
                 CrashTrackingRemoteConfig(
-                    remoteConfigClient = remoteConfigClient,
                     sdkVersion = BuildConfig.AMPLITUDE_VERSION,
                     crashTrackingEnabledStore = CrashTrackingEnabledStore(androidConfig.context, androidConfig.instanceName),
                 )
@@ -115,24 +113,16 @@ public open class Amplitude internal constructor(
                     instanceName = androidConfig.instanceName,
                     crashTrackingRemoteConfig = crashTrackingRemoteConfig,
                 )
-            anrCatcher =
-                createAnrCatcher(
-                    context = androidConfig.context,
-                    instanceName = androidConfig.instanceName,
-                    ioDispatcher = storageIODispatcher,
-                    crashTrackingRemoteConfig = crashTrackingRemoteConfig,
-                )
             autocaptureManager =
                 AutocaptureManager(
                     initialAutocapture = androidConfig.autocapture,
                     initialInteractionsOptions = androidConfig.interactionsOptions,
-                    remoteConfigClient = if (androidConfig.enableAutocaptureRemoteConfig) remoteConfigClient else null,
                     logger = logger,
-                    diagnosticsClient = diagnosticsClient,
                 )
             // Claim the instance name before the build exists, so nothing the build installs can run
             // before the claim, and a failed claim leaves no build behind.
             AmplitudeRegistry.activate(this)
+            amplitudeScope.launchInstallCrashHandler()
         } catch (error: Throwable) {
             // A throw here never reaches retire(), so stop the crash handler before the
             // half-built instance is abandoned.
@@ -141,6 +131,17 @@ public open class Amplitude internal constructor(
             throw error
         }
         return super.build()
+    }
+
+    /**
+     * Installs the crash handler once the persisted decision is read off the constructing thread.
+     * Scheduled before the build, but crashes before installation completes are not captured.
+     * The gap depends on dispatcher scheduling and preferences loading.
+     */
+    private fun CoroutineScope.launchInstallCrashHandler() = launch(storageIODispatcher) {
+        if (!isActive) return@launch
+        runCatchingCancellable { crashCatcher.install() }
+            .onFailure { logger.warn("Failed to install the crash handler: $it") }
     }
 
     override fun createTimeline(): Timeline {
@@ -165,14 +166,41 @@ public open class Amplitude internal constructor(
         // the replacement owns both by then.
         if (!isActive) return
 
-        withContext(storageIODispatcher) {
-            // No suspension between checking ownership, claiming the file, and recording it.
-            AmplitudeRegistry.runIfActive(this@Amplitude) {
-                crashCatcher.consumePreviousCrash()?.let { previousCrash ->
-                    diagnosticsClient.recordCrash(previousCrash)
+        try {
+            withContext(storageIODispatcher) {
+                if (!isActive) return@withContext
+                // Read before taking the ownership lock below, which ANR setup runs under.
+                crashTrackingRemoteConfig.loadPreviousRunDecision()
+                // Client construction can touch disk. Keep it outside the process-wide ownership lock.
+                val remoteConfigClient = remoteConfigClient
+                val diagnosticsClient = diagnosticsClient
+                // No suspension between checking ownership, claiming the file, and recording it.
+                AmplitudeRegistry.runIfActive(this@Amplitude) {
+                    val androidConfig = configuration as Configuration
+                    // Initialize persistence and subscriptions on the storage dispatcher before plugins start.
+                    crashTrackingRemoteConfig.connect(remoteConfigClient)
+                    anrCatcher =
+                        createAnrCatcher(
+                            context = androidConfig.context,
+                            instanceName = androidConfig.instanceName,
+                            ioDispatcher = storageIODispatcher,
+                            crashTrackingRemoteConfig = crashTrackingRemoteConfig,
+                        )
+                    autocaptureManager.connect(
+                        remoteConfigClient = if (androidConfig.enableAutocaptureRemoteConfig) remoteConfigClient else null,
+                        diagnosticsClient = diagnosticsClient,
+                    )
+                    crashCatcher.consumePreviousCrash()?.let { previousCrash ->
+                        diagnosticsClient.recordCrash(previousCrash)
+                    }
                 }
             }
+        } catch (error: Throwable) {
+            if (markRetired()) retire()
+            throw error
         }
+        if (!isActive) return
+
         anrCatcher.consumePreviousAnrs { claim ->
             AmplitudeRegistry.runIfActive(this@Amplitude) {
                 claim().forEach { previousAnr -> diagnosticsClient.recordAnr(previousAnr) }
@@ -253,7 +281,7 @@ public open class Amplitude internal constructor(
     internal fun markRetired(): Boolean = retired.compareAndSet(false, true)
 
     /**
-     * Releases process-wide watchers started in [build]. Safe before [retire], including when
+     * Releases process-wide watchers started during initialization. Safe before [retire], including when
      * construction fails after those watchers are installed.
      */
     internal fun detachWatchers() {
