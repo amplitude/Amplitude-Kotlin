@@ -11,6 +11,7 @@ import io.mockk.mockkConstructor
 import io.mockk.unmockkConstructor
 import io.mockk.verify
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Before
@@ -228,7 +229,7 @@ class CrashCatcherTest {
                             true
                         }
                         start.await()
-                        createCrashCatcher(remoteConfig)
+                        runBlocking { createCrashCatcher(remoteConfig) }
                     }
                 }
             workers.forEach { it.join() }
@@ -350,7 +351,7 @@ class CrashCatcherTest {
             every { it.isCrashTrackingEnabled } returnsMany enabled.toList()
         }
 
-    private fun createCrashCatcher(
+    private suspend fun createCrashCatcher(
         crashTrackingRemoteConfig: CrashTrackingRemoteConfig = crashTrackingRemoteConfig(true),
         instanceName: String = "test-instance",
     ): CrashCatcher =

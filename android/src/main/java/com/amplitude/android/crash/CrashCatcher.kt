@@ -2,6 +2,8 @@ package com.amplitude.android.crash
 
 import android.content.Context
 import android.os.Process
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.system.exitProcess
 
 internal class CrashCatcher(
@@ -26,9 +28,9 @@ internal class CrashCatcher(
      * Chains a crash-saving handler when the previous run left crash tracking on. Reads the
      * persisted decision from disk, so call it off the main thread.
      */
-    fun install() {
+    suspend fun install() {
         if (!crashTrackingRemoteConfig.isCrashTrackingEnabled) return
-        synchronized(handlerInstallLock) {
+        handlerInstallMutex.withLock {
             if (installed || detached) return
             installed = true
             val previousHandler = Thread.getDefaultUncaughtExceptionHandler()
@@ -76,7 +78,7 @@ internal class CrashCatcher(
     }
 
     companion object {
-        private val handlerInstallLock = Any()
+        private val handlerInstallMutex = Mutex()
         private val storageLock = Any()
 
         /** instanceName -> Throwable */

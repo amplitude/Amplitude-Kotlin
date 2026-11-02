@@ -122,7 +122,7 @@ public open class Amplitude internal constructor(
             // Claim the instance name before the build exists, so nothing the build installs can run
             // before the claim, and a failed claim leaves no build behind.
             AmplitudeRegistry.activate(this)
-            installCrashHandler()
+            amplitudeScope.launchInstallCrashHandler()
         } catch (error: Throwable) {
             // A throw here never reaches retire(), so stop the crash handler before the
             // half-built instance is abandoned.
@@ -138,12 +138,10 @@ public open class Amplitude internal constructor(
      * Scheduled before the build, but crashes before installation completes are not captured.
      * The gap depends on dispatcher scheduling and preferences loading.
      */
-    private fun installCrashHandler() {
-        amplitudeScope.launch(storageIODispatcher) {
-            if (!isActive) return@launch
-            runCatching { crashCatcher.install() }
-                .onFailure { logger.warn("Failed to install the crash handler: $it") }
-        }
+    private fun CoroutineScope.launchInstallCrashHandler() = launch(storageIODispatcher) {
+        if (!isActive) return@launch
+        runCatchingCancellable { crashCatcher.install() }
+            .onFailure { logger.warn("Failed to install the crash handler: $it") }
     }
 
     override fun createTimeline(): Timeline {
