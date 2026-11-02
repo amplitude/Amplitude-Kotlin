@@ -30,6 +30,7 @@ import io.mockk.mockkStatic
 import io.mockk.slot
 import io.mockk.unmockkConstructor
 import io.mockk.unmockkStatic
+import io.mockk.verify
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -75,18 +76,17 @@ class AmplitudeStartupTest {
                         scheduler = testScheduler,
                         configuration = configuration("crash-registration-off", application),
                     )
-
-                assertSame(originalHandler, Thread.getDefaultUncaughtExceptionHandler())
                 assertFalse(amplitude.isBuilt.isCompleted)
 
                 advanceUntilIdle()
+                assertSame(originalHandler, Thread.getDefaultUncaughtExceptionHandler())
             } finally {
                 Thread.setDefaultUncaughtExceptionHandler(originalHandler)
             }
         }
 
     @Test
-    fun `crash handler is registered during construction when the previous launch left crash tracking on`() =
+    fun `crash handler is registered off the constructing thread when the previous launch left crash tracking on`() =
         runTest {
             val originalHandler = Thread.getDefaultUncaughtExceptionHandler()
             val application = mockApplication(crashTrackingEnabled = true)
@@ -97,10 +97,12 @@ class AmplitudeStartupTest {
                         configuration = configuration("crash-registration-on", application),
                     )
 
-                assertNotSame(originalHandler, Thread.getDefaultUncaughtExceptionHandler())
+                assertSame(originalHandler, Thread.getDefaultUncaughtExceptionHandler())
                 assertFalse(amplitude.isBuilt.isCompleted)
+                verify(exactly = 0) { application.getSharedPreferences("amplitude_crash_tracking", any()) }
 
                 advanceUntilIdle()
+                assertNotSame(originalHandler, Thread.getDefaultUncaughtExceptionHandler())
             } finally {
                 Thread.setDefaultUncaughtExceptionHandler(originalHandler)
             }
@@ -122,6 +124,7 @@ class AmplitudeStartupTest {
                         ),
                 )
 
+                advanceUntilIdle()
                 assertNotSame(originalHandler, Thread.getDefaultUncaughtExceptionHandler())
                 advanceUntilIdle()
             } finally {
@@ -141,6 +144,7 @@ class AmplitudeStartupTest {
                     scheduler = testScheduler,
                     configuration = configuration("crash-enabled", application),
                 )
+                advanceUntilIdle()
                 val enabledHandler = Thread.getDefaultUncaughtExceptionHandler()
                 assertNotSame(originalHandler, enabledHandler)
 
@@ -148,15 +152,15 @@ class AmplitudeStartupTest {
                     scheduler = testScheduler,
                     configuration = configuration("crash-disabled", application),
                 )
-                assertSame(enabledHandler, Thread.getDefaultUncaughtExceptionHandler())
                 advanceUntilIdle()
+                assertSame(enabledHandler, Thread.getDefaultUncaughtExceptionHandler())
             } finally {
                 Thread.setDefaultUncaughtExceptionHandler(originalHandler)
             }
         }
 
     @Test
-    fun `crash tracking turning on after construction does not register the handler`() =
+    fun `crash tracking turning on after startup does not register the handler`() =
         runTest {
             val originalHandler = Thread.getDefaultUncaughtExceptionHandler()
             val application = mockApplication(crashTrackingEnabled = false)
@@ -165,41 +169,45 @@ class AmplitudeStartupTest {
                     scheduler = testScheduler,
                     configuration = configuration("crash-registration-later", application),
                 )
-                assertSame(originalHandler, Thread.getDefaultUncaughtExceptionHandler())
+                advanceUntilIdle()
 
                 CrashTrackingEnabledStore(application, "crash-registration-later").setEnabled(true)
 
                 assertSame(originalHandler, Thread.getDefaultUncaughtExceptionHandler())
-                advanceUntilIdle()
             } finally {
                 Thread.setDefaultUncaughtExceptionHandler(originalHandler)
             }
         }
 
     @Test
-    fun `a crash during startup is saved before the build finishes`() =
+    fun `a crash after the handler installs and before the build finishes is saved`() =
         runTest {
             val originalHandler = Thread.getDefaultUncaughtExceptionHandler()
             Thread.setDefaultUncaughtExceptionHandler { _, _ -> }
             val application = mockApplication(crashTrackingEnabled = true)
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            // Hold the build so only the handler install runs.
+            val buildDispatcher = PausedStorageDispatcher(dispatcher)
             try {
                 val amplitude =
-                    createFakeAmplitude(
-                        scheduler = testScheduler,
+                    FakeAndroidAmplitude(
                         configuration = configuration("crash-startup", application),
+                        androidTestDispatcher = dispatcher,
+                        amplitudeDispatcher = buildDispatcher,
                     )
+                runCurrent()
                 assertFalse(amplitude.isBuilt.isCompleted)
 
                 Thread.getDefaultUncaughtExceptionHandler()!!
                     .uncaughtException(Thread.currentThread(), RuntimeException("startup"))
 
-                // Read synchronously before the pending build can consume the report.
                 val report =
                     CrashStorage(
                         appContext = application,
                         instanceName = "crash-startup",
                     ).consumePreviousCrash()
                 assertTrue(report!!.contains("startup"))
+                buildDispatcher.resume()
                 advanceUntilIdle()
             } finally {
                 Thread.setDefaultUncaughtExceptionHandler(originalHandler)

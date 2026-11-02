@@ -910,7 +910,6 @@ class AndroidLifecyclePluginTest {
             AutocaptureManager(
                 initialAutocapture = options,
                 initialInteractionsOptions = InteractionsOptions(),
-                remoteConfigClient = null,
                 logger = mockk(relaxed = true),
             )
         every { mockedAmplitude.autocaptureManager } returns manager

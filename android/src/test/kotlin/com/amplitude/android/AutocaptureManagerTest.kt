@@ -296,9 +296,8 @@ class AutocaptureManagerTest {
         return AutocaptureManager(
             initialAutocapture = autocapture,
             initialInteractionsOptions = interactionsOptions,
-            remoteConfigClient = remoteConfigClient,
             logger = logger,
-        )
+        ).also { it.connect(remoteConfigClient, diagnosticsClient = null) }
     }
 
     private class TestRemoteConfigClient : RemoteConfigClient {

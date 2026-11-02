@@ -22,14 +22,14 @@ internal class CrashCatcher(
 
     private var installed = false
 
-    init {
-        install()
-    }
-
+    /**
+     * Chains a crash-saving handler when the previous run left crash tracking on. Reads the
+     * persisted decision from disk, so call it off the main thread.
+     */
     fun install() {
         if (!crashTrackingRemoteConfig.isCrashTrackingEnabled) return
         synchronized(handlerInstallLock) {
-            if (installed) return
+            if (installed || detached) return
             installed = true
             val previousHandler = Thread.getDefaultUncaughtExceptionHandler()
             Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->

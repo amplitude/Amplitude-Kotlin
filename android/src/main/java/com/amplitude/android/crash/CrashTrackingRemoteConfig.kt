@@ -13,15 +13,16 @@ private const val SAMPLE_RATE = "sampleRate"
 /**
  * Whether crashes should be persisted: CrashTracking is available for this SDK version,
  * diagnostics is enabled, and the diagnostics sample rate is above zero. Until remote config
- * arrives, this is the previous run's result, so crashes during startup are still captured.
+ * arrives, this is the previous run's result. Startup crashes are captured after the
+ * background handler installation completes.
  */
 @OptIn(RestrictedAmplitudeFeature::class)
 internal class CrashTrackingRemoteConfig(
-    remoteConfigClient: RemoteConfigClient,
     private val sdkVersion: String,
     private val crashTrackingEnabledStore: CrashTrackingEnabledStore,
 ) {
-    private val previousRunEnabled = crashTrackingEnabledStore.isEnabled()
+    // Read lazily so construction on the main thread does not touch disk.
+    private val previousRunEnabled by lazy { crashTrackingEnabledStore.isEnabled() }
 
     // Serialize retirement with persistence so callbacks cannot write after detach returns.
     private val updateLock = Any()
@@ -40,7 +41,10 @@ internal class CrashTrackingRemoteConfig(
             if (timestamp != null) handleRemoteConfig(config)
         }
 
-    init {
+    /** Reads the persisted decision from disk; later reads are served from memory. */
+    fun loadPreviousRunDecision(): Boolean = previousRunEnabled
+
+    fun connect(remoteConfigClient: RemoteConfigClient) {
         remoteConfigClient.subscribe(RemoteConfigClient.Key.Diagnostics, callback = remoteConfigCallback)
     }
 
