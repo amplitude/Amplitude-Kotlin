@@ -1,3 +1,20 @@
+# [1.37.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.36.0...v1.37.0) (2026-11-02)
+
+
+### Bug Fixes
+
+* avoid disk reads during Android initialization ([#595](https://github.com/amplitude/Amplitude-Kotlin/issues/595)) ([ea993cd](https://github.com/amplitude/Amplitude-Kotlin/commit/ea993cdd114a41804fb99f585daada5fe61dea3b))
+* clear streaming delayed-event timeouts on clean stops ([#576](https://github.com/amplitude/Amplitude-Kotlin/issues/576)) ([4cc7ee9](https://github.com/amplitude/Amplitude-Kotlin/commit/4cc7ee93108c78b1161306f115ed425ed4c19eee))
+* **core:** preserve explicit JSON null in remote config (SDKA-107) ([#590](https://github.com/amplitude/Amplitude-Kotlin/issues/590)) ([f5cd899](https://github.com/amplitude/Amplitude-Kotlin/commit/f5cd8994a63074d43ef9550619c16e27295b720a))
+* preserve identity properties during interrupted saves ([#575](https://github.com/amplitude/Amplitude-Kotlin/issues/575)) ([c7cee24](https://github.com/amplitude/Amplitude-Kotlin/commit/c7cee2442fee1376390e27a0d9478dee2c12061b))
+* send initial streaming start and stop events together ([#577](https://github.com/amplitude/Amplitude-Kotlin/issues/577)) ([85443d1](https://github.com/amplitude/Amplitude-Kotlin/commit/85443d11057e6b5e7179e5133d44bb9a458d3ed3))
+* **streaming:** avoid reflective property hashing in dependency caches ([#580](https://github.com/amplitude/Amplitude-Kotlin/issues/580)) ([9a6f933](https://github.com/amplitude/Amplitude-Kotlin/commit/9a6f933ef35ac97cfe608f9116c2e375ac7fb41e))
+
+
+### Features
+
+* **core:** persist standalone remote config and retry fetches ([#581](https://github.com/amplitude/Amplitude-Kotlin/issues/581)) ([25e4c7c](https://github.com/amplitude/Amplitude-Kotlin/commit/25e4c7c66ef46478ade0d74f7b6f331a91b3d069))
+
 # [1.36.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.35.0...v1.36.0) (2026-10-21)
 
 
