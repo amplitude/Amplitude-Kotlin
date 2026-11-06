@@ -21,12 +21,13 @@ public open class AndroidContextPlugin : Plugin {
     override fun setup(amplitude: Amplitude) {
         super.setup(amplitude)
         val configuration = amplitude.configuration as Configuration
+        val trackingOptions = effectiveTrackingOptions(configuration)
         contextProvider =
             AndroidContextProvider(
                 configuration.context,
                 configuration.locationListening,
-                configuration.trackingOptions.shouldTrackAdid(),
-                configuration.trackingOptions.shouldTrackAppSetId(),
+                trackingOptions.shouldTrackAdid(),
+                trackingOptions.shouldTrackAppSetId(),
             )
         initializeDeviceId(configuration)
 
@@ -86,6 +87,7 @@ public open class AndroidContextPlugin : Plugin {
         // Check new device id per install
         if (!configuration.newDeviceIdPerInstall &&
             configuration.useAdvertisingIdForDeviceId &&
+            effectiveTrackingOptions(configuration).shouldTrackAdid() &&
             !contextProvider.isLimitAdTrackingEnabled()
         ) {
             val advertisingId = contextProvider.advertisingId
@@ -106,6 +108,14 @@ public open class AndroidContextPlugin : Plugin {
         return ContextPlugin.generateRandomDeviceId()
     }
 
+    private fun effectiveTrackingOptions(configuration: Configuration): TrackingOptions {
+        val trackingOptions = configuration.trackingOptions
+        if (configuration.enableCoppaControl) {
+            trackingOptions.mergeIn(TrackingOptions.forCoppaControl())
+        }
+        return trackingOptions
+    }
+
     private fun applyContextData(event: BaseEvent) {
         val configuration = amplitude.configuration as Configuration
         event.timestamp ?: let {
@@ -123,10 +133,7 @@ public open class AndroidContextPlugin : Plugin {
             if (event.userId == null) event.userId = identity.userId
             if (event.deviceId == null) event.deviceId = identity.deviceId
         }
-        val trackingOptions = configuration.trackingOptions
-        if (configuration.enableCoppaControl) {
-            trackingOptions.mergeIn(TrackingOptions.forCoppaControl())
-        }
+        val trackingOptions = effectiveTrackingOptions(configuration)
         if (trackingOptions.shouldTrackVersionName()) {
             event.versionName = contextProvider.versionName
         }
