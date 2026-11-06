@@ -87,6 +87,7 @@ dependencies {
     compileOnly(libs.fragment.ktx)
     compileOnly(libs.compose.ui)
 
+    testImplementation(libs.compose.ui)
     testImplementation(libs.mockk)
     testImplementation(project(":analytics-core"))
     testImplementation(libs.coroutines.test)
