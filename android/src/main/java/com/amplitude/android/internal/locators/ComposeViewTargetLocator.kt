@@ -31,8 +31,8 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
     ): ViewTarget? {
         val root = this as? Owner ?: return null
 
-        val queue: Queue<LayoutNode> = ArrayDeque()
-        queue.add(root.root)
+        val queue: Queue<NodeMetadata> = ArrayDeque()
+        queue.add(NodeMetadata(root.root))
 
         // the final tag to return (can be null if no test tag is found)
         var targetTag: String? = null
@@ -47,18 +47,15 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
         // still delivered to its ancestors
         val gestureOwners = mutableListOf<GestureOwner>()
 
-        // the last known tag when iterating the node tree
-        var lastKnownTag: String? = null
-
-        // the last known accessibility label when iterating the node tree
-        var lastKnownAccessibilityLabel: String? = null
-
         // Amplitude frustration analytics configuration (extracted as simple booleans)
         var ignoreRageClick = false
         var ignoreDeadClick = false
 
         while (queue.isNotEmpty()) {
-            val node = queue.poll() ?: continue
+            val metadata = queue.poll() ?: continue
+            val node = metadata.node
+            var lastKnownTag = metadata.tag
+            var lastKnownAccessibilityLabel = metadata.accessibilityLabel
 
             if (node.isPlaced &&
                 composeLayoutNodeBoundsHelper.layoutNodeBoundsContain(node, targetPosition)
@@ -166,7 +163,10 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
                         )
                 }
             }
-            queue.addAll(node.zSortedChildren.asMutableList())
+            // Inherit metadata only from ancestors, never from previously visited siblings.
+            for (child in node.zSortedChildren.asMutableList()) {
+                queue.add(NodeMetadata(child, lastKnownTag, lastKnownAccessibilityLabel))
+            }
         }
 
         return if (!foundClickableElement) {
@@ -189,6 +189,12 @@ internal class ComposeViewTargetLocator(private val logger: Logger) : ViewTarget
             }
         }
     }
+
+    private data class NodeMetadata(
+        val node: LayoutNode,
+        val tag: String? = null,
+        val accessibilityLabel: String? = null,
+    )
 
     private fun InspectableValue.hasLongClickHandler(): Boolean = inspectableElements.any { it.name == "onLongClick" && it.value != null }
 }
