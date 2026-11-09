@@ -1,3 +1,12 @@
+## [1.37.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.37.0...v1.37.1) (2026-11-09)
+
+
+### Bug Fixes
+
+* **core:** keep remote config callback fields under R8 ([#598](https://github.com/amplitude/Amplitude-Kotlin/issues/598)) ([2da9c42](https://github.com/amplitude/Amplitude-Kotlin/commit/2da9c421597fecd646ebfde46a8c384b127b7bf8))
+* honor COPPA control when selecting device ID (SDKA-162) ([#599](https://github.com/amplitude/Amplitude-Kotlin/issues/599)) ([c683758](https://github.com/amplitude/Amplitude-Kotlin/commit/c683758c3de47d3c537ead2ec06e4420bbd9f4fa))
+* scope Compose target metadata to ancestor branches ([#601](https://github.com/amplitude/Amplitude-Kotlin/issues/601)) ([5d737f3](https://github.com/amplitude/Amplitude-Kotlin/commit/5d737f332089d0ded67e60f3798fe9b1966eebda))
+
 # [1.37.0](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.36.0...v1.37.0) (2026-11-02)
 
 
