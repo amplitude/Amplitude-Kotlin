@@ -22,7 +22,7 @@ jobs:
           cache: 'gradle'
 
       - name: Build
-        run: ./gradlew build -x test -x :sdk-verification:build
+        run: ./gradlew build -x test
 
       - name: Upload build results
         if: always()
@@ -56,7 +56,7 @@ jobs:
           cache: 'gradle'
 
       - name: Unit Test
-        run: ./gradlew test -x :sdk-verification:test
+        run: ./gradlew test
 
       - name: Test release tooling
         run: |
@@ -75,57 +75,4 @@ jobs:
         with:
           name: test-and-lint-results
           path: '**/build/reports/**'
-          retention-days: 7
-
-  sdk-verification:
-    name: SDK Verification (${{ matrix.unified }} Unified) with JDK 21
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs: build
-    strategy:
-      fail-fast: false
-      matrix:
-        unified: [candidate, released]
-    env:
-      MAVEN_REPO: ${{ runner.temp }}/verification-maven
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-          cache: 'gradle'
-
-      - name: Select artifact versions
-        run: |
-          analytics=$(sed -n 's/^VERSION_NAME=//p' gradle.properties)
-          candidate="${analytics}-verification-${GITHUB_SHA}-SNAPSHOT"
-          unified="$candidate"
-          if [ "${{ matrix.unified }}" = released ]; then
-            unified=$(sed -n 's/^VERSION_NAME=//p' unified/gradle.properties)
-          fi
-          echo "CANDIDATE_VERSION=$candidate" >> "$GITHUB_ENV"
-          echo "UNIFIED_VERSION=$unified" >> "$GITHUB_ENV"
-
-      - name: Publish Kotlin and Unified SDK candidates locally
-        run: >-
-          ./gradlew :analytics-core:publishToMavenLocal :android:publishToMavenLocal
-          :unified:publishToMavenLocal -PVERSION_NAME=$CANDIDATE_VERSION
-          -Dmaven.repo.local=$MAVEN_REPO
-
-      - name: Run SDK verification
-        run: >-
-          ./gradlew sdkVerificationTest
-          -PsdkVerificationKotlinVersion=$CANDIDATE_VERSION
-          -PsdkVerificationUnifiedVersion=$UNIFIED_VERSION
-          -Dmaven.repo.local=$MAVEN_REPO
-
-      - name: Upload SDK verification results
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: sdk-verification-${{ matrix.unified }}-results
-          path: 'sdk-verification/build/reports/**'
           retention-days: 7
