@@ -73,13 +73,18 @@ flowchart TD
     Contracts --> Behavior[API usage, identity, lifecycle, and cross-blade behavior]
     Maven --> Metadata[Published dependencies and resolved versions]
     Candidate --> Metadata
+    Checkout[Checkout publication tasks] --> Isolated[Isolated Maven repository under build/]
+    Isolated --> Consumer[Standalone Android consumer]
+    Consumer --> APK[Release APK compilation and R8]
 ```
 
 Tests exercise real SDK implementations. MockWebServer supplies local responses; only the setup-failure boundary is mocked. Third-party-host scenarios use a minimal test host implementing the SDK interfaces.
 
-## Device smoke
+## Consumer compilation and shrinking
 
-A separate PR CI lane builds and runs a minified consumer of the checkout's packaged artifacts on API 35. That lane owns its local publication steps; neither JVM command needs them. See the [device runner](device-smoke/README.md).
+A separate check on every PR publishes checkout candidates under `build/` and builds a standalone Android release APK using only Unified's Maven coordinate. Its independent Gradle/AGP/Kotlin toolchain verifies packaged dependencies, consumer compilation, and R8. `./gradlew test` and `unifiedRegressionTest` remain independent of publication. See the [consumer commands](consumer/README.md).
+
+The APK is not run. Runtime Replay capture, uploads, and device lifecycle testing remain deferred.
 
 ## Known upstream limitation
 

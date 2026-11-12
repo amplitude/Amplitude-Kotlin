@@ -65,7 +65,7 @@ dependencies {
     api(unifiedLibs.experiment.android.client)
     api(unifiedLibs.session.replay.android)
 
-    // SessionReplay exposes CoroutineScope through the public blade accessor.
+    // Pinned legacy Replay exposes CoroutineScope. Reassess when Unified adopts Compose SR.
     api(libs.coroutines.core)
     // Older Experiment dependencies select OkHttp versions without AGP 8 consumer rules.
     runtimeOnly(libs.okhttp)

@@ -15,13 +15,20 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        mavenLocal {
-            content { includeGroup("com.amplitude") }
+        providers.gradleProperty("candidateRepository").orNull?.let { repository ->
+            exclusiveContent {
+                forRepository { maven { url = uri(repository) } }
+                filter {
+                    includeModule("com.amplitude", "unified-android")
+                    includeModule("com.amplitude", "analytics-android")
+                    includeModule("com.amplitude", "analytics-core")
+                }
+            }
         }
         google()
         mavenCentral()
     }
 }
 
-rootProject.name = "unified-device-smoke"
+rootProject.name = "unified-consumer"
 include(":app")
