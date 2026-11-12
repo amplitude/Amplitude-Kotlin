@@ -65,7 +65,10 @@ dependencies {
     api(unifiedLibs.experiment.android.client)
     api(unifiedLibs.session.replay.android)
 
-    compileOnly(libs.coroutines.core)
+    // SessionReplay exposes CoroutineScope through the public blade accessor.
+    api(libs.coroutines.core)
+    // Older Experiment dependencies select OkHttp versions without AGP 8 consumer rules.
+    runtimeOnly(libs.okhttp)
 
     testImplementation(libs.mockk)
     testImplementation(libs.mockwebserver)

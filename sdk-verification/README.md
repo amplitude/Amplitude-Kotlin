@@ -77,6 +77,10 @@ flowchart TD
 
 Tests exercise real SDK implementations. MockWebServer supplies local responses; only the setup-failure boundary is mocked. Third-party-host scenarios use a minimal test host implementing the SDK interfaces.
 
+## Device smoke
+
+A separate PR CI lane builds and runs a minified consumer of the checkout's packaged artifacts on API 35. That lane owns its local publication steps; neither JVM command needs them. See the [device runner](device-smoke/README.md).
+
 ## Known upstream limitation
 
 Published Replay 0.31.0 enriches `BaseEvent` through its legacy `EventPlugin` adapter. A host supplying another `AnalyticsEvent` implementation receives no Replay ID. The custom-event regression retains the expected assertion but is skipped in the required gate until Replay supports it. Reproduce with `-PsdkVerificationCustomEvents=true` added to the verification command. The existing third-party-host gate uses the supported `BaseEvent` type.
