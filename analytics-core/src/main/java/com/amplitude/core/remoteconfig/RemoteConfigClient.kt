@@ -11,6 +11,7 @@ import com.amplitude.core.Storage
 import com.amplitude.core.remoteconfig.RemoteConfigClient.Key
 import com.amplitude.core.remoteconfig.RemoteConfigClient.Source.CACHE
 import com.amplitude.core.remoteconfig.RemoteConfigClient.Source.REMOTE
+import com.amplitude.core.utilities.Time
 import com.amplitude.core.utilities.http.HttpClient
 import com.amplitude.core.utilities.runCatchingCancellable
 import com.amplitude.core.utilities.toJSONObject
@@ -28,6 +29,7 @@ import java.lang.ref.WeakReference
 import java.net.URLEncoder
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.random.Random
 
@@ -57,12 +59,13 @@ public interface RemoteConfigClient {
      */
     @RestrictedAmplitudeFeature
     public sealed class DeliveryMode {
-        /** Deliver cached config immediately (if present), then remote, and every subsequent successful fetch. */
+        /** Deliver cache immediately (if present), refresh it when stale, and receive every subsequent successful fetch. */
         public data object All : DeliveryMode()
 
         /**
-         * Block the initial delivery on the remote up to [timeoutMs] — then fall back to
-         * cache, else a failure signal. Subsequent successful fetches are delivered as
+         * Reuse fresh cached config immediately; otherwise block the initial delivery
+         * on the remote up to [timeoutMs], then fall back to cache, else a failure signal.
+         * Subsequent successful fetches are delivered as
          * updates, the same as [All].
          */
         public class WaitForRemote(public val timeoutMs: Long) : DeliveryMode() {
@@ -144,6 +147,7 @@ internal class RemoteConfigClientImpl(
     private val httpClient: HttpClient,
     private val logger: Logger,
     private val maxRetryDelayMillis: Long = DEFAULT_MAX_RETRY_DELAY_MS,
+    private val time: Time = Time(),
 ) : RemoteConfigClient {
     /** Wraps the analytics event [storage], keeping the existing on-disk keys. */
     constructor(
@@ -178,7 +182,7 @@ internal class RemoteConfigClientImpl(
         private const val US_REMOTE_CONFIG_URL = "https://sr-client-cfg.amplitude.com"
         private const val EU_REMOTE_CONFIG_URL = "https://sr-client-cfg.eu.amplitude.com"
         private const val CONFIG_GROUP = "android"
-        private const val MIN_FETCH_INTERVAL_MS: Long = 5 * 60 * 1_000L
+        private const val MIN_FETCH_INTERVAL_MS: Long = 15 * 60 * 1_000L
         private const val DEFAULT_MAX_RETRY_DELAY_MS: Long = 8_000L
         private const val HTTP_TOO_MANY_REQUESTS = 429
 
@@ -317,9 +321,9 @@ internal class RemoteConfigClientImpl(
     }
 
     /**
-     * Deliver cached config immediately if present, then the remote result when it
-     * arrives. A failure (null config, null timestamp) is delivered only when nothing
-     * else was — no cache and the fetch failed — guaranteeing exactly one initial
+     * Deliver cached config immediately if present. Fetch remotely when the cache
+     * is stale or absent. A failure (null config, null timestamp) is delivered only
+     * when nothing else was — no cache and the fetch failed — guaranteeing exactly one initial
      * callback. Mirrors iOS `.all`.
      */
     private fun subscribeAll(
@@ -340,7 +344,9 @@ internal class RemoteConfigClientImpl(
             // Deliver to this subscriber from its own awaited outcome — never relying on
             // a broadcast snapshot. deliverRemote de-dups by fetchId, so a concurrent
             // refresh broadcast of the same fetch won't double-deliver.
-            when (val handle = obtainSubscribeFetch()) {
+            when (val handle = obtainSubscribeFetch(cached)) {
+                is FetchHandle.Cached ->
+                    weakCallback.deliverFirst(handle.data.config, CACHE, handle.data.timestamp)
                 is FetchHandle.Reuse ->
                     weakCallback.deliverRemote(
                         resolveDotPath(handle.success.blob, key.value),
@@ -363,8 +369,8 @@ internal class RemoteConfigClientImpl(
     }
 
     /**
-     * Block the initial delivery on the remote fetch up to [timeoutMs]. On success
-     * deliver remote; on failure or timeout fall back to cache, or a failure signal
+     * Reuse fresh cached config immediately; otherwise wait for the remote fetch up to [timeoutMs].
+     * On success deliver remote; on failure or timeout fall back to cache, or a failure signal
      * (null config, null timestamp) when no cache exists. Exactly one *initial* callback
      * is delivered; subsequent successful fetches are delivered as updates (via the
      * broadcast in [startFetchLocked]), the same as [RemoteConfigClient.DeliveryMode.All].
@@ -378,7 +384,10 @@ internal class RemoteConfigClientImpl(
         registerSubscriber(key, weakCallback)
 
         coroutineScope.launch {
-            when (val handle = obtainSubscribeFetch()) {
+            val stored = getStoredConfigData(key.value)
+            when (val handle = obtainSubscribeFetch(stored)) {
+                is FetchHandle.Cached ->
+                    weakCallback.deliverFirst(handle.data.config, CACHE, handle.data.timestamp)
                 is FetchHandle.Reuse ->
                     // deliverRemote (not a fallback): sets lastFetchId so the fetch's own
                     // broadcast de-dups, and leaves the subscriber open to later updates.
@@ -444,10 +453,12 @@ internal class RemoteConfigClientImpl(
     override fun updateConfigs() {
         coroutineScope.launch(networkIODispatcher) {
             if (shouldRateLimit()) {
-                logger.debug("RemoteConfig update skipped: within 5-minute window")
+                logger.debug("RemoteConfig update skipped: within 15-minute window")
                 return@launch
             }
-            startOrJoinFetch()
+            if (startOrJoinFetch() == null) {
+                logger.debug("RemoteConfig update skipped: within 15-minute window")
+            }
         }
     }
 
@@ -474,8 +485,10 @@ internal class RemoteConfigClientImpl(
         }
     }
 
-    /** How a subscribe obtains its config: a reusable recent success, or a live fetch. */
+    /** A subscription reuses a fresh saved config or in-memory success, or joins a live fetch. */
     private sealed interface FetchHandle {
+        data class Cached(val data: ConfigData) : FetchHandle
+
         data class Reuse(val success: FetchOutcome.Success) : FetchHandle
 
         data class Pending(val deferred: Deferred<FetchOutcome>) : FetchHandle
@@ -483,21 +496,24 @@ internal class RemoteConfigClientImpl(
 
     /**
      * Obtains config for an initial subscribe: joins an in-flight fetch, reuses a
-     * recent successful result to avoid hammering the server, or starts a new fetch.
-     * Never rate-limited — a subscribe must always resolve to a delivery.
+     * recent successful result or fresh saved config, or starts a new fetch.
+     * A fresh saved config honors the cooldown across client and process restarts.
      */
-    private fun obtainSubscribeFetch(): FetchHandle {
+    private fun obtainSubscribeFetch(cached: ConfigData?): FetchHandle {
         synchronized(fetchLock) {
             inFlightFetch?.let { if (it.isActive) return FetchHandle.Pending(it) }
             lastSuccess?.let { if (isFresh(it.timestamp)) return FetchHandle.Reuse(it) }
+            cached?.let { if (isFresh(it.timestamp)) return FetchHandle.Cached(it) }
             return FetchHandle.Pending(startFetchLocked())
         }
     }
 
-    /** Joins an in-flight fetch or starts a new one. Used by the refresh path. */
-    private fun startOrJoinFetch(): Deferred<FetchOutcome> {
+    /** Joins a fetch or starts a refresh unless a successful fetch is still fresh. */
+    private fun startOrJoinFetch(): Deferred<FetchOutcome>? {
         synchronized(fetchLock) {
             inFlightFetch?.let { if (it.isActive) return it }
+            // A fetch may have succeeded after the storage check, even if its cache write failed.
+            lastSuccess?.let { if (isFresh(it.timestamp)) return null }
             return startFetchLocked()
         }
     }
@@ -566,7 +582,7 @@ internal class RemoteConfigClientImpl(
                 logger.error("Error fetching remote configs: ${e.message}")
                 return FetchOutcome.Failure
             } ?: return FetchOutcome.Failure
-        val timestamp = System.currentTimeMillis()
+        val timestamp = time.nowMillis()
         val cached = CachedRemoteConfig(blob.mapValues { it.value.withJsonNulls() }.toJSONObject().toString(), timestamp)
         fetchedCache = cached
         // Persisting the blob is best-effort: a storage write failure must not discard
@@ -583,14 +599,14 @@ internal class RemoteConfigClientImpl(
     }
 
     private fun isFresh(timestamp: Long): Boolean {
-        return timestamp > 0L && (System.currentTimeMillis() - timestamp) < MIN_FETCH_INTERVAL_MS
+        return timestamp > 0L && abs(time.nowMillis() - timestamp) < MIN_FETCH_INTERVAL_MS
     }
 
     private suspend fun shouldRateLimit(): Boolean {
         return runCatchingCancellable {
             val lastTs = withContext(storageIODispatcher) { remoteConfigStorage.read()?.timestamp } ?: 0L
             if (lastTs <= 0L) return@runCatchingCancellable false
-            (System.currentTimeMillis() - lastTs) < MIN_FETCH_INTERVAL_MS
+            isFresh(lastTs)
         }.getOrElse { e ->
             // Don't let a storage read failure leak out of the refresh coroutine or
             // wedge the rate limiter — fall through and let the fetch proceed.

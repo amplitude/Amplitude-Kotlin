@@ -16,6 +16,7 @@ import com.amplitude.core.remoteconfig.RemoteConfigClient.Key.SessionReplayPriva
 import com.amplitude.core.remoteconfig.RemoteConfigClient.Key.SessionReplaySamplingConfig
 import com.amplitude.core.remoteconfig.RemoteConfigClient.Source
 import com.amplitude.core.utilities.InMemoryStorage
+import com.amplitude.core.utilities.Time
 import com.amplitude.core.utilities.http.HttpClient
 import com.amplitude.core.utilities.http.ResponseHandler
 import io.mockk.coEvery
@@ -37,6 +38,7 @@ import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.params.ParameterizedTest
@@ -53,6 +55,8 @@ class RemoteConfigClientTest {
         mockk<com.amplitude.common.Logger>(relaxed = true)
     private val testDispatcher = StandardTestDispatcher()
     private val testScope = TestScope(testDispatcher)
+    private var now = System.currentTimeMillis()
+    private val time = mockk<Time> { every { nowMillis() } answers { now } }
 
     // The client holds subscribers weakly, and deliveries are fully async. Retain test
     // callbacks so a natural GC (heap pressure across the suite) can't collect an inline
@@ -100,9 +104,10 @@ class RemoteConfigClientTest {
             coroutineScope = testScope,
             networkIODispatcher = testDispatcher,
             storageIODispatcher = testDispatcher,
-            storage = storage,
+            remoteConfigStorage = StorageBackedRemoteConfigStorage(storage),
             httpClient = mockHttpClient,
             logger = if (useVerifiableLogger) logger else silentLogger,
+            time = time,
         )
     }
 
@@ -210,8 +215,8 @@ class RemoteConfigClientTest {
                 "Persistent callback should receive initial cache",
             )
 
-            // Reset timestamp to allow another remote fetch on next subscribe
-            storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
+            // Advance past the cooldown before subscribing again
+            now += 15 * 60 * 1_000L
 
             // Create temp callbacks in limited scope with counter
             run {
@@ -233,10 +238,10 @@ class RemoteConfigClientTest {
                 Thread.sleep(10)
             }
 
-            // Reset the rate-limit window and trigger an explicit refresh. A successful
+            // Advance past the cooldown and trigger an explicit refresh. A successful
             // refresh broadcasts to all live subscribers (persistent), while the GC'd
             // temp callback receives nothing.
-            storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
+            now += 15 * 60 * 1_000L
             client.updateConfigs()
             testDispatcher.scheduler.advanceUntilIdle()
 
@@ -509,9 +514,10 @@ class RemoteConfigClientTest {
                     coroutineScope = testScope,
                     networkIODispatcher = testDispatcher,
                     storageIODispatcher = testDispatcher,
-                    storage = storage,
+                    remoteConfigStorage = StorageBackedRemoteConfigStorage(storage),
                     httpClient = mockHttpClient,
                     logger = logger,
+                    time = time,
                 )
 
             val callbackResults = mutableListOf<Pair<ConfigMap?, Source>>()
@@ -536,8 +542,8 @@ class RemoteConfigClientTest {
                 "Should receive one REMOTE config from successful fetch",
             )
 
-            // Reset timestamp and verify that after fetch completes, new calls can proceed
-            storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
+            // Advance past the cooldown and verify that new calls can proceed
+            now += 15 * 60 * 1_000L
             requestSlots.clear()
 
             client.updateConfigs()
@@ -550,6 +556,9 @@ class RemoteConfigClientTest {
     @Test
     fun `rate limiting - blocks calls within interval and allows calls after interval with proper timing`() =
         runTest {
+            var now = 1_000_000L
+            val time = mockk<Time>()
+            every { time.nowMillis() } answers { now }
             val requestSlots = mutableListOf<HttpClient.Request>()
             val mockHttpClient = mockk<HttpClient>()
 
@@ -571,9 +580,10 @@ class RemoteConfigClientTest {
                     coroutineScope = testScope,
                     networkIODispatcher = testDispatcher,
                     storageIODispatcher = testDispatcher,
-                    storage = storage,
+                    remoteConfigStorage = StorageBackedRemoteConfigStorage(storage),
                     httpClient = mockHttpClient,
                     logger = logger,
+                    time = time,
                 )
 
             val callbackResults = mutableListOf<Pair<ConfigMap?, Source>>()
@@ -586,8 +596,9 @@ class RemoteConfigClientTest {
             testDispatcher.scheduler.advanceUntilIdle()
             assertEquals(1, requestSlots.size, "Should allow request when no previous timestamp exists")
 
-            // Test 2: Set recent timestamp (within 5 minutes) - should block requests
-            val recentTimestamp = System.currentTimeMillis() - (2 * 60 * 1_000L) // 2 minutes ago
+            // Test 2: One millisecond inside the 15-minute window - should block requests
+            now += 15 * 60 * 1_000L - 1
+            val recentTimestamp = now - (15 * 60 * 1_000L - 1)
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, recentTimestamp.toString())
             requestSlots.clear()
 
@@ -595,30 +606,27 @@ class RemoteConfigClientTest {
             client.updateConfigs() // Multiple calls should all be blocked
             testDispatcher.scheduler.advanceUntilIdle()
 
-            assertTrue(requestSlots.isEmpty(), "Should block requests within 5-minute rate limit window")
+            assertTrue(requestSlots.isEmpty(), "Should block requests within 15-minute rate limit window")
 
-            // Test 3: Set old timestamp (older than 5 minutes) - should allow request
-            val oldTimestamp = System.currentTimeMillis() - (6 * 60 * 1_000L) // 6 minutes ago
+            // Test 3: One millisecond outside the 15-minute window - should allow request
+            now += 2
+            val oldTimestamp = now - (15 * 60 * 1_000L + 1)
             storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, oldTimestamp.toString())
             requestSlots.clear()
 
             client.updateConfigs()
             testDispatcher.scheduler.advanceUntilIdle()
 
-            assertEquals(1, requestSlots.size, "Should allow request after 5-minute rate limit window expires")
+            assertEquals(1, requestSlots.size, "Should allow request after 15-minute rate limit window expires")
 
             // Test 4: Verify timestamp gets updated after successful fetch
             val storedTimestamp = storage.read(Storage.Constants.REMOTE_CONFIG_TIMESTAMP)?.toLongOrNull()
-            val currentTime = System.currentTimeMillis()
 
             assertTrue(
                 storedTimestamp != null && storedTimestamp > oldTimestamp,
                 "Should update timestamp after successful fetch",
             )
-            assertTrue(
-                storedTimestamp != null && (currentTime - storedTimestamp) < 1000L,
-                "Updated timestamp should be very recent (within 1 second)",
-            )
+            assertEquals(now, storedTimestamp, "Updated timestamp should match the successful fetch time")
 
             // Verify callback received remote configs from allowed requests
             assertTrue(
@@ -626,6 +634,40 @@ class RemoteConfigClientTest {
                 "Should receive REMOTE configs from successful fetches",
             )
         }
+
+    @Nested
+    inner class ClockChanges {
+        private val now = 1_000_000L
+        private val time = mockk<Time> { every { nowMillis() } returns now }
+
+        @ParameterizedTest
+        @ValueSource(longs = [-120_000L, 120_000L, -840_000L, 840_000L])
+        fun `should throttle when persisted timestamp is within fifteen minutes in either direction`(offsetMs: Long) =
+            runTest {
+                storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, (now + offsetMs).toString())
+                val http = httpClientReturning(successResponse())
+                val client = createRetryClient(http, time = time)
+
+                client.updateConfigs()
+                testDispatcher.scheduler.advanceUntilIdle()
+
+                verify(exactly = 0) { http.request(any()) }
+            }
+
+        @ParameterizedTest
+        @ValueSource(longs = [-960_000L, 960_000L])
+        fun `should fetch when persisted timestamp is over fifteen minutes away in either direction`(offsetMs: Long) =
+            runTest {
+                storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, (now + offsetMs).toString())
+                val http = httpClientReturning(successResponse())
+                val client = createRetryClient(http, time = time)
+
+                client.updateConfigs()
+                testDispatcher.scheduler.advanceUntilIdle()
+
+                verify(exactly = 1) { http.request(any()) }
+            }
+    }
 
     // endregion Rate Limiting
 
@@ -864,8 +906,8 @@ class RemoteConfigClientTest {
                 "Client should handle deeply nested garbage without crashing",
             )
 
-            // Reset timestamp to allow another remote fetch for updateConfigs()
-            storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
+            // Advance past the cooldown before requesting an update
+            now += 15 * 60 * 1_000L
 
             client.updateConfigs()
             testDispatcher.scheduler.advanceUntilIdle()
@@ -1362,7 +1404,7 @@ class RemoteConfigClientTest {
 
     // region DeliveryMode
 
-    @org.junit.jupiter.api.Nested
+    @Nested
     inner class WaitForRemoteDeliveryMode {
         @Test
         fun `WaitForRemote delivers remote when fetch returns within timeout`() =
@@ -2175,7 +2217,7 @@ class RemoteConfigClientTest {
             assertEquals(1, remoteDeliveries.size, "Initial subscribe should deliver one REMOTE")
 
             // A later refresh (distinct fetch) must deliver again to the All subscriber.
-            storage.write(Storage.Constants.REMOTE_CONFIG_TIMESTAMP, "0")
+            now += 15 * 60 * 1_000L
             client.updateConfigs()
             testDispatcher.scheduler.advanceUntilIdle()
             assertEquals(2, remoteDeliveries.size, "All subscriber should receive the refresh update")
@@ -2731,15 +2773,17 @@ class RemoteConfigClientTest {
     private fun createRetryClient(
         httpClient: HttpClient,
         scope: CoroutineScope = testScope,
+        time: Time = Time(),
     ) = RemoteConfigClientImpl(
         apiKey = "test-key",
         serverZone = ServerZone.US,
         coroutineScope = scope,
         networkIODispatcher = testDispatcher,
         storageIODispatcher = testDispatcher,
-        storage = storage,
+        remoteConfigStorage = StorageBackedRemoteConfigStorage(storage),
         httpClient = httpClient,
         logger = silentLogger,
+        time = time,
     )
 
     private fun httpClientReturning(vararg responses: HttpClient.Response): HttpClient {
