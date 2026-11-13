@@ -6,16 +6,19 @@ import com.amplitude.android.streaming.internal.StreamingAnalytics
 import com.amplitude.android.trackPlayer
 import com.amplitude.android.untrackPlayer
 import com.amplitude.core.AmplitudePreview
+import com.amplitude.core.State
 import com.amplitude.core.events.BaseEvent
 import com.amplitude.core.platform.Plugin
 import com.amplitude.core.platform.Timeline
-import io.mockk.every
-import io.mockk.mockk
 import io.mockk.coVerify
 import io.mockk.coVerifyOrder
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.spyk
 import io.mockk.verify
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -29,6 +32,8 @@ import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import com.amplitude.android.Amplitude as AndroidAmplitude
+import com.amplitude.core.Amplitude as CoreAmplitude
+import com.amplitude.core.Configuration as CoreConfiguration
 
 @OptIn(AmplitudePreview::class, ExperimentalCoroutinesApi::class)
 class StreamingAnalyticsPluginTest {
@@ -75,6 +80,31 @@ class StreamingAnalyticsPluginTest {
 
     @Nested
     inner class LifecycleAndWiring {
+        @Test
+        fun `Amplitude flush reaches the streaming uploader`() =
+            runTest {
+                val amplitude =
+                    object : CoreAmplitude(
+                        configuration = CoreConfiguration(apiKey = "test-key"),
+                        store = State(),
+                        amplitudeScope = this,
+                        amplitudeDispatcher = StandardTestDispatcher(testScheduler),
+                    ) {
+                        override fun build(): Deferred<Boolean> = CompletableDeferred(true)
+                    }
+                val streamingAnalytics = mockk<StreamingAnalytics>(relaxed = true)
+                val plugin = spyk(StreamingAnalyticsPlugin())
+                // Exercise the real inherited flush and timeline without Android initialization.
+                every { plugin.setup(any()) } returns Unit
+                plugin.streamingAnalytics = streamingAnalytics
+                amplitude.add(plugin)
+
+                amplitude.flush()
+                advanceUntilIdle()
+
+                verify(exactly = 1) { streamingAnalytics.flush() }
+            }
+
         @Test
         fun `setup initializes streamingAnalytics and teardown clears it`() {
             val amplitude = androidAmplitude()

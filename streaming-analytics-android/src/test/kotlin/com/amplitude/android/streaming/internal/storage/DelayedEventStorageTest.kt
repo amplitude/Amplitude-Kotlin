@@ -138,15 +138,12 @@ class DelayedEventStorageTest {
             }
 
         @Test
-        fun `should return null and log when the file is missing`() =
+        fun `should distinguish a missing file from a read failure`() =
             runTest {
                 val logger = mockk<Logger>(relaxed = true)
                 val storage = storage(logger = logger)
 
                 assertNull(storage.read("missing"))
-                verify {
-                    logger.error(match { it.contains("Failed to read delayed-events queue entry missing") })
-                }
             }
 
         @Test
@@ -174,9 +171,9 @@ class DelayedEventStorageTest {
                 File(parent, "streaming-delayed-events").writeText("not-a-directory")
                 val storage = storage(instanceName, logger)
 
-                storage.write("key-1", request())
+                assertEquals(false, storage.write("key-1", request()))
 
-                assertEquals(emptyList<String>(), storage.keys())
+                assertTrue(runCatching { storage.keys() }.exceptionOrNull() is QueueUnavailableException)
                 verify {
                     logger.error(match { it.contains("Failed to persist delayed-events queue entry key-1") })
                 }
@@ -354,11 +351,24 @@ class DelayedEventStorageTest {
     @Nested
     inner class Delete {
         @Test
+        fun `should report a failed deletion without throwing`() =
+            runTest {
+                val instanceName = uniqueInstance()
+                val storage = storage(instanceName)
+                val blocked = File(queueDir(instanceName), "blocked.json")
+                blocked.mkdirs()
+                File(blocked, "child").writeText("cannot delete a nonempty directory")
+
+                assertEquals(false, storage.delete("blocked"))
+                assertTrue(blocked.exists())
+            }
+
+        @Test
         fun `should remove a stored request`() =
             runTest {
                 val storage = storage()
                 storage.write("key-1", request())
-                storage.delete("key-1")
+                assertEquals(true, storage.delete("key-1"))
 
                 assertEquals(emptyList<String>(), storage.keys())
                 assertNull(storage.read("key-1"))
@@ -368,7 +378,7 @@ class DelayedEventStorageTest {
         fun `should no-op when the key does not exist`() =
             runTest {
                 val storage = storage()
-                storage.delete("missing")
+                assertEquals(true, storage.delete("missing"))
                 assertEquals(emptyList<String>(), storage.keys())
             }
     }
@@ -380,6 +390,7 @@ class DelayedEventStorageTest {
         ioDispatcher: CoroutineDispatcher = StandardTestDispatcher(testScheduler),
     ): DelayedEventStorage =
         DelayedEventStorage(
+            fileExists = { java.nio.file.Files.exists(it.toPath()) },
             context = context,
             configuration =
                 Configuration(
