@@ -2,18 +2,27 @@ package com.amplitude.android.streaming.internal.network
 
 import com.amplitude.android.streaming.internal.StreamingDiGraph
 import com.amplitude.android.streaming.internal.storage.DelayedEventsQueue
+import com.amplitude.android.streaming.internal.storage.DelayedEventsRequestEntity
+import com.amplitude.android.streaming.internal.storage.QueueUnavailableException
 import com.amplitude.android.streaming.internal.storage.delayedEventsQueue
 import com.amplitude.android.streaming.internal.storage.toDto
 import com.amplitude.android.streaming.internal.util.DiGraph.Companion.singleton
 import com.amplitude.common.Logger
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.sync.Mutex
-import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.updateAndGet
+import kotlinx.coroutines.launch
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
 
 internal val StreamingDiGraph.uploadPipeline: UploadPipeline by singleton {
     UploadPipeline(
+        scope = scope,
         queue = delayedEventsQueue,
         endpoint = delayedEventsEndpoint,
         logger = logger,
@@ -26,129 +35,151 @@ private const val RATE_LIMIT_MIN_DELAY_MS = 30_000L
 /** How often a delayed payload is re-sent to keep the server row alive. Matches iOS pulseInterval. */
 internal const val DELAYED_EVENT_PULSE_INTERVAL_MILLIS = 60_000L
 
-/**
- * Heartbeats rewrite the queued request locally, so only one of them has to reach the server
- * per pulse. The pulse stays under the request timeout because the server drops a delayed
- * event once its timeout lapses without another request for the same id.
- */
-private class SentRequest(
-    val atMs: Long,
-    val minIntervalMs: Long,
-)
+/** All mutable delivery state is owned by the drain worker. */
+private class StreamDelivery {
+    var heartbeatAtMs = 0L
+    var flushedGeneration = 0L
+    var acknowledgment: DelayedEventsRequestEntity? = null
+    var cleanupAtMs = 0L
+    var cleanupAttempt = 0
+}
 
 /**
- * Drains the delayed-events queue to the server with backoff and heartbeat throttling.
+ * One scope-owned collector serializes uploads and acknowledgment retries. Triggers coalesce
+ * while an upload runs; one timer wakes the collector at the next delivery deadline.
  */
 internal class UploadPipeline(
+    scope: CoroutineScope,
     private val queue: DelayedEventsQueue,
     private val endpoint: DelayedEventsEndpoint,
     private val logger: Logger,
     private val currentTimeMs: () -> Long = { System.currentTimeMillis() },
 ) {
-    private val mutex = Mutex()
-    private val pending = AtomicBoolean(false)
+    private val workerUploadTriggers = MutableStateFlow(0L)
+    private val flushGeneration = AtomicLong()
+
+    // Null means the worker stopped, so teardown cannot keep waiting for it.
+    private val lastDrainedTrigger = MutableStateFlow<Long?>(0L)
+    private val streams = mutableMapOf<String, StreamDelivery>()
     private var attempt = 0
     private var backoffUntilMs = 0L
-    private val sent = mutableMapOf<String, SentRequest>()
 
-    suspend fun onNewEvent() = upload(ignoreThrottle = false)
-
-    /**
-     * Bypasses heartbeat throttle when this call owns the drain. If another drain already holds
-     * the lock, only [pending] is recorded and the in-flight [ignoreThrottle] is kept. That is
-     * best-effort: the server already has a recent snapshot, and the next unthrottled heartbeat
-     * or [throttleRetryWaitMs] retry will send any newer one.
-     */
-    suspend fun flush() = upload(ignoreThrottle = true)
-
-    private suspend fun upload(ignoreThrottle: Boolean) {
-        pending.set(true)
-        if (!mutex.tryLock()) return
-        var retryWaitMs: Long? = null
-        try {
-            while (true) {
-                pending.set(false)
-                drain(ignoreThrottle)
-                if (pending.get()) continue
-                retryWaitMs = throttleRetryWaitMs()
-                break
+    init {
+        scope.launch {
+            var retry: Job? = null
+            workerUploadTriggers.collect { trigger ->
+                if (trigger == lastDrainedTrigger.value) return@collect
+                retry?.cancel()
+                val deadline = try {
+                    drain()
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    logger.error("Delayed-events upload failed: ${error.message}")
+                    currentTimeMs() + DELAYS_IN_MS.first()
+                }
+                if (deadline == null) lastDrainedTrigger.value = trigger
+                retry = deadline?.let {
+                    launch {
+                        delay((it - currentTimeMs()).coerceAtLeast(1L).milliseconds)
+                        triggerUpload()
+                    }
+                }
             }
-        } finally {
-            mutex.unlock()
-        }
-        val waitMs = retryWaitMs
-        if (pending.get()) {
-            upload(ignoreThrottle = false)
-        } else if (waitMs != null) {
-            if (waitMs > 0) {
-                delay(waitMs.milliseconds)
-            }
-            upload(ignoreThrottle = false)
-        }
+        }.invokeOnCompletion { lastDrainedTrigger.value = null }
     }
 
-    private suspend fun drain(ignoreThrottle: Boolean) {
+    fun onNewEvent() {
+        triggerUpload()
+    }
+
+    /** Requests one fresh upload per queued stream, subject to retry backoff. */
+    fun flush() {
+        flushGeneration.incrementAndGet()
+        triggerUpload()
+    }
+
+    /** Flushes and waits for the persisted queue, including acknowledgment retries, to drain. */
+    suspend fun flushAndDrain() {
+        flushGeneration.incrementAndGet()
+        val trigger = triggerUpload()
+        lastDrainedTrigger.first { it == null || it >= trigger }
+            ?: throw CancellationException("Delayed-events upload worker stopped")
+    }
+
+    private fun triggerUpload(): Long = workerUploadTriggers.updateAndGet { it + 1 }
+
+    private suspend fun drain(): Long? {
         while (true) {
-            waitForBackoff()
-            val skipIds = if (ignoreThrottle) emptySet() else throttledIds()
-            val request = queue.peek(skipIds = skipIds) ?: return
-            when (val result = endpoint.send(request.toDto())) {
-                DelayedEventsResult.Success -> {
-                    queue.removeIfUnchanged(request)
-                    sent[request.id] =
-                        SentRequest(
-                            atMs = currentTimeMs(),
-                            minIntervalMs = DELAYED_EVENT_PULSE_INTERVAL_MILLIS,
-                        )
-                    attempt = 0
-                    backoffUntilMs = 0L
+            retryAcknowledgments()
+            val now = currentTimeMs()
+            streams.entries.removeAll { (_, state) -> state.acknowledgment == null && state.heartbeatAtMs <= now }
+            val generation = flushGeneration.get()
+            var nextAtMs: Long? = streams.values.mapNotNull { state ->
+                state.cleanupAtMs.takeIf { state.acknowledgment != null }
+            }.minOrNull()
+            val request = try {
+                queue.peek { request ->
+                    val state = streams.getOrPut(request.id) { StreamDelivery() }
+                    if (state.acknowledgment != null) {
+                        false
+                    } else {
+                        val urgent = !request.instantEvents.isNullOrEmpty() || state.flushedGeneration < generation
+                        val dueAt = max(backoffUntilMs, if (urgent) now else state.heartbeatAtMs)
+                        nextAtMs = minOf(nextAtMs ?: dueAt, dueAt)
+                        dueAt <= now
+                    }
                 }
-                DelayedEventsResult.RateLimited -> {
-                    scheduleBackoff(minDelayMs = RATE_LIMIT_MIN_DELAY_MS)
-                }
-                is DelayedEventsResult.FailureNoRetry -> {
-                    logger.error(
-                        "Dropping delayed-events request ${request.id}: " +
-                            "unrecoverable HTTP ${result.statusCode} ${result.message}",
-                    )
-                    queue.removeIfUnchanged(request)
-                    attempt = 0
-                    backoffUntilMs = 0L
-                }
-                is DelayedEventsResult.Failure -> {
-                    scheduleBackoff(minDelayMs = 0L)
-                }
+            } catch (_: QueueUnavailableException) {
+                return currentTimeMs() + DELAYS_IN_MS.first()
             }
+            if (request != null) {
+                send(request, generation)
+                continue
+            }
+            return nextAtMs
         }
     }
 
-    private suspend fun throttleRetryWaitMs(): Long? {
-        if (queue.peek(skipIds = emptySet()) == null) return null
-        val now = currentTimeMs()
-        return sent.minOfOrNull { (_, sent) -> sent.atMs + sent.minIntervalMs - now }
-            ?.coerceAtLeast(0L)
-            ?: 0L
+    private suspend fun send(request: DelayedEventsRequestEntity, generation: Long) {
+        when (val result = endpoint.send(request.toDto())) {
+            DelayedEventsResult.Success -> settle(request, generation)
+            DelayedEventsResult.RateLimited -> scheduleBackoff(RATE_LIMIT_MIN_DELAY_MS)
+            is DelayedEventsResult.FailureNoRetry -> {
+                logger.error("Dropping delayed-events request ${request.id}: unrecoverable HTTP ${result.statusCode} ${result.message}")
+                settle(request, generation)
+            }
+            is DelayedEventsResult.Failure -> scheduleBackoff(0L)
+        }
     }
 
-    private fun throttledIds(): Set<String> {
-        val now = currentTimeMs()
-        sent.entries.removeAll { (_, request) -> now - request.atMs >= request.minIntervalMs }
-        return sent.keys.toSet()
+    private suspend fun settle(request: DelayedEventsRequestEntity, generation: Long) {
+        attempt = 0
+        backoffUntilMs = 0L
+        val state = streams.getValue(request.id)
+        state.heartbeatAtMs = currentTimeMs() + DELAYED_EVENT_PULSE_INTERVAL_MILLIS
+        state.flushedGeneration = generation
+        state.acknowledgment = request
+        state.cleanupAttempt = 0
+        state.cleanupAtMs = currentTimeMs()
+        retryAcknowledgments()
     }
 
-    private suspend fun waitForBackoff() {
-        val remainingMs = backoffUntilMs - currentTimeMs()
-        if (remainingMs > 0) {
-            delay(remainingMs.milliseconds)
+    private suspend fun retryAcknowledgments() {
+        for (state in streams.values) {
+            val request = state.acknowledgment ?: continue
+            if (currentTimeMs() < state.cleanupAtMs) continue
+            if (queue.acknowledge(request)) {
+                state.acknowledgment = null
+            } else {
+                state.cleanupAtMs = currentTimeMs() + DELAYS_IN_MS[state.cleanupAttempt.coerceAtMost(DELAYS_IN_MS.lastIndex)]
+                state.cleanupAttempt++
+            }
         }
     }
 
     private fun scheduleBackoff(minDelayMs: Long) {
-        val delayMs =
-            max(
-                minDelayMs,
-                DELAYS_IN_MS[attempt.coerceAtMost(DELAYS_IN_MS.lastIndex)],
-            )
+        val delayMs = max(minDelayMs, DELAYS_IN_MS[attempt.coerceAtMost(DELAYS_IN_MS.lastIndex)])
         attempt++
         backoffUntilMs = currentTimeMs() + delayMs
     }
