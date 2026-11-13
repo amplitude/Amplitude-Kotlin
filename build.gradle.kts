@@ -1,6 +1,7 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application) apply false
@@ -16,10 +17,51 @@ plugins {
 }
 
 apiValidation {
-    ignoredProjects += listOf("kotlin-android-app", "streaming-app")
+    ignoredProjects += listOf("kotlin-android-app", "sdk-verification", "streaming-app")
     // Preview APIs may change in a minor release. Once @AmplitudePreview is
     // removed, the declaration enters the dump and is covered by apiCheck.
     nonPublicMarkers += "com.amplitude.core.AmplitudePreview"
+}
+
+tasks.register<GradleBuild>("unifiedRegressionTest") {
+    group = "verification"
+    description = "Runs Unified contracts against published SDK versions."
+    dir = file("sdk-verification/published")
+    tasks = listOf("testDebugUnitTest")
+    startParameter.projectProperties =
+        listOf("unifiedVersion", "analyticsVersion", "experimentVersion", "sessionReplayVersion", "sdkVerificationCustomEvents")
+            .mapNotNull { name -> providers.gradleProperty(name).orNull?.let { name to it } }
+            .toMap()
+}
+
+tasks.register<GradleBuild>("unifiedReleaseTest") {
+    group = "verification"
+    description = "Runs Unified contracts against the packaged release candidate and released product SDKs."
+    dir = file("sdk-verification/published")
+    tasks = listOf("testDebugUnitTest")
+    startParameter.projectProperties =
+        mapOf("unifiedCandidateRepository" to layout.buildDirectory.dir("unified-release-maven").get().asFile.absolutePath) +
+        listOf("unifiedVersion", "sdkVerificationCustomEvents")
+            .mapNotNull { name -> providers.gradleProperty(name).orNull?.let { name to it } }
+            .toMap()
+}
+
+tasks.withType<GradleBuild>().matching { it.name in setOf("unifiedRegressionTest", "unifiedReleaseTest") }.configureEach {
+    val nestedProperties = Properties().apply {
+        dir.resolve("local.properties").takeIf { it.isFile }?.inputStream()?.use { load(it) }
+    }
+    if (nestedProperties.getProperty("sdk.dir").isNullOrBlank() &&
+        providers.environmentVariable("ANDROID_HOME").orNull.isNullOrBlank() &&
+        providers.environmentVariable("ANDROID_SDK_ROOT").orNull.isNullOrBlank() &&
+        providers.systemProperty("android.home").orNull.isNullOrBlank()
+    ) {
+        val localProperties = Properties().apply {
+            rootDir.resolve("local.properties").takeIf { it.isFile }?.inputStream()?.use { load(it) }
+        }
+        localProperties.getProperty("sdk.dir")?.takeIf { it.isNotBlank() }?.let { sdkDir ->
+            startParameter.systemPropertiesArgs = startParameter.systemPropertiesArgs + ("android.home" to file(sdkDir).absolutePath)
+        }
+    }
 }
 
 allprojects {
