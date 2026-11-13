@@ -6,6 +6,10 @@ import com.amplitude.common.Logger
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.BeforeEach
@@ -15,6 +19,7 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 import org.junit.jupiter.params.provider.ValueSource
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class StoragePipelineTest {
     private val queue = mockk<DelayedEventsQueue>(relaxed = true)
     private val logger = mockk<Logger>(relaxed = true)
@@ -28,6 +33,69 @@ class StoragePipelineTest {
 
     @Nested
     inner class OnDelayedEvents {
+        @ParameterizedTest
+        @ValueSource(strings = ["read", "keys", "write"])
+        fun `should retain a clean stop across transient persistence failure`(failure: String) = runTest {
+            val storage = mockk<DelayedEventStorage>()
+            val realQueue = DelayedEventsQueue(storage, logger, "storage-retry-$failure")
+            val realPipeline = StoragePipeline(realQueue, logger)
+            val fallback = delayedEvent(DelayedEvent.Kind.DELAYED).also { it.insertId = "stop" }.toEntity()
+            val start = delayedEvent(DelayedEvent.Kind.INSTANT).also { it.insertId = "start" }.toEntity()
+            val previous = DelayedEventsRequestEntity("stream-1", DELAYED_EVENT_TIMEOUT_MILLIS, listOf(fallback), listOf(start))
+            var attempts = 0
+            var written: DelayedEventsRequestEntity? = null
+            coEvery { storage.findKey(any()) } answers {
+                if (failure == "keys" && attempts == 0) null else "existing"
+            }
+            coEvery { storage.keys() } answers {
+                attempts++
+                throw QueueUnavailableException()
+            }
+            coEvery { storage.read("existing") } answers {
+                if (failure == "read" && attempts++ == 0) throw QueueUnavailableException()
+                previous
+            }
+            coEvery { storage.write(any(), any()) } answers {
+                if (failure == "write" && attempts++ == 0) throw QueueUnavailableException()
+                written = secondArg()
+                true
+            }
+            val stop = delayedEvent(DelayedEvent.Kind.INSTANT).also { it.insertId = "stop" }
+            val saving = launch { realPipeline.onDelayedEvents(listOf(stop)) }
+            runCurrent()
+            assertEquals(false, saving.isCompleted)
+            assertEquals(null, written)
+            advanceTimeBy(2_000L)
+            runCurrent()
+            assertEquals(true, saving.isCompleted)
+            assertEquals(emptyList<DelayedEventEntity>(), written?.events)
+            assertEquals(listOf(start, stop.toEntity()), written?.instantEvents)
+            assertEquals(0L, written?.timeoutMillis)
+        }
+
+        @Test
+        fun `should keep an older heartbeat retry ahead of the final stop`() = runTest {
+            val persisted = mutableListOf<DelayedEventsRequestEntity>()
+            var attempts = 0
+            coEvery { queue.enqueue(any()) } answers {
+                if (++attempts == 1) throw QueueUnavailableException()
+                persisted.add(firstArg())
+                Unit
+            }
+            val heartbeat = launch { pipeline.onDelayedEvents(listOf(delayedEvent(DelayedEvent.Kind.DELAYED))) }
+            runCurrent()
+            val stop = launch { pipeline.onDelayedEvents(listOf(delayedEvent(DelayedEvent.Kind.INSTANT))) }
+            runCurrent()
+            assertEquals(false, heartbeat.isCompleted)
+            assertEquals(false, stop.isCompleted)
+            assertEquals(1, attempts)
+            advanceTimeBy(2_000L)
+            runCurrent()
+            assertEquals(listOf(DELAYED_EVENT_TIMEOUT_MILLIS, 0L), persisted.map { it.timeoutMillis })
+            assertEquals(true, heartbeat.isCompleted)
+            assertEquals(true, stop.isCompleted)
+        }
+
         @Test
         fun `uses a one hour server timeout`() {
             assertEquals(3_600_000L, DELAYED_EVENT_TIMEOUT_MILLIS)
