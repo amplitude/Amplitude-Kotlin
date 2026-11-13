@@ -60,11 +60,13 @@ public class AndroidLifecyclePlugin internal constructor(
     private val fragmentTrackingActivities: MutableSet<Int> = mutableSetOf()
     private val processedDeepLinkIntents: MutableMap<Int, Int> = mutableMapOf()
 
+    private var appInForeground = false
+    private var persistedAppVersion = false
     private var appInBackground = false
     private lateinit var pluginScope: CoroutineScope
     private var trackedAppLifecycleEvent = false
 
-    // Snapshot read synchronously at setup so the state observer doesn't race the async storage write.
+    // Keep the previous foreground's version until this process enters the foreground.
     @Volatile private var previousAppVersion: String? = null
 
     @Volatile private var previousAppBuild: String? = null
@@ -89,8 +91,8 @@ public class AndroidLifecyclePlugin internal constructor(
             }
 
         defaultEventUtils = DefaultEventUtils(androidAmplitude)
-        // Run regardless of appLifecycles so a later flip doesn't fire a spurious Installed.
-        snapshotAndPersistAppVersionInfo()
+        previousAppVersion = amplitude.storage.read(Storage.Constants.APP_VERSION)
+        previousAppBuild = amplitude.storage.read(Storage.Constants.APP_BUILD)
 
         // Observe autocapture state changes (including the initial value) to
         // enable features at runtime via remote config. Collected on main thread
@@ -159,6 +161,10 @@ public class AndroidLifecyclePlugin internal constructor(
     private fun onAppForeground(timestamp: Long) {
         if (!androidAmplitude.isActive) return
         androidAmplitude.onEnterForeground(timestamp)
+        appInForeground = true
+        trackAppLifecycleEventIfNeeded()
+        // Persist even when autocapture is disabled, but never consume an update in a background-only process.
+        persistAppVersionInfoIfNeeded()
         if (autocaptureState.appLifecycles) {
             defaultEventUtils.trackAppOpenedEvent(
                 isFromBackground = appInBackground,
@@ -169,6 +175,7 @@ public class AndroidLifecyclePlugin internal constructor(
 
     private fun onAppBackground(timestamp: Long) {
         if (!androidAmplitude.isActive) return
+        appInForeground = false
         // Enqueue Backgrounded before exiting so it belongs to the departing session.
         if (autocaptureState.appLifecycles) {
             defaultEventUtils.trackAppBackgroundedEvent()
@@ -267,13 +274,12 @@ public class AndroidLifecyclePlugin internal constructor(
         )
     }
 
-    private fun snapshotAndPersistAppVersionInfo() {
+    private fun persistAppVersionInfoIfNeeded() {
+        if (persistedAppVersion) return
+        persistedAppVersion = true
         val currentVersion = packageInfo.versionName ?: "Unknown"
         val currentBuild = packageInfo.getVersionCode().toString()
         val storage = amplitude.storage
-
-        previousAppVersion = storage.read(Storage.Constants.APP_VERSION)
-        previousAppBuild = storage.read(Storage.Constants.APP_BUILD)
 
         amplitude.amplitudeScope.launch(amplitude.storageIODispatcher) {
             amplitude.isBuilt.await()
@@ -287,7 +293,7 @@ public class AndroidLifecyclePlugin internal constructor(
     }
 
     private fun trackAppLifecycleEventIfNeeded() {
-        if (trackedAppLifecycleEvent || !autocaptureState.appLifecycles) return
+        if (!appInForeground || trackedAppLifecycleEvent || !autocaptureState.appLifecycles) return
         trackedAppLifecycleEvent = true
         defaultEventUtils.trackAppUpdatedInstalledEvent(
             currentVersion = packageInfo.versionName ?: "Unknown",

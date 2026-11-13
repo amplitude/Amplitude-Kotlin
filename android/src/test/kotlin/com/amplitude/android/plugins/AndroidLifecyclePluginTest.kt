@@ -75,6 +75,7 @@ class AndroidLifecyclePluginTest {
 
     private lateinit var observer: ActivityLifecycleObserver
     private lateinit var plugin: AndroidLifecyclePlugin
+    private val processTransitions = MutableSharedFlow<ProcessLifecycleObserver.Transition>()
 
     @Before
     fun setup() {
@@ -92,7 +93,7 @@ class AndroidLifecyclePluginTest {
         mockAutocapture(emptySet())
 
         val processObserver = mockk<ProcessLifecycleObserver>(relaxed = true)
-        every { processObserver.events } returns MutableSharedFlow()
+        every { processObserver.events } returns processTransitions
         every { mockedAmplitude.isActive } returns true
         observer = ActivityLifecycleObserver()
         plugin = AndroidLifecyclePlugin(observer, processObserver)
@@ -238,12 +239,74 @@ class AndroidLifecyclePluginTest {
         }
 
     @Test
+    fun `should defer installed and updated events and version writes until foreground`() =
+        runTest {
+            every { mockedAmplitude.amplitudeScope } returns this
+            mockAutocapture(setOf(AutocaptureOption.APP_LIFECYCLES))
+            for (previousBuild in listOf(null, "55")) {
+                if (previousBuild != null) {
+                    spiedStorage.write(Storage.Constants.APP_BUILD, previousBuild)
+                    spiedStorage.write(Storage.Constants.APP_VERSION, "5.0.0")
+                }
+                plugin = createPlugin()
+                plugin.setup(mockedAmplitude)
+                advanceUntilIdle()
+                val eventType = if (previousBuild == null) EventTypes.APPLICATION_INSTALLED else EventTypes.APPLICATION_UPDATED
+                verify(exactly = 0) { mockedAmplitude.track(eventType, any(), any()) }
+                assertEquals(previousBuild, spiedStorage.read(Storage.Constants.APP_BUILD))
+
+                // A background-only process must not consume the pending install/update.
+                close()
+                plugin = createPlugin()
+                plugin.setup(mockedAmplitude)
+                advanceUntilIdle()
+                processTransitions.emit(ProcessLifecycleObserver.Transition(1_000, true))
+                advanceUntilIdle()
+                verify(exactly = 1) { mockedAmplitude.track(eventType, any(), any()) }
+                assertEquals("666", spiedStorage.read(Storage.Constants.APP_BUILD))
+
+                processTransitions.emit(ProcessLifecycleObserver.Transition(1_100, false))
+                processTransitions.emit(ProcessLifecycleObserver.Transition(2_000, true))
+                advanceUntilIdle()
+                verify(exactly = 1) { mockedAmplitude.track(eventType, any(), any()) }
+                close()
+            }
+        }
+
+    @OptIn(GuardedAmplitudeFeature::class)
+    @Test
+    fun `should defer lifecycle autocapture enabled in background until next foreground`() =
+        runTest {
+            every { mockedAmplitude.amplitudeScope } returns this
+            spiedStorage.write(Storage.Constants.APP_BUILD, "55")
+            val states = MutableStateFlow(AutocaptureState.from(emptySet(), InteractionsOptions()))
+            val manager = mockk<AutocaptureManager>()
+            every { manager.state } returns states
+            every { mockedAmplitude.autocaptureManager } returns manager
+            plugin.setup(mockedAmplitude)
+            advanceUntilIdle()
+            processTransitions.emit(ProcessLifecycleObserver.Transition(1_000, true))
+            processTransitions.emit(ProcessLifecycleObserver.Transition(1_100, false))
+            advanceUntilIdle()
+
+            states.value = states.value.copy(appLifecycles = true)
+            advanceUntilIdle()
+            verify(exactly = 0) { mockedAmplitude.track(EventTypes.APPLICATION_UPDATED, any(), any()) }
+            processTransitions.emit(ProcessLifecycleObserver.Transition(2_000, true))
+            advanceUntilIdle()
+            verify(exactly = 1) { mockedAmplitude.track(EventTypes.APPLICATION_UPDATED, any(), any()) }
+            close()
+        }
+
+    @Test
     fun `test application installed event is tracked`() =
         runTest {
             mockAutocapture(setOf(AutocaptureOption.APP_LIFECYCLES))
             every { mockedAmplitude.amplitudeScope } returns this
 
             plugin.setup(mockedAmplitude)
+            advanceUntilIdle()
+            processTransitions.emit(ProcessLifecycleObserver.Transition(1_000, true))
 
             advanceUntilIdle()
 
@@ -267,6 +330,8 @@ class AndroidLifecyclePluginTest {
             every { mockedAmplitude.amplitudeScope } returns this
 
             plugin.setup(mockedAmplitude)
+            advanceUntilIdle()
+            processTransitions.emit(ProcessLifecycleObserver.Transition(1_000, true))
 
             advanceUntilIdle()
 
@@ -292,6 +357,8 @@ class AndroidLifecyclePluginTest {
 
             plugin.setup(mockedAmplitude)
             advanceUntilIdle()
+            processTransitions.emit(ProcessLifecycleObserver.Transition(1_000, true))
+            advanceUntilIdle()
 
             verify(exactly = 0) { mockedAmplitude.track(EventTypes.APPLICATION_INSTALLED, any(), any()) }
             coVerify(exactly = 1) { spiedStorage.write(eq(Storage.Constants.APP_BUILD), any()) }
@@ -300,8 +367,10 @@ class AndroidLifecyclePluginTest {
 
             mockAutocapture(setOf(AutocaptureOption.APP_LIFECYCLES))
             observer = ActivityLifecycleObserver()
-            plugin = AndroidLifecyclePlugin(observer)
+            plugin = createPlugin()
             plugin.setup(mockedAmplitude)
+            advanceUntilIdle()
+            processTransitions.emit(ProcessLifecycleObserver.Transition(1_000, true))
             advanceUntilIdle()
 
             verify(exactly = 0) { mockedAmplitude.track(EventTypes.APPLICATION_INSTALLED, any(), any()) }
@@ -317,6 +386,8 @@ class AndroidLifecyclePluginTest {
             every { mockedAmplitude.amplitudeScope } returns this
             plugin.setup(mockedAmplitude)
             advanceUntilIdle()
+            processTransitions.emit(ProcessLifecycleObserver.Transition(1_000, true))
+            advanceUntilIdle()
             close()
 
             val updatedPackageInfo =
@@ -328,8 +399,10 @@ class AndroidLifecyclePluginTest {
 
             mockAutocapture(setOf(AutocaptureOption.APP_LIFECYCLES))
             observer = ActivityLifecycleObserver()
-            plugin = AndroidLifecyclePlugin(observer)
+            plugin = createPlugin()
             plugin.setup(mockedAmplitude)
+            advanceUntilIdle()
+            processTransitions.emit(ProcessLifecycleObserver.Transition(1_000, true))
             advanceUntilIdle()
 
             verify(exactly = 0) { mockedAmplitude.track(EventTypes.APPLICATION_INSTALLED, any(), any()) }
@@ -349,6 +422,8 @@ class AndroidLifecyclePluginTest {
             spiedStorage.write(Storage.Constants.APP_VERSION, "5.0.0")
 
             plugin.setup(mockedAmplitude)
+            advanceUntilIdle()
+            processTransitions.emit(ProcessLifecycleObserver.Transition(1_000, true))
 
             advanceUntilIdle()
 
@@ -376,6 +451,8 @@ class AndroidLifecyclePluginTest {
             spiedStorage.write(Storage.Constants.APP_VERSION, "5.0.0")
 
             plugin.setup(mockedAmplitude)
+            advanceUntilIdle()
+            processTransitions.emit(ProcessLifecycleObserver.Transition(1_000, true))
 
             advanceUntilIdle()
 
@@ -903,6 +980,12 @@ class AndroidLifecyclePluginTest {
 
             close()
         }
+
+    private fun createPlugin(): AndroidLifecyclePlugin {
+        val processObserver = mockk<ProcessLifecycleObserver>(relaxed = true)
+        every { processObserver.events } returns processTransitions
+        return AndroidLifecyclePlugin(observer, processObserver)
+    }
 
     private fun mockAutocapture(options: Set<AutocaptureOption>) {
         every { mockedConfig.autocapture } returns options

@@ -26,6 +26,7 @@ import com.amplitude.android.utilities.getVersionCode
 import com.amplitude.core.State
 import com.amplitude.core.Storage
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.events.EventOptions
 import com.amplitude.core.platform.Plugin
 import com.amplitude.core.platform.plugins.AmplitudeDestination
 import com.amplitude.core.utilities.InMemoryStorage
@@ -218,6 +219,33 @@ class ProcessLifecycleTest {
             shadowOf(Looper.getMainLooper()).idle()
             ProcessLifecycleOwner::class.java.getDeclaredField("registry").apply { isAccessible = true }
                 .set(ProcessLifecycleOwner.get(), previousProcessLifecycle)
+        }
+
+    @Test
+    fun `should start the update session on foreground after background work`() =
+        runTest(mainDispatcher) {
+            val amplitude = create()
+            val events = record(amplitude)
+            amplitude.storage.write(Storage.Constants.APP_BUILD, "previous-build")
+            amplitude.storage.write(Storage.Constants.APP_VERSION, "previous-version")
+            observe(amplitude)
+            amplitude.track("background_work", options = EventOptions().apply { sessionId = -1 })
+            advanceUntilIdle()
+
+            assertEquals(listOf("background_work"), events.events.map { it.eventType })
+            assertEquals(-1L, amplitude.sessionId)
+            assertEquals(-1L, events.events.single().sessionId)
+            assertEquals("previous-build", amplitude.storage.read(Storage.Constants.APP_BUILD))
+
+            start(2_000)
+            advanceUntilIdle()
+            assertEquals(
+                listOf("background_work", "session_start", EventTypes.APPLICATION_UPDATED, EventTypes.APPLICATION_OPENED),
+                events.events.map { it.eventType },
+            )
+            assertEquals(2_000L, amplitude.sessionId)
+            assertTrue(events.events.drop(1).all { it.sessionId == 2_000L })
+            assertEquals("previous-build", events.events[2].eventProperties?.get(EventProperties.PREVIOUS_BUILD))
         }
 
     @Test
