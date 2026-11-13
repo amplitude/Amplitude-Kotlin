@@ -6,7 +6,6 @@ import com.amplitude.android.streaming.internal.network.uploadPipeline
 import com.amplitude.android.streaming.internal.player.playerBindingFactory
 import com.amplitude.android.streaming.internal.storage.storagePipeline
 import com.amplitude.android.streaming.internal.util.runCatchingCancellable
-import com.amplitude.core.AmplitudePreview
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
@@ -78,7 +77,7 @@ internal class StreamingAnalytics(
                     }.forEach { events ->
                         graph.storagePipeline.onDelayedEvents(events)
                     }
-                    graph.uploadPipeline.flush()
+                    graph.uploadPipeline.flushAndDrain()
                 }
             }.onFailure {
                 graph.logger.error("teardown error: ${it.localizedMessage}")

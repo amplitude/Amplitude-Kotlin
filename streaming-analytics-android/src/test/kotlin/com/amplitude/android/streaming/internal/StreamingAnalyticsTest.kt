@@ -1,16 +1,16 @@
 package com.amplitude.android.streaming.internal
 
 import android.content.Context
-import com.amplitude.android.Amplitude as AndroidAmplitude
 import com.amplitude.android.Configuration
-import com.amplitude.android.streaming.internal.network.delayedEventsEndpoint
-import com.amplitude.android.streaming.internal.storage.DelayedEventStorage
 import com.amplitude.android.streaming.internal.storage.DelayedEventsRequestEntity
 import com.amplitude.android.streaming.internal.storage.delayedEventStorage
+import com.amplitude.android.streaming.internal.storage.queueFileExists
 import com.amplitude.android.streaming.internal.storage.toEntity
 import com.amplitude.core.AmplitudePreview
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
@@ -27,6 +27,7 @@ import java.io.File
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlin.io.path.createTempDirectory
+import com.amplitude.android.Amplitude as AndroidAmplitude
 
 @OptIn(AmplitudePreview::class, ExperimentalCoroutinesApi::class)
 class StreamingAnalyticsTest {
@@ -37,6 +38,8 @@ class StreamingAnalyticsTest {
 
     @BeforeEach
     fun setUp() {
+        mockkStatic(::queueFileExists)
+        every { queueFileExists(any()) } answers { java.nio.file.Files.exists(firstArg<File>().toPath()) }
         server = MockWebServer()
         server.start()
         amplitudeDir = createTempDirectory("amplitude").toFile()
@@ -53,6 +56,7 @@ class StreamingAnalyticsTest {
         streamingAnalytics?.teardown()
         server.shutdown()
         amplitudeDir.deleteRecursively()
+        unmockkStatic(::queueFileExists)
     }
 
     @Test
@@ -109,6 +113,47 @@ class StreamingAnalyticsTest {
     }
 
     @Test
+    fun `should upload a clean stop immediately after the initial fallback`() {
+        val configuration = Configuration(apiKey = "test-key", context = context, serverUrl = server.url("/").toString())
+        val amplitude = mockk<AndroidAmplitude>(relaxed = true)
+        every { amplitude.configuration } returns configuration
+        every { amplitude.logger } returns mockk(relaxed = true)
+        every { amplitude.amplitudeScope } returns CoroutineScope(SupervisorJob())
+        val streaming = StreamingAnalytics(amplitude).also { streamingAnalytics = it }
+
+        fun event(kind: DelayedEvent.Kind, start: Boolean = false) =
+            DelayedEvent(
+                eventType = if (start) StreamEvents.STREAM_STARTED else StreamEvents.STREAM_STOPPED,
+                kind = kind,
+                timestamp = if (kind == DelayedEvent.Kind.INSTANT && !start) 10_000L else 0L,
+                eventProperties =
+                    mutableMapOf(
+                        "[Streaming] Stream Session ID" to "stream-1",
+                        "[Streaming] Play Time Sec" to if (kind == DelayedEvent.Kind.INSTANT && !start) 10.0 else 0.0,
+                        "[Streaming] Stop Reason" to if (kind == DelayedEvent.Kind.INSTANT && !start) "paused" else "timeout",
+                    ),
+            ).also { it.insertId = if (start) "start-1" else "stop-1" }
+        val batch = BatchInfo(UUID.randomUUID(), 2)
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+        streaming.onDelayedEvent(DelayedEvent(event(DelayedEvent.Kind.INSTANT, start = true), DelayedEvent.Kind.INSTANT, batch))
+        streaming.onDelayedEvent(DelayedEvent(event(DelayedEvent.Kind.DELAYED), DelayedEvent.Kind.DELAYED, batch))
+        assertNotNull(server.takeRequest(5, TimeUnit.SECONDS), "Expected the initial fallback upload")
+
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+        streaming.onDelayedEvent(event(DelayedEvent.Kind.INSTANT))
+
+        val recorded = server.takeRequest(5, TimeUnit.SECONDS)
+        assertNotNull(recorded, "Clean stops must upload before the 60-second heartbeat pulse")
+        val request = JSONObject(recorded!!.body.readUtf8())
+        assertEquals(0L, request.getLong("timeout"))
+        assertEquals(0, request.getJSONArray("events").length())
+        val stop = request.getJSONArray("instant_events").getJSONObject(0)
+        assertEquals("stop-1", stop.getString("insert_id"))
+        assertEquals("paused", stop.getJSONObject("event_properties").getString("[Streaming] Stop Reason"))
+        assertEquals(10.0, stop.getJSONObject("event_properties").getDouble("[Streaming] Play Time Sec"))
+    }
+
+    @Test
     fun `should complete batches inside the single event handler`() =
         runTest {
             val configuration = Configuration(apiKey = "test-key", context = context, serverUrl = server.url("/").toString())
@@ -117,6 +162,7 @@ class StreamingAnalyticsTest {
             every { amplitude.logger } returns mockk(relaxed = true)
             every { amplitude.amplitudeScope } returns CoroutineScope(SupervisorJob())
             val streaming = StreamingAnalytics(amplitude).also { streamingAnalytics = it }
+
             fun event(start: Boolean) =
                 DelayedEvent(
                     eventType = if (start) StreamEvents.STREAM_STARTED else StreamEvents.STREAM_STOPPED,
@@ -141,5 +187,4 @@ class StreamingAnalyticsTest {
             assertEquals("stop-1", request.getJSONArray("events").getJSONObject(0).getString("insert_id"))
             assertEquals(3_600_000L, request.getLong("timeout"))
         }
-
 }

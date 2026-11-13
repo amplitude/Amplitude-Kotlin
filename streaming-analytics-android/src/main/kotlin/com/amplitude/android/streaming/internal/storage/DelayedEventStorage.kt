@@ -1,6 +1,9 @@
 package com.amplitude.android.streaming.internal.storage
 
 import android.content.Context
+import android.system.ErrnoException
+import android.system.Os
+import android.system.OsConstants
 import com.amplitude.android.Configuration
 import com.amplitude.android.streaming.internal.StreamingDiGraph
 import com.amplitude.android.streaming.internal.util.DiGraph.Companion.weak
@@ -11,9 +14,11 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import java.io.File
+import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.util.UUID
 import kotlin.coroutines.cancellation.CancellationException
@@ -43,6 +48,7 @@ internal class DelayedEventStorage(
     private val logger: Logger,
     private val ioDispatcher: CoroutineDispatcher,
     private val maxStorageBytes: Long,
+    private val fileExists: (File) -> Boolean = ::queueFileExists,
 ) {
     private val mutex = Mutex()
     private val directory =
@@ -58,7 +64,7 @@ internal class DelayedEventStorage(
     suspend fun write(
         key: String,
         request: DelayedEventsRequestEntity,
-    ) {
+    ): Boolean =
         runCatchingStorage("Failed to persist delayed-events queue entry $key") {
             val directory = directory()
             // mkdirs() also returns false when a concurrent write already created the directory.
@@ -81,26 +87,41 @@ internal class DelayedEventStorage(
                         "Dropping delayed-events queue entry ${destination.nameWithoutExtension}: " +
                             "payload is $incomingBytes bytes, bound is $maxStorageBytes",
                     )
-                    return@runCatchingStorage
+                    return@runCatchingStorage false
                 }
                 // Commit before eviction so a failed rename cannot drop existing queue files.
                 if (!temporary.renameTo(destination)) {
                     error("Failed to commit delayed-events queue entry")
                 }
                 makeRoom(directory, destination)
+                true
             } finally {
                 temporary.delete()
             }
-        }
-    }
+        } ?: false
 
+    /** Null means absent or corrupt; temporary I/O failures throw [QueueUnavailableException]. */
     @OptIn(ExperimentalSerializationApi::class)
-    suspend fun read(key: String): DelayedEventsRequestEntity? =
-        runCatchingStorage("Failed to read delayed-events queue entry $key") {
-            File(directory(), "$key.json").inputStream().use { stream ->
-                delayedEventsStorageJson.decodeFromStream<DelayedEventsRequestEntity>(stream)
+    suspend fun read(key: String): DelayedEventsRequestEntity? = withContext(ioDispatcher) {
+        mutex.withLock {
+            val file = File(directory(), "$key.json")
+            try {
+                file.inputStream().use { stream ->
+                    delayedEventsStorageJson.decodeFromStream<DelayedEventsRequestEntity>(stream)
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: FileNotFoundException) {
+                if (runCatching { !fileExists(file) }.getOrDefault(false)) null else throw QueueUnavailableException()
+            } catch (error: SerializationException) {
+                logger.error("Failed to read delayed-events queue entry $key (corrupt): ${error.message}")
+                null
+            } catch (error: Exception) {
+                logger.error("Failed to read delayed-events queue entry $key: ${error.message}")
+                throw QueueUnavailableException()
             }
         }
+    }
 
     suspend fun findKey(idKey: String): String? =
         runCatchingStorage("Failed to look up delayed-events queue entry $idKey") {
@@ -123,24 +144,24 @@ internal class DelayedEventStorage(
     suspend fun keys(): List<String> =
         runCatchingStorage("Failed to list delayed-events queue entries") {
             jsonFiles().map { it.nameWithoutExtension }
-        } ?: emptyList()
+        } ?: throw QueueUnavailableException()
 
-    suspend fun delete(key: String) {
+    suspend fun delete(key: String): Boolean =
         runCatchingStorage("Failed to remove delayed-events queue entry $key") {
             val file = File(directory(), "$key.json")
-            if (file.exists() && !file.delete()) {
+            if (!file.delete() && fileExists(file)) {
                 error("Failed to remove delayed-events queue entry ${file.name}")
             }
-        }
-    }
+            true
+        } ?: false
 
-    private suspend fun jsonFiles(): List<File> =
-        directory()
-            .listFiles { candidate ->
-                candidate.extension == "json"
-            }
-            .orEmpty()
-            .toList()
+    private suspend fun jsonFiles(): List<File> {
+        val directory = directory()
+        val files = directory.listFiles { candidate -> candidate.extension == "json" }
+        if (files != null) return files.toList()
+        if (!fileExists(directory)) return emptyList()
+        error("Failed to list delayed-events queue directory")
+    }
 
     private fun removeStaleTemporaryFiles(directory: File) {
         directory
@@ -213,4 +234,14 @@ internal val delayedEventsStorageJson =
         encodeDefaults = false
         explicitNulls = false
         ignoreUnknownKeys = true
+    }
+
+/** File.exists() hides permission errors as false; stat reports confirmed absence on API 21+. */
+internal fun queueFileExists(file: File): Boolean =
+    try {
+        Os.stat(file.path)
+        true
+    } catch (error: ErrnoException) {
+        if (error.errno != OsConstants.ENOENT) throw error
+        false
     }

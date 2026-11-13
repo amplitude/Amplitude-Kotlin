@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import java.util.concurrent.atomic.AtomicReference
 
 class DelayedEventsQueueTest {
@@ -42,7 +44,7 @@ class DelayedEventsQueueTest {
                         timeoutMillis = 5_000L,
                         events = listOf(delayed, adStop),
                     )
-                coEvery { storage.write(any(), any()) } returns Unit
+                coEvery { storage.write(any(), any()) } returns true
 
                 queue.enqueue(
                     DelayedEventsRequestEntity(
@@ -78,7 +80,7 @@ class DelayedEventsQueueTest {
                         events = listOf(previousDelayed),
                         instantEvents = listOf(eventEntity("started")),
                     )
-                coEvery { storage.write(any(), any()) } returns Unit
+                coEvery { storage.write(any(), any()) } returns true
 
                 queue.enqueue(
                     DelayedEventsRequestEntity(
@@ -114,7 +116,7 @@ class DelayedEventsQueueTest {
                         events = listOf(contentStop),
                         instantEvents = listOf(started),
                     )
-                coEvery { storage.write(any(), any()) } returns Unit
+                coEvery { storage.write(any(), any()) } returns true
 
                 queue.enqueue(
                     DelayedEventsRequestEntity(
@@ -148,7 +150,7 @@ class DelayedEventsQueueTest {
                         timeoutMillis = 5_000L,
                         events = listOf(firstHeartbeat),
                     )
-                coEvery { storage.write(any(), any()) } returns Unit
+                coEvery { storage.write(any(), any()) } returns true
 
                 queue.enqueue(
                     DelayedEventsRequestEntity(
@@ -181,7 +183,7 @@ class DelayedEventsQueueTest {
                         timeoutMillis = 5_000L,
                         events = listOf(timeoutStop),
                     )
-                coEvery { storage.write(any(), any()) } returns Unit
+                coEvery { storage.write(any(), any()) } returns true
 
                 queue.enqueue(
                     DelayedEventsRequestEntity(
@@ -216,7 +218,7 @@ class DelayedEventsQueueTest {
                         events = emptyList(),
                         instantEvents = listOf(stopped),
                     )
-                coEvery { storage.write(any(), any()) } returns Unit
+                coEvery { storage.write(any(), any()) } returns true
 
                 queue.enqueue(
                     DelayedEventsRequestEntity(
@@ -251,7 +253,7 @@ class DelayedEventsQueueTest {
                         events = emptyList(),
                         instantEvents = listOf(stopped),
                     )
-                coEvery { storage.write(any(), any()) } returns Unit
+                coEvery { storage.write(any(), any()) } returns true
 
                 queue.enqueue(
                     DelayedEventsRequestEntity(
@@ -285,7 +287,7 @@ class DelayedEventsQueueTest {
                         timeoutMillis = 8_000L,
                         events = listOf(nextHeartbeat),
                     )
-                coEvery { storage.write(any(), any()) } returns Unit
+                coEvery { storage.write(any(), any()) } returns true
 
                 queue.enqueue(
                     DelayedEventsRequestEntity(
@@ -319,7 +321,7 @@ class DelayedEventsQueueTest {
                         timeoutMillis = 8_000L,
                         events = listOf(newer),
                     )
-                coEvery { storage.write(any(), any()) } returns Unit
+                coEvery { storage.write(any(), any()) } returns true
 
                 queue.enqueue(
                     DelayedEventsRequestEntity(
@@ -361,6 +363,7 @@ class DelayedEventsQueueTest {
                 }
                 coEvery { storage.write("existing-key", any()) } coAnswers {
                     stored.set(arg<DelayedEventsRequestEntity>(1))
+                    true
                 }
 
                 coroutineScope {
@@ -414,6 +417,7 @@ class DelayedEventsQueueTest {
                 }
                 coEvery { storage.write("existing-key", any()) } coAnswers {
                     stored.set(arg<DelayedEventsRequestEntity>(1))
+                    true
                 }
                 val first =
                     DelayedEventsQueue(storage = storage, logger = logger, storageKey = "shared")
@@ -456,7 +460,7 @@ class DelayedEventsQueueTest {
                 val nextDelayed = eventEntity("stopped-new")
                 coEvery { storage.findKey(any()) } returns "existing-key"
                 coEvery { storage.read("existing-key") } returns null
-                coEvery { storage.write(any(), any()) } returns Unit
+                coEvery { storage.write(any(), any()) } returns true
 
                 queue.enqueue(
                     DelayedEventsRequestEntity(
@@ -487,7 +491,7 @@ class DelayedEventsQueueTest {
                     listOf("0000000000000000002-bbb", "0000000000000000001-aaa")
                 coEvery { storage.read("0000000000000000001-aaa") } returns request("stream-1")
 
-                val peeked = queue.peek(skipIds = emptySet())
+                val peeked = queue.peek()
 
                 assertEquals("0000000000000000001-aaa", peeked?.queueKey)
                 assertEquals("stream-1", peeked?.id)
@@ -501,7 +505,7 @@ class DelayedEventsQueueTest {
                 coEvery { storage.read("0000000000000000001-aaa") } returns request("stream-1")
                 coEvery { storage.read("0000000000000000002-bbb") } returns request("stream-2")
 
-                val peeked = queue.peek(skipIds = setOf("stream-1"))
+                val peeked = queue.peek { it.id != "stream-1" }
 
                 assertEquals("stream-2", peeked?.id)
             }
@@ -512,7 +516,7 @@ class DelayedEventsQueueTest {
                 coEvery { storage.keys() } returns listOf("0000000000000000001-aaa")
                 coEvery { storage.read("0000000000000000001-aaa") } returns request("stream-1")
 
-                assertNull(queue.peek(skipIds = setOf("stream-1")))
+                assertNull(queue.peek { it.id != "stream-1" })
             }
 
         @Test
@@ -522,9 +526,9 @@ class DelayedEventsQueueTest {
                     listOf("0000000000000000001-aaa", "0000000000000000002-bbb")
                 coEvery { storage.read("0000000000000000001-aaa") } returns null
                 coEvery { storage.read("0000000000000000002-bbb") } returns request("stream-2")
-                coEvery { storage.delete(any()) } returns Unit
+                coEvery { storage.delete(any()) } returns true
 
-                val peeked = queue.peek(skipIds = emptySet())
+                val peeked = queue.peek()
 
                 assertEquals("stream-2", peeked?.id)
                 coVerify { storage.delete("0000000000000000001-aaa") }
@@ -532,15 +536,90 @@ class DelayedEventsQueueTest {
     }
 
     @Nested
-    inner class RemoveIfUnchanged {
+    inner class Acknowledge {
+        @Test
+        fun `should report a failed deletion for retry`() =
+            runTest {
+                val stored = request("stream-1")
+                coEvery { storage.read("queue-1") } returns stored
+                coEvery { storage.delete("queue-1") } returns false
+
+                assertEquals(false, queue.acknowledge(stored.copy(queueKey = "queue-1")))
+            }
+
+        @Test
+        fun `should report failed instant event cleanup for retry`() =
+            runTest {
+                val start = eventEntity("started", insertId = "start-1")
+                val uploaded = request("stream-1").copy(instantEvents = listOf(start))
+                coEvery { storage.read("queue-1") } returns uploaded.copy(events = listOf(eventEntity("newer")))
+                coEvery { storage.write(any(), any()) } returns false
+
+                assertEquals(false, queue.acknowledge(uploaded.copy(queueKey = "queue-1")))
+                coVerify(exactly = 0) { storage.delete(any()) }
+            }
+
+        @Test
+        fun `should finish acknowledgment when the entry was already removed`() =
+            runTest {
+                coEvery { storage.read("queue-1") } returns null
+                coEvery { storage.delete("queue-1") } returns true
+
+                assertEquals(true, queue.acknowledge(request("stream-1").copy(queueKey = "queue-1")))
+                coVerify(exactly = 1) { storage.delete(any()) }
+            }
+
+        @ParameterizedTest
+        @ValueSource(booleans = [false, true])
+        fun `acknowledgment preserves the full live snapshot and new instant events`(heartbeatChanged: Boolean) =
+            runTest {
+                val stop = eventEntity("stopped", insertId = "stop-1")
+                val start = eventEntity("started", insertId = "start-2")
+                val heartbeat = eventEntity("timeout", insertId = "stop-2", timestamp = 1L)
+                val newer = eventEntity("timeout", insertId = "stop-2", timestamp = 2L)
+                val pendingStart = eventEntity("started", insertId = "start-3")
+                val uploaded = request("stream-1").copy(events = listOf(heartbeat), instantEvents = listOf(stop, start))
+                val stored = uploaded.copy(
+                    timeoutMillis = 9_000L,
+                    events = listOf(if (heartbeatChanged) newer else heartbeat),
+                    instantEvents = listOf(stop, start, pendingStart),
+                )
+                coEvery { storage.read("queue-1") } returns stored
+                coEvery { storage.write(any(), any()) } returns true
+
+                queue.acknowledge(uploaded.copy(queueKey = "queue-1"))
+
+                coVerify { storage.write("queue-1", stored.copy(instantEvents = listOf(pendingStart))) }
+                coVerify(exactly = 0) { storage.delete(any()) }
+            }
+
+        @ParameterizedTest
+        @ValueSource(booleans = [false, true])
+        fun `acknowledgment retains a newer stop with the same insert id`(wasHeartbeat: Boolean) =
+            runTest {
+                val old = eventEntity("timeout", insertId = "stop-1", timestamp = 1L)
+                val revised = eventEntity("paused", insertId = "stop-1", timestamp = 2L)
+                val uploaded = request("stream-1").copy(
+                    events = if (wasHeartbeat) listOf(old) else emptyList(),
+                    instantEvents = if (wasHeartbeat) null else listOf(old),
+                )
+                coEvery { storage.read("queue-1") } returns
+                    uploaded.copy(timeoutMillis = 0L, events = emptyList(), instantEvents = listOf(revised))
+
+                queue.acknowledge(uploaded.copy(queueKey = "queue-1"))
+
+                coVerify(exactly = 0) { storage.delete(any()) }
+                coVerify(exactly = 0) { storage.write(any(), any()) }
+            }
+
         @Test
         fun `removes the on-disk payload when it is unchanged`() =
             runTest {
                 val stored = request("stream-1")
                 coEvery { storage.read("queue-1") } returns stored
-                coEvery { storage.delete("queue-1") } returns Unit
+                coEvery { storage.delete("queue-1") } returns true
 
-                queue.removeIfUnchanged(stored.copy(queueKey = "queue-1"))
+                queue.acknowledge(stored.copy(queueKey = "queue-1"))
 
                 coVerify { storage.delete("queue-1") }
             }
@@ -550,7 +629,7 @@ class DelayedEventsQueueTest {
             runTest {
                 coEvery { storage.read("queue-1") } returns request("stream-1")
 
-                queue.removeIfUnchanged(
+                queue.acknowledge(
                     request("stream-1").copy(
                         timeoutMillis = 9_000L,
                         queueKey = "queue-1",
@@ -561,11 +640,12 @@ class DelayedEventsQueueTest {
             }
 
         @Test
-        fun `does nothing when the on-disk payload cannot be read`() =
+        fun `should retry acknowledgment when an existing payload cannot be read`() =
             runTest {
-                coEvery { storage.read("queue-1") } returns null
+                coEvery { storage.read("queue-1") } throws QueueUnavailableException()
+                coEvery { storage.keys() } throws QueueUnavailableException()
 
-                queue.removeIfUnchanged(request("stream-1").copy(queueKey = "queue-1"))
+                assertEquals(false, queue.acknowledge(request("stream-1").copy(queueKey = "queue-1")))
 
                 coVerify(exactly = 0) { storage.delete(any()) }
             }

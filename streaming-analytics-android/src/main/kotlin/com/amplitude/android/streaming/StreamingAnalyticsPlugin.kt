@@ -5,6 +5,7 @@ import com.amplitude.android.streaming.internal.StreamingAnalytics
 import com.amplitude.core.Amplitude
 import com.amplitude.core.AmplitudePreview
 import com.amplitude.core.events.BaseEvent
+import com.amplitude.core.platform.EventPlugin
 import com.amplitude.core.platform.Plugin
 
 private const val NAME: String = "AmplitudeStreamingAnalytics"
@@ -22,7 +23,7 @@ private const val NAME: String = "AmplitudeStreamingAnalytics"
  * ```
  */
 @AmplitudePreview
-public class StreamingAnalyticsPlugin : Plugin {
+public class StreamingAnalyticsPlugin : EventPlugin {
     override val type: Plugin.Type = Plugin.Type.Enrichment
     override val name: String = NAME
     override lateinit var amplitude: Amplitude
@@ -45,6 +46,11 @@ public class StreamingAnalyticsPlugin : Plugin {
     }
 
     override fun onDeviceIdChanged(deviceId: String?) {
+        streamingAnalytics?.flush()
+    }
+
+    /** Uploads queued streaming events immediately, subject to network retry backoff. */
+    override fun flush() {
         streamingAnalytics?.flush()
     }
 

@@ -49,31 +49,55 @@ internal class DelayedEventsQueue(
         }
     }
 
-    suspend fun peek(skipIds: Set<String>): DelayedEventsRequestEntity? {
+    suspend fun peek(eligible: (DelayedEventsRequestEntity) -> Boolean = { true }): DelayedEventsRequestEntity? {
         return mutex.withLock {
+            var unavailable = false
             for (key in storage.keys().sorted()) {
-                val request = storage.read(key)
+                val request = try {
+                    storage.read(key)
+                } catch (_: QueueUnavailableException) {
+                    unavailable = true
+                    continue
+                }
                 if (request == null) {
-                    logger.error("Dropping unreadable delayed-events queue entry $key")
                     storage.delete(key)
                     continue
                 }
-                if (request.id in skipIds) continue
+                if (!eligible(request)) continue
                 return@withLock request.copy(queueKey = key)
             }
+            if (unavailable) throw QueueUnavailableException()
             null
         }
     }
 
-    suspend fun removeIfUnchanged(request: DelayedEventsRequestEntity) {
+    /**
+     * Removes a processed request without losing concurrent updates.
+     *
+     * A changed request keeps its complete live delayed set for the next full-replace upload,
+     * but drops instant events already processed in [request]. Revised instant events stay queued.
+     * Returns false if the acknowledgment could not be persisted and needs to be retried.
+     */
+    suspend fun acknowledge(request: DelayedEventsRequestEntity): Boolean =
         mutex.withLock {
-            val key = request.queueKey ?: return@withLock
-            val stored = storage.read(key) ?: return@withLock
+            val key = request.queueKey ?: return@withLock true
+            val stored = try {
+                storage.read(key)
+            } catch (_: QueueUnavailableException) {
+                return@withLock false
+            } ?: return@withLock storage.delete(key)
             if (stored == request.copy(queueKey = null)) {
-                storage.delete(key)
+                return@withLock storage.delete(key)
+            }
+            val processedInstants = request.instantEvents.orEmpty().toSet()
+            val pendingInstants =
+                stored.instantEvents?.filterNot { it in processedInstants }?.takeIf { it.isNotEmpty() }
+            if (pendingInstants != stored.instantEvents) {
+                storage.write(key, stored.copy(instantEvents = pendingInstants))
+            } else {
+                true
             }
         }
-    }
 
     /**
      * Read the on-disk max under [mutex] so two graphs sharing [storageKey] cannot mint the same id.
@@ -163,3 +187,6 @@ private fun String.storageKey(): String =
                 .toString(16)
                 .padStart(2, '0')
         }
+
+/** A queue read may be retried without treating pending entries as absent. */
+internal class QueueUnavailableException : Exception()
