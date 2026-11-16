@@ -8,8 +8,10 @@ import com.amplitude.android.streaming.internal.storage.DelayedEventsRequestEnti
 import com.amplitude.android.streaming.internal.storage.QueueUnavailableException
 import com.amplitude.android.streaming.internal.storage.toEntity
 import com.amplitude.common.Logger
+import com.amplitude.core.Configuration
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.CancellationException
@@ -29,6 +31,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.NullSource
 import org.junit.jupiter.params.provider.ValueSource
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -36,10 +39,12 @@ class UploadPipelineTest {
     private val queue = mockk<DelayedEventsQueue>()
     private val endpoint = mockk<DelayedEventsEndpoint>()
     private val logger = mockk<Logger>(relaxed = true)
+    private lateinit var configuration: Configuration
     private var queued: DelayedEventsRequestEntity? = null
 
     @BeforeEach
     fun setUp() {
+        configuration = Configuration(apiKey = "test-key")
         queued = queuedRequest("stream-1")
         coEvery { queue.peek(any()) } answers {
             val eligible = firstArg<(DelayedEventsRequestEntity) -> Boolean>()
@@ -48,6 +53,89 @@ class UploadPipelineTest {
         coEvery { queue.acknowledge(any()) } answers {
             queued = null
             true
+        }
+    }
+
+    @Nested
+    inner class Offline {
+        @ParameterizedTest
+        @NullSource
+        @ValueSource(booleans = [false])
+        fun `should defer offline uploads and resume when online or detection is disabled`(online: Boolean?) = runTest {
+            configuration.offline = true
+            val uploader = pipeline()
+            coEvery { endpoint.send(any()) } returns DelayedEventsResult.Success
+            uploader.onNewEvent()
+            uploader.flush()
+            val draining = launch { uploader.flushAndDrain() }
+            testScheduler.runCurrent()
+
+            assertTrue(draining.isCompleted)
+            coVerify(exactly = 0) { endpoint.send(any()) }
+            coVerify(exactly = 0) { queue.acknowledge(any()) }
+            assertEquals("stream-1", queued?.id)
+            assertEquals(0L, currentTime)
+
+            configuration.offline = online
+            uploader.flush()
+            testScheduler.runCurrent()
+
+            coVerify(exactly = 1) { endpoint.send(any()) }
+            assertEquals(null, queued)
+            assertEquals(0L, currentTime)
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = ["failure", "rate limit", "heartbeat"])
+        fun `should pause scheduled uploads offline and resume on reconnect flush`(waitingFor: String) = runTest {
+            coEvery { endpoint.send(any()) } returns when (waitingFor) {
+                "failure" -> DelayedEventsResult.Failure(500, "upstream down")
+                "rate limit" -> DelayedEventsResult.RateLimited
+                else -> DelayedEventsResult.Success
+            }
+            val uploader = pipeline()
+            uploader.onNewEvent()
+            testScheduler.runCurrent()
+            if (waitingFor == "heartbeat") {
+                queued = queuedRequest("stream-1", playTimeSec = 1.0)
+                uploader.onNewEvent()
+                testScheduler.runCurrent()
+            }
+            configuration.offline = true
+            uploader.flush()
+            advanceTimeBy(2 * DELAYED_EVENT_PULSE_INTERVAL_MILLIS)
+            testScheduler.runCurrent()
+            coVerify(exactly = 1) { endpoint.send(any()) }
+            assertEquals("stream-1", queued?.id)
+
+            coEvery { endpoint.send(any()) } returns DelayedEventsResult.Success
+            configuration.offline = false
+            uploader.flush()
+            testScheduler.runCurrent()
+            coVerify(exactly = 2) { endpoint.send(any()) }
+            assertEquals(null, queued)
+        }
+
+        @Test
+        fun `should preserve a reconnect flush arriving during the offline exit`() = runTest {
+            configuration = mockk()
+            val uploader = pipeline()
+            var offline = true
+            every { configuration.offline } answers {
+                val result = offline
+                if (offline) {
+                    offline = false
+                    uploader.flush()
+                }
+                result
+            }
+            coEvery { endpoint.send(any()) } returns DelayedEventsResult.Success
+
+            uploader.onNewEvent()
+            testScheduler.runCurrent()
+
+            coVerify(exactly = 1) { endpoint.send(any()) }
+            assertEquals(null, queued)
         }
     }
 
@@ -819,6 +907,7 @@ class UploadPipelineTest {
             queue = queue,
             endpoint = endpoint,
             logger = logger,
+            configuration = configuration,
             currentTimeMs = { currentTime },
         )
 

@@ -8,6 +8,7 @@ import com.amplitude.android.streaming.internal.storage.delayedEventsQueue
 import com.amplitude.android.streaming.internal.storage.toDto
 import com.amplitude.android.streaming.internal.util.DiGraph.Companion.singleton
 import com.amplitude.common.Logger
+import com.amplitude.core.Configuration
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -26,6 +27,7 @@ internal val StreamingDiGraph.uploadPipeline: UploadPipeline by singleton {
         queue = delayedEventsQueue,
         endpoint = delayedEventsEndpoint,
         logger = logger,
+        configuration = configuration,
     )
 }
 
@@ -53,6 +55,7 @@ internal class UploadPipeline(
     private val queue: DelayedEventsQueue,
     private val endpoint: DelayedEventsEndpoint,
     private val logger: Logger,
+    private val configuration: Configuration,
     private val currentTimeMs: () -> Long = { System.currentTimeMillis() },
 ) {
     private val workerUploadTriggers = MutableStateFlow(0L)
@@ -101,7 +104,7 @@ internal class UploadPipeline(
         triggerUpload()
     }
 
-    /** Flushes and waits for the persisted queue, including acknowledgment retries, to drain. */
+    /** Awaits delivery and acknowledgment retries, deferring queued uploads while offline. */
     suspend fun flushAndDrain() {
         flushGeneration.incrementAndGet()
         val trigger = triggerUpload()
@@ -120,6 +123,7 @@ internal class UploadPipeline(
             var nextAtMs: Long? = streams.values.mapNotNull { state ->
                 state.cleanupAtMs.takeIf { state.acknowledgment != null }
             }.minOrNull()
+            if (configuration.offline == true) return nextAtMs
             val request = try {
                 queue.peek { request ->
                     val state = streams.getOrPut(request.id) { StreamDelivery() }
@@ -145,6 +149,7 @@ internal class UploadPipeline(
 
     private suspend fun send(request: DelayedEventsRequestEntity, generation: Long) {
         when (val result = endpoint.send(request.toDto())) {
+            DelayedEventsResult.Offline -> Unit
             DelayedEventsResult.Success -> settle(request, generation)
             DelayedEventsResult.RateLimited -> scheduleBackoff(RATE_LIMIT_MIN_DELAY_MS)
             is DelayedEventsResult.FailureNoRetry -> {
