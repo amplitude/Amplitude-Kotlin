@@ -1,6 +1,8 @@
 package com.amplitude.android.streaming.internal.network
 
 internal sealed interface DelayedEventsResult {
+    data object Offline : DelayedEventsResult
+
     data object Success : DelayedEventsResult
 
     data object RateLimited : DelayedEventsResult

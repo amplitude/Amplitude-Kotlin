@@ -33,6 +33,7 @@ internal class DelayedEventsEndpoint(
 ) {
     suspend fun send(request: DelayedEventsRequestDto): DelayedEventsResult =
         withContext(ioDispatcher) {
+            if (configuration.offline == true) return@withContext DelayedEventsResult.Offline
             val requestBody =
                 try {
                     request.toJson(configuration.apiKey)
