@@ -17,6 +17,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
@@ -37,13 +40,23 @@ private const val RATE_LIMIT_MIN_DELAY_MS = 30_000L
 /** How often a delayed payload is re-sent to keep the server row alive. Matches iOS pulseInterval. */
 internal const val DELAYED_EVENT_PULSE_INTERVAL_MILLIS = 60_000L
 
-/** All mutable delivery state is owned by the drain worker. */
+/** Heartbeat and flush state is owned by this pipeline's drain worker. */
 private class StreamDelivery {
     var heartbeatAtMs = 0L
     var flushedGeneration = 0L
-    var acknowledgment: DelayedEventsRequestEntity? = null
+}
+
+private class PendingAcknowledgment(val request: DelayedEventsRequestEntity) {
     var cleanupAtMs = 0L
     var cleanupAttempt = 0
+}
+
+/** Access shared request and cleanup state only while holding [mutex]. */
+private class QueueDeliveryState {
+    val mutex = Mutex()
+    var attempt = 0
+    var backoffUntilMs = 0L
+    val acknowledgments = mutableMapOf<String, PendingAcknowledgment>()
 }
 
 /**
@@ -64,8 +77,7 @@ internal class UploadPipeline(
     // Null means the worker stopped, so teardown cannot keep waiting for it.
     private val lastDrainedTrigger = MutableStateFlow<Long?>(0L)
     private val streams = mutableMapOf<String, StreamDelivery>()
-    private var attempt = 0
-    private var backoffUntilMs = 0L
+    private val delivery = deliveries.getOrPut(queue.storageKey) { QueueDeliveryState() }
 
     init {
         scope.launch {
@@ -116,34 +128,36 @@ internal class UploadPipeline(
 
     private suspend fun drain(): Long? {
         while (true) {
-            retryAcknowledgments()
-            val now = currentTimeMs()
-            streams.entries.removeAll { (_, state) -> state.acknowledgment == null && state.heartbeatAtMs <= now }
-            val generation = flushGeneration.get()
-            var nextAtMs: Long? = streams.values.mapNotNull { state ->
-                state.cleanupAtMs.takeIf { state.acknowledgment != null }
-            }.minOrNull()
-            if (configuration.offline == true) return nextAtMs
-            val request = try {
-                queue.peek { request ->
-                    val state = streams.getOrPut(request.id) { StreamDelivery() }
-                    if (state.acknowledgment != null) {
-                        false
-                    } else {
-                        val urgent = !request.instantEvents.isNullOrEmpty() || state.flushedGeneration < generation
-                        val dueAt = max(backoffUntilMs, if (urgent) now else state.heartbeatAtMs)
-                        nextAtMs = minOf(nextAtMs ?: dueAt, dueAt)
-                        dueAt <= now
+            // Read the latest payload only after acquiring ownership, and keep ownership
+            // through HTTP completion and acknowledgment. Timer waits happen outside this lock.
+            delivery.mutex.withLock {
+                retryAcknowledgments()
+                val now = currentTimeMs()
+                streams.entries.removeAll { (id, state) -> id !in delivery.acknowledgments && state.heartbeatAtMs <= now }
+                val generation = flushGeneration.get()
+                var nextAtMs: Long? = delivery.acknowledgments.values.minOfOrNull { it.cleanupAtMs }
+                if (configuration.offline == true) return nextAtMs
+                val request = try {
+                    queue.peek { request ->
+                        val state = streams.getOrPut(request.id) { StreamDelivery() }
+                        if (request.id in delivery.acknowledgments) {
+                            false
+                        } else {
+                            val urgent = !request.instantEvents.isNullOrEmpty() || state.flushedGeneration < generation
+                            val dueAt = max(delivery.backoffUntilMs, if (urgent) now else state.heartbeatAtMs)
+                            nextAtMs = minOf(nextAtMs ?: dueAt, dueAt)
+                            dueAt <= now
+                        }
                     }
+                } catch (_: QueueUnavailableException) {
+                    return currentTimeMs() + DELAYS_IN_MS.first()
                 }
-            } catch (_: QueueUnavailableException) {
-                return currentTimeMs() + DELAYS_IN_MS.first()
+                if (request != null) {
+                    send(request, generation)
+                } else {
+                    return nextAtMs
+                }
             }
-            if (request != null) {
-                send(request, generation)
-                continue
-            }
-            return nextAtMs
         }
     }
 
@@ -161,23 +175,22 @@ internal class UploadPipeline(
     }
 
     private suspend fun settle(request: DelayedEventsRequestEntity, generation: Long) {
-        attempt = 0
-        backoffUntilMs = 0L
+        delivery.attempt = 0
+        delivery.backoffUntilMs = 0L
         val state = streams.getValue(request.id)
         state.heartbeatAtMs = currentTimeMs() + DELAYED_EVENT_PULSE_INTERVAL_MILLIS
         state.flushedGeneration = generation
-        state.acknowledgment = request
-        state.cleanupAttempt = 0
-        state.cleanupAtMs = currentTimeMs()
+        delivery.acknowledgments[request.id] = PendingAcknowledgment(request)
         retryAcknowledgments()
     }
 
     private suspend fun retryAcknowledgments() {
-        for (state in streams.values) {
-            val request = state.acknowledgment ?: continue
+        val entries = delivery.acknowledgments.values.iterator()
+        while (entries.hasNext()) {
+            val state = entries.next()
             if (currentTimeMs() < state.cleanupAtMs) continue
-            if (queue.acknowledge(request)) {
-                state.acknowledgment = null
+            if (queue.acknowledge(state.request)) {
+                entries.remove()
             } else {
                 state.cleanupAtMs = currentTimeMs() + DELAYS_IN_MS[state.cleanupAttempt.coerceAtMost(DELAYS_IN_MS.lastIndex)]
                 state.cleanupAttempt++
@@ -186,8 +199,13 @@ internal class UploadPipeline(
     }
 
     private fun scheduleBackoff(minDelayMs: Long) {
-        val delayMs = max(minDelayMs, DELAYS_IN_MS[attempt.coerceAtMost(DELAYS_IN_MS.lastIndex)])
-        attempt++
-        backoffUntilMs = currentTimeMs() + delayMs
+        val delayMs = max(minDelayMs, DELAYS_IN_MS[delivery.attempt.coerceAtMost(DELAYS_IN_MS.lastIndex)])
+        delivery.attempt++
+        delivery.backoffUntilMs = currentTimeMs() + delayMs
+    }
+
+    private companion object {
+        // Coordinate uploads, acknowledgment retries, and HTTP backoff across SDK instances sharing a persisted queue.
+        val deliveries = ConcurrentHashMap<String, QueueDeliveryState>()
     }
 }
