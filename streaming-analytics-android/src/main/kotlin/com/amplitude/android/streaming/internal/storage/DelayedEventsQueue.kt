@@ -24,7 +24,7 @@ internal val StreamingDiGraph.delayedEventsQueue: DelayedEventsQueue by singleto
 internal class DelayedEventsQueue(
     private val storage: DelayedEventStorage,
     private val logger: Logger,
-    storageKey: String,
+    val storageKey: String,
 ) {
     private val mutex = mutexes.getOrPut(storageKey) { Mutex() }
 
