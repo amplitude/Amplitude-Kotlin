@@ -103,6 +103,25 @@ jobs:
             exit 1
           fi
 
+      - name: Publish Unified test candidate
+        run: |
+          version="$(sed -n 's/^VERSION_NAME=//p' unified/gradle.properties)-release-check-${GITHUB_SHA}-SNAPSHOT"
+          echo "UNIFIED_CANDIDATE_VERSION=$version" >> "$GITHUB_ENV"
+          ./gradlew :unified:publishToMavenLocal -PVERSION_NAME="$version" -PsignAllPublications=false \
+            -Dmaven.repo.local="$GITHUB_WORKSPACE/build/unified-release-maven"
+
+      - name: Verify Unified release candidate
+        run: ./gradlew unifiedReleaseTest -PunifiedVersion="$UNIFIED_CANDIDATE_VERSION"
+
+      - name: Upload Unified contract results
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: unified-release-contracts
+          path: |
+            sdk-verification/published/build/reports/
+            sdk-verification/published/build/test-results/
+
       - name: Semantic Release --dry-run
         if: ${{ github.event.inputs.dryRun == 'true' }}
         run: |
