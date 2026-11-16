@@ -40,5 +40,6 @@ apply(from = "test-dependencies.gradle.kts")
 configure<org.jlleitschuh.gradle.ktlint.KtlintExtension> {
     kotlinScriptAdditionalPaths {
         include(fileTree("published") { include("*.gradle.kts") })
+        include(fileTree("consumer") { include("**/*.gradle.kts") })
     }
 }
