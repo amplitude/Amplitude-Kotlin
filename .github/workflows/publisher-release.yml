@@ -1,0 +1,441 @@
+name: Execute Kotlin release
+
+on:
+  workflow_call:
+    inputs:
+      mode:
+        type: string
+        required: true
+      lane:
+        type: string
+        required: true
+      source_sha:
+        type: string
+        default: ''
+      release_type:
+        type: string
+        default: patch
+      release_pr:
+        type: string
+        default: ''
+      prepare_run_id:
+        type: string
+        default: ''
+    secrets:
+      SONATYPE_USERNAME:
+        required: false
+      SONATYPE_PASSWORD:
+        required: false
+      SIGNING_KEY:
+        required: false
+      SIGNING_KEY_ID:
+        required: false
+      SIGNING_PASSWORD:
+        required: false
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  authorize:
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 5
+    steps:
+      - name: Validate private release context
+        env:
+          CALLEE_REF: ${{ job.workflow_ref }}
+          MODE: ${{ inputs.mode }}
+          LANE: ${{ inputs.lane }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          RELEASE_PR: ${{ inputs.release_pr }}
+          PREPARE_RUN_ID: ${{ inputs.prepare_run_id }}
+          RELEASE_ENABLED: ${{ vars.AMPLITUDE_KOTLIN_RELEASE_ENABLED }}
+        run: |
+          if [[ "$GITHUB_REPOSITORY" != 'amplitude/sdk-publisher' ||
+                "$GITHUB_WORKFLOW_REF" != 'amplitude/sdk-publisher/.github/workflows/amplitude-kotlin.yml@refs/heads/sdk/amplitude-kotlin' ||
+                "$GITHUB_REF" != 'refs/heads/sdk/amplitude-kotlin' ||
+                "$GITHUB_EVENT_NAME" != 'workflow_dispatch' || "$GITHUB_RUN_ATTEMPT" != '1' ||
+                "$CALLEE_REF" != 'amplitude/Amplitude-Kotlin/.github/workflows/publisher-release.yml@refs/heads/main' ||
+                "$RELEASE_ENABLED" != 'true' ]]; then
+            echo "::error::A fresh Kotlin release dispatch on the protected publisher branch is required after cutover."
+            exit 1
+          fi
+          if [[ ! "$LANE" =~ ^(analytics|unified)$ ]]; then
+            echo "::error::Choose a Kotlin release lane."
+            exit 1
+          fi
+          case "$MODE" in
+            prepare)
+              [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ && -z "$RELEASE_PR" && -z "$PREPARE_RUN_ID" ]] || {
+                echo "::error::Prepare requires a full Kotlin source SHA and no publish inputs."
+                exit 1
+              }
+              ;;
+            publish)
+              [[ -z "$SOURCE_SHA" && "$RELEASE_PR" =~ ^[1-9][0-9]{0,9}$ &&
+                 "$PREPARE_RUN_ID" =~ ^[1-9][0-9]{0,14}$ ]] || {
+                echo "::error::Publish requires the release PR and prepare run ID. Leave source SHA empty."
+                exit 1
+              }
+              ;;
+            *)
+              echo "::error::Unsupported release mode."
+              exit 1
+              ;;
+          esac
+      - name: Verify the reviewed release path is active
+        run: |
+          api='https://api.github.com/repos/amplitude/Amplitude-Kotlin'
+          curl --silent --show-error --fail --max-time 30 "$api/rules/branches/main" |
+            jq -e 'any(.[]; .type == "pull_request" and .parameters.require_code_owner_review and
+              .parameters.required_approving_review_count >= 1)' > /dev/null || {
+                echo '::error::Kotlin main needs an active ruleset that requires a Code Owner review.'
+                exit 1
+              }
+          for workflow in release.yml release-unified.yml; do
+            status="$(curl --silent --show-error --max-time 30 --output /dev/null --write-out '%{http_code}' \
+              "$api/contents/.github/workflows/$workflow?ref=main")"
+            if [[ "$status" != 404 ]]; then
+              echo "::error::Could not confirm that the legacy Kotlin workflow $workflow is removed."
+              exit 1
+            fi
+          done
+
+  plan:
+    if: ${{ inputs.mode == 'prepare' }}
+    needs: authorize
+    uses: ./.github/workflows/publisher-plan.yml
+    permissions:
+      contents: read
+    with:
+      mode: prepare
+      lane: ${{ inputs.lane }}
+      source_sha: ${{ inputs.source_sha }}
+      release_type: ${{ inputs.release_type }}
+
+  prepare-pr:
+    if: ${{ needs.plan.outputs.has_release == 'true' }}
+    needs: plan
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    environment: amplitude-kotlin-github-prepare
+    steps:
+      - name: Check out reviewed release tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+        with:
+          repository: amplitude/Amplitude-Kotlin
+          ref: ${{ job.workflow_sha }}
+          path: tooling
+          persist-credentials: false
+      - name: Check out the clean release source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+        with:
+          repository: amplitude/Amplitude-Kotlin
+          ref: ${{ needs.plan.outputs.source_sha }}
+          path: source
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: kotlin-release-plan
+          path: ${{ runner.temp }}/kotlin-plan
+      - name: Mint Kotlin release PR token
+        id: octo
+        uses: amplitude/actions/octo-sts@v0
+        with:
+          domain: octo-sts.ops.amplitude.com
+          scope: amplitude/Amplitude-Kotlin
+          identity: sdk-publisher-kotlin-prepare
+      - name: Open or reuse the reviewed release PR
+        id: pr
+        working-directory: source
+        env:
+          GH_TOKEN: ${{ steps.octo.outputs.token }}
+        run: |
+          node ../tooling/tools/publisher/remote.mjs prepare-pr \
+            --plan "$RUNNER_TEMP/kotlin-plan/plan.json" --patch "$RUNNER_TEMP/kotlin-plan/release.patch"
+      - name: Record the generated PR and tested revision
+        env:
+          RELEASE_PR: ${{ steps.pr.outputs.pr_number }}
+          TOOL_SHA: ${{ job.workflow_sha }}
+        run: |
+          [[ "$RELEASE_PR" =~ ^[1-9][0-9]{0,9}$ ]]
+          jq --argjson pr "$RELEASE_PR" --arg tool "$TOOL_SHA" '. + {releasePr: $pr, prepareWorkflowSha: $tool}' \
+            "$RUNNER_TEMP/kotlin-plan/plan.json" > "$RUNNER_TEMP/kotlin-prepared-release.json"
+          printf '\nRelease PR: https://github.com/amplitude/Amplitude-Kotlin/pull/%s\n\n' "$RELEASE_PR" >> "$GITHUB_STEP_SUMMARY"
+          printf 'Prepare run ID: %s\n' "$GITHUB_RUN_ID" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: kotlin-prepared-release
+          path: ${{ runner.temp }}/kotlin-prepared-release.json
+          if-no-files-found: error
+          retention-days: 30
+
+  verify-publish:
+    if: ${{ inputs.mode == 'publish' }}
+    needs: authorize
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      merge_sha: ${{ steps.merge.outputs.merge_sha }}
+      tag: ${{ steps.verify.outputs.tag }}
+      central_state: ${{ steps.preflight.outputs.central_state }}
+      tag_state: ${{ steps.preflight.outputs.tag_state }}
+    steps:
+      - name: Confirm the plan came from a successful first publisher run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREPARE_RUN_ID: ${{ inputs.prepare_run_id }}
+        run: |
+          gh api "repos/amplitude/sdk-publisher/actions/runs/$PREPARE_RUN_ID" |
+            jq -e '
+              .status == "completed" and .conclusion == "success" and .run_attempt == 1 and
+              .event == "workflow_dispatch" and .head_branch == "sdk/amplitude-kotlin" and
+              .head_repository.full_name == "amplitude/sdk-publisher" and
+              (.path == ".github/workflows/amplitude-kotlin.yml" or
+               .path == ".github/workflows/amplitude-kotlin.yml@refs/heads/sdk/amplitude-kotlin")
+            ' > /dev/null
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.prepare_run_id }}
+          name: kotlin-prepared-release
+          path: ${{ runner.temp }}/kotlin-prepared
+      - name: Verify the PR merged into protected Kotlin main
+        id: merge
+        env:
+          LANE: ${{ inputs.lane }}
+          RELEASE_PR: ${{ inputs.release_pr }}
+        run: |
+          plan="$RUNNER_TEMP/kotlin-prepared/kotlin-prepared-release.json"
+          branch="$(jq -er --arg lane "$LANE" --argjson pr "$RELEASE_PR" '
+            select(.releasePr == $pr and .lane == $lane and (.version | type == "string") and
+              (.sourceSha | test("^[0-9a-f]{40}$"))) |
+            "sdk-publisher/kotlin/\(.lane)/\(.version)/\(.sourceSha)"
+          ' "$plan")"
+          merge="$(curl --silent --show-error --fail --max-time 30 \
+            "https://api.github.com/repos/amplitude/Amplitude-Kotlin/pulls/$RELEASE_PR" |
+            jq -er --arg branch "$branch" '
+              select(.merged == true and .base.ref == "main" and .base.repo.full_name == "amplitude/Amplitude-Kotlin" and
+                .head.repo.full_name == "amplitude/Amplitude-Kotlin" and .head.ref == $branch) |
+              .merge_commit_sha | select(test("^[0-9a-f]{40}$"))
+            ')"
+          curl --silent --show-error --fail --max-time 30 \
+            https://api.github.com/repos/amplitude/Amplitude-Kotlin/branches/main |
+            jq -e '.protected == true' > /dev/null
+          mkdir -p "$RUNNER_TEMP/kotlin-validated"
+          jq --arg sha "$merge" '. + {mergeSha: $sha}' "$plan" > "$RUNNER_TEMP/kotlin-validated/plan.json"
+          printf 'merge_sha=%s\n' "$merge" >> "$GITHUB_OUTPUT"
+      - name: Check out reviewed release tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+        with:
+          repository: amplitude/Amplitude-Kotlin
+          ref: ${{ job.workflow_sha }}
+          path: tooling
+          persist-credentials: false
+      - name: Check out exact squash merge and main history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+        with:
+          repository: amplitude/Amplitude-Kotlin
+          ref: ${{ steps.merge.outputs.merge_sha }}
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - run: npm ci --ignore-scripts
+        working-directory: tooling
+      - name: Verify exact tested parent and expected release-only diff
+        id: verify
+        working-directory: source
+        env:
+          MERGE_SHA: ${{ steps.merge.outputs.merge_sha }}
+          TOOL_SHA: ${{ job.workflow_sha }}
+        run: |
+          git merge-base --is-ancestor "$MERGE_SHA" refs/remotes/origin/main
+          node ../tooling/tools/semantic-release/publisher.mjs verify \
+            --manifest "$RUNNER_TEMP/kotlin-validated/plan.json" --merge-sha "$MERGE_SHA"
+          plan="$RUNNER_TEMP/kotlin-validated/plan.json"
+          previous="$(jq -r '.previousTag // ""' "$plan")"
+          tag="$(jq -r '.tag' "$plan")"
+          pattern='^v[0-9]+\.[0-9]+\.[0-9]+$'
+          if [[ "$(jq -r '.lane' "$plan")" == 'unified' ]]; then
+            pattern='^unified-v[0-9]+\.[0-9]+\.[0-9]+$'
+          fi
+          latest="$(git for-each-ref --sort=-version:refname --merged=refs/remotes/origin/main \
+            --format='%(refname:strip=2)' refs/tags |
+            awk -v re="$pattern" '$0 ~ re && !seen++ {print}')"
+          if [[ "$latest" != "$previous" && "$latest" != "$tag" ]]; then
+            echo "::error::The latest release tag changed since preparation. Reconcile the existing release before continuing."
+            exit 1
+          fi
+          {
+            printf '### Validated Kotlin release\n\n'
+            jq -r '"Version: " + .version + "\n\nSource SHA: " + .sourceSha + "\n\nRelease SHA: " + .mergeSha' \
+              "$RUNNER_TEMP/kotlin-validated/plan.json"
+            printf '\nWorkflow SHA: %s\n' "$TOOL_SHA"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Check for previous tag or Maven publication
+        id: preflight
+        run: node tooling/tools/publisher/remote.mjs preflight --plan "$RUNNER_TEMP/kotlin-validated/plan.json"
+      - name: Stop if an earlier upload may already be pending
+        if: ${{ steps.preflight.outputs.central_state == 'absent' && steps.preflight.outputs.tag_state == 'matching' }}
+        run: |
+          echo "::error::The tag already exists but Central is not complete. Verify and finish the existing Central deployment before dispatching publish again."
+          exit 1
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: kotlin-validated-release
+          path: ${{ runner.temp }}/kotlin-validated/plan.json
+          if-no-files-found: error
+          retention-days: 7
+
+  tag:
+    if: ${{ needs.verify-publish.outputs.tag_state == 'missing' && needs.verify-publish.outputs.central_state == 'absent' }}
+    needs: verify-publish
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    environment: amplitude-kotlin-github-publish
+    outputs:
+      created: ${{ steps.tag.outputs.tag_created }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+        with:
+          repository: amplitude/Amplitude-Kotlin
+          ref: ${{ job.workflow_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: kotlin-validated-release
+          path: ${{ runner.temp }}/kotlin-validated
+      - name: Mint Kotlin tag and GitHub Release token
+        id: octo
+        uses: amplitude/actions/octo-sts@v0
+        with:
+          domain: octo-sts.ops.amplitude.com
+          scope: amplitude/Amplitude-Kotlin
+          identity: sdk-publisher-kotlin-publish
+      - name: Reserve Maven upload by creating the immutable release tag
+        id: tag
+        env:
+          GH_TOKEN: ${{ steps.octo.outputs.token }}
+        run: node tools/publisher/remote.mjs tag --plan "$RUNNER_TEMP/kotlin-validated/plan.json"
+      - name: Reject a concurrent tag reservation
+        if: ${{ steps.tag.outputs.tag_created != 'true' }}
+        run: |
+          echo "::error::Another attempt reserved the tag. Reconcile Central before restarting."
+          exit 1
+
+  maven:
+    if: ${{ needs.tag.outputs.created == 'true' }}
+    needs: [verify-publish, tag]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    environment: amplitude-kotlin-maven
+    steps:
+      - name: Check out the exact validated release SHA
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+        with:
+          repository: amplitude/Amplitude-Kotlin
+          ref: ${{ needs.verify-publish.outputs.merge_sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          java-version: '21'
+          distribution: temurin
+      - name: Verify the remote tag before exposing signing credentials
+        env:
+          TAG: ${{ needs.verify-publish.outputs.tag }}
+          MERGE_SHA: ${{ needs.verify-publish.outputs.merge_sha }}
+        run: |
+          [[ "$TAG" =~ ^(unified-)?v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$(git ls-remote --exit-code --refs origin "refs/tags/$TAG")" == "$MERGE_SHA"$'\t'"refs/tags/$TAG" ]]
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-35"
+      - name: Sign and publish exact Kotlin release artifacts
+        env:
+          LANE: ${{ inputs.lane }}
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.SONATYPE_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.SONATYPE_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.SIGNING_KEY_ID }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_PASSWORD }}
+        run: |
+          if [[ -z "$ORG_GRADLE_PROJECT_mavenCentralUsername" || -z "$ORG_GRADLE_PROJECT_mavenCentralPassword" ||
+                -z "$ORG_GRADLE_PROJECT_signingInMemoryKey" || -z "$ORG_GRADLE_PROJECT_signingInMemoryKeyId" ||
+                -z "$ORG_GRADLE_PROJECT_signingInMemoryKeyPassword" ]]; then
+            echo "::error::A required Kotlin Maven environment secret is absent."
+            exit 1
+          fi
+          case "$LANE" in
+            analytics)
+              ./gradlew publishAllPublicationsToMavenCentral --no-daemon --no-configuration-cache
+              ;;
+            unified)
+              ./gradlew :unified:publishAllPublicationsToMavenCentral -Pamplitude.unified.release=true \
+                --no-daemon --no-configuration-cache
+              ;;
+            *) exit 1 ;;
+          esac
+
+  finalize:
+    if: ${{ !cancelled() && needs.verify-publish.result == 'success' && (needs.maven.result == 'success' || (needs.verify-publish.outputs.central_state == 'complete' && needs.verify-publish.outputs.tag_state == 'matching')) }}
+    needs: [verify-publish, tag, maven]
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write
+    environment: amplitude-kotlin-github-publish
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+        with:
+          repository: amplitude/Amplitude-Kotlin
+          ref: ${{ job.workflow_sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: kotlin-validated-release
+          path: ${{ runner.temp }}/kotlin-validated
+      - name: Mint Kotlin tag and GitHub Release token
+        id: octo
+        uses: amplitude/actions/octo-sts@v0
+        with:
+          domain: octo-sts.ops.amplitude.com
+          scope: amplitude/Amplitude-Kotlin
+          identity: sdk-publisher-kotlin-publish
+      - name: Create or confirm GitHub Release after Central is complete
+        env:
+          GH_TOKEN: ${{ steps.octo.outputs.token }}
+        run: node tools/publisher/remote.mjs finalize --plan "$RUNNER_TEMP/kotlin-validated/plan.json"
+      - name: Report successful publication
+        env:
+          TAG: ${{ needs.verify-publish.outputs.tag }}
+        run: |
+          printf 'Release verified in Maven Central and on GitHub: %s\n' "$TAG" >> "$GITHUB_STEP_SUMMARY"

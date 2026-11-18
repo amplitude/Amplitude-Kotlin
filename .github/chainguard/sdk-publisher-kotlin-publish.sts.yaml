@@ -1,0 +1,12 @@
+# Octo STS grant for the release tag and GitHub Release.
+issuer: https://token.actions.githubusercontent.com
+subject: repo:amplitude@2291562/sdk-publisher@1463082312:environment:amplitude-kotlin-github-publish
+audience: octo-sts.ops.amplitude.com
+claim_pattern:
+  ref: '^refs/heads/sdk/amplitude-kotlin$'
+  workflow_ref: '^amplitude/sdk-publisher/\.github/workflows/amplitude-kotlin\.yml@refs/heads/sdk/amplitude-kotlin$'
+  job_workflow_ref: '^amplitude/Amplitude-Kotlin/\.github/workflows/publisher-release\.yml@refs/heads/main$'
+  event_name: '^workflow_dispatch$'
+  run_attempt: '^1$'
+permissions:
+  contents: write

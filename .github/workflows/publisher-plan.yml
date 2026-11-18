@@ -1,0 +1,196 @@
+name: Plan Kotlin release
+
+on:
+  workflow_call:
+    inputs:
+      mode:
+        type: string
+        default: preview
+      lane:
+        type: string
+        required: true
+      source_sha:
+        type: string
+        required: true
+      release_type:
+        type: string
+        default: patch
+    outputs:
+      has_release:
+        value: ${{ jobs.plan.outputs.has_release }}
+      source_sha:
+        value: ${{ jobs.validate-source.outputs.source_sha }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  validate-source:
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      source_sha: ${{ steps.validate.outputs.source_sha }}
+    steps:
+      - name: Validate caller and protected source
+        id: validate
+        env:
+          CALLEE_REF: ${{ job.workflow_ref }}
+          MODE: ${{ inputs.mode }}
+          LANE: ${{ inputs.lane }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
+          RELEASE_ENABLED: ${{ vars.AMPLITUDE_KOTLIN_RELEASE_ENABLED }}
+        run: |
+          if [[ "$GITHUB_REPOSITORY" != 'amplitude/sdk-publisher' ||
+                "$GITHUB_WORKFLOW_REF" != 'amplitude/sdk-publisher/.github/workflows/amplitude-kotlin.yml@refs/heads/sdk/amplitude-kotlin' ||
+                "$GITHUB_REF" != 'refs/heads/sdk/amplitude-kotlin' ||
+                "$GITHUB_EVENT_NAME" != 'workflow_dispatch' || "$GITHUB_RUN_ATTEMPT" != '1' ||
+                "$CALLEE_REF" != 'amplitude/Amplitude-Kotlin/.github/workflows/publisher-plan.yml@refs/heads/main' ]]; then
+            echo "::error::Kotlin planning requires a fresh dispatch from its protected publisher branch."
+            exit 1
+          fi
+          if [[ "$MODE" != 'preview' && ( "$MODE" != 'prepare' || "$RELEASE_ENABLED" != 'true' ) ]]; then
+            echo "::error::Only preview is available until release cutover is enabled."
+            exit 1
+          fi
+          if [[ ! "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ || ! "$LANE" =~ ^(analytics|unified)$ ||
+                ! "$RELEASE_TYPE" =~ ^(patch|minor|major)$ ]]; then
+            echo "::error::Use a full Kotlin source SHA, a known release lane, and a supported bump type."
+            exit 1
+          fi
+          branch="$(curl --silent --show-error --fail --max-time 30 \
+            https://api.github.com/repos/amplitude/Amplitude-Kotlin/branches/main)"
+          if ! jq -e --arg source "$SOURCE_SHA" '.protected == true and .commit.sha == $source' <<<"$branch" > /dev/null; then
+            echo "::error::The selected SHA must be the current tip of protected Amplitude-Kotlin main."
+            exit 1
+          fi
+          printf 'source_sha=%s\n' "$SOURCE_SHA" >> "$GITHUB_OUTPUT"
+
+  test-source:
+    needs: validate-source
+    uses: ./.github/workflows/pull-request-test.yml
+    permissions:
+      contents: read
+    with:
+      source_sha: ${{ needs.validate-source.outputs.source_sha }}
+
+  test-unified:
+    if: ${{ inputs.lane == 'unified' }}
+    needs: validate-source
+    runs-on: blacksmith-4vcpu-ubuntu-2404
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+        with:
+          repository: amplitude/Amplitude-Kotlin
+          ref: ${{ needs.validate-source.outputs.source_sha }}
+          persist-credentials: false
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          java-version: '21'
+          distribution: temurin
+      - name: Verify Unified package and published dependency
+        env:
+          SOURCE_SHA: ${{ needs.validate-source.outputs.source_sha }}
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "platforms;android-35"
+          analytics_version="$(sed -n 's/^analyticsAndroid = "\([^"]*\)"$/\1/p' unified/gradle/libs.versions.toml)"
+          if [[ ! "$analytics_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][[:alnum:].-]+)?$ ]]; then
+            echo "::error::Could not read the published Analytics dependency version."
+            exit 1
+          fi
+          curl --silent --show-error --fail --head --max-time 30 \
+            "https://repo.maven.apache.org/maven2/com/amplitude/analytics-android/$analytics_version/analytics-android-$analytics_version.pom" \
+            > /dev/null
+          version="$(sed -n 's/^VERSION_NAME=//p' unified/gradle.properties)-release-check-$SOURCE_SHA-SNAPSHOT"
+          ./gradlew :unified:publishToMavenLocal -PVERSION_NAME="$version" -PsignAllPublications=false \
+            -Dmaven.repo.local="$GITHUB_WORKSPACE/build/unified-release-maven"
+          ./gradlew unifiedReleaseTest -PunifiedVersion="$version"
+
+  plan:
+    if: ${{ !cancelled() && needs.validate-source.result == 'success' && needs.test-source.result == 'success' && (needs.test-unified.result == 'success' || (inputs.lane == 'analytics' && needs.test-unified.result == 'skipped')) }}
+    needs: [validate-source, test-source, test-unified]
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    timeout-minutes: 15
+    outputs:
+      has_release: ${{ steps.plan.outputs.has_release }}
+    steps:
+      - name: Check out reviewed release tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+        with:
+          repository: amplitude/Amplitude-Kotlin
+          ref: ${{ job.workflow_sha }}
+          path: tooling
+          persist-credentials: false
+      - name: Check out approved source and release history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+        with:
+          repository: amplitude/Amplitude-Kotlin
+          ref: ${{ needs.validate-source.outputs.source_sha }}
+          path: source
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - run: npm ci --ignore-scripts
+        working-directory: tooling
+      - name: Compute version and notes without GitHub write access
+        id: plan
+        working-directory: source
+        env:
+          LANE: ${{ inputs.lane }}
+          SOURCE_SHA: ${{ needs.validate-source.outputs.source_sha }}
+          RELEASE_TYPE: ${{ inputs.release_type }}
+          TOOL_SHA: ${{ job.workflow_sha }}
+        run: |
+          git fetch --no-tags origin '+refs/notes/*:refs/notes/*'
+          out="$RUNNER_TEMP/kotlin-plan"
+          mkdir -p "$out"
+          args=(prepare --lane "$LANE" --source-sha "$SOURCE_SHA" --manifest "$out/plan.json")
+          if [[ "$LANE" == 'unified' ]]; then
+            args+=(--release-type "$RELEASE_TYPE")
+          fi
+          node ../tooling/tools/semantic-release/publisher.mjs "${args[@]}"
+          git diff --binary --no-ext-diff --no-textconv -- > "$out/release.patch"
+          {
+            printf '### Kotlin %s release plan\n\n' "$LANE"
+            printf 'Source SHA: %s\n\nWorkflow SHA: %s\n\n' "$SOURCE_SHA" "$TOOL_SHA"
+            jq -r 'if .version == null then "No release needed." else "Version: " + .version + "\n\nTag: " + .tag end' "$out/plan.json"
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Confirm the prior release is complete
+        if: ${{ inputs.mode == 'prepare' && steps.plan.outputs.has_release == 'true' }}
+        run: |
+          plan="$RUNNER_TEMP/kotlin-plan/plan.json"
+          previous="$(jq -r '.previousTag // ""' "$plan")"
+          if [[ -z "$previous" ]]; then
+            exit 0
+          fi
+          node --input-type=module - "$plan" <<'NODE'
+          import { readFileSync } from "node:fs";
+          import { getMavenState } from "./tooling/tools/publisher/remote.mjs";
+
+          const plan = JSON.parse(readFileSync(process.argv[2], "utf8"));
+          const tag = plan.previousTag;
+          const version = tag.replace(/^(?:unified-)?v/, "");
+          if (await getMavenState({ ...plan, tag, version }) !== "complete") {
+            throw new Error("Finish the previous Kotlin Maven publication before preparing a new release.");
+          }
+          NODE
+          curl --silent --show-error --fail --max-time 30 \
+            "https://api.github.com/repos/amplitude/Amplitude-Kotlin/releases/tags/$previous" |
+            jq -e --arg tag "$previous" '.tag_name == $tag and .draft == false' > /dev/null
+      - name: Preserve the plan for the trusted PR job
+        if: ${{ inputs.mode == 'prepare' && steps.plan.outputs.has_release == 'true' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: kotlin-release-plan
+          path: ${{ runner.temp }}/kotlin-plan/
+          if-no-files-found: error
+          retention-days: 7
