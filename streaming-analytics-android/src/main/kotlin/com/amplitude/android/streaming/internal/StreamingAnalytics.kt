@@ -6,21 +6,29 @@ import com.amplitude.android.streaming.internal.network.uploadPipeline
 import com.amplitude.android.streaming.internal.player.playerBindingFactory
 import com.amplitude.android.streaming.internal.storage.storagePipeline
 import com.amplitude.android.streaming.internal.util.runCatchingCancellable
-import com.amplitude.core.AmplitudePreview
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.ConcurrentLinkedQueue
+
+private const val TEARDOWN_TIMEOUT_MILLIS = 10_000L
 
 /**
  * Per-Amplitude Streaming Analytics state.
  */
 internal class StreamingAnalytics(
-    amplitude: Amplitude,
+    private val graph: StreamingDiGraph,
 ) {
-    private var graph: StreamingDiGraph? = StreamingDiGraph(amplitude)
+    constructor(amplitude: Amplitude) : this(StreamingDiGraph(amplitude))
+
+    @Volatile
+    private var closed = false
+    private val persistenceJob = SupervisorJob(graph.scope.coroutineContext[Job])
 
     init {
         launchSafeAsync("startup upload drain error") {
@@ -40,13 +48,18 @@ internal class StreamingAnalytics(
         }
     }
 
+    @Synchronized
     fun onDelayedEvent(event: DelayedEvent) {
-        launchSafeAsync("onDelayedEvent error", CoroutineStart.UNDISPATCHED) {
-            val events = delayedEventBatcher.collect(event) ?: return@launchSafeAsync
-            withContext(NonCancellable) {
-                storagePipeline.onDelayedEvents(events)
+        if (closed) return
+        // Register the child before teardown can close intake and join accepted writes.
+        graph.scope.launch(persistenceJob, start = CoroutineStart.UNDISPATCHED) {
+            runCatchingCancellable {
+                val events = graph.delayedEventBatcher.collect(event) ?: return@runCatchingCancellable
+                graph.storagePipeline.onDelayedEvents(events)
+                graph.uploadPipeline.onNewEvent()
+            }.onFailure {
+                graph.logger.error("onDelayedEvent error: ${it.localizedMessage}")
             }
-            uploadPipeline.onNewEvent()
         }
     }
 
@@ -61,29 +74,40 @@ internal class StreamingAnalytics(
      *
      * Asynchronous: the final stop reads the player on its own looper, which is the caller's
      * thread when an app removes the plugin from the main thread.
+     * Allows ten seconds for pending writes and uploads before cancelling the streaming scope.
      */
+    @Synchronized
     fun teardown() {
-        val graph = this.graph ?: return
-        this.graph = null
+        if (closed) return
+        closed = true
+        persistenceJob.complete()
         val terminalEvents = ConcurrentLinkedQueue<DelayedEvent>()
         graph.streamTracker.routeDelayedEvents { terminalEvents.add(it) }
         graph.amplitude.amplitudeScope.launch(graph.ioDispatcher) {
-            runCatchingCancellable {
-                withContext(NonCancellable) {
-                    // Closes the factory, so an in-flight trackPlayer that is still waiting on
-                    // its lock cannot open a session after this drain.
-                    graph.playerBindingFactory.detachAll()
-                    terminalEvents.mapNotNull { event ->
-                        graph.delayedEventBatcher.collect(event)
-                    }.forEach { events ->
-                        graph.storagePipeline.onDelayedEvents(events)
+            try {
+                runCatchingCancellable {
+                    withContext(NonCancellable) {
+                        val drained = withTimeoutOrNull(TEARDOWN_TIMEOUT_MILLIS) {
+                            // Close the factory before waiting for accepted writes, so no new
+                            // session can open and no older heartbeat can follow a final stop.
+                            graph.playerBindingFactory.detachAll()
+                            persistenceJob.join()
+                            terminalEvents.mapNotNull { event ->
+                                graph.delayedEventBatcher.collect(event)
+                            }.forEach { events ->
+                                graph.storagePipeline.onDelayedEvents(events)
+                            }
+                            graph.uploadPipeline.flushAndDrain()
+                            true
+                        }
+                        if (drained == null) graph.logger.error("Streaming teardown timed out; cancelling pending work")
                     }
-                    graph.uploadPipeline.flush()
+                }.onFailure {
+                    graph.logger.error("teardown error: ${it.localizedMessage}")
                 }
-            }.onFailure {
-                graph.logger.error("teardown error: ${it.localizedMessage}")
+            } finally {
+                graph.scope.cancel()
             }
-            graph.scope.cancel()
         }
     }
 
@@ -91,7 +115,8 @@ internal class StreamingAnalytics(
         errorMsg: String,
         crossinline block: suspend StreamingDiGraph.() -> Unit,
     ) {
-        graph?.run {
+        if (closed) return
+        graph.run {
             runCatchingCancellable {
                 block()
             }.onFailure {
@@ -102,11 +127,11 @@ internal class StreamingAnalytics(
 
     private inline fun launchSafeAsync(
         errorMsg: String,
-        start: CoroutineStart = CoroutineStart.DEFAULT,
         crossinline block: suspend StreamingDiGraph.() -> Unit,
     ) {
-        graph?.apply {
-            scope.launch(start = start) {
+        if (closed) return
+        graph.apply {
+            scope.launch {
                 runCatchingCancellable {
                     block()
                 }.onFailure {
