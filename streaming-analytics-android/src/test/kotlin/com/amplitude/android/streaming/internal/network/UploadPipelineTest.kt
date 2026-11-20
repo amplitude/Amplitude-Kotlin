@@ -8,8 +8,10 @@ import com.amplitude.android.streaming.internal.storage.DelayedEventsRequestEnti
 import com.amplitude.android.streaming.internal.storage.QueueUnavailableException
 import com.amplitude.android.streaming.internal.storage.toEntity
 import com.amplitude.common.Logger
+import com.amplitude.core.Configuration
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.CancellationException
@@ -17,29 +19,36 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.NullSource
 import org.junit.jupiter.params.provider.ValueSource
+import java.util.UUID
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class UploadPipelineTest {
     private val queue = mockk<DelayedEventsQueue>()
     private val endpoint = mockk<DelayedEventsEndpoint>()
     private val logger = mockk<Logger>(relaxed = true)
+    private lateinit var configuration: Configuration
     private var queued: DelayedEventsRequestEntity? = null
 
     @BeforeEach
     fun setUp() {
+        configuration = Configuration(apiKey = "test-key")
+        every { queue.storageKey } returns UUID.randomUUID().toString()
         queued = queuedRequest("stream-1")
         coEvery { queue.peek(any()) } answers {
             val eligible = firstArg<(DelayedEventsRequestEntity) -> Boolean>()
@@ -48,6 +57,228 @@ class UploadPipelineTest {
         coEvery { queue.acknowledge(any()) } answers {
             queued = null
             true
+        }
+    }
+
+    @Nested
+    inner class QueueOwnership {
+        @ParameterizedTest
+        @ValueSource(booleans = [false, true])
+        fun `should finish the old request before a replacement sends the latest stop`(cancelOld: Boolean) = runTest {
+            val release = CompletableDeferred<Unit>()
+            val applied = mutableListOf<Long>()
+            coEvery { endpoint.send(any()) } coAnswers {
+                val timeout = firstArg<DelayedEventsRequestDto>().timeoutMillis
+                // A blocking HTTP request can finish after teardown cancels its caller.
+                withContext(NonCancellable) {
+                    if (timeout > 0) release.await()
+                    applied.add(timeout)
+                    DelayedEventsResult.Success
+                }
+            }
+            coEvery { queue.acknowledge(any()) } answers {
+                if (queued == firstArg<DelayedEventsRequestEntity>()) queued = null
+                true
+            }
+            val oldScope = CoroutineScope(backgroundScope.coroutineContext + Job(backgroundScope.coroutineContext[Job]))
+            pipeline(scope = oldScope).onNewEvent()
+            testScheduler.runCurrent()
+            queued = instantRequest("stream-1")
+            val replacementQueue = mockk<DelayedEventsQueue>()
+            every { replacementQueue.storageKey } returns queue.storageKey
+            coEvery { replacementQueue.peek(any()) } coAnswers {
+                queue.peek(firstArg<(DelayedEventsRequestEntity) -> Boolean>())
+            }
+            coEvery { replacementQueue.acknowledge(any()) } coAnswers { queue.acknowledge(firstArg()) }
+            val replacement = launch { pipeline(replacementQueue).flushAndDrain() }
+            if (cancelOld) oldScope.cancel()
+            testScheduler.runCurrent()
+            try {
+                coVerify(exactly = 1) { endpoint.send(any()) }
+                assertEquals(false, replacement.isCompleted)
+            } finally {
+                release.complete(Unit)
+            }
+            testScheduler.runCurrent()
+            replacement.join()
+
+            assertEquals(listOf(5_000L, 0L), applied)
+            assertEquals(null, queued)
+            oldScope.cancel()
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = ["heartbeat", "failure", "rate limit"])
+        fun `should preserve HTTP backoff but allow fresh startup recovery after replacement`(waitingFor: String) = runTest {
+            val waitMs = when (waitingFor) {
+                "failure" -> 2_000L
+                "rate limit" -> 30_000L
+                else -> 0L
+            }
+            coEvery { endpoint.send(any()) } returns when (waitingFor) {
+                "failure" -> DelayedEventsResult.Failure(500, "upstream down")
+                "rate limit" -> DelayedEventsResult.RateLimited
+                else -> DelayedEventsResult.Success
+            }
+            val oldScope = CoroutineScope(backgroundScope.coroutineContext + Job(backgroundScope.coroutineContext[Job]))
+            pipeline(scope = oldScope).onNewEvent()
+            testScheduler.runCurrent()
+            oldScope.cancel()
+            queued = queuedRequest("stream-1", playTimeSec = 1.0)
+            coEvery { endpoint.send(any()) } returns DelayedEventsResult.Success
+            pipeline().onNewEvent()
+            if (waitMs > 0) {
+                advanceTimeBy(waitMs - 1L)
+                testScheduler.runCurrent()
+                coVerify(exactly = 1) { endpoint.send(any()) }
+                advanceTimeBy(1L)
+            }
+            testScheduler.runCurrent()
+
+            coVerify(exactly = 2) { endpoint.send(any()) }
+            assertEquals(null, queued)
+            assertEquals(waitMs, currentTime)
+        }
+
+        @ParameterizedTest
+        @ValueSource(ints = [200, 400])
+        fun `should finish another uploader's pending acknowledgment without resending`(status: Int) = runTest {
+            queued = instantRequest("stream-1")
+            coEvery { endpoint.send(any()) } returns if (status == 200) {
+                DelayedEventsResult.Success
+            } else {
+                DelayedEventsResult.FailureNoRetry(400, "invalid request")
+            }
+            var diskWritable = false
+            coEvery { queue.acknowledge(any()) } answers {
+                if (diskWritable) queued = null
+                diskWritable
+            }
+            val oldScope = CoroutineScope(backgroundScope.coroutineContext + Job(backgroundScope.coroutineContext[Job]))
+            pipeline(scope = oldScope).onNewEvent()
+            testScheduler.runCurrent()
+            oldScope.cancel()
+            val draining = launch { pipeline().flushAndDrain() }
+            testScheduler.runCurrent()
+            assertEquals(false, draining.isCompleted)
+            coVerify(exactly = 1) { endpoint.send(any()) }
+
+            diskWritable = true
+            advanceTimeBy(2_000L)
+            testScheduler.runCurrent()
+
+            assertTrue(draining.isCompleted)
+            coVerify(exactly = 1) { endpoint.send(any()) }
+            assertEquals(null, queued)
+        }
+
+        @Test
+        fun `should not block another persisted queue during an upload`() = runTest {
+            val release = CompletableDeferred<Unit>()
+            coEvery { endpoint.send(any()) } coAnswers {
+                if (firstArg<DelayedEventsRequestDto>().id == "stream-1") release.await()
+                DelayedEventsResult.Success
+            }
+            pipeline().onNewEvent()
+            testScheduler.runCurrent()
+            val otherQueue = mockk<DelayedEventsQueue>()
+            every { otherQueue.storageKey } returns UUID.randomUUID().toString()
+            var other: DelayedEventsRequestEntity? = queuedRequest("stream-2")
+            coEvery { otherQueue.peek(any()) } answers { other?.takeIf(firstArg<(DelayedEventsRequestEntity) -> Boolean>()) }
+            coEvery { otherQueue.acknowledge(any()) } answers {
+                other = null
+                true
+            }
+            pipeline(otherQueue).onNewEvent()
+            testScheduler.runCurrent()
+
+            coVerify(exactly = 1) { endpoint.send(match { it.id == "stream-2" }) }
+            coVerify(exactly = 0) { queue.acknowledge(any()) }
+            release.complete(Unit)
+            testScheduler.runCurrent()
+        }
+    }
+
+    @Nested
+    inner class Offline {
+        @ParameterizedTest
+        @NullSource
+        @ValueSource(booleans = [false])
+        fun `should defer offline uploads and resume when online or detection is disabled`(online: Boolean?) = runTest {
+            configuration.offline = true
+            val uploader = pipeline()
+            coEvery { endpoint.send(any()) } returns DelayedEventsResult.Success
+            uploader.onNewEvent()
+            uploader.flush()
+            val draining = launch { uploader.flushAndDrain() }
+            testScheduler.runCurrent()
+
+            assertTrue(draining.isCompleted)
+            coVerify(exactly = 0) { endpoint.send(any()) }
+            coVerify(exactly = 0) { queue.acknowledge(any()) }
+            assertEquals("stream-1", queued?.id)
+            assertEquals(0L, currentTime)
+
+            configuration.offline = online
+            uploader.flush()
+            testScheduler.runCurrent()
+
+            coVerify(exactly = 1) { endpoint.send(any()) }
+            assertEquals(null, queued)
+            assertEquals(0L, currentTime)
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = ["failure", "rate limit", "heartbeat"])
+        fun `should pause scheduled uploads offline and resume on reconnect flush`(waitingFor: String) = runTest {
+            coEvery { endpoint.send(any()) } returns when (waitingFor) {
+                "failure" -> DelayedEventsResult.Failure(500, "upstream down")
+                "rate limit" -> DelayedEventsResult.RateLimited
+                else -> DelayedEventsResult.Success
+            }
+            val uploader = pipeline()
+            uploader.onNewEvent()
+            testScheduler.runCurrent()
+            if (waitingFor == "heartbeat") {
+                queued = queuedRequest("stream-1", playTimeSec = 1.0)
+                uploader.onNewEvent()
+                testScheduler.runCurrent()
+            }
+            configuration.offline = true
+            uploader.flush()
+            advanceTimeBy(2 * DELAYED_EVENT_PULSE_INTERVAL_MILLIS)
+            testScheduler.runCurrent()
+            coVerify(exactly = 1) { endpoint.send(any()) }
+            assertEquals("stream-1", queued?.id)
+
+            coEvery { endpoint.send(any()) } returns DelayedEventsResult.Success
+            configuration.offline = false
+            uploader.flush()
+            testScheduler.runCurrent()
+            coVerify(exactly = 2) { endpoint.send(any()) }
+            assertEquals(null, queued)
+        }
+
+        @Test
+        fun `should preserve a reconnect flush arriving during the offline exit`() = runTest {
+            configuration = mockk()
+            val uploader = pipeline()
+            var offline = true
+            every { configuration.offline } answers {
+                val result = offline
+                if (offline) {
+                    offline = false
+                    uploader.flush()
+                }
+                result
+            }
+            coEvery { endpoint.send(any()) } returns DelayedEventsResult.Success
+
+            uploader.onNewEvent()
+            testScheduler.runCurrent()
+
+            coVerify(exactly = 1) { endpoint.send(any()) }
+            assertEquals(null, queued)
         }
     }
 
@@ -819,6 +1050,7 @@ class UploadPipelineTest {
             queue = queue,
             endpoint = endpoint,
             logger = logger,
+            configuration = configuration,
             currentTimeMs = { currentTime },
         )
 
@@ -842,7 +1074,7 @@ class UploadPipelineTest {
                 true
             }
         }
-        return DelayedEventsQueue(storage = storage, logger = logger, storageKey = "uploader-acknowledgment-test")
+        return DelayedEventsQueue(storage = storage, logger = logger, storageKey = UUID.randomUUID().toString())
     }
 
     private fun queuedRequest(
