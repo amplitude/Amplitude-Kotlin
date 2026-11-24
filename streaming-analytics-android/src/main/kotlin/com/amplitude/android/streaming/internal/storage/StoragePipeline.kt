@@ -3,10 +3,13 @@ package com.amplitude.android.streaming.internal.storage
 import com.amplitude.android.streaming.internal.DelayedEvent
 import com.amplitude.android.streaming.internal.StreamEvents
 import com.amplitude.android.streaming.internal.StreamingDiGraph
-import com.amplitude.android.streaming.internal.util.DiGraph.Companion.weak
+import com.amplitude.android.streaming.internal.util.DiGraph.Companion.singleton
 import com.amplitude.common.Logger
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 private const val STREAM_SESSION_ID = "[Streaming] Stream Session ID"
+private const val PERSISTENCE_MAX_ATTEMPTS = 2
 
 /**
  * One hour.
@@ -16,7 +19,7 @@ private const val STREAM_SESSION_ID = "[Streaming] Stream Session ID"
  */
 internal const val DELAYED_EVENT_TIMEOUT_MILLIS = 60 * 60 * 1_000L
 
-internal val StreamingDiGraph.storagePipeline: StoragePipeline by weak {
+internal val StreamingDiGraph.storagePipeline: StoragePipeline by singleton {
     StoragePipeline(
         queue = delayedEventsQueue,
         logger = logger,
@@ -30,7 +33,10 @@ internal class StoragePipeline(
     private val queue: DelayedEventsQueue,
     private val logger: Logger,
 ) {
-    suspend fun onDelayedEvents(events: List<DelayedEvent>) {
+    private val mutex = Mutex()
+
+    // Keep writes ordered across the retry so an older heartbeat cannot follow a stop.
+    suspend fun onDelayedEvents(events: List<DelayedEvent>) = mutex.withLock {
         events
             .groupBy { event ->
                 event.eventProperties?.get(STREAM_SESSION_ID) as? String
@@ -56,7 +62,7 @@ internal class StoragePipeline(
         val isCleanStop = events.any {
             it.kind == DelayedEvent.Kind.INSTANT && it.eventType == StreamEvents.STREAM_STOPPED
         }
-        queue.enqueue(
+        enqueueWithRetry(
             DelayedEventsRequestEntity(
                 id = streamSessionId,
                 // A zero timeout sends the clean stop and deletes the server's delayed snapshot.
@@ -65,5 +71,17 @@ internal class StoragePipeline(
                 instantEvents = instantEventEntities,
             ),
         )
+    }
+
+    private suspend fun enqueueWithRetry(request: DelayedEventsRequestEntity) {
+        repeat(PERSISTENCE_MAX_ATTEMPTS) {
+            try {
+                queue.enqueue(request)
+                return
+            } catch (_: QueueUnavailableException) {
+                // Retry the local queue operation immediately.
+            }
+        }
+        logger.error("Failed to persist delayed-events update ${request.id} after $PERSISTENCE_MAX_ATTEMPTS attempts; dropping update")
     }
 }
