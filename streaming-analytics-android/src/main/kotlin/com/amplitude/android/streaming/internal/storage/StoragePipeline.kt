@@ -5,12 +5,11 @@ import com.amplitude.android.streaming.internal.StreamEvents
 import com.amplitude.android.streaming.internal.StreamingDiGraph
 import com.amplitude.android.streaming.internal.util.DiGraph.Companion.singleton
 import com.amplitude.common.Logger
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlin.time.Duration.Companion.milliseconds
 
 private const val STREAM_SESSION_ID = "[Streaming] Stream Session ID"
+private const val PERSISTENCE_MAX_ATTEMPTS = 2
 
 /**
  * One hour.
@@ -36,7 +35,7 @@ internal class StoragePipeline(
 ) {
     private val mutex = Mutex()
 
-    // Keep accepted writes ordered across retries so an older heartbeat cannot follow a stop.
+    // Keep writes ordered across the retry so an older heartbeat cannot follow a stop.
     suspend fun onDelayedEvents(events: List<DelayedEvent>) = mutex.withLock {
         events
             .groupBy { event ->
@@ -75,16 +74,14 @@ internal class StoragePipeline(
     }
 
     private suspend fun enqueueWithRetry(request: DelayedEventsRequestEntity) {
-        var delayMs = 2_000L
-        while (true) {
+        repeat(PERSISTENCE_MAX_ATTEMPTS) {
             try {
                 queue.enqueue(request)
                 return
             } catch (_: QueueUnavailableException) {
-                logger.error("Retrying delayed-events persistence for ${request.id} in $delayMs ms")
-                delay(delayMs.milliseconds)
-                delayMs = (delayMs * 2).coerceAtMost(64_000L)
+                // Retry the local queue operation immediately.
             }
         }
+        logger.error("Failed to persist delayed-events update ${request.id} after $PERSISTENCE_MAX_ATTEMPTS attempts; dropping update")
     }
 }

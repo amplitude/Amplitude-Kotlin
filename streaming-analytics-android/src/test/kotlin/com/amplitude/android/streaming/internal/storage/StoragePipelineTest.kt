@@ -6,12 +6,16 @@ import com.amplitude.common.Logger
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.mockk.verify
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -61,13 +65,9 @@ class StoragePipelineTest {
                 true
             }
             val stop = delayedEvent(DelayedEvent.Kind.INSTANT).also { it.insertId = "stop" }
-            val saving = launch { realPipeline.onDelayedEvents(listOf(stop)) }
-            runCurrent()
-            assertEquals(false, saving.isCompleted)
-            assertEquals(null, written)
-            advanceTimeBy(2_000L)
-            runCurrent()
-            assertEquals(true, saving.isCompleted)
+            realPipeline.onDelayedEvents(listOf(stop))
+
+            assertEquals(0L, currentTime)
             assertEquals(emptyList<DelayedEventEntity>(), written?.events)
             assertEquals(listOf(start, stop.toEntity()), written?.instantEvents)
             assertEquals(0L, written?.timeoutMillis)
@@ -76,9 +76,13 @@ class StoragePipelineTest {
         @Test
         fun `should keep an older heartbeat retry ahead of the final stop`() = runTest {
             val persisted = mutableListOf<DelayedEventsRequestEntity>()
+            val releaseFirstWrite = CompletableDeferred<Unit>()
             var attempts = 0
-            coEvery { queue.enqueue(any()) } answers {
-                if (++attempts == 1) throw QueueUnavailableException()
+            coEvery { queue.enqueue(any()) } coAnswers {
+                if (++attempts == 1) {
+                    releaseFirstWrite.await()
+                    throw QueueUnavailableException()
+                }
                 persisted.add(firstArg())
                 Unit
             }
@@ -86,14 +90,46 @@ class StoragePipelineTest {
             runCurrent()
             val stop = launch { pipeline.onDelayedEvents(listOf(delayedEvent(DelayedEvent.Kind.INSTANT))) }
             runCurrent()
-            assertEquals(false, heartbeat.isCompleted)
-            assertEquals(false, stop.isCompleted)
-            assertEquals(1, attempts)
-            advanceTimeBy(2_000L)
+            advanceTimeBy(1_500L)
             runCurrent()
+            assertFalse(heartbeat.isCompleted)
+            assertFalse(stop.isCompleted)
+            assertEquals(1, attempts)
+            releaseFirstWrite.complete(Unit)
+            heartbeat.join()
+            stop.join()
+
             assertEquals(listOf(DELAYED_EVENT_TIMEOUT_MILLIS, 0L), persisted.map { it.timeoutMillis })
-            assertEquals(true, heartbeat.isCompleted)
-            assertEquals(true, stop.isCompleted)
+            assertEquals(1_500L, currentTime)
+        }
+
+        @Test
+        fun `should stop retrying a failed update and continue other streams and later calls`() = runTest {
+            val persisted = mutableListOf<String>()
+            coEvery { queue.enqueue(any()) } answers {
+                val request = firstArg<DelayedEventsRequestEntity>()
+                if (request.id == "stream-1") throw QueueUnavailableException()
+                persisted.add(request.id)
+                Unit
+            }
+            val failed = delayedEvent(DelayedEvent.Kind.INSTANT)
+            val other = delayedEvent(DelayedEvent.Kind.INSTANT).apply {
+                eventProperties?.put("[Streaming] Stream Session ID", "stream-2")
+            }
+
+            pipeline.onDelayedEvents(listOf(failed, other))
+
+            assertEquals(listOf("stream-2"), persisted)
+            assertEquals(0L, currentTime)
+            coVerify(exactly = 2) { queue.enqueue(match { it.id == "stream-1" }) }
+            verify(exactly = 1) { logger.error(match { it.contains("stream-1") && it.contains("dropping update") }) }
+
+            coEvery { queue.enqueue(any()) } answers {
+                persisted.add(firstArg<DelayedEventsRequestEntity>().id)
+                Unit
+            }
+            pipeline.onDelayedEvents(listOf(failed))
+            assertEquals(listOf("stream-2", "stream-1"), persisted)
         }
 
         @Test
