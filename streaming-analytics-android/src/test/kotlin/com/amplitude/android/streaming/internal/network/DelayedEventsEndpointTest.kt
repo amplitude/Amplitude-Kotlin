@@ -7,7 +7,11 @@ import com.amplitude.core.Constants
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.spyk
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.SerializationException
@@ -114,6 +118,23 @@ class DelayedEventsEndpointTest {
 
     @Nested
     inner class Transport {
+        @Test
+        fun `should check offline mode when the network dispatcher starts`() = runTest {
+            val configuration = Configuration(apiKey = "test-api-key", serverUrl = server.url("/").toString())
+            server.enqueue(MockResponse().setResponseCode(200))
+            val pending = async(start = CoroutineStart.UNDISPATCHED) {
+                send(configuration, StandardTestDispatcher(testScheduler))
+            }
+            configuration.offline = true
+
+            assertEquals(DelayedEventsResult.Offline, pending.await())
+            assertEquals(0, server.requestCount)
+
+            configuration.offline = false
+            assertEquals(DelayedEventsResult.Success, send(configuration))
+            assertEquals(1, server.requestCount)
+        }
+
         @Test
         fun `connection failure is a failure without a status code`() =
             runTest {
@@ -408,17 +429,15 @@ class DelayedEventsEndpointTest {
             }
     }
 
-    private suspend fun send(): DelayedEventsResult {
-        val configuration =
-            Configuration(
-                apiKey = "test-api-key",
-                serverUrl = server.url("/").toString(),
-            )
+    private suspend fun send(
+        configuration: Configuration = Configuration(apiKey = "test-api-key", serverUrl = server.url("/").toString()),
+        ioDispatcher: CoroutineDispatcher = UnconfinedTestDispatcher(),
+    ): DelayedEventsResult {
         return DelayedEventsEndpoint(
             configuration = configuration,
             delayedEventsBaseUrl = DelayedEventsBaseUrl(configuration),
             logger = logger,
-            ioDispatcher = UnconfinedTestDispatcher(),
+            ioDispatcher = ioDispatcher,
         ).send(
             DelayedEventsRequestDto(
                 id = "view-1",

@@ -49,7 +49,7 @@ public class StreamingAnalyticsPlugin : EventPlugin {
         streamingAnalytics?.flush()
     }
 
-    /** Uploads queued streaming events immediately, subject to network retry backoff. */
+    /** Uploads queued streaming events when online, subject to network retry backoff. */
     override fun flush() {
         streamingAnalytics?.flush()
     }
