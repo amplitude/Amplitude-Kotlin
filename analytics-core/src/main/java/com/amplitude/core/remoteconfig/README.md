@@ -34,15 +34,21 @@ iOS (`AmplitudeCore-Swift`) and Web clients so behavior is consistent across SDK
   signal — so callers can reliably gate setup on it. The mode controls only this
   *initial* delivery; afterward every subscriber receives subsequent successful
   fetches as updates.
-- **`All`**: delivers cache immediately (if present), then the remote result, then
-  every subsequent successful fetch.
-- **`WaitForRemote(timeout)`**: blocks the *initial* delivery on the remote up to
-  `timeout`; on failure/timeout falls back to cache, else a failure signal. After
+- **`All`**: delivers cache immediately (if present). When that cache is stale or
+  absent, it also fetches remotely. It receives every subsequent successful fetch.
+- **`WaitForRemote(timeout)`**: reuses fresh cached config immediately; otherwise
+  blocks the *initial* delivery on the remote up to `timeout`. On failure/timeout
+  it falls back to cache, else a failure signal. After
   that initial callback it receives subsequent fetches as updates, the same as `All`.
 - **Any successful fetch** — whether triggered by a `subscribe` or by
   `updateConfigs()` — delivers the latest config to **all** current subscribers
   (de-duplicated per subscriber by `fetchId`). Failures are never fanned out, so
-  subscribers keep their last valid config. `updateConfigs()` is rate-limited (5 min).
+  subscribers keep their last valid config. Subscriptions and `updateConfigs()`
+  honor a 15-minute cooldown after a successful fetch. New clients reuse valid,
+  fresh persisted config, including after a process restart, and report `CACHE`
+  with the original fetch timestamp. Reusing config does not extend the cooldown.
+  An in-memory success also enforces the cooldown when persistence fails.
+  Failed fetches do not start a new cooldown.
 
 ## Internals
 
@@ -61,7 +67,7 @@ flowchart TD
 
     SRC{"config source?"}
     SRC -->|"fetch in flight"| JOIN["join the shared fetch"]
-    SRC -->|"recent success"| REUSE["reuse last result<br/>(no network call)"]
+    SRC -->|"recent success or fresh saved config"| REUSE["reuse config<br/>(no network call)"]
     SRC -->|"otherwise"| FETCH["GET /config?config_group=android<br/>then store blob + timestamp"]
 
     JOIN --> OUT["FetchOutcome<br/>Success(blob, ts, fetchId) · Failure"]
@@ -87,6 +93,7 @@ sequenceDiagram
     alt blob is cached
         RC-->>C: onUpdate(config-or-null, CACHE, ts)
     end
+    opt cache is stale or absent
     RC->>N: GET /config?config_group=android
     alt success
         N-->>RC: nested blob
@@ -94,6 +101,7 @@ sequenceDiagram
         RC-->>C: onUpdate(slice, REMOTE, ts)
     else failure (and nothing delivered yet)
         RC-->>C: onUpdate(null, REMOTE, null)
+    end
     end
 ```
 
