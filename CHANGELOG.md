@@ -1,3 +1,12 @@
+## [1.37.2](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.37.1...v1.37.2) (2026-11-25)
+
+
+### Bug Fixes
+
+* defer install and update events until foreground ([#608](https://github.com/amplitude/Amplitude-Kotlin/issues/608)) ([21ab1d8](https://github.com/amplitude/Amplitude-Kotlin/commit/21ab1d80bb0f13ea46fd53a5e3009d2886715695))
+* **streaming:** honor offline mode and coordinate replacement uploaders ([#609](https://github.com/amplitude/Amplitude-Kotlin/issues/609)) ([a655898](https://github.com/amplitude/Amplitude-Kotlin/commit/a655898ad2fd31cee36f8a6bb6359c879e608147))
+* **streaming:** upload playback events promptly and honor SDK flushes ([#603](https://github.com/amplitude/Amplitude-Kotlin/issues/603)) ([6df9e86](https://github.com/amplitude/Amplitude-Kotlin/commit/6df9e86acc5ee39e298aecb907fb8d54d310de52))
+
 ## [1.37.1](https://github.com/amplitude/Amplitude-Kotlin/compare/v1.37.0...v1.37.1) (2026-11-09)
 
 
